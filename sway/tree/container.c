@@ -48,6 +48,8 @@ struct sway_container *container_create(struct sway_view *view) {
 	c->marks = create_list();
 	c->outputs = create_list();
 
+	container_update_border_colors(c);
+
 	wl_signal_init(&c->events.destroy);
 	wl_signal_emit_mutable(&root->events.new_node, &c->node);
 
@@ -80,6 +82,13 @@ void container_destroy(struct sway_container *con) {
 	wlr_texture_destroy(con->marks_unfocused);
 	wlr_texture_destroy(con->marks_urgent);
 	wlr_texture_destroy(con->marks_focused_tab_title);
+
+	free(con->border_color_config.focused);
+	free(con->border_color_config.focused_inactive);
+	free(con->border_color_config.focused_tab_title);
+	free(con->border_color_config.unfocused);
+	free(con->border_color_config.urgent);
+	free(con->border_color_config.placeholder);
 
 	if (con->view && con->view->container == con) {
 		con->view->container = NULL;
@@ -587,15 +596,15 @@ static void update_title_texture(struct sway_container *con,
 
 void container_update_title_textures(struct sway_container *container) {
 	update_title_texture(container, &container->title_focused,
-			&config->border_colors.focused);
+			container->border_colors.focused);
 	update_title_texture(container, &container->title_focused_inactive,
-			&config->border_colors.focused_inactive);
+			container->border_colors.focused_inactive);
 	update_title_texture(container, &container->title_unfocused,
-			&config->border_colors.unfocused);
+			container->border_colors.unfocused);
 	update_title_texture(container, &container->title_urgent,
-			&config->border_colors.urgent);
+			config->border_colors.urgent);
 	update_title_texture(container, &container->title_focused_tab_title,
-			&config->border_colors.focused_tab_title);
+			config->border_colors.focused_tab_title);
 	container_damage_whole(container);
 }
 
@@ -1723,15 +1732,15 @@ void container_update_marks_textures(struct sway_container *con) {
 		return;
 	}
 	update_marks_texture(con, &con->marks_focused,
-			&config->border_colors.focused);
+			con->border_colors.focused);
 	update_marks_texture(con, &con->marks_focused_inactive,
-			&config->border_colors.focused_inactive);
+			con->border_colors.focused_inactive);
 	update_marks_texture(con, &con->marks_unfocused,
-			&config->border_colors.unfocused);
+			con->border_colors.unfocused);
 	update_marks_texture(con, &con->marks_urgent,
-			&config->border_colors.urgent);
+			config->border_colors.urgent);
 	update_marks_texture(con, &con->marks_focused_tab_title,
-			&config->border_colors.focused_tab_title);
+			config->border_colors.focused_tab_title);
 	container_damage_whole(con);
 }
 
@@ -1821,4 +1830,41 @@ int container_squash(struct sway_container *con) {
 		container_squash_children(con);
 	}
 	return change;
+}
+
+/* assumes to be called for the whole or parts of the tree in a top-down manner
+ * (e.g. by root_for_each_container() or container_for_each_child()) to merge
+ * down the border colors and local configs. It needs to be called at a minimum
+ * whenever a color config further up in the tree is reset to default (i.e.
+ * free()d and NULLed) to avoid dangling references on freed memory. */
+void container_update_border_colors(struct sway_container *container) {
+	// copy down parent or global config
+	struct border_color_classes *inherited = &config->border_colors;
+	if (container->pending.parent) {
+		inherited = &container->pending.parent->border_colors;
+	}
+
+	struct border_color_classes *colors = &container->border_colors;
+	memcpy(colors, inherited, sizeof(*colors));
+
+	// merge in our local config
+	struct border_color_classes *local = &container->border_color_config;
+	if (local->focused) {
+		colors->focused = local->focused;
+	}
+	if (local->focused_inactive) {
+		colors->focused_inactive = local->focused_inactive;
+	}
+	if (local->focused_tab_title) {
+		colors->focused_tab_title = local->focused_tab_title;
+	}
+	if (local->unfocused) {
+		colors->unfocused = local->unfocused;
+	}
+	if (local->urgent) {
+		colors->urgent = local->urgent;
+	}
+	if (local->placeholder) {
+		colors->placeholder = local->placeholder;
+	}
 }

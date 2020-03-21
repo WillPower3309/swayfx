@@ -160,6 +160,12 @@ void free_config(struct sway_config *config) {
 	list_free(config->no_focus);
 	list_free(config->active_bar_modifiers);
 	list_free_items_and_destroy(config->config_chain);
+	free(config->border_colors.focused);
+	free(config->border_colors.focused_inactive);
+	free(config->border_colors.focused_tab_title);
+	free(config->border_colors.unfocused);
+	free(config->border_colors.urgent);
+	free(config->border_colors.placeholder);
 	free(config->floating_scroll_up_cmd);
 	free(config->floating_scroll_down_cmd);
 	free(config->floating_scroll_left_cmd);
@@ -302,35 +308,49 @@ static void config_defaults(struct sway_config *config) {
 	config->has_focused_tab_title = false;
 
 	// border colors
-	color_to_rgba(config->border_colors.focused.border, 0x4C7899FF);
-	color_to_rgba(config->border_colors.focused.background, 0x285577FF);
-	color_to_rgba(config->border_colors.focused.text, 0xFFFFFFFF);
-	color_to_rgba(config->border_colors.focused.indicator, 0x2E9EF4FF);
-	color_to_rgba(config->border_colors.focused.child_border, 0x285577FF);
+	struct border_colors *colors;
+	if (!(colors = calloc(1, sizeof(*colors)))) goto cleanup;
+	color_to_rgba(colors->border, 0x4C7899FF);
+	color_to_rgba(colors->background, 0x285577FF);
+	color_to_rgba(colors->text, 0xFFFFFFFF);
+	color_to_rgba(colors->indicator, 0x2E9EF4FF);
+	color_to_rgba(colors->child_border, 0x285577FF);
+	config->border_colors.focused = colors;
 
-	color_to_rgba(config->border_colors.focused_inactive.border, 0x333333FF);
-	color_to_rgba(config->border_colors.focused_inactive.background, 0x5F676AFF);
-	color_to_rgba(config->border_colors.focused_inactive.text, 0xFFFFFFFF);
-	color_to_rgba(config->border_colors.focused_inactive.indicator, 0x484E50FF);
-	color_to_rgba(config->border_colors.focused_inactive.child_border, 0x5F676AFF);
+	if (!(colors = calloc(1, sizeof(*colors)))) goto cleanup;
+	color_to_rgba(colors->border, 0x333333FF);
+	color_to_rgba(colors->background, 0x5F676AFF);
+	color_to_rgba(colors->text, 0xFFFFFFFF);
+	color_to_rgba(colors->indicator, 0x484E50FF);
+	color_to_rgba(colors->child_border, 0x5F676AFF);
+	config->border_colors.focused_inactive = colors;
 
-	color_to_rgba(config->border_colors.unfocused.border, 0x333333FF);
-	color_to_rgba(config->border_colors.unfocused.background, 0x222222FF);
-	color_to_rgba(config->border_colors.unfocused.text, 0x888888FF);
-	color_to_rgba(config->border_colors.unfocused.indicator, 0x292D2EFF);
-	color_to_rgba(config->border_colors.unfocused.child_border, 0x222222FF);
+	if (!(colors = calloc(1, sizeof(*colors)))) goto cleanup;
+	config->border_colors.focused_tab_title = colors;
 
-	color_to_rgba(config->border_colors.urgent.border, 0x2F343AFF);
-	color_to_rgba(config->border_colors.urgent.background, 0x900000FF);
-	color_to_rgba(config->border_colors.urgent.text, 0xFFFFFFFF);
-	color_to_rgba(config->border_colors.urgent.indicator, 0x900000FF);
-	color_to_rgba(config->border_colors.urgent.child_border, 0x900000FF);
+	if (!(colors = calloc(1, sizeof(*colors)))) goto cleanup;
+	color_to_rgba(colors->border, 0x333333FF);
+	color_to_rgba(colors->background, 0x222222FF);
+	color_to_rgba(colors->text, 0x888888FF);
+	color_to_rgba(colors->indicator, 0x292D2EFF);
+	color_to_rgba(colors->child_border, 0x222222FF);
+	config->border_colors.unfocused = colors;
 
-	color_to_rgba(config->border_colors.placeholder.border, 0x000000FF);
-	color_to_rgba(config->border_colors.placeholder.background, 0x0C0C0CFF);
-	color_to_rgba(config->border_colors.placeholder.text, 0xFFFFFFFF);
-	color_to_rgba(config->border_colors.placeholder.indicator, 0x000000FF);
-	color_to_rgba(config->border_colors.placeholder.child_border, 0x0C0C0CFF);
+	if (!(colors = calloc(1, sizeof(*colors)))) goto cleanup;
+	color_to_rgba(colors->border, 0x2F343AFF);
+	color_to_rgba(colors->background, 0x900000FF);
+	color_to_rgba(colors->text, 0xFFFFFFFF);
+	color_to_rgba(colors->indicator, 0x900000FF);
+	color_to_rgba(colors->child_border, 0x900000FF);
+	config->border_colors.urgent = colors;
+
+	if (!(colors = calloc(1, sizeof(*colors)))) goto cleanup;
+	color_to_rgba(colors->border, 0x000000FF);
+	color_to_rgba(colors->background, 0x0C0C0CFF);
+	color_to_rgba(colors->text, 0xFFFFFFFF);
+	color_to_rgba(colors->indicator, 0x000000FF);
+	color_to_rgba(colors->child_border, 0x0C0C0CFF);
+	config->border_colors.urgent = colors;
 
 	// The keysym to keycode translation
 	struct xkb_rule_names rules = {0};

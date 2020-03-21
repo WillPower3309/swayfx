@@ -39,7 +39,7 @@ static void handle_render(struct sway_seat *seat,
 	}
 	if (e->target_node && node_get_output(e->target_node) == output) {
 		float color[4];
-		memcpy(&color, config->border_colors.focused.indicator,
+		memcpy(&color, config->border_colors.focused->indicator,
 				sizeof(float) * 4);
 		premultiply_alpha(color, 0.5);
 		struct wlr_box box;

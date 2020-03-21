@@ -9,6 +9,23 @@
 struct sway_view;
 struct sway_seat;
 
+struct border_colors {
+	float border[4];
+	float background[4];
+	float text[4];
+	float indicator[4];
+	float child_border[4];
+};
+
+struct border_color_classes {
+	struct border_colors *focused;
+	struct border_colors *focused_inactive;
+	struct border_colors *focused_tab_title;
+	struct border_colors *unfocused;
+	struct border_colors *urgent;
+	struct border_colors *placeholder;
+};
+
 enum sway_container_layout {
 	L_NONE,
 	L_HORIZ,
@@ -90,6 +107,9 @@ struct sway_container {
 	// Used when the view changes to CSD unexpectedly. This will be a non-B_CSD
 	// border which we use to restore when the view returns to SSD.
 	enum sway_container_border saved_border;
+
+	struct border_color_classes border_colors;
+	struct border_color_classes border_color_config;
 
 	// The share of the space of parent container this container occupies
 	double width_fraction;
@@ -372,5 +392,7 @@ bool container_is_sticky_or_child(struct sway_container *con);
  * Returns the number of new containers added to the parent
  */
 int container_squash(struct sway_container *con);
+
+void container_update_border_colors(struct sway_container *container);
 
 #endif

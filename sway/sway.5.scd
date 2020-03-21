@@ -546,7 +546,7 @@ runtime.
 *client.background* <color>
 	This command is ignored and is only present for i3 compatibility.
 
-*client.<class>* <border> <background> <text> [<indicator> [<child_border>]]
+*client.<class>* [global|default] <border> <background> <text> [<indicator> [<child_border>]]
 	Configures the color of window borders and title bars. The first three
 	colors are required. When omitted _indicator_ will use a sane default and
 	_child_border_ will use the color set for _background_. Colors may be
@@ -646,6 +646,10 @@ The default colors are:
 :  #000000
 :  #0c0c0c
 
+	When run on containers, e.g. from *bindsym* or *for_window*, only those
+	containers are reconfigured. Subcommand _global_ can be used to
+	explicitly address the global configuration in this case and _default_
+	can be used to remove per-container config.
 
 *default_border* normal|none|pixel [<n>]
 	Set default border style for new tiled windows.

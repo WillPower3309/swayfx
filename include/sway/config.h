@@ -413,14 +413,6 @@ struct tray_binding {
 };
 #endif
 
-struct border_colors {
-	float border[4];
-	float background[4];
-	float text[4];
-	float indicator[4];
-	float child_border[4];
-};
-
 enum edge_border_types {
 	E_NONE, /**< Don't hide edge borders */
 	E_VERTICAL, /**< hide vertical edge borders */
@@ -556,14 +548,7 @@ struct sway_config {
 	bool hide_lone_tab;
 
 	// border colors
-	struct {
-		struct border_colors focused;
-		struct border_colors focused_inactive;
-		struct border_colors focused_tab_title;
-		struct border_colors unfocused;
-		struct border_colors urgent;
-		struct border_colors placeholder;
-	} border_colors;
+	struct border_color_classes border_colors;
 
 	bool has_focused_tab_title;
 
