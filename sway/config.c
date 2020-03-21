@@ -332,8 +332,6 @@ static void config_defaults(struct sway_config *config) {
 	color_to_rgba(config->border_colors.placeholder.indicator, 0x000000FF);
 	color_to_rgba(config->border_colors.placeholder.child_border, 0x0C0C0CFF);
 
-	color_to_rgba(config->border_colors.background, 0xFFFFFFFF);
-
 	// The keysym to keycode translation
 	struct xkb_rule_names rules = {0};
 	config->keysym_translation_state =
