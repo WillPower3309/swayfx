@@ -11,7 +11,6 @@
 #include <wlr/types/wlr_output_layout.h>
 #include <wlr/types/wlr_subcompositor.h>
 #include <wlr/render/drm_format_set.h>
-#include <wlr/render/wlr_renderer.h>
 #include "linux-dmabuf-unstable-v1-protocol.h"
 #include "cairo_util.h"
 #include "pango.h"
