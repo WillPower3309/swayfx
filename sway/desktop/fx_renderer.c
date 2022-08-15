@@ -4,6 +4,8 @@
   - https://github.com/vaxerski/Hyprland/blob/main/src/render/OpenGL.cpp
 */
 
+// TODO: add push / pop_gles2_debug(renderer)?
+
 #define _POSIX_C_SOURCE 200809L
 #include <assert.h>
 #include <GLES2/gl2.h>
@@ -65,7 +67,49 @@ const GLchar tex_fragment_src_rgba[] =
 "uniform float alpha;\n"
 "\n"
 "void main() {\n"
-"	gl_FragColor = texture2D(tex, v_texcoord) * alpha;\n"
+"	vec4 pixColor = texture2D(tex, v_texcoord);\n"
+"\n"
+"	if (discardOpaque == 1 && pixColor[3] * alpha == 1.0) {\n"
+"		discard;\n"
+"		return;\n"
+"	}\n"
+"\n"
+"	vec2 pixCoord = fullSize * v_texcoord;\n"
+"\n"
+"	if (pixCoord[0] < topLeft[0]) {\n"
+"		// we're close left\n"
+"		if (pixCoord[1] < topLeft[1]) {\n"
+			// top
+"			if (distance(topLeft, pixCoord) > radius) {\n"
+"				discard;\n"
+"				return;\n"
+"			}\n"
+"		} else if (pixCoord[1] > bottomRight[1]) {\n"
+			// bottom
+"			if (distance(vec2(topLeft[0], bottomRight[1]), pixCoord) > radius) {\n"
+"				discard;\n"
+"				return;\n"
+"			}\n"
+"		}\n"
+"	}\n"
+"	else if (pixCoord[0] > bottomRight[0]) {\n"
+		// we're close right
+"		if (pixCoord[1] < topLeft[1]) {\n"
+			// top
+"			if (distance(vec2(bottomRight[0], topLeft[1]), pixCoord) > radius) {\n"
+"				discard;\n"
+"				return;\n"
+"			}\n"
+"		} else if (pixCoord[1] > bottomRight[1]) {\n"
+			// bottom
+"			if (distance(bottomRight, pixCoord) > radius) {\n"
+"				discard;\n"
+"				return;\n"
+"			}\n"
+"		}\n"
+"	}\n"
+"\n"
+"	gl_FragColor = pixColor * alpha;\n"
 "}\n";
 
 const GLchar tex_fragment_src_rgbx[] =
@@ -74,7 +118,60 @@ const GLchar tex_fragment_src_rgbx[] =
 "uniform sampler2D tex;\n"
 "uniform float alpha;\n"
 "\n"
+"precision mediump float;\n"
+"varying vec2 v_texcoord;\n"
+"uniform sampler2D tex;\n"
+"uniform float alpha;\n"
+"\n"
+"uniform vec2 topLeft;\n"
+"uniform vec2 bottomRight;\n"
+"uniform vec2 fullSize;\n"
+"uniform float radius;\n"
+"\n"
+"uniform int discardOpaque;\n"
+"\n"
 "void main() {\n"
+"\n"
+"	if (discardOpaque == 1 && alpha == 1.0) {\n"
+"		discard;\n"
+"		return;\n"
+"	}\n"
+"\n"
+"	vec2 pixCoord = fullSize * v_texcoord;\n"
+"\n"
+"	if (pixCoord[0] < topLeft[0]) {\n"
+		// we're close left
+"		if (pixCoord[1] < topLeft[1]) {\n"
+"			// top\n"
+"			if (distance(topLeft, pixCoord) > radius) {\n"
+"				discard;\n"
+"				return;\n"
+"			}\n"
+"		} else if (pixCoord[1] > bottomRight[1]) {\n"
+			// bottom
+"			if (distance(vec2(topLeft[0], bottomRight[1]), pixCoord) > radius) {\n"
+"				discard;\n"
+"				return;\n"
+"			}\n"
+"		}\n"
+"	}\n"
+"	else if (pixCoord[0] > bottomRight[0]) {\n"
+		// we're close right
+"		if (pixCoord[1] < topLeft[1]) {\n"
+			// top
+"			if (distance(vec2(bottomRight[0], topLeft[1]), pixCoord) > radius) {\n"
+"				discard;\n"
+"				return;\n"
+"			}\n"
+"		} else if (pixCoord[1] > bottomRight[1]) {\n"
+			// bottom
+"			if (distance(bottomRight, pixCoord) > radius) {\n"
+"				discard;\n"
+"				return;\n"
+"			}\n"
+"       }\n"
+"   }\n"
+"\n"
 "	gl_FragColor = vec4(texture2D(tex, v_texcoord).rgb, 1.0) * alpha;\n"
 "}\n";
 
@@ -85,20 +182,63 @@ const GLchar tex_fragment_src_external[] =
 "uniform samplerExternalOES texture0;\n"
 "uniform float alpha;\n"
 "\n"
+"uniform vec2 topLeft;\n"
+"uniform vec2 bottomRight;\n"
+"uniform vec2 fullSize;\n"
+"uniform float radius;\n"
+"\n"
+"uniform int discardOpaque;\n"
+"\n"
 "void main() {\n"
-"	gl_FragColor = texture2D(texture0, v_texcoord) * alpha;\n"
+"\n"
+"	vec4 pixColor = texture2D(texture0, v_texcoord);\n"
+"\n"
+"	if (discardOpaque == 1 && pixColor[3] * alpha == 1.0) {\n"
+"		discard;\n"
+"		return;\n"
+"	}\n"
+"\n"
+"	vec2 pixCoord = fullSize * v_texcoord;\n"
+"\n"
+"	if (pixCoord[0] < topLeft[0]) {\n"
+		// we're close left
+"		if (pixCoord[1] < topLeft[1]) {\n"
+			// top
+"			if (distance(topLeft, pixCoord) > radius) {\n"
+"				discard;\n"
+"				return;\n"
+"			}\n"
+"		} else if (pixCoord[1] > bottomRight[1]) {\n"
+			// bottom
+"			if (distance(vec2(topLeft[0], bottomRight[1]), pixCoord) > radius) {\n"
+"				discard;\n"
+"				return;\n"
+"			}\n"
+"		}\n"
+"	}\n"
+"	else if (pixCoord[0] > bottomRight[0]) {\n"
+		// we're close right
+"		if (pixCoord[1] < topLeft[1]) {\n"
+			// top
+"			if (distance(vec2(bottomRight[0], topLeft[1]), pixCoord) > radius) {\n"
+"				discard;\n"
+"				return;\n"
+"			}\n"
+"		} else if (pixCoord[1] > bottomRight[1]) {\n"
+			// bottom
+"			if (distance(bottomRight, pixCoord) > radius) {\n"
+"				discard;\n"
+"				return;\n"
+"			}\n"
+"		}\n"
+"	}\n"
+"\n"
+"	gl_FragColor = pixColor * alpha;\n"
 "}\n";
 
 /************************
   Matrix Consts
 *************************/
-/*
-static const GLfloat flip_180[] = {
-	1.0f, 0.0f, 0.0f,
-	0.0f, -1.0f, 0.0f,
-	0.0f, 0.0f, 1.0f,
-};
-*/
 
 static const GLfloat verts[] = {
 	1, 0, // top right
@@ -260,8 +400,6 @@ error:
 }
 
 void fx_renderer_begin(struct fx_renderer *renderer, uint32_t width, uint32_t height) {
-	//push_gles2_debug(renderer);
-
 	glViewport(0, 0, width, height);
 
 	// refresh projection matrix
@@ -269,9 +407,6 @@ void fx_renderer_begin(struct fx_renderer *renderer, uint32_t width, uint32_t he
 		WL_OUTPUT_TRANSFORM_FLIPPED_180);
 
 	glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-
-	//pop_gles2_debug(renderer);
-
 }
 
 void fx_renderer_end() {
@@ -338,8 +473,6 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer,
 	// to GL_FALSE
 	wlr_matrix_transpose(gl_matrix, gl_matrix);
 
-	// push_gles2_debug(renderer);
-
 	if (!texture_attrs.has_alpha && alpha == 1.0) {
 		glDisable(GL_BLEND);
 	} else {
@@ -355,7 +488,9 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer,
 
 	glUniformMatrix3fv(shader->proj, 1, GL_FALSE, gl_matrix);
 	glUniform1i(shader->tex, 0);
+    // TODO: Check that it shouldnt be glUniform1f(shader->alpha, alpha / 255.f) like in Hyprland
 	glUniform1f(shader->alpha, alpha);
+    // TODO: glUniform1i(shader->discardOpaque, (int)discardOpaque);
 
 	const GLfloat x1 = box->x / wlr_texture->width;
 	const GLfloat y1 = box->y / wlr_texture->height;
@@ -367,6 +502,20 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer,
 		x2, y2, // bottom right
 		x1, y2, // bottom left
 	};
+
+    /* TODO: can the texcoord[] be used instead of TOPLEFT / BOTTOMRIGHT etc?
+    // round is in px
+    // so we need to do some maf
+    const auto TOPLEFT = Vector2D(round, round);
+    const auto BOTTOMRIGHT = Vector2D(tex.m_vSize.x - round, tex.m_vSize.y - round);
+    const auto FULLSIZE = tex.m_vSize;
+
+    // Rounded corners
+    glUniform2f(glGetUniformLocation(shader->program, "topLeft"), (float)TOPLEFT.x, (float)TOPLEFT.y);
+    glUniform2f(glGetUniformLocation(shader->program, "bottomRight"), (float)BOTTOMRIGHT.x, (float)BOTTOMRIGHT.y);
+    glUniform2f(glGetUniformLocation(shader->program, "fullSize"), (float)FULLSIZE.x, (float)FULLSIZE.y);
+    glUniform1f(glGetUniformLocation(shader->program, "radius"), round);
+    */
 
 	glVertexAttribPointer(shader->pos_attrib, 2, GL_FLOAT, GL_FALSE, 0, verts);
 	glVertexAttribPointer(shader->tex_attrib, 2, GL_FLOAT, GL_FALSE, 0, texcoord);
@@ -381,7 +530,6 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer,
 
 	glBindTexture(texture_attrs.target, 0);
 
-	// pop_gles2_debug(renderer);
 	return true;
 }
 
