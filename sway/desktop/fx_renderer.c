@@ -66,6 +66,13 @@ const GLchar tex_fragment_src_rgba[] =
 "uniform sampler2D tex;\n"
 "uniform float alpha;\n"
 "\n"
+"uniform vec2 topLeft;\n"
+"uniform vec2 bottomRight;\n"
+"uniform vec2 fullSize;\n"
+"uniform float radius;\n"
+"\n"
+"uniform int discardOpaque;\n"
+"\n"
 "void main() {\n"
 "	vec4 pixColor = texture2D(tex, v_texcoord);\n"
 "\n"
@@ -113,11 +120,6 @@ const GLchar tex_fragment_src_rgba[] =
 "}\n";
 
 const GLchar tex_fragment_src_rgbx[] =
-"precision mediump float;\n"
-"varying vec2 v_texcoord;\n"
-"uniform sampler2D tex;\n"
-"uniform float alpha;\n"
-"\n"
 "precision mediump float;\n"
 "varying vec2 v_texcoord;\n"
 "uniform sampler2D tex;\n"
@@ -355,6 +357,7 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	renderer->shaders.tex_rgba.alpha = glGetUniformLocation(prog, "alpha");
 	renderer->shaders.tex_rgba.pos_attrib = glGetAttribLocation(prog, "pos");
 	renderer->shaders.tex_rgba.tex_attrib = glGetAttribLocation(prog, "texcoord");
+	renderer->shaders.tex_rgba.discardOpaque = glGetUniformLocation(prog, "discardOpaque");
 
 	prog = link_program(tex_vertex_src, tex_fragment_src_rgbx);
 	renderer->shaders.tex_rgbx.program = prog;
@@ -366,6 +369,7 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	renderer->shaders.tex_rgbx.alpha = glGetUniformLocation(prog, "alpha");
 	renderer->shaders.tex_rgbx.pos_attrib = glGetAttribLocation(prog, "pos");
 	renderer->shaders.tex_rgbx.tex_attrib = glGetAttribLocation(prog, "texcoord");
+	renderer->shaders.tex_rgbx.discardOpaque = glGetUniformLocation(prog, "discardOpaque");
 
 	prog = link_program(tex_vertex_src, tex_fragment_src_external);
 	renderer->shaders.tex_ext.program = prog;
@@ -377,6 +381,7 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	renderer->shaders.tex_ext.alpha = glGetUniformLocation(prog, "alpha");
 	renderer->shaders.tex_ext.pos_attrib = glGetAttribLocation(prog, "pos");
 	renderer->shaders.tex_ext.tex_attrib = glGetAttribLocation(prog, "texcoord");
+	renderer->shaders.tex_ext.discardOpaque = glGetUniformLocation(prog, "discardOpaque");
 
 	// TODO: if remove renderer->egl, replace below with r->egl
 	wlr_egl_unset_current(renderer->egl);
@@ -488,9 +493,9 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer,
 
 	glUniformMatrix3fv(shader->proj, 1, GL_FALSE, gl_matrix);
 	glUniform1i(shader->tex, 0);
-    // TODO: Check that it shouldnt be glUniform1f(shader->alpha, alpha / 255.f) like in Hyprland
+	// TODO: Check that it shouldnt be glUniform1f(shader->alpha, alpha / 255.f) like in Hyprland
 	glUniform1f(shader->alpha, alpha);
-    // TODO: glUniform1i(shader->discardOpaque, (int)discardOpaque);
+	glUniform1i(shader->discardOpaque, 0); // TODO
 
 	const GLfloat x1 = box->x / wlr_texture->width;
 	const GLfloat y1 = box->y / wlr_texture->height;
@@ -503,19 +508,21 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer,
 		x1, y2, // bottom left
 	};
 
-    /* TODO: can the texcoord[] be used instead of TOPLEFT / BOTTOMRIGHT etc?
-    // round is in px
-    // so we need to do some maf
-    const auto TOPLEFT = Vector2D(round, round);
-    const auto BOTTOMRIGHT = Vector2D(tex.m_vSize.x - round, tex.m_vSize.y - round);
-    const auto FULLSIZE = tex.m_vSize;
+	int round = 20;
+	//const auto TOPLEFT = Vector2D(round, round);
+	//const auto BOTTOMRIGHT = Vector2D(tex.m_vSize.x - round, tex.m_vSize.y - round);
+	//const auto FULLSIZE = tex.m_vSize;
 
-    // Rounded corners
-    glUniform2f(glGetUniformLocation(shader->program, "topLeft"), (float)TOPLEFT.x, (float)TOPLEFT.y);
-    glUniform2f(glGetUniformLocation(shader->program, "bottomRight"), (float)BOTTOMRIGHT.x, (float)BOTTOMRIGHT.y);
-    glUniform2f(glGetUniformLocation(shader->program, "fullSize"), (float)FULLSIZE.x, (float)FULLSIZE.y);
-    glUniform1f(glGetUniformLocation(shader->program, "radius"), round);
-    */
+	glUniform2f(glGetUniformLocation(shader->program, "topLeft"), round, round);
+	glUniform2f(glGetUniformLocation(shader->program, "bottomRight"), wlr_texture->width - round, wlr_texture->height - round);
+	glUniform2f(glGetUniformLocation(shader->program, "fullSize"), wlr_texture->width, wlr_texture->height);
+	glUniform1f(glGetUniformLocation(shader->program, "radius"), round);
+
+	// Rounded corners
+	//glUniform2f(glGetUniformLocation(shader->program, "topLeft"), (float)TOPLEFT.x, (float)TOPLEFT.y);
+	//glUniform2f(glGetUniformLocation(shader->program, "bottomRight"), (float)BOTTOMRIGHT.x, (float)BOTTOMRIGHT.y);
+	//glUniform2f(glGetUniformLocation(shader->program, "fullSize"), (float)FULLSIZE.x, (float)FULLSIZE.y);
+	//glUniform1f(glGetUniformLocation(shader->program, "radius"), round);
 
 	glVertexAttribPointer(shader->pos_attrib, 2, GL_FLOAT, GL_FALSE, 0, verts);
 	glVertexAttribPointer(shader->tex_attrib, 2, GL_FLOAT, GL_FALSE, 0, texcoord);

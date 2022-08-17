@@ -8,6 +8,7 @@ struct gles2_tex_shader {
 	GLint proj;
 	GLint tex;
 	GLint alpha;
+    GLint discardOpaque;
 	GLint pos_attrib;
 	GLint tex_attrib;
 };
