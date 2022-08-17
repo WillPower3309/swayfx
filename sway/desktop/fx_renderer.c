@@ -144,7 +144,7 @@ const GLchar tex_fragment_src_rgbx[] =
 "	if (pixCoord[0] < topLeft[0]) {\n"
 		// we're close left
 "		if (pixCoord[1] < topLeft[1]) {\n"
-"			// top\n"
+			// top
 "			if (distance(topLeft, pixCoord) > radius) {\n"
 "				discard;\n"
 "				return;\n"
@@ -304,7 +304,6 @@ error:
 }
 
 // TODO: Hyprland way?
-// TODO: instead of server, have param be server->backend like wlr_renderer_autocreate
 struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	struct fx_renderer *renderer = calloc(1, sizeof(struct fx_renderer));
 	if (renderer == NULL) {
@@ -383,7 +382,6 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	renderer->shaders.tex_ext.tex_attrib = glGetAttribLocation(prog, "texcoord");
 	renderer->shaders.tex_ext.discardOpaque = glGetUniformLocation(prog, "discardOpaque");
 
-	// TODO: if remove renderer->egl, replace below with r->egl
 	wlr_egl_unset_current(renderer->egl);
 
 	sway_log(SWAY_INFO, "GLES2 RENDERER: Shaders Initialized Successfully");
@@ -415,7 +413,7 @@ void fx_renderer_begin(struct fx_renderer *renderer, uint32_t width, uint32_t he
 }
 
 void fx_renderer_end() {
-
+	// TODO
 }
 
 void fx_renderer_clear(const float color[static 4]) {
@@ -438,7 +436,7 @@ void fx_renderer_scissor(struct wlr_box *box) {
 
 bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer,
 		struct wlr_texture *wlr_texture, const struct wlr_fbox *box,
-		const float matrix[static 9], float alpha) {
+		const float matrix[static 9], float alpha, int radius) {
 
 	assert(wlr_texture_is_gles2(wlr_texture));
 	struct wlr_gles2_texture_attribs texture_attrs;
@@ -493,7 +491,6 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer,
 
 	glUniformMatrix3fv(shader->proj, 1, GL_FALSE, gl_matrix);
 	glUniform1i(shader->tex, 0);
-	// TODO: Check that it shouldnt be glUniform1f(shader->alpha, alpha / 255.f) like in Hyprland
 	glUniform1f(shader->alpha, alpha);
 	glUniform1i(shader->discardOpaque, 0); // TODO
 
@@ -508,21 +505,22 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer,
 		x1, y2, // bottom left
 	};
 
-	int round = 20;
-	//const auto TOPLEFT = Vector2D(round, round);
-	//const auto BOTTOMRIGHT = Vector2D(tex.m_vSize.x - round, tex.m_vSize.y - round);
-	//const auto FULLSIZE = tex.m_vSize;
-
-	glUniform2f(glGetUniformLocation(shader->program, "topLeft"), round, round);
-	glUniform2f(glGetUniformLocation(shader->program, "bottomRight"), wlr_texture->width - round, wlr_texture->height - round);
-	glUniform2f(glGetUniformLocation(shader->program, "fullSize"), wlr_texture->width, wlr_texture->height);
-	glUniform1f(glGetUniformLocation(shader->program, "radius"), round);
-
-	// Rounded corners
-	//glUniform2f(glGetUniformLocation(shader->program, "topLeft"), (float)TOPLEFT.x, (float)TOPLEFT.y);
-	//glUniform2f(glGetUniformLocation(shader->program, "bottomRight"), (float)BOTTOMRIGHT.x, (float)BOTTOMRIGHT.y);
-	//glUniform2f(glGetUniformLocation(shader->program, "fullSize"), (float)FULLSIZE.x, (float)FULLSIZE.y);
-	//glUniform1f(glGetUniformLocation(shader->program, "radius"), round);
+	glUniform2f(
+		glGetUniformLocation(shader->program, "topLeft"),
+		radius,
+		radius
+	);
+	glUniform2f(
+		glGetUniformLocation(shader->program, "bottomRight"),
+		wlr_texture->width - radius,
+		wlr_texture->height - radius
+	);
+	glUniform2f(
+		glGetUniformLocation(shader->program, "fullSize"),
+		wlr_texture->width,
+		wlr_texture->height
+	);
+	glUniform1f(glGetUniformLocation(shader->program, "radius"), radius);
 
 	glVertexAttribPointer(shader->pos_attrib, 2, GL_FLOAT, GL_FALSE, 0, verts);
 	glVertexAttribPointer(shader->tex_attrib, 2, GL_FLOAT, GL_FALSE, 0, texcoord);
@@ -541,12 +539,12 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer,
 }
 
 bool fx_render_texture_with_matrix(struct fx_renderer *renderer,
-		struct wlr_texture *wlr_texture, const float matrix[static 9], float alpha) {
+		struct wlr_texture *wlr_texture, const float matrix[static 9], float alpha, int radius) {
 	struct wlr_fbox box = {
 		.x = 0,
 		.y = 0,
 		.width = wlr_texture->width,
 		.height = wlr_texture->height,
 	};
-	return fx_render_subtexture_with_matrix(renderer, wlr_texture, &box, matrix, alpha);
+	return fx_render_subtexture_with_matrix(renderer, wlr_texture, &box, matrix, alpha, radius);
 }
