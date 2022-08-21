@@ -93,12 +93,6 @@ const GLchar tex_fragment_src_external[] =
   Matrix Consts
 *************************/
 
-static const GLfloat flip_180[] = {
-	1.0f, 0.0f, 0.0f,
-	0.0f, -1.0f, 0.0f,
-	0.0f, 0.0f, 1.0f,
-};
-
 static const GLfloat verts[] = {
 	1, 0, // top right
 	0, 0, // top left
@@ -396,7 +390,9 @@ void fx_render_rect(struct fx_renderer *renderer, const struct wlr_box *box, con
 
 	float gl_matrix[9];
 	wlr_matrix_multiply(gl_matrix, renderer->projection, matrix);
-	wlr_matrix_multiply(gl_matrix, flip_180, gl_matrix);
+
+    // TODO: investigate why matrix is flipped prior to this cmd
+	// wlr_matrix_multiply(gl_matrix, flip_180, gl_matrix);
 
 	wlr_matrix_transpose(gl_matrix, gl_matrix);
 
