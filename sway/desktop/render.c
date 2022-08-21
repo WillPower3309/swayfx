@@ -261,11 +261,11 @@ void premultiply_alpha(float color[4], float opacity) {
 }
 
 static void render_view_toplevels(struct sway_view *view,
-		struct sway_output *output, pixman_region32_t *damage, float alpha) {
+		struct sway_output *output, pixman_region32_t *damage, float alpha, int corner_radius) {
 	struct render_data data = {
 		.damage = damage,
 		.alpha = alpha,
-		.corner_radius = config->corner_radius,
+		.corner_radius = corner_radius,
 	};
 	struct wlr_box clip_box;
 	if (!container_is_current_floating(view->container)) {
@@ -365,7 +365,7 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 	if (!wl_list_empty(&view->saved_buffers)) {
 		render_saved_view(view, output, damage, view->container->alpha, config->corner_radius);
 	} else if (view->surface) {
-		render_view_toplevels(view, output, damage, view->container->alpha);
+		render_view_toplevels(view, output, damage, view->container->alpha, config->corner_radius);
 	}
 
 	if (con->current.border == B_NONE || con->current.border == B_CSD) {
@@ -1084,7 +1084,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 				render_saved_view(fullscreen_con->view, output, damage, 1.0f, 0);
 			} else if (fullscreen_con->view->surface) {
 				render_view_toplevels(fullscreen_con->view,
-						output, damage, 1.0f);
+					output, damage, 1.0f, 0);
 			}
 		} else {
 			render_container(output, damage, fullscreen_con,
