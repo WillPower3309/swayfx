@@ -328,6 +328,11 @@ static void config_defaults(struct sway_config *config) {
 	// SwayFX defaults
 	config->corner_radius = 0;
 
+	// TODO: default to false?
+	config->blur.enabled = true;
+	config->blur.num_passes = 1;
+	config->blur.size = 3;
+
 	// The keysym to keycode translation
 	struct xkb_rule_names rules = {0};
 	config->keysym_translation_state =

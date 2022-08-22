@@ -469,6 +469,12 @@ struct sway_config {
 	// SwayFX config options
 	int corner_radius;
 
+	struct {
+		bool enabled;
+		int num_passes;
+		int size;
+	} blur;
+
 	char *swaynag_command;
 	struct swaynag_instance swaynag_config_errors;
 	list_t *symbols;
