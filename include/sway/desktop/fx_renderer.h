@@ -8,9 +8,14 @@ struct gles2_tex_shader {
 	GLint proj;
 	GLint tex;
 	GLint alpha;
-	GLint discardOpaque;
 	GLint pos_attrib;
 	GLint tex_attrib;
+	GLint discardOpaque;
+	GLint topLeft;
+	GLint bottomRight;
+	GLint fullSize;
+	GLint radius;
+	GLint primitiveMultisample;
 };
 
 struct fx_renderer {

@@ -141,6 +141,11 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	renderer->shaders.tex_rgba.pos_attrib = glGetAttribLocation(prog, "pos");
 	renderer->shaders.tex_rgba.tex_attrib = glGetAttribLocation(prog, "texcoord");
 	renderer->shaders.tex_rgba.discardOpaque = glGetUniformLocation(prog, "discardOpaque");
+	renderer->shaders.tex_rgba.topLeft = glGetUniformLocation(prog, "topLeft");
+	renderer->shaders.tex_rgba.bottomRight = glGetUniformLocation(prog, "bottomRight");
+	renderer->shaders.tex_rgba.fullSize = glGetUniformLocation(prog, "fullSize");
+	renderer->shaders.tex_rgba.radius = glGetUniformLocation(prog, "radius");
+	renderer->shaders.tex_rgba.primitiveMultisample = glGetUniformLocation(prog, "primitiveMultisample");
 
 	prog = link_program(tex_vertex_src, tex_fragment_src_rgbx);
 	renderer->shaders.tex_rgbx.program = prog;
@@ -153,6 +158,11 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	renderer->shaders.tex_rgbx.pos_attrib = glGetAttribLocation(prog, "pos");
 	renderer->shaders.tex_rgbx.tex_attrib = glGetAttribLocation(prog, "texcoord");
 	renderer->shaders.tex_rgbx.discardOpaque = glGetUniformLocation(prog, "discardOpaque");
+	renderer->shaders.tex_rgbx.topLeft = glGetUniformLocation(prog, "topLeft");
+	renderer->shaders.tex_rgbx.bottomRight = glGetUniformLocation(prog, "bottomRight");
+	renderer->shaders.tex_rgbx.fullSize = glGetUniformLocation(prog, "fullSize");
+	renderer->shaders.tex_rgbx.radius = glGetUniformLocation(prog, "radius");
+	renderer->shaders.tex_rgbx.primitiveMultisample = glGetUniformLocation(prog, "primitiveMultisample");
 
 	prog = link_program(tex_vertex_src, tex_fragment_src_external);
 	renderer->shaders.tex_ext.program = prog;
@@ -165,6 +175,22 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	renderer->shaders.tex_ext.pos_attrib = glGetAttribLocation(prog, "pos");
 	renderer->shaders.tex_ext.tex_attrib = glGetAttribLocation(prog, "texcoord");
 	renderer->shaders.tex_ext.discardOpaque = glGetUniformLocation(prog, "discardOpaque");
+	renderer->shaders.tex_ext.topLeft = glGetUniformLocation(prog, "topLeft");
+	renderer->shaders.tex_ext.bottomRight = glGetUniformLocation(prog, "bottomRight");
+	renderer->shaders.tex_ext.fullSize = glGetUniformLocation(prog, "fullSize");
+	renderer->shaders.tex_ext.radius = glGetUniformLocation(prog, "radius");
+	renderer->shaders.tex_ext.primitiveMultisample = glGetUniformLocation(prog, "primitiveMultisample");
+	prog = link_program(tex_vertex_src, tex_fragment_src_rgba);
+	renderer->shaders.tex_rgba.program = prog;
+	if (!renderer->shaders.tex_rgba.program) {
+		goto error;
+	}
+	renderer->shaders.tex_rgba.proj = glGetUniformLocation(prog, "proj");
+	renderer->shaders.tex_rgba.tex = glGetUniformLocation(prog, "tex");
+	renderer->shaders.tex_rgba.alpha = glGetUniformLocation(prog, "alpha");
+	renderer->shaders.tex_rgba.pos_attrib = glGetAttribLocation(prog, "pos");
+	renderer->shaders.tex_rgba.tex_attrib = glGetAttribLocation(prog, "texcoord");
+	renderer->shaders.tex_rgba.discardOpaque = glGetUniformLocation(prog, "discardOpaque");
 
 	wlr_egl_unset_current(renderer->egl);
 
@@ -289,22 +315,12 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer,
 		x1, y2, // bottom left
 	};
 
-	glUniform2f(
-		glGetUniformLocation(shader->program, "topLeft"),
-		radius,
-		radius
-	);
-	glUniform2f(
-		glGetUniformLocation(shader->program, "bottomRight"),
-		wlr_texture->width - radius,
-		wlr_texture->height - radius
-	);
-	glUniform2f(
-		glGetUniformLocation(shader->program, "fullSize"),
-		wlr_texture->width,
-		wlr_texture->height
-	);
-	glUniform1f(glGetUniformLocation(shader->program, "radius"), radius);
+	// rounded corners
+	glUniform2f(shader->topLeft, radius, radius);
+	glUniform2f(shader->bottomRight, wlr_texture->width - radius, wlr_texture->height - radius);
+	glUniform2f(shader->fullSize, wlr_texture->width, wlr_texture->height);
+	glUniform1f(shader->radius, radius);
+	glUniform1i(shader->primitiveMultisample, 1); // TODO
 
 	glVertexAttribPointer(shader->pos_attrib, 2, GL_FLOAT, GL_FALSE, 0, verts);
 	glVertexAttribPointer(shader->tex_attrib, 2, GL_FLOAT, GL_FALSE, 0, texcoord);
@@ -344,7 +360,7 @@ void fx_render_rect(struct fx_renderer *renderer, const struct wlr_box *box, con
 	float gl_matrix[9];
 	wlr_matrix_multiply(gl_matrix, renderer->projection, matrix);
 
-    // TODO: investigate why matrix is flipped prior to this cmd
+	// TODO: investigate why matrix is flipped prior to this cmd
 	// wlr_matrix_multiply(gl_matrix, flip_180, gl_matrix);
 
 	wlr_matrix_transpose(gl_matrix, gl_matrix);
@@ -369,4 +385,3 @@ void fx_render_rect(struct fx_renderer *renderer, const struct wlr_box *box, con
 
 	glDisableVertexAttribArray(renderer->shaders.quad.pos_attrib);
 }
-
