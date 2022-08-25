@@ -17,9 +17,14 @@
 #include <wlr/util/box.h>
 #include "log.h"
 #include "sway/desktop/fx_renderer.h"
+#include "sway/desktop/shaders.h"
 #include "sway/output.h"
 #include "sway/server.h"
+<<<<<<< HEAD
 #include "sway/desktop/shaders.h"
+=======
+
+>>>>>>> origin/master
 
 /************************
   Matrix Consts
