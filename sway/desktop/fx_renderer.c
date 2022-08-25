@@ -20,11 +20,6 @@
 #include "sway/desktop/shaders.h"
 #include "sway/output.h"
 #include "sway/server.h"
-<<<<<<< HEAD
-#include "sway/desktop/shaders.h"
-=======
-
->>>>>>> origin/master
 
 /************************
   Matrix Consts

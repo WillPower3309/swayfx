@@ -259,7 +259,4 @@ const GLchar frag_blur_2[] =
 "}\n";
 
 #endif
-<<<<<<< HEAD
-=======
 
->>>>>>> origin/master
