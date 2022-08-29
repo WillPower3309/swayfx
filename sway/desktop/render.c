@@ -384,6 +384,10 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		box.y = floor(state->content_y);
 		box.width = state->border_thickness;
 		box.height = state->content_height;
+		if (config->corner_radius) {
+			box.y += config->corner_radius;
+			box.height -= config->corner_radius * 2;
+		}
 		scale_box(&box, output_scale);
 		render_rect(output, damage, &box, color);
 	}
@@ -403,6 +407,10 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		box.y = floor(state->content_y);
 		box.width = state->border_thickness;
 		box.height = state->content_height;
+		if (config->corner_radius) {
+			box.y += config->corner_radius;
+			box.height -= config->corner_radius * 2;
+		}
 		scale_box(&box, output_scale);
 		render_rect(output, damage, &box, color);
 	}
@@ -418,6 +426,10 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		box.y = floor(state->content_y + state->content_height);
 		box.width = state->width;
 		box.height = state->border_thickness;
+		if (config->corner_radius) {
+			box.x += config->corner_radius;
+			box.width -= config->corner_radius * 2;
+		}
 		scale_box(&box, output_scale);
 		render_rect(output, damage, &box, color);
 	}
@@ -705,6 +717,13 @@ static void render_top_border(struct sway_output *output,
 	box.y = floor(state->y);
 	box.width = state->width;
 	box.height = state->border_thickness;
+
+	// only render the border rect along flat edges of the container
+	if (config->corner_radius) {
+		box.x += config->corner_radius;
+		box.width -= config->corner_radius * 2;
+	}
+
 	scale_box(&box, output_scale);
 	render_rect(output, output_damage, &box, color);
 }
