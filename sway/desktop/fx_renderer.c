@@ -270,7 +270,8 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct wlr_t
 	// to GL_FALSE
 	wlr_matrix_transpose(gl_matrix, gl_matrix);
 
-	if (!texture_attrs.has_alpha && alpha == 1.0) {
+	// if there's no opacity or rounded corners we don't need to blend
+	if (!texture_attrs.has_alpha && alpha == 1.0 && !radius) {
 		glDisable(GL_BLEND);
 	} else {
 		glEnable(GL_BLEND);
