@@ -2,6 +2,7 @@
 #define _SWAY_OPENGL_H
 
 #include <GLES2/gl2.h>
+#include <stdbool.h>
 
 struct gles2_tex_shader {
 	GLuint program;
@@ -29,6 +30,17 @@ struct fx_renderer {
 			GLint color;
 			GLint pos_attrib;
 		} quad;
+		struct {
+			GLuint program;
+			GLint proj;
+			GLint color;
+			GLint pos_attrib;
+			GLint width;
+			GLint height;
+			GLint position;
+			GLint radius;
+			GLint thickness;
+		} corner;
 		struct gles2_tex_shader tex_rgba;
 		struct gles2_tex_shader tex_rgbx;
 		struct gles2_tex_shader tex_ext;
@@ -53,6 +65,9 @@ bool fx_render_texture_with_matrix(struct fx_renderer *renderer, struct wlr_text
 		const struct wlr_box *dst_box, const float matrix[static 9], float alpha, int radius);
 
 void fx_render_rect(struct fx_renderer *renderer, const struct wlr_box *box,
+		const float color[static 4], const float projection[static 9]);
+
+void fx_render_corners(struct fx_renderer *renderer, const struct wlr_box *box,
 		const float color[static 4], const float projection[static 9]);
 
 #endif

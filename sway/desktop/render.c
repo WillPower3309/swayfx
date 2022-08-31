@@ -1,3 +1,4 @@
+#include <stdio.h>
 #define _POSIX_C_SOURCE 200809L
 #include <assert.h>
 #include <GLES2/gl2.h>
@@ -222,7 +223,7 @@ static void render_drag_icons(struct sway_output *output,
 // _box.width and .height are expected to be output-buffer-local
 void render_rect(struct sway_output *output,
 		pixman_region32_t *output_damage, const struct wlr_box *_box,
-		float color[static 4]) {
+		float color[static 4], bool corners) {
 	struct wlr_output *wlr_output = output->wlr_output;
 	struct fx_renderer *renderer = output->server->renderer;
 
@@ -245,8 +246,13 @@ void render_rect(struct sway_output *output,
 	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
 	for (int i = 0; i < nrects; ++i) {
 		scissor_output(wlr_output, &rects[i]);
-		fx_render_rect(renderer, &box, color,
-			wlr_output->transform_matrix);
+		if (corners) {
+			fx_render_corners(renderer, &box, color,
+				wlr_output->transform_matrix);
+		} else {
+			fx_render_rect(renderer, &box, color,
+				wlr_output->transform_matrix);
+		}
 	}
 
 damage_finish:
@@ -360,7 +366,7 @@ static void render_saved_view(struct sway_view *view,
  * Render a view's surface and left/bottom/right borders.
  */
 static void render_view(struct sway_output *output, pixman_region32_t *damage,
-		struct sway_container *con, struct border_colors *colors) {
+		struct sway_container *con, struct border_colors *colors, bool showing_titlebar) {
 	struct sway_view *view = con->view;
 	if (!wl_list_empty(&view->saved_buffers)) {
 		render_saved_view(view, output, damage, view->container->alpha, config->corner_radius);
@@ -386,11 +392,15 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		box.height = state->content_height;
 		// render the border rect along flat edges of the container
 		if (config->corner_radius) {
-			box.y += config->corner_radius;
-			box.height -= config->corner_radius * 2;
+			if (!showing_titlebar) {
+				box.y = floor(state->content_y + config->corner_radius);
+				box.height = state->content_height - 2 * config->corner_radius;
+			} else {
+				box.height = state->content_height - config->corner_radius;
+			}
 		}
 		scale_box(&box, output_scale);
-		render_rect(output, damage, &box, color);
+		render_rect(output, damage, &box, color, false);
 	}
 
 	list_t *siblings = container_get_current_siblings(con);
@@ -410,11 +420,15 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		box.height = state->content_height;
 		// render the border rect along flat edges of the container
 		if (config->corner_radius) {
-			box.y += config->corner_radius;
-			box.height -= config->corner_radius * 2;
+			if (!showing_titlebar) {
+				box.y = floor(state->content_y + config->corner_radius);
+				box.height = state->content_height - 2 * config->corner_radius;
+			} else {
+				box.height = state->content_height - config->corner_radius;
+			}
 		}
 		scale_box(&box, output_scale);
-		render_rect(output, damage, &box, color);
+		render_rect(output, damage, &box, color, false);
 	}
 
 	if (state->border_bottom) {
@@ -430,11 +444,53 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		box.height = state->border_thickness;
 		// render the border rect along flat edges of the container
 		if (config->corner_radius) {
-			box.x += config->corner_radius;
-			box.width -= config->corner_radius * 2;
+			box.x = floor(state->content_x + config->corner_radius);
+			box.width -= 2 * (state->border_thickness + config->corner_radius);
 		}
 		scale_box(&box, output_scale);
-		render_rect(output, damage, &box, color);
+		render_rect(output, damage, &box, color, false);
+	}
+
+	// Rounded corners
+	if (state->border_left && state->border_right && state->border_bottom && config->corner_radius) {
+		memcpy(&color, colors->child_border, sizeof(float) * 4);
+		premultiply_alpha(color, con->alpha);
+
+		int size = config->corner_radius * 2 + config->border_thickness * 2;
+
+		if (!showing_titlebar) {
+			// Top Left
+			box.x = floor(state->x);
+			box.y = floor(state->y);
+			box.width = size;
+			box.height = size;
+			scale_box(&box, output_scale);
+			render_rect(output, damage, &box, color, true);
+
+			// Top Right
+			box.x = floor(state->x + state->width - size);
+			box.y = floor(state->y);
+			box.width = size;
+			box.height = size;
+			scale_box(&box, output_scale);
+			render_rect(output, damage, &box, color, true);
+		}
+
+		// Bottom Left
+		box.x = floor(state->x);
+		box.y = floor(state->y + state->height - size);
+		box.width = size;
+		box.height = size;
+		scale_box(&box, output_scale);
+		render_rect(output, damage, &box, color, true);
+
+		// Bottom Right
+		box.x = floor(state->x + state->width - size);
+		box.y = floor(state->y + state->height - size);
+		box.width = size;
+		box.height = size;
+		scale_box(&box, output_scale);
+		render_rect(output, damage, &box, color, true);
 	}
 }
 
@@ -470,7 +526,7 @@ static void render_titlebar(struct sway_output *output,
 	box.width = width;
 	box.height = titlebar_border_thickness;
 	scale_box(&box, output_scale);
-	render_rect(output, output_damage, &box, color);
+	render_rect(output, output_damage, &box, color, false);
 
 	// Single pixel bar below title
 	box.x = x;
@@ -478,7 +534,7 @@ static void render_titlebar(struct sway_output *output,
 	box.width = width;
 	box.height = titlebar_border_thickness;
 	scale_box(&box, output_scale);
-	render_rect(output, output_damage, &box, color);
+	render_rect(output, output_damage, &box, color, false);
 
 	// Single pixel left edge
 	box.x = x;
@@ -486,7 +542,7 @@ static void render_titlebar(struct sway_output *output,
 	box.width = titlebar_border_thickness;
 	box.height = container_titlebar_height() - titlebar_border_thickness * 2;
 	scale_box(&box, output_scale);
-	render_rect(output, output_damage, &box, color);
+	render_rect(output, output_damage, &box, color, false);
 
 	// Single pixel right edge
 	box.x = x + width - titlebar_border_thickness;
@@ -494,7 +550,7 @@ static void render_titlebar(struct sway_output *output,
 	box.width = titlebar_border_thickness;
 	box.height = container_titlebar_height() - titlebar_border_thickness * 2;
 	scale_box(&box, output_scale);
-	render_rect(output, output_damage, &box, color);
+	render_rect(output, output_damage, &box, color, false);
 
 	int inner_x = x - output_x + titlebar_h_padding;
 	int bg_y = y + titlebar_border_thickness;
@@ -553,12 +609,12 @@ static void render_titlebar(struct sway_output *output,
 		box.y = round((y + titlebar_border_thickness) * output_scale);
 		box.width = texture_box.width;
 		box.height = ob_padding_above;
-		render_rect(output, output_damage, &box, color);
+		render_rect(output, output_damage, &box, color, false);
 
 		// Padding below
 		box.y += ob_padding_above + texture_box.height;
 		box.height = ob_padding_below;
-		render_rect(output, output_damage, &box, color);
+		render_rect(output, output_damage, &box, color, false);
 	}
 
 	// Title text
@@ -629,12 +685,12 @@ static void render_titlebar(struct sway_output *output,
 		box.y = round((y + titlebar_border_thickness) * output_scale);
 		box.width = texture_box.width;
 		box.height = ob_padding_above;
-		render_rect(output, output_damage, &box, color);
+		render_rect(output, output_damage, &box, color, false);
 
 		// Padding below
 		box.y += ob_padding_above + texture_box.height;
 		box.height = ob_padding_below;
-		render_rect(output, output_damage, &box, color);
+		render_rect(output, output_damage, &box, color, false);
 	}
 
 	// Determine the left + right extends of the textures (output-buffer local)
@@ -668,7 +724,7 @@ static void render_titlebar(struct sway_output *output,
 		box.x = ob_left_x + ob_left_width + round(output_x * output_scale);
 		box.y = round(bg_y * output_scale);
 		box.height = ob_bg_height;
-		render_rect(output, output_damage, &box, color);
+		render_rect(output, output_damage, &box, color, false);
 	}
 
 	// Padding on left side
@@ -682,7 +738,7 @@ static void render_titlebar(struct sway_output *output,
 	if (box.x + box.width < left_x) {
 		box.width += left_x - box.x - box.width;
 	}
-	render_rect(output, output_damage, &box, color);
+	render_rect(output, output_damage, &box, color, false);
 
 	// Padding on right side
 	box.x = x + width - titlebar_h_padding;
@@ -696,7 +752,7 @@ static void render_titlebar(struct sway_output *output,
 		box.width += box.x - right_rx;
 		box.x = right_rx;
 	}
-	render_rect(output, output_damage, &box, color);
+	render_rect(output, output_damage, &box, color, false);
 }
 
 /**
@@ -723,12 +779,12 @@ static void render_top_border(struct sway_output *output,
 
 	// render the border rect along flat edges of the container
 	if (config->corner_radius) {
-		box.x += config->corner_radius;
-		box.width -= config->corner_radius * 2;
+		box.x = floor(state->content_x + config->corner_radius);
+		box.width -= 2 * (state->border_thickness + config->corner_radius);
 	}
 
 	scale_box(&box, output_scale);
-	render_rect(output, output_damage, &box, color);
+	render_rect(output, output_damage, &box, color, false);
 }
 
 struct parent_data {
@@ -778,14 +834,16 @@ static void render_containers_linear(struct sway_output *output,
 				marks_texture = child->marks_unfocused;
 			}
 
+			bool showing_titlebar = false;
 			if (state->border == B_NORMAL) {
 				render_titlebar(output, damage, child, floor(state->x),
 						floor(state->y), state->width, colors,
 						title_texture, marks_texture);
+				showing_titlebar = true;
 			} else if (state->border == B_PIXEL) {
 				render_top_border(output, damage, child, colors);
 			}
-			render_view(output, damage, child, colors);
+			render_view(output, damage, child, colors, showing_titlebar);
 		} else {
 			render_container(output, damage, child,
 					parent->focused || child->current.focused);
@@ -863,7 +921,7 @@ static void render_containers_tabbed(struct sway_output *output,
 
 	// Render surface and left/right/bottom borders
 	if (current->view) {
-		render_view(output, damage, current, current_colors);
+		render_view(output, damage, current, current_colors, true);
 	} else {
 		render_container(output, damage, current,
 				parent->focused || current->current.focused);
@@ -926,7 +984,7 @@ static void render_containers_stacked(struct sway_output *output,
 
 	// Render surface and left/right/bottom borders
 	if (current->view) {
-		render_view(output, damage, current, current_colors);
+		render_view(output, damage, current, current_colors, true);
 	} else {
 		render_container(output, damage, current,
 				parent->focused || current->current.focused);
@@ -1014,14 +1072,16 @@ static void render_floating_container(struct sway_output *soutput,
 			marks_texture = con->marks_unfocused;
 		}
 
+		bool showing_titlebar = false;
 		if (con->current.border == B_NORMAL) {
 			render_titlebar(soutput, damage, con, floor(con->current.x),
 					floor(con->current.y), con->current.width, colors,
 					title_texture, marks_texture);
+			showing_titlebar = true;
 		} else if (con->current.border == B_PIXEL) {
 			render_top_border(soutput, damage, con, colors);
 		}
-		render_view(soutput, damage, con, colors);
+		render_view(soutput, damage, con, colors, showing_titlebar);
 	} else {
 		render_container(soutput, damage, con, con->current.focused);
 	}

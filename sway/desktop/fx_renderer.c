@@ -16,6 +16,7 @@
 #include <wlr/types/wlr_matrix.h>
 #include <wlr/util/box.h>
 #include "log.h"
+#include "sway/config.h"
 #include "sway/desktop/fx_renderer.h"
 #include "sway/desktop/shaders.h"
 #include "sway/output.h"
@@ -130,6 +131,21 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	renderer->shaders.quad.color = glGetUniformLocation(prog, "color");
 	renderer->shaders.quad.pos_attrib = glGetAttribLocation(prog, "pos");
 
+	// Corner
+	prog = link_program(corner_vertex_src, corner_fragment_src);
+	renderer->shaders.corner.program = prog;
+	if (!renderer->shaders.corner.program) {
+		goto error;
+	}
+	renderer->shaders.corner.proj = glGetUniformLocation(prog, "proj");
+	renderer->shaders.corner.color = glGetUniformLocation(prog, "color");
+	renderer->shaders.corner.pos_attrib = glGetAttribLocation(prog, "pos");
+	renderer->shaders.corner.width = glGetUniformLocation(prog, "width");
+	renderer->shaders.corner.height = glGetUniformLocation(prog, "height");
+	renderer->shaders.corner.position = glGetUniformLocation(prog, "position");
+	renderer->shaders.corner.radius = glGetUniformLocation(prog, "radius");
+	renderer->shaders.corner.thickness = glGetUniformLocation(prog, "thickness");
+
 	prog = link_program(tex_vertex_src, tex_fragment_src_rgba);
 	renderer->shaders.tex_rgba.program = prog;
 	if (!renderer->shaders.tex_rgba.program) {
@@ -183,6 +199,7 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 
 error:
 	glDeleteProgram(renderer->shaders.quad.program);
+	glDeleteProgram(renderer->shaders.corner.program);
 	glDeleteProgram(renderer->shaders.tex_rgba.program);
 	glDeleteProgram(renderer->shaders.tex_rgbx.program);
 	glDeleteProgram(renderer->shaders.tex_ext.program);
@@ -367,4 +384,47 @@ void fx_render_rect(struct fx_renderer *renderer, const struct wlr_box *box, con
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
 	glDisableVertexAttribArray(renderer->shaders.quad.pos_attrib);
+}
+
+void fx_render_corners(struct fx_renderer *renderer, const struct wlr_box *box, const float color[static 4], const float projection[static 9]) {
+	if (box->width == 0 || box->height == 0) {
+		return;
+	}
+	assert(box->width > 0 && box->height > 0);
+	float matrix[9];
+	wlr_matrix_project_box(matrix, box, WL_OUTPUT_TRANSFORM_NORMAL, 0, projection);
+
+	float gl_matrix[9];
+	wlr_matrix_multiply(gl_matrix, renderer->projection, matrix);
+
+	// TODO: investigate why matrix is flipped prior to this cmd
+	// wlr_matrix_multiply(gl_matrix, flip_180, gl_matrix);
+
+	wlr_matrix_transpose(gl_matrix, gl_matrix);
+
+	if (color[3] == 1.0 && !config->corner_radius) {
+		glDisable(GL_BLEND);
+	} else {
+		glEnable(GL_BLEND);
+	}
+
+	glUseProgram(renderer->shaders.corner.program);
+
+	glUniformMatrix3fv(renderer->shaders.corner.proj, 1, GL_FALSE, gl_matrix);
+	glUniform4f(renderer->shaders.corner.color, color[0], color[1], color[2], color[3]);
+
+	glUniform1f(renderer->shaders.corner.width, box->width);
+	glUniform1f(renderer->shaders.corner.height, box->height);
+	glUniform2f(renderer->shaders.corner.position, box->x, box->y);
+	glUniform1f(renderer->shaders.corner.radius, config->corner_radius);
+	glUniform1f(renderer->shaders.corner.thickness, config->border_thickness);
+
+	glVertexAttribPointer(renderer->shaders.corner.pos_attrib, 2, GL_FLOAT, GL_FALSE,
+			0, verts);
+
+	glEnableVertexAttribArray(renderer->shaders.corner.pos_attrib);
+
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+	glDisableVertexAttribArray(renderer->shaders.corner.pos_attrib);
 }
