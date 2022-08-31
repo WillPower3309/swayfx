@@ -131,8 +131,8 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	renderer->shaders.quad.color = glGetUniformLocation(prog, "color");
 	renderer->shaders.quad.pos_attrib = glGetAttribLocation(prog, "pos");
 
-	// Corner
-	prog = link_program(corner_vertex_src, corner_fragment_src);
+	// Border corners
+	prog = link_program(quad_vertex_src, corner_fragment_src);
 	renderer->shaders.corner.program = prog;
 	if (!renderer->shaders.corner.program) {
 		goto error;
