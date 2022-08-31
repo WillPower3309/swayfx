@@ -1,4 +1,3 @@
-#include <stdio.h>
 #define _POSIX_C_SOURCE 200809L
 #include <assert.h>
 #include <GLES2/gl2.h>
@@ -247,7 +246,7 @@ void render_rect(struct sway_output *output,
 	for (int i = 0; i < nrects; ++i) {
 		scissor_output(wlr_output, &rects[i]);
 		if (corners) {
-			fx_render_corners(renderer, &box, color,
+			fx_render_border_corner(renderer, &box, color,
 				wlr_output->transform_matrix);
 		} else {
 			fx_render_rect(renderer, &box, color,

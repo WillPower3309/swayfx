@@ -386,7 +386,7 @@ void fx_render_rect(struct fx_renderer *renderer, const struct wlr_box *box, con
 	glDisableVertexAttribArray(renderer->shaders.quad.pos_attrib);
 }
 
-void fx_render_corners(struct fx_renderer *renderer, const struct wlr_box *box, const float color[static 4], const float projection[static 9]) {
+void fx_render_border_corner(struct fx_renderer *renderer, const struct wlr_box *box, const float color[static 4], const float projection[static 9]) {
 	if (box->width == 0 || box->height == 0) {
 		return;
 	}
