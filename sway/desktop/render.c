@@ -281,7 +281,7 @@ void render_border_corner(struct sway_output *output,
 	for (int i = 0; i < nrects; ++i) {
 		scissor_output(wlr_output, &rects[i]);
 		fx_render_border_corner(renderer, &box, color,
-				wlr_output->transform_matrix, corner_location);
+				wlr_output->transform_matrix, corner_location, wlr_output->scale);
 	}
 
 damage_finish:

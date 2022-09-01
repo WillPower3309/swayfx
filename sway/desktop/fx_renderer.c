@@ -393,7 +393,7 @@ void fx_render_rect(struct fx_renderer *renderer, const struct wlr_box *box,
 
 void fx_render_border_corner(struct fx_renderer *renderer, const struct wlr_box *box,
 		const float color[static 4], const float projection[static 9],
-		enum corner_location corner_location) {
+		enum corner_location corner_location, float scale) {
 	if (box->width == 0 || box->height == 0) {
 		return;
 	}
@@ -445,7 +445,7 @@ void fx_render_border_corner(struct fx_renderer *renderer, const struct wlr_box 
 	glUniform1f(renderer->shaders.corner.height, box->height);
 	glUniform2f(renderer->shaders.corner.position, box->x, box->y);
 	glUniform1f(renderer->shaders.corner.radius, config->corner_radius);
-	glUniform1f(renderer->shaders.corner.thickness, config->border_thickness);
+	glUniform1f(renderer->shaders.corner.thickness, config->border_thickness * scale);
 
 	glVertexAttribPointer(renderer->shaders.corner.pos_attrib, 2, GL_FLOAT, GL_FALSE,
 			0, verts);
