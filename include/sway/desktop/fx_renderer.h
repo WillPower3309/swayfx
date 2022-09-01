@@ -4,6 +4,8 @@
 #include <GLES2/gl2.h>
 #include <stdbool.h>
 
+enum corner_location {NONE, TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT};
+
 struct gles2_tex_shader {
 	GLuint program;
 	GLint proj;
@@ -35,6 +37,10 @@ struct fx_renderer {
 			GLint proj;
 			GLint color;
 			GLint pos_attrib;
+			GLint is_top_left;
+			GLint is_top_right;
+			GLint is_bottom_left;
+			GLint is_bottom_right;
 			GLint width;
 			GLint height;
 			GLint position;
@@ -68,6 +74,7 @@ void fx_render_rect(struct fx_renderer *renderer, const struct wlr_box *box,
 		const float color[static 4], const float projection[static 9]);
 
 void fx_render_border_corner(struct fx_renderer *renderer, const struct wlr_box *box,
-		const float color[static 4], const float projection[static 9]);
+		const float color[static 4], const float projection[static 9],
+		enum corner_location corner_location);
 
 #endif

@@ -257,7 +257,7 @@ damage_finish:
 // _box.width and .height are expected to be output-buffer-local
 void render_border_corner(struct sway_output *output,
 		pixman_region32_t *output_damage, const struct wlr_box *_box,
-		float color[static 4]) {
+		float color[static 4], enum corner_location corner_location) {
 	struct wlr_output *wlr_output = output->wlr_output;
 	struct fx_renderer *renderer = output->server->renderer;
 
@@ -281,7 +281,7 @@ void render_border_corner(struct sway_output *output,
 	for (int i = 0; i < nrects; ++i) {
 		scissor_output(wlr_output, &rects[i]);
 		fx_render_border_corner(renderer, &box, color,
-			wlr_output->transform_matrix);
+				wlr_output->transform_matrix, corner_location);
 	}
 
 damage_finish:
@@ -474,7 +474,7 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		// adjust sizing for rounded border corners
 		if (config->corner_radius) {
 			box.x += config->corner_radius;
-			box.width -= 2 * (config->corner_radius + config->border_thickness);
+			box.width -= 2 * config->corner_radius;
 		}
 		scale_box(&box, output_scale);
 		render_rect(output, damage, &box, color);
@@ -488,13 +488,13 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 				box.x = floor(state->x);
 				box.y = floor(state->y + state->height - size);
 				scale_box(&box, output_scale);
-				render_border_corner(output, damage, &box, color);
+				render_border_corner(output, damage, &box, color, BOTTOM_LEFT);
 			}
 			if (state->border_right) {
 				box.x = floor(state->x + state->width - size);
 				box.y = floor(state->y + state->height - size);
 				scale_box(&box, output_scale);
-				render_border_corner(output, damage, &box, color);
+				render_border_corner(output, damage, &box, color, BOTTOM_RIGHT);
 			}
 		}
 	}
@@ -785,7 +785,7 @@ static void render_top_border(struct sway_output *output,
 	// adjust sizing for rounded border corners
 	if (config->corner_radius) {
 		box.x += config->corner_radius;
-		box.width -= 2 * (state->border_thickness + config->corner_radius);
+		box.width -= 2 * config->corner_radius;
 	}
 	scale_box(&box, output_scale);
 	render_rect(output, output_damage, &box, color);
@@ -801,14 +801,14 @@ static void render_top_border(struct sway_output *output,
 			box.x = floor(state->x);
 			box.y = floor(state->y);
 			scale_box(&box, output_scale);
-			render_border_corner(output, output_damage, &box, color);
+			render_border_corner(output, output_damage, &box, color, TOP_LEFT);
 		}
 		// top right
 		if (state->border_right) {
 			box.x = floor(state->x + state->width - size);
 			box.y = floor(state->y);
 			scale_box(&box, output_scale);
-			render_border_corner(output, output_damage, &box, color);
+			render_border_corner(output, output_damage, &box, color, TOP_RIGHT);
 		}
 	}
 }
