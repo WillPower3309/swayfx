@@ -482,15 +482,17 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		// rounded bottom left & bottom right border corners
 		if (config->corner_radius) {
 			int size = 2 * (config->corner_radius + config->border_thickness);
-			box.width = size;
-			box.height = size;
 			if (state->border_left) {
+				box.width = size;
+				box.height = size;
 				box.x = floor(state->x);
 				box.y = floor(state->y + state->height - size);
 				scale_box(&box, output_scale);
 				render_border_corner(output, damage, &box, color, BOTTOM_LEFT);
 			}
 			if (state->border_right) {
+				box.width = size;
+				box.height = size;
 				box.x = floor(state->x + state->width - size);
 				box.y = floor(state->y + state->height - size);
 				scale_box(&box, output_scale);
@@ -793,11 +795,11 @@ static void render_top_border(struct sway_output *output,
 	// render rounded top corner borders if corner_radius is set > 0
 	if (config->corner_radius) {
 		int size = 2 * (config->corner_radius + config->border_thickness);
-		box.width = size;
-		box.height = size;
 
 		// top left
 		if (state->border_left) {
+			box.width = size;
+			box.height = size;
 			box.x = floor(state->x);
 			box.y = floor(state->y);
 			scale_box(&box, output_scale);
@@ -805,6 +807,8 @@ static void render_top_border(struct sway_output *output,
 		}
 		// top right
 		if (state->border_right) {
+			box.width = size;
+			box.height = size;
 			box.x = floor(state->x + state->width - size);
 			box.y = floor(state->y);
 			scale_box(&box, output_scale);
