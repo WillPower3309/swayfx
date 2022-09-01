@@ -419,13 +419,13 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		box.y = floor(state->content_y);
 		box.width = state->border_thickness;
 		box.height = state->content_height;
-		// render the border rect along flat edges of the container
+		// adjust sizing for rounded border corners
 		if (config->corner_radius) {
 			if (!showing_titlebar) {
-				box.y = floor(state->content_y + config->corner_radius);
-				box.height = state->content_height - 2 * config->corner_radius;
+				box.y += config->corner_radius;
+				box.height -= 2 * config->corner_radius;
 			} else {
-				box.height = state->content_height - config->corner_radius;
+				box.height -= config->corner_radius;
 			}
 		}
 		scale_box(&box, output_scale);
@@ -447,13 +447,13 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		box.y = floor(state->content_y);
 		box.width = state->border_thickness;
 		box.height = state->content_height;
-		// render the border rect along flat edges of the container
+		// adjust sizing for rounded border corners
 		if (config->corner_radius) {
 			if (!showing_titlebar) {
-				box.y = floor(state->content_y + config->corner_radius);
-				box.height = state->content_height - 2 * config->corner_radius;
+				box.y += config->corner_radius;
+				box.height -= 2 * config->corner_radius;
 			} else {
-				box.height = state->content_height - config->corner_radius;
+				box.height -= config->corner_radius;
 			}
 		}
 		scale_box(&box, output_scale);
@@ -471,27 +471,31 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		box.y = floor(state->content_y + state->content_height);
 		box.width = state->width;
 		box.height = state->border_thickness;
-		// render the border rect along flat edges of the container
+		// adjust sizing for rounded border corners
 		if (config->corner_radius) {
-			box.x = floor(state->content_x + config->corner_radius);
-			box.width -= 2 * (state->border_thickness + config->corner_radius);
+			box.x += config->corner_radius;
+			box.width -= 2 * (config->corner_radius + config->border_thickness);
 		}
 		scale_box(&box, output_scale);
 		render_rect(output, damage, &box, color);
 
-		// render a rounded bottom corner borders if corner_radius is set > 0
-		int size = config->corner_radius * 2 + config->border_thickness * 2;
+		// rounded bottom left & bottom right border corners
 		if (config->corner_radius) {
-			// bottom left
+			int size = 2 * (config->corner_radius + config->border_thickness);
+			box.width = size;
+			box.height = size;
 			if (state->border_left) {
 				box.x = floor(state->x);
 				box.y = floor(state->y + state->height - size);
-				box.width = size;
-				box.height = size;
 				scale_box(&box, output_scale);
 				render_border_corner(output, damage, &box, color);
 			}
-			// bottom right
+			if (state->border_right) {
+				box.x = floor(state->x + state->width - size);
+				box.y = floor(state->y + state->height - size);
+				scale_box(&box, output_scale);
+				render_border_corner(output, damage, &box, color);
+			}
 		}
 	}
 }
@@ -778,15 +782,35 @@ static void render_top_border(struct sway_output *output,
 	box.y = floor(state->y);
 	box.width = state->width;
 	box.height = state->border_thickness;
-
-	// render the border rect along flat edges of the container
+	// adjust sizing for rounded border corners
 	if (config->corner_radius) {
-		box.x = floor(state->content_x + config->corner_radius);
+		box.x += config->corner_radius;
 		box.width -= 2 * (state->border_thickness + config->corner_radius);
 	}
-
 	scale_box(&box, output_scale);
 	render_rect(output, output_damage, &box, color);
+
+	// render rounded top corner borders if corner_radius is set > 0
+	if (config->corner_radius) {
+		int size = 2 * (config->corner_radius + config->border_thickness);
+		box.width = size;
+		box.height = size;
+
+		// top left
+		if (state->border_left) {
+			box.x = floor(state->x);
+			box.y = floor(state->y);
+			scale_box(&box, output_scale);
+			render_border_corner(output, output_damage, &box, color);
+		}
+		// top right
+		if (state->border_right) {
+			box.x = floor(state->x + state->width - size);
+			box.y = floor(state->y);
+			scale_box(&box, output_scale);
+			render_border_corner(output, output_damage, &box, color);
+		}
+	}
 }
 
 struct parent_data {
