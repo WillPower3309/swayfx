@@ -168,17 +168,19 @@ const GLchar corner_fragment_src[] =
 "\n"
 "void main() {\n"
 "	gl_FragColor = v_color;\n"
-
 "	vec2 size = vec2(width, height);\n"
-"	vec2 lower_left = vec2(position.x - (width + thickness) * 0.5, position.y - (width + thickness) * 0.5);\n"
-"	vec2 rel_pos = gl_FragCoord.xy - lower_left - size - thickness * 0.5;\n"
-
-"	float distance = roundedBoxSDF(rel_pos,\n" // Center
-"			(size - thickness) * 0.5,\n" // Size
-"			radius + thickness * 0.5);\n" // Radius
+"	vec2 pos = vec2(position.x - (width + thickness) * 0.5, position.y -\n"
+"       (width + thickness) * 0.5);\n"
+"	vec2 rel_pos = gl_FragCoord.xy - pos - size - thickness * 0.5;\n"
+"\n"
+"	float distance = roundedBoxSDF(\n"
+"       rel_pos,\n" // Center
+"		(size - thickness) * 0.5,\n" // Size
+"		radius + thickness * 0.5\n" // Radius
+	");\n"
 "	float smoothedAlpha = 1.0 - smoothstep(-1.0, 1.0, abs(distance) - thickness * 0.5);\n"
 "	gl_FragColor = mix(vec4(0), gl_FragColor, smoothedAlpha);\n"
-
+"\n"
 // top left
 "	if (is_top_left && (rel_pos.y > 0.0 || rel_pos.x > 0.0)) {\n"
 "		discard;\n"

@@ -16,7 +16,6 @@
 #include <wlr/types/wlr_matrix.h>
 #include <wlr/util/box.h>
 #include "log.h"
-#include "sway/config.h"
 #include "sway/desktop/fx_renderer.h"
 #include "sway/desktop/shaders.h"
 #include "sway/output.h"
@@ -393,7 +392,7 @@ void fx_render_rect(struct fx_renderer *renderer, const struct wlr_box *box,
 
 void fx_render_border_corner(struct fx_renderer *renderer, const struct wlr_box *box,
 		const float color[static 4], const float projection[static 9],
-		enum corner_location corner_location, float scale) {
+		enum corner_location corner_location, int radius, float border_thickness) {
 	if (box->width == 0 || box->height == 0) {
 		return;
 	}
@@ -409,7 +408,7 @@ void fx_render_border_corner(struct fx_renderer *renderer, const struct wlr_box 
 
 	wlr_matrix_transpose(gl_matrix, gl_matrix);
 
-	if (color[3] == 1.0 && !config->corner_radius) {
+	if (color[3] == 1.0 && !radius) {
 		glDisable(GL_BLEND);
 	} else {
 		glEnable(GL_BLEND);
@@ -444,8 +443,8 @@ void fx_render_border_corner(struct fx_renderer *renderer, const struct wlr_box 
 	glUniform1f(renderer->shaders.corner.width, box->width);
 	glUniform1f(renderer->shaders.corner.height, box->height);
 	glUniform2f(renderer->shaders.corner.position, box->x, box->y);
-	glUniform1f(renderer->shaders.corner.radius, config->corner_radius);
-	glUniform1f(renderer->shaders.corner.thickness, config->border_thickness * scale);
+	glUniform1f(renderer->shaders.corner.radius, radius);
+	glUniform1f(renderer->shaders.corner.thickness, border_thickness);
 
 	glVertexAttribPointer(renderer->shaders.corner.pos_attrib, 2, GL_FLOAT, GL_FALSE,
 			0, verts);

@@ -280,8 +280,9 @@ void render_border_corner(struct sway_output *output,
 	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
 	for (int i = 0; i < nrects; ++i) {
 		scissor_output(wlr_output, &rects[i]);
-		fx_render_border_corner(renderer, &box, color,
-				wlr_output->transform_matrix, corner_location, wlr_output->scale);
+		fx_render_border_corner(renderer, &box, color, wlr_output->transform_matrix,
+				corner_location, config->corner_radius,
+				(wlr_output->scale * config->border_thickness));
 	}
 
 damage_finish:
