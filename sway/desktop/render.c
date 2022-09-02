@@ -395,7 +395,7 @@ static void render_saved_view(struct sway_view *view,
  * Render a view's surface and left/bottom/right borders.
  */
 static void render_view(struct sway_output *output, pixman_region32_t *damage,
-		struct sway_container *con, struct border_colors *colors, bool showing_titlebar) {
+		struct sway_container *con, struct border_colors *colors, bool has_titlebar) {
 	struct sway_view *view = con->view;
 	if (!wl_list_empty(&view->saved_buffers)) {
 		render_saved_view(view, output, damage, view->container->alpha, config->corner_radius);
@@ -421,7 +421,7 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		box.height = state->content_height;
 		// adjust sizing for rounded border corners
 		if (config->corner_radius) {
-			if (!showing_titlebar) {
+			if (!has_titlebar) {
 				box.y += config->corner_radius;
 				box.height -= 2 * config->corner_radius;
 			} else {
@@ -449,7 +449,7 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		box.height = state->content_height;
 		// adjust sizing for rounded border corners
 		if (config->corner_radius) {
-			if (!showing_titlebar) {
+			if (!has_titlebar) {
 				box.y += config->corner_radius;
 				box.height -= 2 * config->corner_radius;
 			} else {
@@ -866,16 +866,16 @@ static void render_containers_linear(struct sway_output *output,
 				marks_texture = child->marks_unfocused;
 			}
 
-			bool showing_titlebar = false;
+			bool has_titlebar = false;
 			if (state->border == B_NORMAL) {
 				render_titlebar(output, damage, child, floor(state->x),
 						floor(state->y), state->width, colors,
 						title_texture, marks_texture);
-				showing_titlebar = true;
+				has_titlebar = true;
 			} else if (state->border == B_PIXEL) {
 				render_top_border(output, damage, child, colors);
 			}
-			render_view(output, damage, child, colors, showing_titlebar);
+			render_view(output, damage, child, colors, has_titlebar);
 		} else {
 			render_container(output, damage, child,
 					parent->focused || child->current.focused);
@@ -1104,16 +1104,16 @@ static void render_floating_container(struct sway_output *soutput,
 			marks_texture = con->marks_unfocused;
 		}
 
-		bool showing_titlebar = false;
+		bool has_titlebar = false;
 		if (con->current.border == B_NORMAL) {
 			render_titlebar(soutput, damage, con, floor(con->current.x),
 					floor(con->current.y), con->current.width, colors,
 					title_texture, marks_texture);
-			showing_titlebar = true;
+			has_titlebar = true;
 		} else if (con->current.border == B_PIXEL) {
 			render_top_border(soutput, damage, con, colors);
 		}
-		render_view(soutput, damage, con, colors, showing_titlebar);
+		render_view(soutput, damage, con, colors, has_titlebar);
 	} else {
 		render_container(soutput, damage, con, con->current.focused);
 	}
