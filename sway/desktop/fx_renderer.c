@@ -392,7 +392,7 @@ void fx_render_rect(struct fx_renderer *renderer, const struct wlr_box *box,
 
 void fx_render_border_corner(struct fx_renderer *renderer, const struct wlr_box *box,
 		const float color[static 4], const float projection[static 9],
-		enum corner_location corner_location, int radius, float border_thickness) {
+		enum corner_location corner_location, int radius, int border_thickness) {
 	if (box->width == 0 || box->height == 0) {
 		return;
 	}
