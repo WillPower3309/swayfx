@@ -641,31 +641,6 @@ static void render_titlebar(struct sway_output *output,
 	render_rect(output, output_damage, &box, color);
 }
 
-/**
- * Render the top border line for a view using "border pixel".
- */
-static void render_top_border(struct sway_output *output,
-		pixman_region32_t *output_damage, struct sway_container *con,
-		struct border_colors *colors) {
-	struct sway_container_state *state = &con->current;
-	if (!state->border_top) {
-		return;
-	}
-	struct wlr_box box;
-	float color[4];
-	float output_scale = output->wlr_output->scale;
-
-	// Child border - top edge
-	memcpy(&color, colors->child_border, sizeof(float) * 4);
-	premultiply_alpha(color, con->alpha);
-	box.x = floor(state->x);
-	box.y = floor(state->y);
-	box.width = state->width;
-	box.height = state->border_thickness;
-	scale_box(&box, output_scale);
-	render_rect(output, output_damage, &box, color);
-}
-
 struct parent_data {
 	enum sway_container_layout layout;
 	struct wlr_box box;
@@ -778,7 +753,7 @@ static void render_containers_tabbed(struct sway_output *output,
 		}
 	}
 
-	// Render surface and left/right/bottom borders
+	// Render surface
 	if (current->view) {
 		render_view(output, damage, current, current_colors);
 	} else {
@@ -841,7 +816,7 @@ static void render_containers_stacked(struct sway_output *output,
 		}
 	}
 
-	// Render surface and left/right/bottom borders
+	// Render surface
 	if (current->view) {
 		render_view(output, damage, current, current_colors);
 	} else {
@@ -936,7 +911,7 @@ static void render_floating_container(struct sway_output *soutput,
 					floor(con->current.y), con->current.width, colors,
 					title_texture, marks_texture);
 		} else if (con->current.border == B_PIXEL) {
-			render_top_border(soutput, damage, con, colors);
+			// TODO: handle this case? Normally render top border
 		}
 		render_view(soutput, damage, con, colors);
 	} else {
