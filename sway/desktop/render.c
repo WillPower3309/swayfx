@@ -100,10 +100,17 @@ static void set_scale_filter(struct wlr_output *wlr_output,
 	}
 }
 
+// TODO: fix sizing
 static void render_texture(struct wlr_output *wlr_output,
 		pixman_region32_t *output_damage, struct wlr_texture *texture,
 		const struct wlr_fbox *src_box, const struct wlr_box *dst_box,
 		const float matrix[static 9], float alpha, int corner_radius, int border_thickness) {
+	// TODO: MAKE ME A PARAM
+	struct border_render_data border_data;
+	float border_color[4] = {0.1, 0.4, 0.9, 1.0};
+	border_data.thickness = border_thickness;
+	memcpy(border_data.color, border_color, sizeof(int) * 4);
+
 	struct sway_output *output = wlr_output->data;
 	struct fx_renderer *renderer = output->server->renderer;
 
@@ -124,10 +131,10 @@ static void render_texture(struct wlr_output *wlr_output,
 		set_scale_filter(wlr_output, texture, output->scale_filter);
 		if (src_box != NULL) {
 			fx_render_subtexture_with_matrix(renderer, texture, src_box, dst_box,
-					matrix, alpha, corner_radius, border_thickness);
+					matrix, alpha, corner_radius, border_data);
 		} else {
 			fx_render_texture_with_matrix(renderer, texture, dst_box,
-					matrix, alpha, corner_radius, border_thickness);
+					matrix, alpha, corner_radius, border_data);
 		}
 	}
 
@@ -138,8 +145,8 @@ damage_finish:
 static void render_surface_iterator(struct sway_output *output,
 		struct sway_view *view, struct wlr_surface *surface,
 		struct wlr_box *_box, void *_data) {
-	struct render_data *data = _data;
 	struct wlr_output *wlr_output = output->wlr_output;
+	struct render_data *data = _data;
 	pixman_region32_t *output_damage = data->damage;
 	float alpha = data->alpha;
 	int corner_radius = data->corner_radius;
@@ -362,9 +369,7 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 	// https://github.com/swaywm/sway/pull/4465#discussion_r321082059
 }
 
-/**
- * Render a view's surface and left/bottom/right borders.
- */
+// Render a view's surface
 static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		struct sway_container *con, struct border_colors *colors) {
 	struct sway_view *view = con->view;

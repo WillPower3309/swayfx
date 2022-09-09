@@ -137,14 +137,14 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	}
 	renderer->shaders.tex_rgba.proj = glGetUniformLocation(prog, "proj");
 	renderer->shaders.tex_rgba.tex = glGetUniformLocation(prog, "tex");
-	renderer->shaders.tex_rgba.alpha = glGetUniformLocation(prog, "alpha");
 	renderer->shaders.tex_rgba.pos_attrib = glGetAttribLocation(prog, "pos");
 	renderer->shaders.tex_rgba.tex_attrib = glGetAttribLocation(prog, "texcoord");
-	renderer->shaders.tex_rgba.width = glGetUniformLocation(prog, "width");
-	renderer->shaders.tex_rgba.height = glGetUniformLocation(prog, "height");
+	renderer->shaders.tex_rgba.half_size = glGetUniformLocation(prog, "half_size");
 	renderer->shaders.tex_rgba.position = glGetUniformLocation(prog, "position");
+	renderer->shaders.tex_rgba.alpha = glGetUniformLocation(prog, "alpha");
 	renderer->shaders.tex_rgba.radius = glGetUniformLocation(prog, "radius");
-	renderer->shaders.tex_rgba.border_thickness = glGetUniformLocation(prog, "border_thickness");
+	renderer->shaders.tex_rgba.half_border_thickness = glGetUniformLocation(prog, "half_border_thickness");
+	renderer->shaders.tex_rgba.border_color = glGetUniformLocation(prog, "border_color");
 
 	prog = link_program(tex_vertex_src, tex_fragment_src_rgbx);
 	renderer->shaders.tex_rgbx.program = prog;
@@ -153,14 +153,14 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	}
 	renderer->shaders.tex_rgbx.proj = glGetUniformLocation(prog, "proj");
 	renderer->shaders.tex_rgbx.tex = glGetUniformLocation(prog, "tex");
-	renderer->shaders.tex_rgbx.alpha = glGetUniformLocation(prog, "alpha");
 	renderer->shaders.tex_rgbx.pos_attrib = glGetAttribLocation(prog, "pos");
 	renderer->shaders.tex_rgbx.tex_attrib = glGetAttribLocation(prog, "texcoord");
-	renderer->shaders.tex_rgbx.width = glGetUniformLocation(prog, "width");
-	renderer->shaders.tex_rgbx.height = glGetUniformLocation(prog, "height");
+	renderer->shaders.tex_rgbx.half_size = glGetUniformLocation(prog, "half_size");
 	renderer->shaders.tex_rgbx.position = glGetUniformLocation(prog, "position");
+	renderer->shaders.tex_rgbx.alpha = glGetUniformLocation(prog, "alpha");
 	renderer->shaders.tex_rgbx.radius = glGetUniformLocation(prog, "radius");
-	renderer->shaders.tex_rgbx.border_thickness = glGetUniformLocation(prog, "border_thickness");
+	renderer->shaders.tex_rgbx.half_border_thickness = glGetUniformLocation(prog, "half_border_thickness");
+	renderer->shaders.tex_rgbx.border_color = glGetUniformLocation(prog, "border_color");
 
 	prog = link_program(tex_vertex_src, tex_fragment_src_external);
 	renderer->shaders.tex_ext.program = prog;
@@ -169,15 +169,14 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	}
 	renderer->shaders.tex_ext.proj = glGetUniformLocation(prog, "proj");
 	renderer->shaders.tex_ext.tex = glGetUniformLocation(prog, "tex");
-	renderer->shaders.tex_ext.alpha = glGetUniformLocation(prog, "alpha");
 	renderer->shaders.tex_ext.pos_attrib = glGetAttribLocation(prog, "pos");
 	renderer->shaders.tex_ext.tex_attrib = glGetAttribLocation(prog, "texcoord");
-	renderer->shaders.tex_ext.width = glGetUniformLocation(prog, "width");
-	renderer->shaders.tex_ext.height = glGetUniformLocation(prog, "height");
+	renderer->shaders.tex_ext.half_size = glGetUniformLocation(prog, "half_size");
 	renderer->shaders.tex_ext.position = glGetUniformLocation(prog, "position");
+	renderer->shaders.tex_ext.alpha = glGetUniformLocation(prog, "alpha");
 	renderer->shaders.tex_ext.radius = glGetUniformLocation(prog, "radius");
-	renderer->shaders.tex_ext.border_thickness = glGetUniformLocation(prog, "border_thickness");
-	prog = link_program(tex_vertex_src, tex_fragment_src_rgba);
+	renderer->shaders.tex_ext.half_border_thickness = glGetUniformLocation(prog, "half_border_thickness");
+	renderer->shaders.tex_ext.border_color = glGetUniformLocation(prog, "border_color");
 
 	wlr_egl_unset_current(renderer->egl);
 
@@ -233,7 +232,7 @@ void fx_renderer_scissor(struct wlr_box *box) {
 
 bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct wlr_texture *wlr_texture,
 		const struct wlr_fbox *src_box, const struct wlr_box *dst_box, const float matrix[static 9],
-		float alpha, int radius, int border_thickness) {
+		float alpha, int radius, struct border_render_data border_data) {
 
 	assert(wlr_texture_is_gles2(wlr_texture));
 	struct wlr_gles2_texture_attribs texture_attrs;
@@ -242,28 +241,28 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct wlr_t
 	struct gles2_tex_shader *shader = NULL;
 
 	switch (texture_attrs.target) {
-	case GL_TEXTURE_2D:
-		if (texture_attrs.has_alpha) {
-			shader = &renderer->shaders.tex_rgba;
-		} else {
-			shader = &renderer->shaders.tex_rgbx;
-		}
-		break;
-	/*
-	case GL_TEXTURE_EXTERNAL_OES:
-		shader = &renderer->shaders.tex_ext;
+		case GL_TEXTURE_2D:
+			if (texture_attrs.has_alpha) {
+				shader = &renderer->shaders.tex_rgba;
+			} else {
+				shader = &renderer->shaders.tex_rgbx;
+			}
+			break;
+		/*
+		case GL_TEXTURE_EXTERNAL_OES:
+			shader = &renderer->shaders.tex_ext;
 
-		// TODO: ADD ME ONCE EXTS ADDED TO RENDERER
-		if (!renderer->exts.OES_egl_image_external) {
-			sway_log(SWAY_ERROR, "Failed to render texture: "
-				"GL_TEXTURE_EXTERNAL_OES not supported");
-			return false;
-		}
-		break;
+			// TODO: ADD ME ONCE EXTS ADDED TO RENDERER
+			if (!renderer->exts.OES_egl_image_external) {
+				sway_log(SWAY_ERROR, "Failed to render texture: "
+					"GL_TEXTURE_EXTERNAL_OES not supported");
+				return false;
+			}
+			break;
 		*/
-	default:
-		sway_log(SWAY_ERROR, "Aborting render");
-		abort();
+		default:
+			sway_log(SWAY_ERROR, "Aborting render");
+			abort();
 	}
 
 	float gl_matrix[9];
@@ -274,6 +273,7 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct wlr_t
 	wlr_matrix_transpose(gl_matrix, gl_matrix);
 
 	// if there's no opacity or rounded corners we don't need to blend
+	// TODO: check for border color as well
 	if (!texture_attrs.has_alpha && alpha == 1.0 && !radius) {
 		glDisable(GL_BLEND);
 	} else {
@@ -289,14 +289,14 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct wlr_t
 
 	glUniformMatrix3fv(shader->proj, 1, GL_FALSE, gl_matrix);
 	glUniform1i(shader->tex, 0);
-	glUniform1f(shader->alpha, alpha);
-
-	// rounded corners
-	glUniform1f(shader->width, dst_box->width);
-	glUniform1f(shader->height, dst_box->height);
+	glUniform2f(shader->half_size, dst_box->width / 2.0, dst_box->height / 2.0);
 	glUniform2f(shader->position, dst_box->x, dst_box->y);
+	glUniform1f(shader->alpha, alpha);
 	glUniform1f(shader->radius, radius);
-	glUniform1f(shader->border_thickness, border_thickness);
+	glUniform1f(shader->half_border_thickness, border_data.thickness / 2.0);
+	glUniform4f(shader->border_color, border_data.color[0], border_data.color[1],
+			border_data.color[2], border_data.color[3]);
+
 
 	const GLfloat x1 = src_box->x / wlr_texture->width;
 	const GLfloat y1 = src_box->y / wlr_texture->height;
@@ -327,7 +327,7 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct wlr_t
 
 bool fx_render_texture_with_matrix(struct fx_renderer *renderer, struct wlr_texture *wlr_texture,
 		const struct wlr_box *dst_box, const float matrix[static 9], float alpha,
-		int radius, int border_thickness) {
+		int radius, struct border_render_data border_data) {
 	struct wlr_fbox src_box = {
 		.x = 0,
 		.y = 0,
@@ -335,7 +335,7 @@ bool fx_render_texture_with_matrix(struct fx_renderer *renderer, struct wlr_text
 		.height = wlr_texture->height,
 	};
 	return fx_render_subtexture_with_matrix(renderer, wlr_texture, &src_box, dst_box, matrix,
-			alpha, radius, border_thickness);
+			alpha, radius, border_data);
 }
 
 void fx_render_rect(struct fx_renderer *renderer, const struct wlr_box *box, const float color[static 4], const float projection[static 9]) {
