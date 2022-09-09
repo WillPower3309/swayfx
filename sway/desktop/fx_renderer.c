@@ -144,6 +144,7 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	renderer->shaders.tex_rgba.height = glGetUniformLocation(prog, "height");
 	renderer->shaders.tex_rgba.position = glGetUniformLocation(prog, "position");
 	renderer->shaders.tex_rgba.radius = glGetUniformLocation(prog, "radius");
+	renderer->shaders.tex_rgba.border_thickness = glGetUniformLocation(prog, "border_thickness");
 
 	prog = link_program(tex_vertex_src, tex_fragment_src_rgbx);
 	renderer->shaders.tex_rgbx.program = prog;
@@ -159,6 +160,7 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	renderer->shaders.tex_rgbx.height = glGetUniformLocation(prog, "height");
 	renderer->shaders.tex_rgbx.position = glGetUniformLocation(prog, "position");
 	renderer->shaders.tex_rgbx.radius = glGetUniformLocation(prog, "radius");
+	renderer->shaders.tex_rgbx.border_thickness = glGetUniformLocation(prog, "border_thickness");
 
 	prog = link_program(tex_vertex_src, tex_fragment_src_external);
 	renderer->shaders.tex_ext.program = prog;
@@ -174,6 +176,7 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	renderer->shaders.tex_ext.height = glGetUniformLocation(prog, "height");
 	renderer->shaders.tex_ext.position = glGetUniformLocation(prog, "position");
 	renderer->shaders.tex_ext.radius = glGetUniformLocation(prog, "radius");
+	renderer->shaders.tex_ext.border_thickness = glGetUniformLocation(prog, "border_thickness");
 	prog = link_program(tex_vertex_src, tex_fragment_src_rgba);
 
 	wlr_egl_unset_current(renderer->egl);
@@ -230,7 +233,7 @@ void fx_renderer_scissor(struct wlr_box *box) {
 
 bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct wlr_texture *wlr_texture,
 		const struct wlr_fbox *src_box, const struct wlr_box *dst_box, const float matrix[static 9],
-		float alpha, int radius) {
+		float alpha, int radius, int border_thickness) {
 
 	assert(wlr_texture_is_gles2(wlr_texture));
 	struct wlr_gles2_texture_attribs texture_attrs;
@@ -293,6 +296,7 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct wlr_t
 	glUniform1f(shader->height, dst_box->height);
 	glUniform2f(shader->position, dst_box->x, dst_box->y);
 	glUniform1f(shader->radius, radius);
+	glUniform1f(shader->border_thickness, border_thickness);
 
 	const GLfloat x1 = src_box->x / wlr_texture->width;
 	const GLfloat y1 = src_box->y / wlr_texture->height;
@@ -322,14 +326,16 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct wlr_t
 }
 
 bool fx_render_texture_with_matrix(struct fx_renderer *renderer, struct wlr_texture *wlr_texture,
-		const struct wlr_box *dst_box, const float matrix[static 9], float alpha, int radius) {
+		const struct wlr_box *dst_box, const float matrix[static 9], float alpha,
+		int radius, int border_thickness) {
 	struct wlr_fbox src_box = {
 		.x = 0,
 		.y = 0,
 		.width = wlr_texture->width,
 		.height = wlr_texture->height,
 	};
-	return fx_render_subtexture_with_matrix(renderer, wlr_texture, &src_box, dst_box, matrix, alpha, radius);
+	return fx_render_subtexture_with_matrix(renderer, wlr_texture, &src_box, dst_box, matrix,
+			alpha, radius, border_thickness);
 }
 
 void fx_render_rect(struct fx_renderer *renderer, const struct wlr_box *box, const float color[static 4], const float projection[static 9]) {
