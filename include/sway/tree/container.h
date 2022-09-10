@@ -54,10 +54,6 @@ struct sway_container_state {
 
 	enum sway_container_border border;
 	int border_thickness;
-	bool border_top;
-	bool border_bottom;
-	bool border_left;
-	bool border_right;
 
 	// These are in layout coordinates.
 	double content_x, content_y;

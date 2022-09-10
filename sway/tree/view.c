@@ -212,28 +212,6 @@ bool view_ancestor_is_only_visible(struct sway_view *view) {
 	return only_visible;
 }
 
-static bool view_is_only_visible(struct sway_view *view) {
-	struct sway_container *con = view->container;
-	while (con) {
-		enum sway_container_layout layout = container_parent_layout(con);
-		if (layout != L_TABBED && layout != L_STACKED) {
-			list_t *siblings = container_get_siblings(con);
-			if (siblings && siblings->length > 1) {
-				return false;
-			}
-		}
-
-		con = con->pending.parent;
-	}
-
-	return true;
-}
-
-static bool gaps_to_edge(struct sway_view *view) {
-	struct side_gaps gaps = view->container->pending.workspace->current_gaps;
-	return gaps.top > 0 || gaps.right > 0 || gaps.bottom > 0 || gaps.left > 0;
-}
-
 void view_autoconfigure(struct sway_view *view) {
 	struct sway_container *con = view->container;
 	struct sway_workspace *ws = con->pending.workspace;
@@ -258,36 +236,7 @@ void view_autoconfigure(struct sway_view *view) {
 		return;
 	}
 
-	con->pending.border_top = con->pending.border_bottom = true;
-	con->pending.border_left = con->pending.border_right = true;
 	double y_offset = 0;
-
-	if (!container_is_floating_or_child(con) && ws) {
-		if (config->hide_edge_borders == E_BOTH
-				|| config->hide_edge_borders == E_VERTICAL) {
-			con->pending.border_left = con->pending.x != ws->x;
-			int right_x = con->pending.x + con->pending.width;
-			con->pending.border_right = right_x != ws->x + ws->width;
-		}
-
-		if (config->hide_edge_borders == E_BOTH
-				|| config->hide_edge_borders == E_HORIZONTAL) {
-			con->pending.border_top = con->pending.y != ws->y;
-			int bottom_y = con->pending.y + con->pending.height;
-			con->pending.border_bottom = bottom_y != ws->y + ws->height;
-		}
-
-		bool smart = config->hide_edge_borders_smart == ESMART_ON ||
-			(config->hide_edge_borders_smart == ESMART_NO_GAPS &&
-			!gaps_to_edge(view));
-		if (smart) {
-			bool show_border = !view_is_only_visible(view);
-			con->pending.border_left &= show_border;
-			con->pending.border_right &= show_border;
-			con->pending.border_top &= show_border;
-			con->pending.border_bottom &= show_border;
-		}
-	}
 
 	if (!container_is_floating(con)) {
 		// In a tabbed or stacked container, the container's y is the top of the
@@ -300,10 +249,8 @@ void view_autoconfigure(struct sway_view *view) {
 			enum sway_container_layout layout = container_parent_layout(con);
 			if (layout == L_TABBED) {
 				y_offset = container_titlebar_height();
-				con->pending.border_top = false;
 			} else if (layout == L_STACKED) {
 				y_offset = container_titlebar_height() * siblings->length;
-				con->pending.border_top = false;
 			}
 		}
 	}
@@ -319,29 +266,23 @@ void view_autoconfigure(struct sway_view *view) {
 		height = con->pending.height - y_offset;
 		break;
 	case B_PIXEL:
-		x = con->pending.x + con->pending.border_thickness * con->pending.border_left;
-		y = con->pending.y + con->pending.border_thickness * con->pending.border_top + y_offset;
-		width = con->pending.width
-			- con->pending.border_thickness * con->pending.border_left
-			- con->pending.border_thickness * con->pending.border_right;
-		height = con->pending.height - y_offset
-			- con->pending.border_thickness * con->pending.border_top
-			- con->pending.border_thickness * con->pending.border_bottom;
+		x = con->pending.x + con->pending.border_thickness;
+		y = con->pending.y + y_offset + con->pending.border_thickness;
+		width = con->pending.width - (2 * con->pending.border_thickness);
+		height = con->pending.height - y_offset - (2 * con->pending.border_thickness);
 		break;
 	case B_NORMAL:
 		// Height is: 1px border + 3px pad + title height + 3px pad + 1px border
-		x = con->pending.x + con->pending.border_thickness * con->pending.border_left;
-		width = con->pending.width
-			- con->pending.border_thickness * con->pending.border_left
-			- con->pending.border_thickness * con->pending.border_right;
+		x = con->pending.x + con->pending.border_thickness;
+		width = con->pending.width - (2 * con->pending.border_thickness);
 		if (y_offset) {
 			y = con->pending.y + y_offset;
 			height = con->pending.height - y_offset
-				- con->pending.border_thickness * con->pending.border_bottom;
+				- con->pending.border_thickness;
 		} else {
 			y = con->pending.y + container_titlebar_height();
 			height = con->pending.height - container_titlebar_height()
-				- con->pending.border_thickness * con->pending.border_bottom;
+				- con->pending.border_thickness;
 		}
 		break;
 	}

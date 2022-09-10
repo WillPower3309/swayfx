@@ -75,6 +75,7 @@ const GLchar tex_fragment_src_rgba[] =
 "	gl_FragColor = mix(from_color, to_color, blend_amount);\n"
 "}\n";
 
+// https://www.shadertoy.com/view/ltS3zW
 const GLchar tex_fragment_src_rgbx[] =
 "precision mediump float;\n"
 "varying vec2 v_texcoord;\n"
@@ -111,6 +112,7 @@ const GLchar tex_fragment_src_rgbx[] =
 "	gl_FragColor = mix(from_color, to_color, blend_amount);\n"
 "}\n";
 
+// https://www.shadertoy.com/view/ltS3zW
 const GLchar tex_fragment_src_external[] =
 "#extension GL_OES_EGL_image_external : require\n\n"
 "precision mediump float;\n"

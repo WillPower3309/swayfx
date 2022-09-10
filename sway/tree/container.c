@@ -770,10 +770,6 @@ void container_floating_resize_and_center(struct sway_container *con) {
 			con->pending.content_y = ws->y + (ws->height - con->pending.content_height) / 2;
 		}
 
-		// If the view's border is B_NONE then these properties are ignored.
-		con->pending.border_top = con->pending.border_bottom = true;
-		con->pending.border_left = con->pending.border_right = true;
-
 		container_set_geometry_from_content(con);
 	}
 }
