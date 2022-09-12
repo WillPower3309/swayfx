@@ -1,7 +1,6 @@
 /*
   primarily stolen from:
   - https://gitlab.freedesktop.org/wlroots/wlroots/-/tree/master/render/gles2
-  - https://github.com/vaxerski/Hyprland/blob/main/src/render/OpenGL.cpp
 */
 
 // TODO: add push / pop_gles2_debug(renderer)?
@@ -273,8 +272,9 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct wlr_t
 	wlr_matrix_transpose(gl_matrix, gl_matrix);
 
 	// if there's no opacity or rounded corners we don't need to blend
-	// TODO: check for border color as well
-	if (!texture_attrs.has_alpha && alpha == 1.0 && !radius) {
+	// also ensure borders don't have opacity if they're enabled
+	if (!texture_attrs.has_alpha && alpha == 1.0 && !radius &&
+			(!border_data.thickness || border_data.color[3] == 1.0)) {
 		glDisable(GL_BLEND);
 	} else {
 		glEnable(GL_BLEND);

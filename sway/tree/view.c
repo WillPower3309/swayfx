@@ -212,6 +212,30 @@ bool view_ancestor_is_only_visible(struct sway_view *view) {
 	return only_visible;
 }
 
+/*
+static bool view_is_only_visible(struct sway_view *view) {
+	struct sway_container *con = view->container;
+	while (con) {
+		enum sway_container_layout layout = container_parent_layout(con);
+		if (layout != L_TABBED && layout != L_STACKED) {
+			list_t *siblings = container_get_siblings(con);
+			if (siblings && siblings->length > 1) {
+				return false;
+			}
+		}
+
+		con = con->pending.parent;
+	}
+
+	return true;
+}
+
+static bool gaps_to_edge(struct sway_view *view) {
+	struct side_gaps gaps = view->container->pending.workspace->current_gaps;
+	return gaps.top > 0 || gaps.right > 0 || gaps.bottom > 0 || gaps.left > 0;
+}
+*/
+
 void view_autoconfigure(struct sway_view *view) {
 	struct sway_container *con = view->container;
 	struct sway_workspace *ws = con->pending.workspace;
@@ -236,8 +260,19 @@ void view_autoconfigure(struct sway_view *view) {
 		return;
 	}
 
-	double y_offset = 0;
+	/* TODO: finish me
+	if (!container_is_floating_or_child(con) && ws) {
+		bool smart = config->hide_edge_borders_smart == ESMART_ON ||
+					(config->hide_edge_borders_smart == ESMART_NO_GAPS &&
+					!gaps_to_edge(view));
+		if (smart) {
+			printf("SMART BORDERS ON YO\n");
+			con->pending.border_thickness *= !view_is_only_visible(view);
+		}
+	}
+	*/
 
+	double y_offset = 0;
 	if (!container_is_floating(con)) {
 		// In a tabbed or stacked container, the container's y is the top of the
 		// title area. We have to offset the surface y by the height of the title,

@@ -114,10 +114,11 @@ static void render_texture(struct wlr_output *wlr_output,
 	struct sway_output *output = wlr_output->data;
 	struct fx_renderer *renderer = output->server->renderer;
 
+	// damage track surface (+ border region)
 	pixman_region32_t damage;
 	pixman_region32_init(&damage);
-	pixman_region32_union_rect(&damage, &damage, dst_box->x, dst_box->y,
-		dst_box->width, dst_box->height);
+	pixman_region32_union_rect(&damage, &damage, dst_box->x - border_thickness, dst_box->y - border_thickness,
+			dst_box->width + (2 * border_thickness), dst_box->height + (2 * border_thickness));
 	pixman_region32_intersect(&damage, &damage, output_damage);
 	bool damaged = pixman_region32_not_empty(&damage);
 	if (!damaged) {
@@ -166,11 +167,16 @@ static void render_surface_iterator(struct sway_output *output,
 	float matrix[9];
 	enum wl_output_transform transform =
 		wlr_output_transform_invert(surface->current.transform);
+	proj_box.x -= border_thickness;
+	proj_box.y -= border_thickness;
+	proj_box.width += 2 * border_thickness;
+	proj_box.height += 2 * border_thickness;
 	wlr_matrix_project_box(matrix, &proj_box, transform, 0.0,
 		wlr_output->transform_matrix);
 
 	struct wlr_box dst_box = *_box;
 	struct wlr_box *clip_box = data->clip_box;
+
 	if (clip_box != NULL) {
 		dst_box.width = fmin(dst_box.width, clip_box->width);
 		dst_box.height = fmin(dst_box.height, clip_box->height);
@@ -296,13 +302,13 @@ static void render_view_toplevels(struct sway_view *view, struct sway_output *ou
 			render_surface_iterator, &data);
 }
 
-static void render_view_popups(struct sway_view *view,
-		struct sway_output *output, pixman_region32_t *damage, float alpha) {
+static void render_view_popups(struct sway_view *view, struct sway_output *output,
+		pixman_region32_t *damage, float alpha, int border_thickness) {
 	struct render_data data = {
 		.damage = damage,
 		.alpha = alpha,
 		.corner_radius = config->corner_radius,
-		.border_thickness = config->border_thickness,
+		.border_thickness = border_thickness,
 	};
 	output_view_for_each_popup_surface(output, view,
 		render_surface_iterator, &data);
@@ -374,9 +380,9 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		struct sway_container *con, struct border_colors *colors) {
 	struct sway_view *view = con->view;
 	if (!wl_list_empty(&view->saved_buffers)) {
-		render_saved_view(view, output, damage, view->container->alpha, config->corner_radius, config->border_thickness);
+		render_saved_view(view, output, damage, view->container->alpha, config->corner_radius, con->current.border_thickness);
 	} else if (view->surface) {
-		render_view_toplevels(view, output, damage, view->container->alpha, config->corner_radius, config->border_thickness);
+		render_view_toplevels(view, output, damage, view->container->alpha, config->corner_radius, con->current.border_thickness);
 	}
 }
 
@@ -1051,7 +1057,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 	struct sway_seat *seat = input_manager_current_seat();
 	struct sway_container *focus = seat_get_focused_container(seat);
 	if (focus && focus->view) {
-		render_view_popups(focus->view, output, damage, focus->alpha);
+		render_view_popups(focus->view, output, damage, focus->alpha, focus->current.border_thickness);
 	}
 
 render_overlay:
