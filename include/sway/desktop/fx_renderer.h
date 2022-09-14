@@ -8,7 +8,7 @@ struct border_render_data {
 	float color[4];
 };
 
-struct gles2_tex_shader {
+struct gles2_surface_shader {
 	GLuint program;
 	GLint proj;
 	GLint tex;
@@ -20,6 +20,15 @@ struct gles2_tex_shader {
 	GLint radius;
 	GLint half_border_thickness;
 	GLint border_color;
+};
+
+struct gles2_tex_shader {
+	GLuint program;
+	GLint proj;
+	GLint tex;
+	GLint pos_attrib;
+	GLint tex_attrib;
+	GLint alpha;
 };
 
 struct fx_renderer {
@@ -35,6 +44,9 @@ struct fx_renderer {
 			GLint color;
 			GLint pos_attrib;
 		} quad;
+		struct gles2_surface_shader surface_rgba;
+		struct gles2_surface_shader surface_rgbx;
+		struct gles2_surface_shader surface_ext;
 		struct gles2_tex_shader tex_rgba;
 		struct gles2_tex_shader tex_rgbx;
 		struct gles2_tex_shader tex_ext;
@@ -51,13 +63,15 @@ void fx_renderer_clear(const float color[static 4]);
 
 void fx_renderer_scissor(struct wlr_box *box);
 
-bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct wlr_texture *wlr_texture,
+bool fx_render_surface_with_matrix(struct fx_renderer *renderer, struct wlr_texture *wlr_texture,
 		const struct wlr_fbox *src_box, const struct wlr_box *dst_box, const float matrix[static 9],
 		float alpha, int radius, struct border_render_data border_data);
 
+bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct wlr_texture *wlr_texture,
+		const struct wlr_fbox *src_box, const float matrix[static 9], float alpha);
+
 bool fx_render_texture_with_matrix(struct fx_renderer *renderer, struct wlr_texture *wlr_texture,
-		const struct wlr_box *dst_box, const float matrix[static 9], float alpha, int radius,
-		struct border_render_data border_data);
+		const float matrix[static 9], float alpha);
 
 void fx_render_rect(struct fx_renderer *renderer, const struct wlr_box *box,
 		const float color[static 4], const float projection[static 9]);

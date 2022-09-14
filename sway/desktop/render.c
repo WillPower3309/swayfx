@@ -100,8 +100,7 @@ static void set_scale_filter(struct wlr_output *wlr_output,
 	}
 }
 
-// TODO: fix sizing
-static void render_texture(struct wlr_output *wlr_output,
+static void render_surface_with_effects(struct wlr_output *wlr_output,
 		pixman_region32_t *output_damage, struct wlr_texture *texture,
 		const struct wlr_fbox *src_box, const struct wlr_box *dst_box,
 		const float matrix[static 9], float alpha, int corner_radius, int border_thickness) {
@@ -130,12 +129,40 @@ static void render_texture(struct wlr_output *wlr_output,
 	for (int i = 0; i < nrects; ++i) {
 		scissor_output(wlr_output, &rects[i]);
 		set_scale_filter(wlr_output, texture, output->scale_filter);
+		fx_render_surface_with_matrix(renderer, texture, src_box, dst_box,
+				matrix, alpha, corner_radius, border_data);
+	}
+
+damage_finish:
+	pixman_region32_fini(&damage);
+}
+
+static void render_texture(struct wlr_output *wlr_output, pixman_region32_t *output_damage,
+		struct wlr_texture *texture, const struct wlr_fbox *src_box, const struct wlr_box *dst_box,
+		const float matrix[static 9], float alpha) {
+	struct sway_output *output = wlr_output->data;
+	struct fx_renderer *renderer = output->server->renderer;
+
+	// damage track surface (+ border region)
+	pixman_region32_t damage;
+	pixman_region32_init(&damage);
+	pixman_region32_union_rect(&damage, &damage, dst_box->x, dst_box->y,
+			dst_box->width, dst_box->height);
+	pixman_region32_intersect(&damage, &damage, output_damage);
+	bool damaged = pixman_region32_not_empty(&damage);
+	if (!damaged) {
+		goto damage_finish;
+	}
+
+	int nrects;
+	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
+	for (int i = 0; i < nrects; ++i) {
+		scissor_output(wlr_output, &rects[i]);
+		set_scale_filter(wlr_output, texture, output->scale_filter);
 		if (src_box != NULL) {
-			fx_render_subtexture_with_matrix(renderer, texture, src_box, dst_box,
-					matrix, alpha, corner_radius, border_data);
+			fx_render_subtexture_with_matrix(renderer, texture, src_box, matrix, alpha);
 		} else {
-			fx_render_texture_with_matrix(renderer, texture, dst_box,
-					matrix, alpha, corner_radius, border_data);
+			fx_render_texture_with_matrix(renderer, texture, matrix, alpha);
 		}
 	}
 
@@ -183,7 +210,14 @@ static void render_surface_iterator(struct sway_output *output,
 	}
 	scale_box(&dst_box, wlr_output->scale);
 
-	render_texture(wlr_output, output_damage, texture, &src_box, &dst_box, matrix, alpha, corner_radius, border_thickness);
+	if (border_thickness || corner_radius) {
+		render_surface_with_effects(wlr_output, output_damage, texture, &src_box, &dst_box,
+				matrix, alpha, corner_radius, border_thickness);
+	} else {
+		// render as normal texture if no effects
+		render_texture(wlr_output, output_damage, texture, &src_box, &dst_box,
+				matrix, alpha);
+	}
 
 	wlr_presentation_surface_sampled_on_output(server.presentation, surface,
 		wlr_output);
@@ -366,8 +400,14 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 		}
 		scale_box(&dst_box, wlr_output->scale);
 
-		render_texture(wlr_output, damage, saved_buf->buffer->texture, &saved_buf->source_box,
-				&dst_box, matrix, alpha, corner_radius, border_thickness);
+		if (border_thickness || corner_radius) {
+			render_surface_with_effects(wlr_output, damage, saved_buf->buffer->texture, &saved_buf->source_box,
+					&dst_box, matrix, alpha, corner_radius, border_thickness);
+		} else {
+			// render as normal texture if no effects
+			render_texture(wlr_output, damage, saved_buf->buffer->texture, &saved_buf->source_box,
+					&dst_box, matrix, alpha);
+		}
 	}
 
 	// FIXME: we should set the surface that this saved buffer originates from
@@ -492,7 +532,7 @@ static void render_titlebar(struct sway_output *output,
 			texture_box.width = ob_inner_width;
 		}
 		render_texture(output->wlr_output, output_damage, marks_texture,
-				NULL, &texture_box, matrix, con->alpha, 0, 0);
+				NULL, &texture_box, matrix, con->alpha);
 
 		// Padding above
 		memcpy(&color, colors->background, sizeof(float) * 4);
@@ -568,7 +608,7 @@ static void render_titlebar(struct sway_output *output,
 		}
 
 		render_texture(output->wlr_output, output_damage, title_texture,
-				NULL, &texture_box, matrix, con->alpha, 0, 0);
+				NULL, &texture_box, matrix, con->alpha);
 
 		// Padding above
 		memcpy(&color, colors->background, sizeof(float) * 4);
