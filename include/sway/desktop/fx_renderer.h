@@ -3,11 +3,6 @@
 
 #include <GLES2/gl2.h>
 
-struct border_render_data {
-	int thickness;
-	float color[4];
-};
-
 struct gles2_surface_shader {
 	GLuint program;
 	GLint proj;
@@ -65,7 +60,7 @@ void fx_renderer_scissor(struct wlr_box *box);
 
 bool fx_render_surface_with_matrix(struct fx_renderer *renderer, struct wlr_texture *wlr_texture,
 		const struct wlr_fbox *src_box, const struct wlr_box *dst_box, const float matrix[static 9],
-		float alpha, int radius, struct border_render_data border_data);
+		float alpha, int radius, int border_thickness, float border_color[static 4]);
 
 bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct wlr_texture *wlr_texture,
 		const struct wlr_fbox *src_box, const float matrix[static 9], float alpha);

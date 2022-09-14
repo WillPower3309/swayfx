@@ -264,7 +264,7 @@ void fx_renderer_scissor(struct wlr_box *box) {
 
 bool fx_render_surface_with_matrix(struct fx_renderer *renderer, struct wlr_texture *wlr_texture,
 		const struct wlr_fbox *src_box, const struct wlr_box *dst_box, const float matrix[static 9],
-		float alpha, int radius, struct border_render_data border_data) {
+		float alpha, int radius, int border_thickness, float border_color[static 4]) {
 
 	assert(wlr_texture_is_gles2(wlr_texture));
 	struct wlr_gles2_texture_attribs texture_attrs;
@@ -307,7 +307,7 @@ bool fx_render_surface_with_matrix(struct fx_renderer *renderer, struct wlr_text
 	// if there's no opacity or rounded corners we don't need to blend
 	// also ensure borders don't have opacity if they're enabled
 	if (!texture_attrs.has_alpha && alpha == 1.0 && !radius &&
-			(!border_data.thickness || border_data.color[3] == 1.0)) {
+			(!border_thickness || border_color[3] == 1.0)) {
 		glDisable(GL_BLEND);
 	} else {
 		glEnable(GL_BLEND);
@@ -326,9 +326,9 @@ bool fx_render_surface_with_matrix(struct fx_renderer *renderer, struct wlr_text
 	glUniform2f(shader->position, dst_box->x, dst_box->y);
 	glUniform1f(shader->alpha, alpha);
 	glUniform1f(shader->radius, radius);
-	glUniform1f(shader->half_border_thickness, border_data.thickness / 2.0);
-	glUniform4f(shader->border_color, border_data.color[0], border_data.color[1],
-			border_data.color[2], border_data.color[3]);
+	glUniform1f(shader->half_border_thickness, border_thickness / 2.0);
+	glUniform4f(shader->border_color, border_color[0], border_color[1],
+			border_color[2], border_color[3]);
 
 
 	const GLfloat x1 = src_box->x / wlr_texture->width;

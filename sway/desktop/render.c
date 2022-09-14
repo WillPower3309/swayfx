@@ -100,43 +100,6 @@ static void set_scale_filter(struct wlr_output *wlr_output,
 	}
 }
 
-static void render_surface_with_effects(struct wlr_output *wlr_output,
-		pixman_region32_t *output_damage, struct wlr_texture *texture,
-		const struct wlr_fbox *src_box, const struct wlr_box *dst_box,
-		const float matrix[static 9], float alpha, int corner_radius, int border_thickness) {
-	// TODO: MAKE ME A PARAM
-	struct border_render_data border_data;
-	float border_color[4] = {0.1, 0.4, 0.9, 1.0};
-	border_data.thickness = border_thickness;
-	memcpy(border_data.color, border_color, sizeof(int) * 4);
-
-	struct sway_output *output = wlr_output->data;
-	struct fx_renderer *renderer = output->server->renderer;
-
-	// damage track surface (+ border region)
-	pixman_region32_t damage;
-	pixman_region32_init(&damage);
-	pixman_region32_union_rect(&damage, &damage, dst_box->x - border_thickness, dst_box->y - border_thickness,
-			dst_box->width + (2 * border_thickness), dst_box->height + (2 * border_thickness));
-	pixman_region32_intersect(&damage, &damage, output_damage);
-	bool damaged = pixman_region32_not_empty(&damage);
-	if (!damaged) {
-		goto damage_finish;
-	}
-
-	int nrects;
-	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
-	for (int i = 0; i < nrects; ++i) {
-		scissor_output(wlr_output, &rects[i]);
-		set_scale_filter(wlr_output, texture, output->scale_filter);
-		fx_render_surface_with_matrix(renderer, texture, src_box, dst_box,
-				matrix, alpha, corner_radius, border_data);
-	}
-
-damage_finish:
-	pixman_region32_fini(&damage);
-}
-
 static void render_texture(struct wlr_output *wlr_output, pixman_region32_t *output_damage,
 		struct wlr_texture *texture, const struct wlr_fbox *src_box, const struct wlr_box *dst_box,
 		const float matrix[static 9], float alpha) {
@@ -164,6 +127,45 @@ static void render_texture(struct wlr_output *wlr_output, pixman_region32_t *out
 		} else {
 			fx_render_texture_with_matrix(renderer, texture, matrix, alpha);
 		}
+	}
+
+damage_finish:
+	pixman_region32_fini(&damage);
+}
+
+static void render_surface(struct wlr_output *wlr_output,
+		pixman_region32_t *output_damage, struct wlr_texture *texture,
+		const struct wlr_fbox *src_box, const struct wlr_box *dst_box,
+		const float matrix[static 9], float alpha, int corner_radius, int border_thickness) {
+	if (!border_thickness && !corner_radius) {
+		render_texture(wlr_output, output_damage, texture, src_box, dst_box, matrix, alpha);
+		return;
+	}
+
+	// TODO: make me param
+	float border_color[4] = {0.1, 0.5, 0.9, 1.0};
+
+	struct sway_output *output = wlr_output->data;
+	struct fx_renderer *renderer = output->server->renderer;
+
+	// damage track surface (+ border region)
+	pixman_region32_t damage;
+	pixman_region32_init(&damage);
+	pixman_region32_union_rect(&damage, &damage, dst_box->x - border_thickness, dst_box->y - border_thickness,
+			dst_box->width + (2 * border_thickness), dst_box->height + (2 * border_thickness));
+	pixman_region32_intersect(&damage, &damage, output_damage);
+	bool damaged = pixman_region32_not_empty(&damage);
+	if (!damaged) {
+		goto damage_finish;
+	}
+
+	int nrects;
+	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
+	for (int i = 0; i < nrects; ++i) {
+		scissor_output(wlr_output, &rects[i]);
+		set_scale_filter(wlr_output, texture, output->scale_filter);
+		fx_render_surface_with_matrix(renderer, texture, src_box, dst_box,
+				matrix, alpha, corner_radius, border_thickness, border_color);
 	}
 
 damage_finish:
@@ -210,14 +212,8 @@ static void render_surface_iterator(struct sway_output *output,
 	}
 	scale_box(&dst_box, wlr_output->scale);
 
-	if (border_thickness || corner_radius) {
-		render_surface_with_effects(wlr_output, output_damage, texture, &src_box, &dst_box,
-				matrix, alpha, corner_radius, border_thickness);
-	} else {
-		// render as normal texture if no effects
-		render_texture(wlr_output, output_damage, texture, &src_box, &dst_box,
-				matrix, alpha);
-	}
+	render_surface(wlr_output, output_damage, texture, &src_box, &dst_box,
+			matrix, alpha, corner_radius, border_thickness);
 
 	wlr_presentation_surface_sampled_on_output(server.presentation, surface,
 		wlr_output);
@@ -400,14 +396,8 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 		}
 		scale_box(&dst_box, wlr_output->scale);
 
-		if (border_thickness || corner_radius) {
-			render_surface_with_effects(wlr_output, damage, saved_buf->buffer->texture, &saved_buf->source_box,
-					&dst_box, matrix, alpha, corner_radius, border_thickness);
-		} else {
-			// render as normal texture if no effects
-			render_texture(wlr_output, damage, saved_buf->buffer->texture, &saved_buf->source_box,
-					&dst_box, matrix, alpha);
-		}
+		render_surface(wlr_output, damage, saved_buf->buffer->texture, &saved_buf->source_box,
+				&dst_box, matrix, alpha, corner_radius, border_thickness);
 	}
 
 	// FIXME: we should set the surface that this saved buffer originates from
