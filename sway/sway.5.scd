@@ -680,13 +680,6 @@ The default colors are:
 	This affects new workspaces only, and is used when the workspace doesn't
 	have its own gaps settings (see: workspace <ws> gaps ...).
 
-*hide_edge_borders* [--i3] none|vertical|horizontal|both|smart|smart_no_gaps
-	Hides window borders adjacent to the screen edges. Default is _none_. The
-	_--i3_ option enables i3-compatible behavior to hide the title bar on
-	tabbed and stacked containers with one child. The _smart_|_smart_no_gaps_
-	options are equivalent to setting _smart_borders_ smart|no_gaps and
-	_hide_edge_borders_ none.
-
 *input* <input_device> <input-subcommands...>
 	For details on input subcommands, see *sway-input*(5).
 
@@ -960,3 +953,4 @@ The following attributes may be matched with:
 # SEE ALSO
 
 *sway*(1) *sway-input*(5) *sway-output*(5) *sway-bar*(5) *sway-ipc*(7)
+
