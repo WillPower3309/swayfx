@@ -151,8 +151,8 @@ static void render_surface(struct wlr_output *wlr_output,
 	// damage track surface (+ border region)
 	pixman_region32_t damage;
 	pixman_region32_init(&damage);
-	pixman_region32_union_rect(&damage, &damage, dst_box->x - border_thickness, dst_box->y - border_thickness,
-			dst_box->width + (2 * border_thickness), dst_box->height + (2 * border_thickness));
+	pixman_region32_union_rect(&damage, &damage, dst_box->x, dst_box->y,
+			dst_box->width, dst_box->height);
 	pixman_region32_intersect(&damage, &damage, output_damage);
 	bool damaged = pixman_region32_not_empty(&damage);
 	if (!damaged) {
@@ -196,10 +196,6 @@ static void render_surface_iterator(struct sway_output *output,
 	float matrix[9];
 	enum wl_output_transform transform =
 		wlr_output_transform_invert(surface->current.transform);
-	proj_box.x -= border_thickness;
-	proj_box.y -= border_thickness;
-	proj_box.width += 2 * border_thickness;
-	proj_box.height += 2 * border_thickness;
 	wlr_matrix_project_box(matrix, &proj_box, transform, 0.0,
 		wlr_output->transform_matrix);
 
