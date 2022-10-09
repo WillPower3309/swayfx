@@ -166,7 +166,8 @@ static void render_surface_iterator(struct sway_output *output,
 	}
 	scale_box(&dst_box, wlr_output->scale);
 
-	render_texture(wlr_output, output_damage, texture, &src_box, &dst_box, matrix, alpha, corner_radius);
+	render_texture(wlr_output, output_damage, texture, &src_box, &dst_box,
+			matrix, alpha, corner_radius * wlr_output->scale);
 
 	wlr_presentation_surface_sampled_on_output(server.presentation, surface,
 		wlr_output);
@@ -281,7 +282,7 @@ void render_border_corner(struct sway_output *output, pixman_region32_t *output_
 	for (int i = 0; i < nrects; ++i) {
 		scissor_output(wlr_output, &rects[i]);
 		fx_render_border_corner(renderer, &box, color, wlr_output->transform_matrix,
-				corner_location, config->corner_radius, border_thickness);
+				corner_location, config->corner_radius * wlr_output->scale, border_thickness);
 	}
 
 damage_finish:
@@ -383,7 +384,7 @@ static void render_saved_view(struct sway_view *view,
 		scale_box(&dst_box, wlr_output->scale);
 
 		render_texture(wlr_output, damage, saved_buf->buffer->texture,
-			&saved_buf->source_box, &dst_box, matrix, alpha, corner_radius);
+			&saved_buf->source_box, &dst_box, matrix, alpha, corner_radius * wlr_output->scale);
 	}
 
 	// FIXME: we should set the surface that this saved buffer originates from
