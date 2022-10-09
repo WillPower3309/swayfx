@@ -55,7 +55,7 @@ const GLchar tex_fragment_src_rgba[] =
 "   vec2 corner_distance = min(gl_FragCoord.xy - position, position + vec2(width, height) - gl_FragCoord.xy);\n"
 "   if (max(corner_distance.x, corner_distance.y) < radius) {\n"
 "		float d = radius - distance(corner_distance, vec2(radius, radius));\n"
-"		float smooth = smoothstep(-1.0f, 1.0f, d);\n"
+"		float smooth = smoothstep(-1.0f, 0.5f, d);\n"
 "		gl_FragColor = mix(vec4(0), gl_FragColor, smooth);\n"
 "   }\n"
 "}\n";
@@ -76,7 +76,7 @@ const GLchar tex_fragment_src_rgbx[] =
 "   vec2 corner_distance = min(gl_FragCoord.xy - position, position + vec2(width, height) - gl_FragCoord.xy);\n"
 "   if (max(corner_distance.x, corner_distance.y) < radius) {\n"
 "		float d = radius - distance(corner_distance, vec2(radius, radius));\n"
-"		float smooth = smoothstep(-1.0f, 1.0f, d);\n"
+"		float smooth = smoothstep(-1.0f, 0.5f, d);\n"
 "		gl_FragColor = mix(vec4(0), gl_FragColor, smooth);\n"
 "   }\n"
 "}\n";
@@ -98,7 +98,7 @@ const GLchar tex_fragment_src_external[] =
 "   vec2 corner_distance = min(gl_FragCoord.xy - position, position + vec2(width, height) - gl_FragCoord.xy);\n"
 "   if (max(corner_distance.x, corner_distance.y) < radius) {\n"
 "		float d = radius - distance(corner_distance, vec2(radius, radius));\n"
-"		float smooth = smoothstep(-1.0f, 1.0f, d);\n"
+"		float smooth = smoothstep(-1.0f, 0.5f, d);\n"
 "		gl_FragColor = mix(vec4(0), gl_FragColor, smooth);\n"
 "   }\n"
 "}\n";
@@ -178,8 +178,12 @@ const GLchar corner_fragment_src[] =
 "		(size - thickness) * 0.5,\n" // Size
 "		radius + thickness * 0.5\n" // Radius
 	");\n"
-"	float smoothedAlpha = 1.0 - smoothstep(-1.0, 1.0, (abs(distance + 0.5)) - thickness * 0.5);\n"
-"	gl_FragColor = mix(vec4(0), gl_FragColor, smoothedAlpha);\n"
+
+"	float smoothedAlphaOuter = 1.0 - smoothstep(-1.0, 1.0, (distance) - thickness * 0.5);\n"
+	// Creates a inner circle that isn't as anti-aliased as the outer ring
+"	float smoothedAlphaInner = 1.0 - smoothstep(-1.0, 0.5, ((distance) + thickness * 0.5));\n"
+"	gl_FragColor = mix(vec4(0), gl_FragColor, (smoothedAlphaOuter - smoothedAlphaInner));\n"
+
 "\n"
 // top left
 "	if (is_top_left && (rel_pos.y > 0.0 || rel_pos.x > 0.0)) {\n"
