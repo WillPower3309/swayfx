@@ -178,7 +178,7 @@ const GLchar corner_fragment_src[] =
 "		(size - thickness) * 0.5,\n" // Size
 "		radius + thickness * 0.5\n" // Radius
 	");\n"
-"	float smoothedAlpha = 1.0 - smoothstep(-1.0, 1.0, abs(distance) - thickness * 0.5);\n"
+"	float smoothedAlpha = 1.0 - smoothstep(-1.0, 1.0, (abs(distance + 0.5)) - thickness * 0.5);\n"
 "	gl_FragColor = mix(vec4(0), gl_FragColor, smoothedAlpha);\n"
 "\n"
 // top left
