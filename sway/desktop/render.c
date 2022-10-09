@@ -866,16 +866,15 @@ static void render_containers_linear(struct sway_output *output,
 				marks_texture = child->marks_unfocused;
 			}
 
-			bool has_titlebar = false;
-			if (state->border == B_NORMAL) {
+			bool has_titlebar = state->border == B_NORMAL;
+			render_view(output, damage, child, colors, has_titlebar);
+			if (has_titlebar) {
 				render_titlebar(output, damage, child, floor(state->x),
 						floor(state->y), state->width, colors,
 						title_texture, marks_texture);
-				has_titlebar = true;
 			} else if (state->border == B_PIXEL) {
 				render_top_border(output, damage, child, colors);
 			}
-			render_view(output, damage, child, colors, has_titlebar);
 		} else {
 			render_container(output, damage, child,
 					parent->focused || child->current.focused);
@@ -1104,8 +1103,9 @@ static void render_floating_container(struct sway_output *soutput,
 			marks_texture = con->marks_unfocused;
 		}
 
-		bool has_titlebar = false;
-		if (con->current.border == B_NORMAL) {
+		bool has_titlebar = con->current.border == B_NORMAL;
+		render_view(soutput, damage, con, colors, has_titlebar);
+		if (has_titlebar) {
 			render_titlebar(soutput, damage, con, floor(con->current.x),
 					floor(con->current.y), con->current.width, colors,
 					title_texture, marks_texture);
@@ -1113,7 +1113,6 @@ static void render_floating_container(struct sway_output *soutput,
 		} else if (con->current.border == B_PIXEL) {
 			render_top_border(soutput, damage, con, colors);
 		}
-		render_view(soutput, damage, con, colors, has_titlebar);
 	} else {
 		render_container(soutput, damage, con, con->current.focused);
 	}
