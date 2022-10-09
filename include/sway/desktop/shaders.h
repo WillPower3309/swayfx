@@ -177,13 +177,12 @@ const GLchar corner_fragment_src[] =
 "       rel_pos,\n" // Center
 "		(size - thickness) * 0.5,\n" // Size
 "		radius + thickness * 0.5\n" // Radius
-	");\n"
-
+"    );\n"
+"\n"
 "	float smoothedAlphaOuter = 1.0 - smoothstep(-1.0, 1.0, distance - thickness * 0.5);\n"
 	// Creates a inner circle that isn't as anti-aliased as the outer ring
 "	float smoothedAlphaInner = 1.0 - smoothstep(-1.0, 0.5, distance + thickness * 0.5);\n"
 "	gl_FragColor = mix(vec4(0), gl_FragColor, smoothedAlphaOuter - smoothedAlphaInner);\n"
-
 "\n"
 // top left
 "	if (is_top_left && (rel_pos.y > 0.0 || rel_pos.x > 0.0)) {\n"
