@@ -161,11 +161,6 @@ const GLchar tex_fragment_src_rgbx[] =
 "			}\n"
 "       }\n"
 "   }\n"
-"\n"
-	// Saturation
-"	vec3 irgb = texture2D(tex, v_texcoord).rgb;\n"
-"	vec3 target = vec3(dot(irgb, saturation_weight));\n"
-"	gl_FragColor = vec4(mix(target, irgb, saturation), 1.0) * alpha;\n"
 "}\n";
 
 const GLchar tex_fragment_src_external[] =
