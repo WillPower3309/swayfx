@@ -33,7 +33,7 @@ struct cmd_results *cmd_saturation(int argc, char **argv) {
 				"Expected: set|plus|minus <0..2>: %s", argv[0]);
 	}
 
-	if (val < 0 || val > 10) {
+	if (val < 0 || val > 2) {
 		return cmd_results_new(CMD_FAILURE, "saturation value out of bounds");
 	}
 
