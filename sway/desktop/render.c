@@ -106,6 +106,9 @@ static void render_texture(struct wlr_output *wlr_output,
 	struct sway_output *output = wlr_output->data;
 	struct fx_renderer *renderer = output->server->renderer;
 
+	// TODO: make arg
+	float titlebar_color[4] = {0,0,0,0};
+
 	pixman_region32_t damage;
 	pixman_region32_init(&damage);
 	pixman_region32_union_rect(&damage, &damage, dst_box->x, dst_box->y,
@@ -122,9 +125,9 @@ static void render_texture(struct wlr_output *wlr_output,
 		scissor_output(wlr_output, &rects[i]);
 		set_scale_filter(wlr_output, texture, output->scale_filter);
 		if (src_box != NULL) {
-			fx_render_subtexture_with_matrix(renderer, texture, src_box, dst_box, matrix, alpha, corner_radius);
+			fx_render_subtexture_with_matrix(renderer, texture, src_box, dst_box, matrix, alpha, corner_radius, titlebar_color);
 		} else {
-			fx_render_texture_with_matrix(renderer, texture, dst_box, matrix, alpha, corner_radius);
+			fx_render_texture_with_matrix(renderer, texture, dst_box, matrix, alpha, corner_radius, titlebar_color);
 		}
 	}
 
@@ -257,7 +260,7 @@ damage_finish:
 // _box.x and .y are expected to be layout-local
 // _box.width and .height are expected to be output-buffer-local
 void render_border_corner(struct sway_output *output, pixman_region32_t *output_damage,
-		const struct wlr_box *_box, float color[static 4], int corner_radius,
+		const struct wlr_box *_box, const float color[static 4], int corner_radius,
 		int border_thickness, enum corner_location corner_location) {
 	struct wlr_output *wlr_output = output->wlr_output;
 	struct fx_renderer *renderer = output->server->renderer;

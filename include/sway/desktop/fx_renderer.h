@@ -16,6 +16,7 @@ struct gles2_tex_shader {
 	GLint size;
 	GLint position;
 	GLint radius;
+	GLint titlebar_color;
 };
 
 struct fx_renderer {
@@ -63,10 +64,10 @@ void fx_renderer_scissor(struct wlr_box *box);
 
 bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct wlr_texture *wlr_texture,
 		const struct wlr_fbox *src_box, const struct wlr_box *dst_box, const float matrix[static 9],
-		float alpha, int radius);
+		float alpha, int radius, const float titlebar_color[static 4]);
 
 bool fx_render_texture_with_matrix(struct fx_renderer *renderer, struct wlr_texture *wlr_texture,
-		const struct wlr_box *dst_box, const float matrix[static 9], float alpha, int radius);
+		const struct wlr_box *dst_box, const float matrix[static 9], float alpha, int radius, const float titlebar_color[static 4]);
 
 void fx_render_rect(struct fx_renderer *renderer, const struct wlr_box *box,
 		const float color[static 4], const float projection[static 9]);
