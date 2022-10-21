@@ -772,7 +772,7 @@ static void render_titlebar(struct sway_output *output,
 		box.width += left_x - box.x - box.width;
 	}
 	if (corner_radius) {
-		render_rect(output, output_damage, &box, color, FLAT);
+		render_rect(output, output_damage, &box, color, ROUND_TL);
 	} else {
 		render_rect(output, output_damage, &box, color, FLAT);
 	}
@@ -789,7 +789,11 @@ static void render_titlebar(struct sway_output *output,
 		box.width += box.x - right_rx;
 		box.x = right_rx;
 	}
-	render_rect(output, output_damage, &box, color, FLAT);
+	if (corner_radius) {
+		render_rect(output, output_damage, &box, color, ROUND_TR);
+	} else {
+		render_rect(output, output_damage, &box, color, FLAT);
+	}
 }
 
 /**
