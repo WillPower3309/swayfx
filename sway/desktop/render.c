@@ -520,16 +520,18 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
  */
 static void render_titlebar(struct sway_output *output,
 		pixman_region32_t *output_damage, struct sway_container *con,
-		int x, int y, int width,
-		struct border_colors *colors, struct wlr_texture *title_texture,
-		struct wlr_texture *marks_texture) {
+		int x, int y, int width, struct border_colors *colors,
+		struct wlr_texture *title_texture, struct wlr_texture *marks_texture) {
 	struct wlr_box box;
 	float color[4];
 	float output_scale = output->wlr_output->scale;
+	// TODO: scale corner_radius + get val from con param (also need from con in border rendering)
+	int corner_radius = config->corner_radius;
 	double output_x = output->lx;
 	double output_y = output->ly;
 	int titlebar_border_thickness = config->titlebar_border_thickness;
-	int titlebar_h_padding = config->titlebar_h_padding;
+	int titlebar_h_padding = config->titlebar_h_padding > corner_radius ?
+			config->titlebar_h_padding : corner_radius;
 	int titlebar_v_padding = config->titlebar_v_padding;
 	enum alignment title_align = config->title_align;
 
@@ -743,6 +745,7 @@ static void render_titlebar(struct sway_output *output,
 	}
 
 	// Padding on left side
+	float color2[] = {0,0,0,1};
 	box.x = x + titlebar_border_thickness;
 	box.y = y + titlebar_border_thickness;
 	box.width = titlebar_h_padding - titlebar_border_thickness;
@@ -753,7 +756,7 @@ static void render_titlebar(struct sway_output *output,
 	if (box.x + box.width < left_x) {
 		box.width += left_x - box.x - box.width;
 	}
-	render_rect(output, output_damage, &box, color);
+	render_rect(output, output_damage, &box, color2);
 
 	// Padding on right side
 	box.x = x + width - titlebar_h_padding;
@@ -767,7 +770,7 @@ static void render_titlebar(struct sway_output *output,
 		box.width += box.x - right_rx;
 		box.x = right_rx;
 	}
-	render_rect(output, output_damage, &box, color);
+	render_rect(output, output_damage, &box, color2);
 }
 
 /**
