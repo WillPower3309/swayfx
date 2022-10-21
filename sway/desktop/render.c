@@ -541,13 +541,11 @@ static void render_titlebar(struct sway_output *output,
 	struct wlr_box box;
 	float color[4];
 	float output_scale = output->wlr_output->scale;
-	// TODO: scale corner_radius + get val from con param (also need from con in border rendering)
-	int corner_radius = config->corner_radius;
 	double output_x = output->lx;
 	double output_y = output->ly;
 	int titlebar_border_thickness = config->titlebar_border_thickness;
-	int titlebar_h_padding = config->titlebar_h_padding > corner_radius ?
-			config->titlebar_h_padding : corner_radius;
+	int titlebar_h_padding = config->titlebar_h_padding > con->corner_radius ?
+			config->titlebar_h_padding : con->corner_radius;
 	int titlebar_v_padding = config->titlebar_v_padding;
 	enum alignment title_align = config->title_align;
 
@@ -771,7 +769,7 @@ static void render_titlebar(struct sway_output *output,
 	if (box.x + box.width < left_x) {
 		box.width += left_x - box.x - box.width;
 	}
-	if (corner_radius) {
+	if (con->corner_radius) {
 		render_rect(output, output_damage, &box, color, ROUND_TL);
 	} else {
 		render_rect(output, output_damage, &box, color, FLAT);
@@ -789,7 +787,7 @@ static void render_titlebar(struct sway_output *output,
 		box.width += box.x - right_rx;
 		box.x = right_rx;
 	}
-	if (corner_radius) {
+	if (con->corner_radius) {
 		render_rect(output, output_damage, &box, color, ROUND_TR);
 	} else {
 		render_rect(output, output_damage, &box, color, FLAT);
