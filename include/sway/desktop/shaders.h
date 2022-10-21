@@ -27,16 +27,12 @@ const GLchar quad_fragment_src[] =
 "	gl_FragColor = v_color;\n"
 "}\n";
 
-// TODO: better name
 // https://www.shadertoy.com/view/tltXDl
-const GLchar top_rounded_quad_fragment_src[] =
+// Quad with rounded top left corner
+const GLchar rounded_tl_quad_fragment_src[] =
 "precision mediump float;\n"
 "varying vec4 v_color;\n"
 "varying vec2 v_texcoord;\n"
-"\n"
-"float roundedBoxSDF(vec2 center, vec2 size, float radius) {\n"
-"	return length(max(abs(center) - size + radius, 0.0)) - radius;\n"
-"}\n"
 "\n"
 "void main() {\n"
 "	gl_FragColor = v_color;\n"

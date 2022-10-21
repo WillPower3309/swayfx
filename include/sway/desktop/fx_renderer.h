@@ -37,6 +37,12 @@ struct fx_renderer {
 			GLint proj;
 			GLint color;
 			GLint pos_attrib;
+		} rounded_tl_quad;
+		struct {
+			GLuint program;
+			GLint proj;
+			GLint color;
+			GLint pos_attrib;
 			GLint is_top_left;
 			GLint is_top_right;
 			GLint is_bottom_left;

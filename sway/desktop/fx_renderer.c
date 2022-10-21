@@ -143,6 +143,15 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	renderer->shaders.quad.color = glGetUniformLocation(prog, "color");
 	renderer->shaders.quad.pos_attrib = glGetAttribLocation(prog, "pos");
 
+	prog = link_program(quad_vertex_src, rounded_tl_quad_fragment_src);
+	renderer->shaders.rounded_tl_quad.program = prog;
+	if (!renderer->shaders.rounded_tl_quad.program) {
+		goto error;
+	}
+	renderer->shaders.rounded_tl_quad.proj = glGetUniformLocation(prog, "proj");
+	renderer->shaders.rounded_tl_quad.color = glGetUniformLocation(prog, "color");
+	renderer->shaders.rounded_tl_quad.pos_attrib = glGetAttribLocation(prog, "pos");
+
 	// Border corners
 	prog = link_program(quad_vert_src, corner_frag_src);
 	renderer->shaders.corner.program = prog;
