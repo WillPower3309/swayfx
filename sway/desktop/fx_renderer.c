@@ -101,6 +101,21 @@ bool init_frag_shader(struct gles2_tex_shader *shader, GLuint prog) {
 	return true;
 }
 
+// initializes a provided rounded quad shader and returns false if unsuccessful
+bool init_rounded_quad_shader(struct rounded_quad_shader *shader, GLuint prog) {
+	shader->program = prog;
+	if (!shader->program) {
+		return false;
+	}
+	shader->proj = glGetUniformLocation(prog, "proj");
+	shader->color = glGetUniformLocation(prog, "color");
+	shader->pos_attrib = glGetAttribLocation(prog, "pos");
+	shader->half_size = glGetUniformLocation(prog, "half_size");
+	shader->position = glGetUniformLocation(prog, "position");
+	shader->radius = glGetUniformLocation(prog, "radius");
+	return true;
+}
+
 struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	struct fx_renderer *renderer = calloc(1, sizeof(struct fx_renderer));
 	if (renderer == NULL) {
@@ -134,6 +149,7 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	// init shaders
 	GLuint prog;
 
+	// quad fragment shader
 	prog = link_program(quad_vert_src, quad_frag_src);
 	renderer->shaders.quad.program = prog;
 	if (!renderer->shaders.quad.program) {
@@ -143,17 +159,18 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	renderer->shaders.quad.color = glGetUniformLocation(prog, "color");
 	renderer->shaders.quad.pos_attrib = glGetAttribLocation(prog, "pos");
 
+	// rounded quad fragment shaders
 	prog = link_program(quad_vertex_src, rounded_tl_quad_fragment_src);
-	renderer->shaders.rounded_tl_quad.program = prog;
-	if (!renderer->shaders.rounded_tl_quad.program) {
+	if (!init_rounded_quad_shader(&renderer->shaders.rounded_tl_quad, prog)) {
 		goto error;
 	}
-	renderer->shaders.rounded_tl_quad.proj = glGetUniformLocation(prog, "proj");
-	renderer->shaders.rounded_tl_quad.color = glGetUniformLocation(prog, "color");
-	renderer->shaders.rounded_tl_quad.pos_attrib = glGetAttribLocation(prog, "pos");
+	prog = link_program(quad_vertex_src, rounded_tr_quad_fragment_src);
+	if (!init_rounded_quad_shader(&renderer->shaders.rounded_tr_quad, prog)) {
+		goto error;
+	}
 
-	// Border corners
-	prog = link_program(quad_vert_src, corner_frag_src);
+	// Border corner shader
+	prog = link_program(quad_vertex_src, corner_fragment_src);
 	renderer->shaders.corner.program = prog;
 	if (!renderer->shaders.corner.program) {
 		goto error;
@@ -373,6 +390,61 @@ void fx_render_rect(struct fx_renderer *renderer, const struct wlr_box *box,
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
 	glDisableVertexAttribArray(renderer->shaders.quad.pos_attrib);
+}
+
+void fx_render_rounded_rect(struct fx_renderer *renderer, const struct wlr_box *box,
+		const float color[static 4], const float projection[static 9],
+		int radius, enum corner_location corner_location) {
+	if (box->width == 0 || box->height == 0) {
+		return;
+	}
+	assert(box->width > 0 && box->height > 0);
+
+	struct rounded_quad_shader *shader = NULL;
+
+	switch (corner_location) {
+		case TOP_LEFT:
+			shader = &renderer->shaders.rounded_tl_quad;
+			break;
+		case TOP_RIGHT:
+			shader = &renderer->shaders.rounded_tr_quad;
+			break;
+		default:
+			sway_log(SWAY_ERROR, "Invalid Corner Location. Aborting render");
+			abort();
+	}
+
+	float matrix[9];
+	wlr_matrix_project_box(matrix, box, WL_OUTPUT_TRANSFORM_NORMAL, 0, projection);
+
+	float gl_matrix[9];
+	wlr_matrix_multiply(gl_matrix, renderer->projection, matrix);
+
+	// TODO: investigate why matrix is flipped prior to this cmd
+	// wlr_matrix_multiply(gl_matrix, flip_180, gl_matrix);
+
+	wlr_matrix_transpose(gl_matrix, gl_matrix);
+
+	glEnable(GL_BLEND);
+
+	glUseProgram(shader->program);
+
+	glUniformMatrix3fv(shader->proj, 1, GL_FALSE, gl_matrix);
+	glUniform4f(shader->color, color[0], color[1], color[2], color[3]);
+
+	// rounded corners
+	glUniform2f(shader->half_size, box->width / 2.0, box->height / 2.0);
+	glUniform2f(shader->position, box->x, box->y);
+	glUniform1f(shader->radius, radius);
+
+	glVertexAttribPointer(shader->pos_attrib, 2, GL_FLOAT, GL_FALSE,
+			0, verts);
+
+	glEnableVertexAttribArray(shader->pos_attrib);
+
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+	glDisableVertexAttribArray(shader->pos_attrib);
 }
 
 void fx_render_border_corner(struct fx_renderer *renderer, const struct wlr_box *box,

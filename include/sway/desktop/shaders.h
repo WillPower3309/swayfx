@@ -27,12 +27,29 @@ const GLchar quad_fragment_src[] =
 "	gl_FragColor = v_color;\n"
 "}\n";
 
-// https://www.shadertoy.com/view/tltXDl
 // Quad with rounded top left corner
 const GLchar rounded_tl_quad_fragment_src[] =
 "precision mediump float;\n"
 "varying vec4 v_color;\n"
 "varying vec2 v_texcoord;\n"
+"\n"
+"uniform vec2 half_size;\n"
+"uniform vec2 position;\n"
+"uniform float radius;\n"
+"\n"
+"void main() {\n"
+"	gl_FragColor = v_color;\n"
+"}\n";
+
+// Quad with rounded top right corner
+const GLchar rounded_tr_quad_fragment_src[] =
+"precision mediump float;\n"
+"varying vec4 v_color;\n"
+"varying vec2 v_texcoord;\n"
+"\n"
+"uniform vec2 half_size;\n"
+"uniform vec2 position;\n"
+"uniform float radius;\n"
 "\n"
 "void main() {\n"
 "	gl_FragColor = v_color;\n"

@@ -11,8 +11,6 @@
 struct sway_server;
 struct sway_container;
 
-enum rect_corner_type { FLAT, ROUND_TL, ROUND_TR };
-
 struct sway_output_state {
 	list_t *workspaces;
 	struct sway_workspace *active_workspace;
@@ -160,9 +158,8 @@ void output_get_box(struct sway_output *output, struct wlr_box *box);
 enum sway_container_layout output_get_default_layout(
 		struct sway_output *output);
 
-void render_rect(struct sway_output *output,
-		pixman_region32_t *output_damage, const struct wlr_box *_box,
-		float color[static 4], enum rect_corner_type rect_corner_type);
+void render_rect(struct sway_output *output, pixman_region32_t *output_damage,
+		const struct wlr_box *_box, float color[static 4]);
 
 void premultiply_alpha(float color[4], float opacity);
 
