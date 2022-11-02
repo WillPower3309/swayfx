@@ -33,8 +33,8 @@ struct render_data {
 	pixman_region32_t *damage;
 	float alpha;
 	int corner_radius;
-	struct wlr_box *clip_box;
 	bool has_titlebar;
+	struct wlr_box *clip_box;
 };
 
 /**
@@ -372,7 +372,7 @@ static void render_view_popups(struct sway_view *view, struct sway_output *outpu
 }
 
 static void render_saved_view(struct sway_view *view, struct sway_output *output,
-			pixman_region32_t *damage, float alpha, int corner_radius, bool has_titlebar) {
+		pixman_region32_t *damage, float alpha, int corner_radius, bool has_titlebar) {
 	struct wlr_output *wlr_output = output->wlr_output;
 
 	if (wl_list_empty(&view->saved_buffers)) {

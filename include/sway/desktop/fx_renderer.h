@@ -24,7 +24,7 @@ struct rounded_quad_shader {
 	GLint proj;
 	GLint color;
 	GLint pos_attrib;
-	GLint half_size;
+	GLint size;
 	GLint position;
 	GLint radius;
 };

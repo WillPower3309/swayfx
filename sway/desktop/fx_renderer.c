@@ -110,7 +110,7 @@ bool init_rounded_quad_shader(struct rounded_quad_shader *shader, GLuint prog) {
 	shader->proj = glGetUniformLocation(prog, "proj");
 	shader->color = glGetUniformLocation(prog, "color");
 	shader->pos_attrib = glGetAttribLocation(prog, "pos");
-	shader->half_size = glGetUniformLocation(prog, "half_size");
+	shader->size = glGetUniformLocation(prog, "size");
 	shader->position = glGetUniformLocation(prog, "position");
 	shader->radius = glGetUniformLocation(prog, "radius");
 	return true;
@@ -434,7 +434,7 @@ void fx_render_rounded_rect(struct fx_renderer *renderer, const struct wlr_box *
 	glUniform4f(shader->color, color[0], color[1], color[2], color[3]);
 
 	// rounded corners
-	glUniform2f(shader->half_size, box->width / 2.0, box->height / 2.0);
+	glUniform2f(shader->size, box->width, box->height);
 	glUniform2f(shader->position, box->x, box->y);
 	glUniform1f(shader->radius, radius);
 
