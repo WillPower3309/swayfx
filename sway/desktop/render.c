@@ -566,17 +566,20 @@ static void render_titlebar(struct sway_output *output,
 	double output_x = output->lx;
 	double output_y = output->ly;
 	int titlebar_border_thickness = config->titlebar_border_thickness;
-	int titlebar_h_padding = config->titlebar_h_padding > con->corner_radius ?
-			config->titlebar_h_padding : con->corner_radius;
-	int titlebar_v_padding = config->titlebar_v_padding;
 	enum alignment title_align = config->title_align;
+	int corner_radius = con->corner_radius;
+
+	// titlebar padding should account for corner radius
+	int titlebar_h_padding = config->titlebar_h_padding > corner_radius ?
+			config->titlebar_h_padding : corner_radius;
+	int titlebar_v_padding = config->titlebar_v_padding;
 
 	// Single pixel bar above title
 	memcpy(&color, colors->border, sizeof(float) * 4);
 	premultiply_alpha(color, con->alpha);
-	box.x = x;
+	box.x = x + corner_radius;
 	box.y = y;
-	box.width = width;
+	box.width = width - corner_radius * 2;
 	box.height = titlebar_border_thickness;
 	scale_box(&box, output_scale);
 	render_rect(output, output_damage, &box, color);
@@ -593,7 +596,8 @@ static void render_titlebar(struct sway_output *output,
 	box.x = x;
 	box.y = y + titlebar_border_thickness;
 	box.width = titlebar_border_thickness;
-	box.height = container_titlebar_height() - titlebar_border_thickness * 2;
+	box.height = container_titlebar_height() -
+		(titlebar_border_thickness * 2) - corner_radius;
 	scale_box(&box, output_scale);
 	render_rect(output, output_damage, &box, color);
 
@@ -601,9 +605,18 @@ static void render_titlebar(struct sway_output *output,
 	box.x = x + width - titlebar_border_thickness;
 	box.y = y + titlebar_border_thickness;
 	box.width = titlebar_border_thickness;
-	box.height = container_titlebar_height() - titlebar_border_thickness * 2;
+	box.height = container_titlebar_height() -
+		(titlebar_border_thickness * 2) - corner_radius;
 	scale_box(&box, output_scale);
 	render_rect(output, output_damage, &box, color);
+
+	// if corner_radius: single pixel corners
+	/* TODO
+	if (corner_radius) {
+		// left corner
+		// right corner
+	}
+	*/
 
 	int inner_x = x - output_x + titlebar_h_padding;
 	int bg_y = y + titlebar_border_thickness;
@@ -791,8 +804,8 @@ static void render_titlebar(struct sway_output *output,
 	if (box.x + box.width < left_x) {
 		box.width += left_x - box.x - box.width;
 	}
-	if (con->corner_radius) {
-		render_rounded_rect(output, output_damage, &box, color, con->corner_radius, TOP_LEFT);
+	if (corner_radius) {
+		render_rounded_rect(output, output_damage, &box, color, corner_radius, TOP_LEFT);
 	} else {
 		render_rect(output, output_damage, &box, color);
 	}
@@ -809,8 +822,8 @@ static void render_titlebar(struct sway_output *output,
 		box.width += box.x - right_rx;
 		box.x = right_rx;
 	}
-	if (con->corner_radius) {
-		render_rounded_rect(output, output_damage, &box, color, con->corner_radius, TOP_RIGHT);
+	if (corner_radius) {
+		render_rounded_rect(output, output_damage, &box, color, corner_radius, TOP_RIGHT);
 	} else {
 		render_rect(output, output_damage, &box, color);
 	}
