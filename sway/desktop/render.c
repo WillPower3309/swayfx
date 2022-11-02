@@ -594,7 +594,7 @@ static void render_titlebar(struct sway_output *output,
 
 	// Single pixel left edge
 	box.x = x;
-	box.y = y + titlebar_border_thickness;
+	box.y = y + titlebar_border_thickness + corner_radius;
 	box.width = titlebar_border_thickness;
 	box.height = container_titlebar_height() -
 		(titlebar_border_thickness * 2) - corner_radius;
@@ -603,7 +603,7 @@ static void render_titlebar(struct sway_output *output,
 
 	// Single pixel right edge
 	box.x = x + width - titlebar_border_thickness;
-	box.y = y + titlebar_border_thickness;
+	box.y = y + titlebar_border_thickness + corner_radius;
 	box.width = titlebar_border_thickness;
 	box.height = container_titlebar_height() -
 		(titlebar_border_thickness * 2) - corner_radius;
