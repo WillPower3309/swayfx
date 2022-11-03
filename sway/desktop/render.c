@@ -577,9 +577,10 @@ static void render_titlebar(struct sway_output *output,
 	// Single pixel bar above title
 	memcpy(&color, colors->border, sizeof(float) * 4);
 	premultiply_alpha(color, con->alpha);
-	box.x = x + corner_radius;
+	box.x = corner_radius ? x + corner_radius : x + titlebar_border_thickness;
 	box.y = y;
-	box.width = width - corner_radius * 2;
+	box.width = corner_radius ?
+		width - corner_radius * 2 : width - titlebar_border_thickness * 2;
 	box.height = titlebar_border_thickness;
 	scale_box(&box, output_scale);
 	render_rect(output, output_damage, &box, color);
@@ -592,22 +593,19 @@ static void render_titlebar(struct sway_output *output,
 	scale_box(&box, output_scale);
 	render_rect(output, output_damage, &box, color);
 
-	// Single pixel left edge
+	// Single pixel bar left edge
 	box.x = x;
-	// TODO: box.y = y + corner_radius when corner_radius
-	box.y = y + titlebar_border_thickness + corner_radius;
+	box.y = y + + corner_radius;
 	box.width = titlebar_border_thickness;
-	box.height = container_titlebar_height() -
-		(titlebar_border_thickness * 2) - corner_radius;
+	box.height = container_titlebar_height() - titlebar_border_thickness - corner_radius;
 	scale_box(&box, output_scale);
 	render_rect(output, output_damage, &box, color);
 
-	// Single pixel right edge
+	// Single pixel bar right edge
 	box.x = x + width - titlebar_border_thickness;
-	box.y = y + titlebar_border_thickness + corner_radius;
+	box.y = y + corner_radius;
 	box.width = titlebar_border_thickness;
-	box.height = container_titlebar_height() -
-		(titlebar_border_thickness * 2) - corner_radius;
+	box.height = container_titlebar_height() - titlebar_border_thickness - corner_radius;
 	scale_box(&box, output_scale);
 	render_rect(output, output_damage, &box, color);
 
