@@ -570,9 +570,10 @@ static void render_titlebar(struct sway_output *output,
 	int corner_radius = con->corner_radius;
 
 	// titlebar padding should account for corner radius
-	int titlebar_h_padding = config->titlebar_h_padding > corner_radius ?
-			config->titlebar_h_padding : corner_radius;
-	int titlebar_v_padding = config->titlebar_v_padding;
+	int titlebar_h_padding = corner_radius > config->titlebar_h_padding ?
+		corner_radius : config->titlebar_h_padding;
+	int titlebar_v_padding = corner_radius == (int)container_titlebar_height() ?
+		((int)container_titlebar_height() - config->font_height) / 2 : config->titlebar_v_padding;
 
 	// Single pixel bar above title
 	memcpy(&color, colors->border, sizeof(float) * 4);
@@ -595,7 +596,7 @@ static void render_titlebar(struct sway_output *output,
 
 	// Single pixel bar left edge
 	box.x = x;
-	box.y = y + + corner_radius;
+	box.y = y + corner_radius;
 	box.width = titlebar_border_thickness;
 	box.height = container_titlebar_height() - titlebar_border_thickness - corner_radius;
 	scale_box(&box, output_scale);
