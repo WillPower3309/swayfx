@@ -10,9 +10,12 @@ Sway is an incredible window manager, and certainly one of the most well establi
 + **Add a nix flake to the repo**: Allows nixos users to easily contribute to and test this project
 
 ## New Configuration Options
+
 + Corner radius: `corner_radius <val>`
++ Application saturation: `for_window [CRITERIA HERE] saturation <set|plus|minus> <val 0.0 <-> 2.0>`
 
 ## Roadmap
+
 + fade in / out animations
 + window movement animations
 + drop shadows
