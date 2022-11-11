@@ -715,6 +715,7 @@ void floating_calculate_constraints(int *min_width, int *max_width,
 	} else {
 		*max_height = config->floating_maximum_height;
 	}
+
 }
 
 static void floating_natural_resize(struct sway_container *con) {
