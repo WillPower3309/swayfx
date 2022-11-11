@@ -1,0 +1,26 @@
+name: Package for the AUR
+
+on:
+  release:
+    types: [published]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+jobs:
+  aur-publish:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Publish AUR package
+      uses: anas-elgarhy/aur-release-action@v3.2
+      with:
+        package_name: swayfx # Use this if the package name in AUR is different from the repository name
+        ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }} # The private SSH key to use to push the changes to the AUR
+        github_token: ${{ secrets.GITHUB_TOKEN }} # The GitHub token to use to update the PKGBUILD file and the AUR submodule
+        pkgbuild_path: build-scripts/PKGBUILD # Use this if the PKGBUILD file is not in the root directory
+        update_pkgbuild: true # Use this if you want to update the PKGBUILD in the main repository
+        try_build_and_install: true # Use this if you want to try to build and install the package before publishing
+        commit_message: Bump to version %VERSION% # Use this if you want to change the commit message
+        prescript: echo "Hello World" # Use this if you want to run a script before the action makes any changes, you can pass files also
+        postscript: scripts/post.sh # Use this if you want to run a script after the action makes changes, and finishes
