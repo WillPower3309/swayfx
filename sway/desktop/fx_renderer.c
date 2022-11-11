@@ -99,6 +99,7 @@ bool init_frag_shader(struct gles2_tex_shader *shader, GLuint prog) {
 	shader->size = glGetUniformLocation(prog, "size");
 	shader->position = glGetUniformLocation(prog, "position");
 	shader->radius = glGetUniformLocation(prog, "radius");
+	shader->saturation = glGetUniformLocation(prog, "saturation");
 	shader->has_titlebar = glGetUniformLocation(prog, "has_titlebar");
 	return true;
 }
@@ -311,6 +312,7 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct wlr_t
 	glUniform1i(shader->tex, 0);
 	glUniform1f(shader->alpha, alpha);
 	glUniform1f(shader->has_titlebar, has_titlebar);
+	glUniform1f(shader->saturation, saturation);
 
 	// rounded corners
 	glUniform2f(shader->size, dst_box->width, dst_box->height);

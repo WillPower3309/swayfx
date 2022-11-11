@@ -16,6 +16,7 @@ struct gles2_tex_shader {
 	GLint size;
 	GLint position;
 	GLint radius;
+	GLint saturation;
 	GLint has_titlebar;
 };
 
