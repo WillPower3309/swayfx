@@ -106,9 +106,6 @@ static void render_texture(struct wlr_output *wlr_output,
 	struct sway_output *output = wlr_output->data;
 	struct fx_renderer *renderer = output->server->renderer;
 
-	// TODO: make arg
-	float titlebar_color[4] = {0,0,0,0};
-
 	pixman_region32_t damage;
 	pixman_region32_init(&damage);
 	pixman_region32_union_rect(&damage, &damage, dst_box->x, dst_box->y,
@@ -118,6 +115,8 @@ static void render_texture(struct wlr_output *wlr_output,
 	if (!damaged) {
 		goto damage_finish;
 	}
+
+	float titlebar_color[4] = {0.1, 0.5, 0.9, 1};
 
 	int nrects;
 	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
@@ -299,8 +298,8 @@ void premultiply_alpha(float color[4], float opacity) {
 	color[2] *= color[3];
 }
 
-static void render_view_toplevels(struct sway_view *view,
-		struct sway_output *output, pixman_region32_t *damage, float alpha, int corner_radius) {
+static void render_view_toplevels(struct sway_view *view, struct sway_output *output,
+		pixman_region32_t *damage, float alpha, int corner_radius) {
 	struct render_data data = {
 		.damage = damage,
 		.alpha = alpha,
