@@ -715,15 +715,6 @@ void floating_calculate_constraints(int *min_width, int *max_width,
 	} else {
 		*max_height = config->floating_maximum_height;
 	}
-
-	// minimum width / height should be = 2x corner radius to avoid looking weird
-	int min_corner_size = config->corner_radius * 2;
-	if (min_corner_size > *min_height) {
-		*min_height = min_corner_size;
-	}
-	if (min_corner_size > *min_width) {
-		*min_width = min_corner_size;
-	}
 }
 
 static void floating_natural_resize(struct sway_container *con) {
