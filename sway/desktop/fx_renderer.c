@@ -20,6 +20,8 @@
 // shaders
 #include "quad_vert_src.h"
 #include "quad_frag_src.h"
+#include "quad_round_tl_frag_src.h"
+#include "quad_round_tr_frag_src.h"
 #include "corner_frag_src.h"
 #include "tex_vert_src.h"
 #include "tex_rgba_frag_src.h"
@@ -160,17 +162,17 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	renderer->shaders.quad.pos_attrib = glGetAttribLocation(prog, "pos");
 
 	// rounded quad fragment shaders
-	prog = link_program(quad_vertex_src, rounded_tl_quad_fragment_src);
+	prog = link_program(quad_vert_src, quad_round_tl_frag_src);
 	if (!init_rounded_quad_shader(&renderer->shaders.rounded_tl_quad, prog)) {
 		goto error;
 	}
-	prog = link_program(quad_vertex_src, rounded_tr_quad_fragment_src);
+	prog = link_program(quad_vert_src, quad_round_tr_frag_src);
 	if (!init_rounded_quad_shader(&renderer->shaders.rounded_tr_quad, prog)) {
 		goto error;
 	}
 
 	// Border corner shader
-	prog = link_program(quad_vertex_src, corner_fragment_src);
+	prog = link_program(quad_vert_src, corner_frag_src);
 	renderer->shaders.corner.program = prog;
 	if (!renderer->shaders.corner.program) {
 		goto error;
