@@ -511,7 +511,7 @@ static int output_repaint_timer_handler(void *data) {
 
 	if (fullscreen_con && fullscreen_con->view && !debug.noscanout
 			// Only output to monitor without compositing when saturation is changed
-			&& fullscreen_con->view->container->saturation == 1.0f) {
+			&& fullscreen_con->saturation == 1.0f) {
 		// Try to scan-out the fullscreen view
 		static bool last_scanned_out = false;
 		bool scanned_out =

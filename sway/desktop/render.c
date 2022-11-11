@@ -1,5 +1,5 @@
-#include <stdio.h>
 #define _POSIX_C_SOURCE 200809L
+#include <stdio.h>
 #include <assert.h>
 #include <GLES2/gl2.h>
 #include <stdlib.h>
@@ -454,10 +454,10 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 	struct sway_view *view = con->view;
 	if (!wl_list_empty(&view->saved_buffers)) {
 		render_saved_view(view, output, damage, con->alpha, con->corner_radius,
-				view->container->saturation, has_titlebar);
+				con->saturation, has_titlebar);
 	} else if (view->surface) {
 		render_view_toplevels(view, output, damage, con->alpha, con->corner_radius,
-				view->container->saturation, has_titlebar);
+				con->saturation, has_titlebar);
 	}
 
 	if (con->current.border == B_NONE || con->current.border == B_CSD) {
@@ -695,7 +695,7 @@ static void render_titlebar(struct sway_output *output,
 			texture_box.width = ob_inner_width;
 		}
 		render_texture(output->wlr_output, output_damage, marks_texture,
-			NULL, &texture_box, matrix, con->alpha, 0, con->saturation, false);
+			NULL, &texture_box, matrix, con->alpha, 0, 1.0f, false);
 
 		// Padding above
 		memcpy(&color, colors->background, sizeof(float) * 4);
@@ -771,7 +771,7 @@ static void render_titlebar(struct sway_output *output,
 		}
 
 		render_texture(output->wlr_output, output_damage, title_texture,
-			NULL, &texture_box, matrix, con->alpha, 0, con->saturation, false);
+			NULL, &texture_box, matrix, con->alpha, 0, 1.0f, false);
 
 		// Padding above
 		memcpy(&color, colors->background, sizeof(float) * 4);
