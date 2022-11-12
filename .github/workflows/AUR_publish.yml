@@ -10,7 +10,15 @@ jobs:
   aur-publish:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - name: Check out sources
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    # Checks out the latest tag
+    - run: |
+        git stash save "Action stashing changes"
+        latestTag=$(git describe --abbrev=0 --tags)
+        git checkout $latestTag
 
     - name: Publish AUR package
       uses: ulises-jeremias/github-actions-aur-publish@v1
