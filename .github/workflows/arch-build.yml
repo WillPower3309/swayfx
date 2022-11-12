@@ -22,11 +22,6 @@ jobs:
           fetch-depth: 0
           path: swayfx
 
-      - name: Print Package Files
-        run: |
-          ls
-          pwd
-
       - name: Makepkg Build and Check
         id: makepkg
         uses: edlanglois/pkgbuild-action@v1
