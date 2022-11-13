@@ -26,4 +26,4 @@ jobs:
         id: makepkg
         uses: edlanglois/pkgbuild-action@v1
         with:
-          pkgdir: ./swayfx/build-scripts/aur
+          pkgdir: ./swayfx/build-scripts/aur-git

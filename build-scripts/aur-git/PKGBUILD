@@ -1,7 +1,7 @@
 # Maintainer: Erik Reider <erik.reider@protonmail.com>
 _pkgname=swayfx
-pkgname="$_pkgname"
-pkgver=0.1
+pkgname="$_pkgname-git"
+pkgver=r6905.e2ef3ceb
 pkgrel=1
 license=("MIT")
 pkgdesc="SwayFX: Sway, but with eye candy!"
@@ -42,7 +42,7 @@ optdepends=(
 backup=(etc/sway/config)
 arch=("i686" "x86_64")
 url="https://github.com/WillPower3309/swayfx"
-source=("${url}/releases/download/$pkgver/swayfx-$pkgver.tar.gz"
+source=("${pkgname%-*}::git+${url}.git"
 	50-systemd-user.conf)
 sha512sums=(
 	"SKIP"
@@ -51,6 +51,11 @@ provides=("sway" "swayfx")
 conflicts=("sway" "swayfx")
 options=(debug)
 install=sway.install
+
+pkgver() {
+	cd "$_pkgname"
+	printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+}
 
 build() {
 	arch-meson \
