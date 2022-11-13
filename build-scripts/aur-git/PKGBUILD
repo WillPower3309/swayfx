@@ -25,7 +25,7 @@ depends=(
 	"pango"
 	"pcre"
 	"ttf-font"
-	"wlroots < 0.16"
+	"wlroots<0.16"
 )
 optdepends=(
 	"alacritty: Terminal emulator used by the default config"
