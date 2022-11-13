@@ -35,6 +35,9 @@ jobs:
         ssh_keyscan_types: rsa,dsa,ecdsa,ed25519
         update_pkgver: false
 
+    # Checks out the the Master branch
+    - run: |
+        git checkout master
     - name: Publish AUR -git package
       uses: ulises-jeremias/github-actions-aur-publish@v1
       with:
