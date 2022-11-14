@@ -16,8 +16,8 @@ jobs:
       - name: Install API token for copr-cli
         env:
           # To generate a new token: https://copr.fedorainfracloud.org/api/.
-          API_login: ${{ secrets.COPR_API_LOGIN }}
-          API_username: ${{ secrets.COPR_API_USERNAME }}
+          API_LOGIN: ${{ secrets.COPR_API_LOGIN }}
+          API_USERNAME: ${{ secrets.COPR_API_USERNAME }}
           API_TOKEN_CONTENT: ${{ secrets.COPR_API_TOKEN }}
         run: |
           mkdir -p "$HOME/.config"
