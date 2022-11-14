@@ -1,4 +1,4 @@
-name: Check build for Arch.
+name: Check stable build for Arch.
 
 on:
   push:
