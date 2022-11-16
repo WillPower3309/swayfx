@@ -30,7 +30,7 @@ jobs:
 
       - name: Install tooling for source RPM build
         run: |
-          dnf -y install copr-cli rpkg git
+          dnf -y install @development-tools @rpm-development-tools copr-cli rpkg git 'dnf-command(builddep)'
 
       # It is necessary to checkout into sub-directory, because of some weird ownership problems cause by using containers
       - name: Check out sources
@@ -51,6 +51,36 @@ jobs:
         run: |
           cd swayfx
           cp ../swayfx.rpkg.spec ./
+
+      - name: Generate spec
+        run: |
+          cd swayfx
+          mkdir specs
+          rpkg spec --source --outdir specs
+
+      - name: Install build dependencies
+        run: |
+          cd swayfx
+          dnf -y builddep ./specs/swayfx.rpkg.spec
+
+      - name: Local build
+        run: |
+          cd swayfx
+          mkdir -p out
+          rpkg local --out `pwd`/out
+
+      - name: Test if installation of package is successful
+        run: |
+          cd swayfx/out
+
+          IFS='
+          ' packages=(`rpmspec --nodebuginfo -q ../specs/swayfx.rpkg.spec`)
+          mkdir rpms
+          mv ./noarch/* rpms
+          mv ./x86_64/* rpms
+          for i in "${packages[@]}"; do
+            dnf -y install "./rpms/$i.rpm"
+          done
 
       - name: Submit the build to copr
         run: |
