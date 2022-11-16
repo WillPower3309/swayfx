@@ -8,15 +8,14 @@
     };
 
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
-    nixpkgs-wayland.url = "github:nix-community/nixpkgs-wayland";
   };
 
-  outputs = { self, nixpkgs, flake-compat, nixpkgs-wayland, ... }:
+  outputs = { self, nixpkgs, flake-compat, ... }:
     let
       pkgsFor = system:
         import nixpkgs {
           inherit system;
-          overlays = [ nixpkgs-wayland.overlay ];
+          overlays = [ ];
         };
 
       targetSystems = [ "aarch64-linux" "x86_64-linux" ];
