@@ -1,6 +1,13 @@
 # vim: syntax=spec
+
+### CHANGE THESE VARIABLES BEFORE RELEASE:
+# Change to current Sway base version!
+%global SwayBaseVersion 1.7
+# Change to current SwayFX tag!
+%global Tag 0.1
+
 Name:			{{{ git_dir_name }}}
-Version:		0.1
+Version:		%{Tag}
 Release:		1%{?dist}
 Summary:		SwayFX: Sway, but with eye candy!
 License:		MIT
@@ -57,6 +64,9 @@ Recommends:		foot
 # grim is the recommended way to take screenshots on sway 1.0+
 Recommends:		grim
 %{?systemd_requires}
+
+Conflicts:		sway
+Provides:		sway = %{SwayBaseVersion}
 
 %description
 SwayFX: Sway, but with eye candy!
