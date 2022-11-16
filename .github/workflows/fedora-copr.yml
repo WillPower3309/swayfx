@@ -73,13 +73,11 @@ jobs:
         run: |
           cd swayfx/out
 
-          IFS='
-          ' packages=(`rpmspec --nodebuginfo -q ../specs/swayfx.rpkg.spec`)
-          mkdir rpms
-          mv ./noarch/* rpms
-          mv ./x86_64/* rpms
+          packages=(`rpmspec -q --nodebuginfo --qf \
+              "./%{ARCH}/%{Name}-%{Version}-%{Release}.%{ARCH}.rpm\n" \
+              ../specs/swayfx.rpkg.spec`)
           for i in "${packages[@]}"; do
-            dnf -y install "./rpms/$i.rpm"
+            dnf -y install "$i"
           done
 
       - name: Submit the build to copr
