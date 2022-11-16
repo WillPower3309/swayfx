@@ -12,22 +12,26 @@
 
   outputs = { self, nixpkgs, flake-compat, ... }:
     let
+      inherit (nixpkgs) lib;
+
       pkgsFor = system:
         import nixpkgs {
           inherit system;
-          overlays = [ ];
+          overlays = [
+            (final: prev:
+              let inherit (final) system;
+              in { wlroots-old = prev.wlroots; })
+          ];
         };
 
       targetSystems = [ "aarch64-linux" "x86_64-linux" ];
     in {
       overlays.default = final: prev: {
-        swayfx = prev.sway.overrideAttrs (old: {
-          version = "999-master";
-          src = builtins.path {
-            name = "swayfx";
-            path = prev.lib.cleanSource ./.;
-          };
-        });
+        swayfx =
+          prev.sway-unwrapped.overrideAttrs
+          (old: {
+            src = builtins.path { path = prev.lib.cleanSource ./.; };
+          });
       };
 
       packages = nixpkgs.lib.genAttrs targetSystems (system:
