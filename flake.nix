@@ -17,21 +17,14 @@
       pkgsFor = system:
         import nixpkgs {
           inherit system;
-          overlays = [
-            (final: prev:
-              let inherit (final) system;
-              in { wlroots-old = prev.wlroots; })
-          ];
+          overlays = [ ];
         };
 
       targetSystems = [ "aarch64-linux" "x86_64-linux" ];
     in {
       overlays.default = final: prev: {
-        swayfx =
-          prev.sway-unwrapped.overrideAttrs
-          (old: {
-            src = builtins.path { path = prev.lib.cleanSource ./.; };
-          });
+        swayfx = prev.sway-unwrapped.overrideAttrs
+          (old: { src = builtins.path { path = prev.lib.cleanSource ./.; }; });
       };
 
       packages = nixpkgs.lib.genAttrs targetSystems (system:
