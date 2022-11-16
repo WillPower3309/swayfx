@@ -1,5 +1,6 @@
 # vim: syntax=spec
 
+### CHANGE THESE VARIABLES BEFORE RELEASE:
 # Change to current Sway base version!
 %global SwayBaseVersion 1.7
 # Change to current SwayFX tag!
