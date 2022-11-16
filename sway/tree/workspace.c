@@ -861,10 +861,10 @@ void workspace_add_gaps(struct sway_workspace *ws) {
 		ws->current_gaps.right = 0;
 		ws->current_gaps.bottom = 0;
 		ws->current_gaps.left = 0;
-        for (int i = 0; i < ws->tiling->length; ++i) {
-            struct sway_container *con = ws->tiling->items[i];
-            con->corner_radius = 0;
-        }
+		for (int i = 0; i < ws->tiling->length; ++i) {
+			struct sway_container *con = ws->tiling->items[i];
+			con->corner_radius = 0;
+		}
 		return;
 	}
 
@@ -874,20 +874,20 @@ void workspace_add_gaps(struct sway_workspace *ws) {
 		ws->current_gaps.right = 0;
 		ws->current_gaps.bottom = 0;
 		ws->current_gaps.left = 0;
-        for (int i = 0; i < ws->tiling->length; ++i) {
-            struct sway_container *con = ws->tiling->items[i];
-            con->corner_radius = 0;
-        }
+		for (int i = 0; i < ws->tiling->length; ++i) {
+			struct sway_container *con = ws->tiling->items[i];
+			con->corner_radius = 0;
+		}
 	} else {
 		ws->current_gaps = ws->gaps_outer;
-        for (int i = 0; i < ws->tiling->length; ++i) {
-            struct sway_container *con = ws->tiling->items[i];
-            con->corner_radius = config->corner_radius;
-        }
-        for (int i = 0; i < ws->floating->length; ++i) {
-            struct sway_container *con = ws->floating->items[i];
-            con->corner_radius = config->corner_radius;
-        }
+		for (int i = 0; i < ws->tiling->length; ++i) {
+			struct sway_container *con = ws->tiling->items[i];
+			con->corner_radius = config->corner_radius;
+		}
+		for (int i = 0; i < ws->floating->length; ++i) {
+			struct sway_container *con = ws->floating->items[i];
+			con->corner_radius = config->corner_radius;
+		}
 	}
 
 	// Add inner gaps and make sure we don't turn out negative
