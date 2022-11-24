@@ -36,6 +36,15 @@ struct render_data {
 	struct decoration_data deco_data;
 };
 
+struct decoration_data get_undecorated_decoration_data() {
+	return (struct decoration_data) {
+		.alpha = 1.0f,
+		.corner_radius = 0,
+		.saturation = 1.0f,
+		.has_titlebar = false,
+	};
+}
+
 /**
  * Apply scale to a width or height.
  *
@@ -175,15 +184,9 @@ static void render_surface_iterator(struct sway_output *output,
 
 static void render_layer_toplevel(struct sway_output *output,
 		pixman_region32_t *damage, struct wl_list *layer_surfaces) {
-	struct decoration_data deco_data = {
-		.alpha = 1.0f,
-		.saturation = 1.0f,
-		.corner_radius = 0,
-		.has_titlebar = false,
-	};
 	struct render_data data = {
 		.damage = damage,
-		.deco_data = deco_data,
+		.deco_data = get_undecorated_decoration_data(),
 	};
 	output_layer_for_each_toplevel_surface(output, layer_surfaces,
 		render_surface_iterator, &data);
@@ -191,15 +194,9 @@ static void render_layer_toplevel(struct sway_output *output,
 
 static void render_layer_popups(struct sway_output *output,
 		pixman_region32_t *damage, struct wl_list *layer_surfaces) {
-	struct decoration_data deco_data = {
-		.alpha = 1.0f,
-		.saturation = 1.0f,
-		.corner_radius = 0,
-		.has_titlebar = false,
-	};
 	struct render_data data = {
 		.damage = damage,
-		.deco_data = deco_data,
+		.deco_data = get_undecorated_decoration_data(),
 	};
 	output_layer_for_each_popup_surface(output, layer_surfaces,
 		render_surface_iterator, &data);
@@ -208,15 +205,9 @@ static void render_layer_popups(struct sway_output *output,
 #if HAVE_XWAYLAND
 static void render_unmanaged(struct sway_output *output,
 		pixman_region32_t *damage, struct wl_list *unmanaged) {
-	struct decoration_data deco_data = {
-		.alpha = 1.0f,
-		.saturation = 1.0f,
-		.corner_radius = 0,
-		.has_titlebar = false,
-	};
 	struct render_data data = {
 		.damage = damage,
-		.deco_data = deco_data,
+		.deco_data = get_undecorated_decoration_data(),
 	};
 	output_unmanaged_for_each_surface(output, unmanaged,
 		render_surface_iterator, &data);
@@ -225,15 +216,9 @@ static void render_unmanaged(struct sway_output *output,
 
 static void render_drag_icons(struct sway_output *output,
 		pixman_region32_t *damage, struct wl_list *drag_icons) {
-	struct decoration_data deco_data = {
-		.alpha = 1.0f,
-		.saturation = 1.0f,
-		.corner_radius = 0,
-		.has_titlebar = false,
-	};
 	struct render_data data = {
 		.damage = damage,
-		.deco_data = deco_data,
+		.deco_data = get_undecorated_decoration_data(),
 	};
 	output_drag_icons_for_each_surface(output, drag_icons,
 		render_surface_iterator, &data);
@@ -1317,12 +1302,8 @@ void output_render(struct sway_output *output, struct timespec *when,
 		}
 
 		if (fullscreen_con->view) {
-			struct decoration_data deco_data = {
-				.alpha = 1.0f,
-				.corner_radius = 0,
-				.saturation = fullscreen_con->saturation,
-				.has_titlebar = false,
-			};
+			struct decoration_data deco_data = get_undecorated_decoration_data();
+			deco_data.saturation = fullscreen_con->saturation;
 			if (!wl_list_empty(&fullscreen_con->view->saved_buffers)) {
 				render_saved_view(fullscreen_con->view, output, damage, deco_data);
 			} else if (fullscreen_con->view->surface) {
