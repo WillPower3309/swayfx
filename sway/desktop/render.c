@@ -640,12 +640,8 @@ static void render_titlebar(struct sway_output *output,
 			config->font_height, bg_y, output_scale);
 
 	// title marks textures should have no eyecandy
-	struct decoration_data deco_data = {
-		.alpha = con->alpha,
-		.corner_radius = 0,
-		.saturation = 1.0f,
-		.has_titlebar = false, // marks rendered in the titlebar don't have titlebars
-	};
+	struct decoration_data deco_data = get_undecorated_decoration_data();
+	deco_data.alpha = con->alpha;
 
 	// Marks
 	int ob_marks_x = 0; // output-buffer-local

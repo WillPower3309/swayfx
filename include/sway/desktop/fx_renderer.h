@@ -7,9 +7,6 @@
 
 enum corner_location { ALL, TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT };
 
-// TODO: once has_titlebar is no longer needed, we can use
-// this as a param in render_titlebar & render_top_border,
-// we could also use this in the sway_container struct
 struct decoration_data {
 	float alpha;
 	float saturation;
