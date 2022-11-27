@@ -328,6 +328,39 @@ damage_finish:
 	pixman_region32_fini(&damage);
 }
 
+// _box.x and .y are expected to be layout-local
+// _box.width and .height are expected to be output-buffer-local
+void render_box_shadow(struct sway_output *output, pixman_region32_t *output_damage,
+		const struct wlr_box *_box, const float color[static 4]) {
+	struct wlr_output *wlr_output = output->wlr_output;
+	struct fx_renderer *renderer = output->server->renderer;
+
+	struct wlr_box box;
+	memcpy(&box, _box, sizeof(struct wlr_box));
+	box.x -= output->lx * wlr_output->scale;
+	box.y -= output->ly * wlr_output->scale;
+
+	pixman_region32_t damage;
+	pixman_region32_init(&damage);
+	pixman_region32_union_rect(&damage, &damage, box.x, box.y,
+		box.width, box.height);
+	pixman_region32_intersect(&damage, &damage, output_damage);
+	bool damaged = pixman_region32_not_empty(&damage);
+	if (!damaged) {
+		goto damage_finish;
+	}
+
+	int nrects;
+	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
+	for (int i = 0; i < nrects; ++i) {
+		scissor_output(wlr_output, &rects[i]);
+		fx_render_box_shadow(renderer, &box, color, wlr_output->transform_matrix, 0, 0.3);
+	}
+
+damage_finish:
+	pixman_region32_fini(&damage);
+}
+
 void premultiply_alpha(float color[4], float opacity) {
 	color[3] *= opacity;
 	color[0] *= color[3];
@@ -965,6 +998,12 @@ static void render_containers_linear(struct sway_output *output,
 			} else if (state->border == B_PIXEL) {
 				render_top_border(output, damage, state, colors, deco_data.alpha, deco_data.corner_radius);
 			}
+
+			// render shadow
+			const float color[4] = {0,0,0,0.7};
+			struct wlr_box box = {state->x, state->y, state->width, state->height};
+			scale_box(&box, output->wlr_output->scale);
+			render_box_shadow(output, damage, &box, color);
 		} else {
 			render_container(output, damage, child,
 					parent->focused || child->current.focused);

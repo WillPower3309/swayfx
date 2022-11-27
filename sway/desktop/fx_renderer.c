@@ -24,6 +24,7 @@
 #include "quad_round_tl_frag_src.h"
 #include "quad_round_tr_frag_src.h"
 #include "corner_frag_src.h"
+#include "box_shadow_frag_src.h"
 #include "tex_rgba_frag_src.h"
 #include "tex_rgbx_frag_src.h"
 #include "tex_external_frag_src.h"
@@ -43,6 +44,7 @@ static GLuint compile_shader(GLuint type, const GLchar *src) {
 	GLint ok;
 	glGetShaderiv(shader, GL_COMPILE_STATUS, &ok);
 	if (ok == GL_FALSE) {
+		sway_log(SWAY_ERROR, "Failed to compile shader");
 		glDeleteShader(shader);
 		shader = 0;
 	}
@@ -75,6 +77,7 @@ static GLuint link_program(const GLchar *vert_src, const GLchar *frag_src) {
 	GLint ok;
 	glGetProgramiv(prog, GL_LINK_STATUS, &ok);
 	if (ok == GL_FALSE) {
+		sway_log(SWAY_ERROR, "Failed to link shader");
 		glDeleteProgram(prog);
 		goto error;
 	}
@@ -228,6 +231,20 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	renderer->shaders.corner.half_size = glGetUniformLocation(prog, "half_size");
 	renderer->shaders.corner.half_thickness = glGetUniformLocation(prog, "half_thickness");
 
+	// box shadow shader
+	prog = link_program(common_vert_src, box_shadow_frag_src);
+	renderer->shaders.box_shadow.program = prog;
+	if (!renderer->shaders.box_shadow.program) {
+		goto error;
+	}
+	renderer->shaders.box_shadow.proj = glGetUniformLocation(prog, "proj");
+	renderer->shaders.box_shadow.color = glGetUniformLocation(prog, "color");
+	renderer->shaders.box_shadow.pos_attrib = glGetUniformLocation(prog, "pos");
+	renderer->shaders.box_shadow.position = glGetUniformLocation(prog, "position");
+	renderer->shaders.box_shadow.size = glGetUniformLocation(prog, "size");
+	renderer->shaders.box_shadow.blur_sigma = glGetUniformLocation(prog, "blur_sigma");
+	renderer->shaders.box_shadow.alpha = glGetUniformLocation(prog, "alpha");
+
 	// fragment shaders
 	prog = link_program(common_vert_src, tex_rgba_frag_src);
 	if (!init_frag_shader(&renderer->shaders.tex_rgba, prog)) {
@@ -253,6 +270,7 @@ error:
 	glDeleteProgram(renderer->shaders.rounded_tl_quad.program);
 	glDeleteProgram(renderer->shaders.rounded_tr_quad.program);
 	glDeleteProgram(renderer->shaders.corner.program);
+	glDeleteProgram(renderer->shaders.box_shadow.program);
 	glDeleteProgram(renderer->shaders.tex_rgba.program);
 	glDeleteProgram(renderer->shaders.tex_rgbx.program);
 	glDeleteProgram(renderer->shaders.tex_ext.program);
@@ -542,4 +560,46 @@ void fx_render_border_corner(struct fx_renderer *renderer, const struct wlr_box 
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
 	glDisableVertexAttribArray(renderer->shaders.corner.pos_attrib);
+}
+
+// TODO: alpha input arg
+void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *box,
+		const float color[static 4], const float projection[static 9], int radius, float blur_sigma) {
+	if (box->width == 0 || box->height == 0) {
+		return;
+	}
+	assert(box->width > 0 && box->height > 0);
+	float matrix[9];
+	wlr_matrix_project_box(matrix, box, WL_OUTPUT_TRANSFORM_NORMAL, 0, projection);
+
+	float gl_matrix[9];
+	wlr_matrix_multiply(gl_matrix, renderer->projection, matrix);
+
+	// TODO: investigate why matrix is flipped prior to this cmd
+	// wlr_matrix_multiply(gl_matrix, flip_180, gl_matrix);
+
+	wlr_matrix_transpose(gl_matrix, gl_matrix);
+
+	// blending will practically always be needed (unless we have a madman
+	// who uses opaque shadows with zero sigma), so just enable it
+	glEnable(GL_BLEND);
+
+	glUseProgram(renderer->shaders.box_shadow.program);
+
+	glUniformMatrix3fv(renderer->shaders.box_shadow.proj, 1, GL_FALSE, gl_matrix);
+	glUniform3f(renderer->shaders.box_shadow.color, color[0], color[1], color[2]);
+	glUniform1f(renderer->shaders.box_shadow.alpha, color[3]);
+	glUniform1f(renderer->shaders.box_shadow.blur_sigma, blur_sigma);
+
+	glUniform2f(renderer->shaders.box_shadow.size, box->width, box->height);
+	glUniform2f(renderer->shaders.box_shadow.position, box->x, box->y);
+
+	glVertexAttribPointer(renderer->shaders.box_shadow.pos_attrib, 2, GL_FLOAT, GL_FALSE,
+			0, verts);
+
+	glEnableVertexAttribArray(renderer->shaders.box_shadow.pos_attrib);
+
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+	glDisableVertexAttribArray(renderer->shaders.box_shadow.pos_attrib);
 }
