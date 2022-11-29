@@ -3,6 +3,7 @@ varying vec2 v_texcoord;
 uniform sampler2D tex;
 uniform float alpha;
 uniform float dim;
+uniform vec4 dim_color;
 
 uniform vec2 size;
 uniform vec2 position;
@@ -19,9 +20,7 @@ void main() {
         gl_FragColor = vec4(mix(target, irgb, saturation), 1.0) * alpha;
     } else {
         gl_FragColor = mix(
-            vec4(texture2D(tex, v_texcoord).rgb, 1.0),
-            vec4(0.0, 0.0, 0.0, 1.0), dim)
-            * alpha;
+            vec4(texture2D(tex, v_texcoord).rgb, 1.0), dim_color, dim) * alpha;
     }
 
     if (!has_titlebar || gl_FragCoord.y - position.y > radius) {
