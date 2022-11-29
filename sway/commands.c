@@ -58,6 +58,7 @@ static const struct cmd_handler handlers[] = {
 	{ "corner_radius", cmd_corner_radius },
 	{ "default_border", cmd_default_border },
 	{ "default_floating_border", cmd_default_floating_border },
+	{ "dim_inactive", cmd_dim_inactive },
 	{ "exec", cmd_exec },
 	{ "exec_always", cmd_exec_always },
 	{ "floating_maximum_size", cmd_floating_maximum_size },

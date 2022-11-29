@@ -24,6 +24,9 @@ set $menu dmenu_path | dmenu | xargs swaymsg exec --
 # window corner radius in px
 corner_radius 10
 
+# inactive window fade amount. 1.0 = no fade, 0.0 = fully faded
+dim_inactive 1.0
+
 ### Output configuration
 #
 # Default wallpaper (more resolutions are available in @datadir@/backgrounds/sway/)

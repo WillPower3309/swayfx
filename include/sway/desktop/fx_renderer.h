@@ -11,6 +11,7 @@ struct decoration_data {
 	float alpha;
 	float saturation;
 	int corner_radius;
+	float dim;
 	bool has_titlebar;
 };
 
@@ -25,6 +26,7 @@ struct gles2_tex_shader {
 	GLint position;
 	GLint radius;
 	GLint saturation;
+	GLint dim;
 	GLint has_titlebar;
 };
 
