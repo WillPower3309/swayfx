@@ -13,15 +13,16 @@ uniform float saturation;
 const vec3 saturation_weight = vec3(0.2125, 0.7154, 0.0721);
 
 void main() {
+    vec4 color = texture2D(tex, v_texcoord);
     // Saturation
     if (saturation != 1.0) {
         vec4 pixColor = texture2D(tex, v_texcoord);
         vec3 irgb = pixColor.rgb;
         vec3 target = vec3(dot(irgb, saturation_weight));
-        gl_FragColor = vec4(mix(target, irgb, saturation), pixColor.a) * alpha;
-    } else {
-        gl_FragColor = mix(texture2D(tex, v_texcoord), dim_color, dim) * alpha;
+        color = vec4(mix(target, irgb, saturation), pixColor.a);
     }
+    // Dimming
+    gl_FragColor = mix(color, dim_color, dim) * alpha;
 
     if (!has_titlebar || gl_FragCoord.y - position.y > radius) {
         vec2 corner_distance = min(gl_FragCoord.xy - position, size + position - gl_FragCoord.xy);
