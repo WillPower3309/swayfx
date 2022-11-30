@@ -5,11 +5,6 @@
 #include "sway/tree/container.h"
 #include "util.h"
 
-static void rebuild_textures_iterator(struct sway_container *con, void *data) {
-	container_update_marks_textures(con);
-	container_update_title_textures(con);
-}
-
 static struct cmd_results *handle_command(int argc, char **argv, char *cmd_name,
 		float config_option[4]) {
 	struct cmd_results *error = NULL;
@@ -25,8 +20,6 @@ static struct cmd_results *handle_command(int argc, char **argv, char *cmd_name,
 	color_to_rgba(config_option, color);
 
 	if (config->active) {
-		root_for_each_container(rebuild_textures_iterator, NULL);
-
 		for (int i = 0; i < root->outputs->length; ++i) {
 			struct sway_output *output = root->outputs->items[i];
 			output_damage_whole(output);
