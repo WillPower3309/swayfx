@@ -998,8 +998,6 @@ static void render_containers_tabbed(struct sway_output *output,
 	struct border_colors *current_colors = &config->border_colors.unfocused;
 	int tab_width = parent->box.width / parent->children->length;
 
-	bool is_urgent = false;
-
 	// Render tabs
 	for (int i = 0; i < parent->children->length; ++i) {
 		struct sway_container *child = parent->children->items[i];
@@ -1015,8 +1013,6 @@ static void render_containers_tabbed(struct sway_output *output,
 			colors = &config->border_colors.urgent;
 			title_texture = child->title_urgent;
 			marks_texture = child->marks_urgent;
-
-			is_urgent = true;
 		} else if (cstate->focused || parent->focused) {
 			colors = &config->border_colors.focused;
 			title_texture = child->title_focused;
@@ -1052,16 +1048,12 @@ static void render_containers_tabbed(struct sway_output *output,
 
 	// Render surface and left/right/bottom borders
 	if (current->view) {
-		// Dim color
-		float* dim_color = config->dim_inactive_colors.unfocused;
-		if (is_urgent) {
-			dim_color = config->dim_inactive_colors.urgent;
-		}
-
 		struct decoration_data deco_data = {
 			.alpha = current->alpha,
 			.dim = current->current.focused ? 0.0f: 1.0f - config->dim_inactive,
-			.dim_color = dim_color,
+			.dim_color = view_is_urgent(current->view)
+							 ? config->dim_inactive_colors.urgent
+							 : config->dim_inactive_colors.unfocused,
 			.corner_radius = current->corner_radius,
 			.saturation = current->saturation,
 			.has_titlebar = true,
@@ -1085,8 +1077,6 @@ static void render_containers_stacked(struct sway_output *output,
 	struct border_colors *current_colors = &config->border_colors.unfocused;
 	size_t titlebar_height = container_titlebar_height();
 
-	bool is_urgent = false;
-
 	// Render titles
 	for (int i = 0; i < parent->children->length; ++i) {
 		struct sway_container *child = parent->children->items[i];
@@ -1102,8 +1092,6 @@ static void render_containers_stacked(struct sway_output *output,
 			colors = &config->border_colors.urgent;
 			title_texture = child->title_urgent;
 			marks_texture = child->marks_urgent;
-
-			is_urgent = true;
 		} else if (cstate->focused || parent->focused) {
 			colors = &config->border_colors.focused;
 			title_texture = child->title_focused;
@@ -1133,16 +1121,12 @@ static void render_containers_stacked(struct sway_output *output,
 
 	// Render surface and left/right/bottom borders
 	if (current->view) {
-		// Dim color
-		float* dim_color = config->dim_inactive_colors.unfocused;
-		if (is_urgent) {
-			dim_color = config->dim_inactive_colors.urgent;
-		}
-
 		struct decoration_data deco_data = {
 			.alpha = current->alpha,
 			.dim = current->current.focused ? 0.0f: 1.0f - config->dim_inactive,
-			.dim_color = dim_color,
+			.dim_color = view_is_urgent(current->view)
+							 ? config->dim_inactive_colors.urgent
+							 : config->dim_inactive_colors.unfocused,
 			.saturation = current->saturation,
 			.corner_radius = current->corner_radius,
 			.has_titlebar = true,
