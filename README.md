@@ -14,6 +14,10 @@ Sway is an incredible window manager, and certainly one of the most well establi
 
 + Corner radius: `corner_radius <val>`
 + Application saturation: `for_window [CRITERIA HERE] saturation <set|plus|minus> <val 0.0 <-> 2.0>`
++ Dim unfocused windows: 
+    - `dim_inactive <float value 0.0 - 1.0>`
+    - `dim_inactive_colors.unfocused <hex color> ex, #000000FF`
+    - `dim_inactive_colors.urgent <hex color> ex, #900000FF`
 
 ## Roadmap
 
