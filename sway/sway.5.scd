@@ -589,8 +589,8 @@ The default colors are:
 	Set corner radius for new windows.
 
 *dim_inactive* <value>
-	Adjusts the dimming of inactive windows between 0.0 (fully dimmed) and 1.0 (no dimming) while 1 is
-	the default value.
+	Adjusts the dimming of inactive windows between 0.0 (no dimming) and 1.0
+	(fully dimmed) while 0.0 is the default value.
 
 *dim_inactive_colors.unfocused* <hex color>
 	The color to dim inactive windows with. Example color: #000000FF
