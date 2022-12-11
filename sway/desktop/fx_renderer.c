@@ -239,7 +239,7 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	}
 	renderer->shaders.box_shadow.proj = glGetUniformLocation(prog, "proj");
 	renderer->shaders.box_shadow.color = glGetUniformLocation(prog, "color");
-	renderer->shaders.box_shadow.pos_attrib = glGetUniformLocation(prog, "pos");
+	renderer->shaders.box_shadow.pos_attrib = glGetAttribLocation(prog, "pos");
 	renderer->shaders.box_shadow.position = glGetUniformLocation(prog, "position");
 	renderer->shaders.box_shadow.size = glGetUniformLocation(prog, "size");
 	renderer->shaders.box_shadow.blur_sigma = glGetUniformLocation(prog, "blur_sigma");
@@ -562,7 +562,7 @@ void fx_render_border_corner(struct fx_renderer *renderer, const struct wlr_box 
 	glDisableVertexAttribArray(renderer->shaders.corner.pos_attrib);
 }
 
-// TODO: alpha input arg
+// TODO: alpha input arg?
 void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *box,
 		const float color[static 4], const float projection[static 9], int radius, float blur_sigma) {
 	if (box->width == 0 || box->height == 0) {
