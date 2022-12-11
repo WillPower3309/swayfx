@@ -19,7 +19,7 @@ vec4 erf(vec4 x) {
 
 // return the mask for the shadow of a box from lower to upper
 float box_shadow(vec2 lower, vec2 upper, vec2 point, float sigma) {
-    vec4 query = vec4(point - lower, upper - point);
+    vec4 query = vec4(point - lower, point - upper);
     vec4 integral = 0.5 + 0.5 * erf(query * (sqrt(0.5) / sigma));
     return (integral.z - integral.x) * (integral.w - integral.y);
 }
