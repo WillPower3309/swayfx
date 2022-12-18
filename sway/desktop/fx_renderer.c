@@ -585,6 +585,8 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 	// who uses opaque shadows with zero sigma), so just enable it
 	glEnable(GL_BLEND);
 
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 	glUseProgram(renderer->shaders.box_shadow.program);
 
 	glUniformMatrix3fv(renderer->shaders.box_shadow.proj, 1, GL_FALSE, gl_matrix);
