@@ -92,7 +92,7 @@ struct fx_renderer {
 			GLint position;
 			GLint size;
 			GLint blur_sigma;
-			GLint alpha;
+			GLint corner_radius;
 		} box_shadow;
 
 		struct gles2_tex_shader tex_rgba;

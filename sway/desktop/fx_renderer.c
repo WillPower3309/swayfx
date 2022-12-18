@@ -243,7 +243,7 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	renderer->shaders.box_shadow.position = glGetUniformLocation(prog, "position");
 	renderer->shaders.box_shadow.size = glGetUniformLocation(prog, "size");
 	renderer->shaders.box_shadow.blur_sigma = glGetUniformLocation(prog, "blur_sigma");
-	renderer->shaders.box_shadow.alpha = glGetUniformLocation(prog, "alpha");
+	renderer->shaders.box_shadow.corner_radius = glGetUniformLocation(prog, "corner_radius");
 
 	// fragment shaders
 	prog = link_program(common_vert_src, tex_rgba_frag_src);
@@ -564,7 +564,8 @@ void fx_render_border_corner(struct fx_renderer *renderer, const struct wlr_box 
 
 // TODO: alpha input arg?
 void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *box,
-		const float color[static 4], const float projection[static 9], int radius, float blur_sigma) {
+		const float color[static 4], const float projection[static 9],
+		int corner_radius, float blur_sigma) {
 	if (box->width == 0 || box->height == 0) {
 		return;
 	}
@@ -590,6 +591,7 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 	glUniform3f(renderer->shaders.box_shadow.color, color[0], color[1], color[2]);
 	glUniform1f(renderer->shaders.box_shadow.alpha, color[3]);
 	glUniform1f(renderer->shaders.box_shadow.blur_sigma, blur_sigma);
+	glUniform1f(renderer->shaders.box_shadow.corner_radius, corner_radius);
 
 	glUniform2f(renderer->shaders.box_shadow.size, box->width, box->height);
 	glUniform2f(renderer->shaders.box_shadow.position, box->x, box->y);
