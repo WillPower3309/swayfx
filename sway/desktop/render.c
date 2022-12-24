@@ -341,10 +341,26 @@ void render_box_shadow(struct sway_output *output, pixman_region32_t *output_dam
 	box.x -= output->lx * wlr_output->scale;
 	box.y -= output->ly * wlr_output->scale;
 
+	box.x -= blur_sigma;
+	box.y -= blur_sigma;
+	box.width += 2 * blur_sigma;
+	box.height += 2 * blur_sigma;
+
 	pixman_region32_t damage;
 	pixman_region32_init(&damage);
 	pixman_region32_union_rect(&damage, &damage, box.x, box.y,
 		box.width, box.height);
+
+	pixman_region32_t inner_damage;
+	pixman_region32_init(&inner_damage);
+	pixman_region32_union_rect(&inner_damage, &inner_damage,
+		box.x + blur_sigma + corner_radius,
+		box.y + blur_sigma + corner_radius,
+		box.width - (blur_sigma + corner_radius) * 2.0,
+		box.height - (blur_sigma + corner_radius) * 2.0);
+
+	pixman_region32_subtract(&damage, &damage, &inner_damage);
+	pixman_region32_fini(&inner_damage);
 	pixman_region32_intersect(&damage, &damage, output_damage);
 	bool damaged = pixman_region32_not_empty(&damage);
 	if (!damaged) {
@@ -1003,14 +1019,8 @@ static void render_containers_linear(struct sway_output *output,
 
 			// render shadow
 			const float color[4] = {0.0, 0.0, 0.0, 0.5};
-			// Mimic how a CSS box-shadow works by using blur_sigma as the shadow width
 			float blur_sigma = 20;
-			struct wlr_box box = {
-				state->x - blur_sigma,
-				state->y - blur_sigma,
-				state->width + blur_sigma * 2,
-				state->height + blur_sigma * 2
-			};
+			struct wlr_box box = { state->x, state->y, state->width, state->height };
 			scale_box(&box, output->wlr_output->scale);
 			render_box_shadow(output, damage, &box, color, blur_sigma, deco_data.corner_radius);
 		} else {
