@@ -32,7 +32,6 @@
 
 struct render_data {
 	pixman_region32_t *damage;
-	float alpha;
 	struct wlr_box *clip_box;
 	struct decoration_data deco_data;
 };
@@ -1316,7 +1315,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 		if (server.session_lock.lock != NULL) {
 			struct render_data data = {
 				.damage = damage,
-				.alpha = 1.0f,
+				.deco_data.alpha = 1.0f,
 			};
 
 			struct wlr_session_lock_surface_v1 *lock_surface;
