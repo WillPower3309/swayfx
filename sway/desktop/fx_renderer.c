@@ -270,7 +270,7 @@ void fx_renderer_begin(struct fx_renderer *renderer, uint32_t width, uint32_t he
 	glViewport(0, 0, width, height);
 
 	// refresh projection matrix
-	wlr_matrix_projection(renderer->projection, width, height,
+	matrix_projection(renderer->projection, width, height,
 		WL_OUTPUT_TRANSFORM_FLIPPED_180);
 
 	glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);

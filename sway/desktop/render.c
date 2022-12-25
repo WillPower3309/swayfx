@@ -32,6 +32,7 @@
 
 struct render_data {
 	pixman_region32_t *damage;
+	float alpha;
 	struct wlr_box *clip_box;
 	struct decoration_data deco_data;
 };
