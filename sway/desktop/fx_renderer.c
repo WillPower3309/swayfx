@@ -286,14 +286,12 @@ error:
 
 void fx_renderer_begin(struct fx_renderer *renderer, uint32_t width, uint32_t height) {
 	// Create and render the stencil buffer
-	if (renderer->stencil_buffer_id == 0) {
-		glGenRenderbuffers(1, &renderer->stencil_buffer_id);
-		glBindRenderbuffer(GL_RENDERBUFFER, renderer->stencil_buffer_id);
-		glRenderbufferStorage(GL_RENDERBUFFER, GL_STENCIL_INDEX8, width, height);
-		// TODO: Needed?
-		int status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-		assert(status == GL_FRAMEBUFFER_COMPLETE);
-	}
+	glGenRenderbuffers(1, &renderer->stencil_buffer_id);
+	glBindRenderbuffer(GL_RENDERBUFFER, renderer->stencil_buffer_id);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_STENCIL_INDEX8, width, height);
+	// TODO: Needed?
+	int status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	assert(status == GL_FRAMEBUFFER_COMPLETE);
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, renderer->stencil_buffer_id);
 
 	glViewport(0, 0, width, height);
