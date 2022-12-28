@@ -47,6 +47,8 @@ struct fx_renderer {
 
 	float projection[9];
 
+	GLuint stencil_buffer_id;
+
 	struct {
 		bool OES_egl_image_external;
 	} exts;

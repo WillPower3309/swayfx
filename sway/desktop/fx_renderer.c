@@ -285,6 +285,17 @@ error:
 }
 
 void fx_renderer_begin(struct fx_renderer *renderer, uint32_t width, uint32_t height) {
+	// Create and render the stencil buffer
+	if (renderer->stencil_buffer_id == 0) {
+		glGenRenderbuffers(1, &renderer->stencil_buffer_id);
+		glBindRenderbuffer(GL_RENDERBUFFER, renderer->stencil_buffer_id);
+		glRenderbufferStorage(GL_RENDERBUFFER, GL_STENCIL_INDEX8, width, height);
+		// TODO: Needed?
+		int status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+		assert(status == GL_FRAMEBUFFER_COMPLETE);
+	}
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, renderer->stencil_buffer_id);
+
 	glViewport(0, 0, width, height);
 
 	// refresh projection matrix
@@ -299,8 +310,9 @@ void fx_renderer_end() {
 }
 
 void fx_renderer_clear(const float color[static 4]) {
-		glClearColor(color[0], color[1], color[2], color[3]);
-		glClear(GL_COLOR_BUFFER_BIT);
+	glClearColor(color[0], color[1], color[2], color[3]);
+	glClearStencil(0);
+	glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 }
 
 void fx_renderer_scissor(struct wlr_box *box) {
@@ -606,4 +618,6 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
 	glDisableVertexAttribArray(renderer->shaders.box_shadow.pos_attrib);
+
+	glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 }
