@@ -338,16 +338,8 @@ void render_box_shadow(struct sway_output *output, pixman_region32_t *output_dam
 
 	struct wlr_box box;
 	memcpy(&box, _box, sizeof(struct wlr_box));
-	box.x -= output->lx * wlr_output->scale;
-	box.y -= output->ly * wlr_output->scale;
-
-	struct wlr_box inner_box;
-	memcpy(&inner_box, &box, sizeof(struct wlr_box));
-	// NOTE: Alpha needs to be set to 1.0 to be able to discard any "empty" pixels
-	const float col[4] = {0.0, 0.0, 0.0, 1.0};
-
-	box.x -= blur_sigma;
-	box.y -= blur_sigma;
+	box.x -= output->lx * wlr_output->scale + blur_sigma;
+	box.y -= output->ly * wlr_output->scale + blur_sigma;
 	box.width += 2 * blur_sigma;
 	box.height += 2 * blur_sigma;
 
@@ -364,36 +356,14 @@ void render_box_shadow(struct sway_output *output, pixman_region32_t *output_dam
 		goto damage_finish;
 	}
 
-	// Init stencil work
-	glEnable(GL_STENCIL_TEST);
-	glClearStencil(0);
-	glClear(GL_STENCIL_BUFFER_BIT);
-
 	int nrects;
 	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
 	for (int i = 0; i < nrects; ++i) {
 		scissor_output(wlr_output, &rects[i]);
 
-		// Use a rounded rect as a mask for the box shadow
-		glStencilFunc(GL_ALWAYS, 1, 0xFF);
-		glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
-		glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-
-		fx_render_rounded_rect(renderer, &inner_box, col,
-				wlr_output->transform_matrix, corner_radius, ALL);
-
-		glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
-		glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
-		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-
 		fx_render_box_shadow(renderer, &box, color,
 				wlr_output->transform_matrix, corner_radius, blur_sigma);
 	}
-
-	// cleanup
-	glClearStencil(0);
-	glClear(GL_STENCIL_BUFFER_BIT);
-	glDisable(GL_STENCIL_TEST);
 
 damage_finish:
 	pixman_region32_fini(&damage);
