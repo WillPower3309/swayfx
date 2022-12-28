@@ -332,7 +332,7 @@ damage_finish:
 // _box.width and .height are expected to be output-buffer-local
 void render_box_shadow(struct sway_output *output, pixman_region32_t *output_damage,
 		const struct wlr_box *_box, const float color[static 4],
-		float blur_sigma, float corner_radius) {
+		float blur_sigma, float corner_radius, float border_thickness) {
 	struct wlr_output *wlr_output = output->wlr_output;
 	struct fx_renderer *renderer = output->server->renderer;
 
@@ -350,6 +350,9 @@ void render_box_shadow(struct sway_output *output, pixman_region32_t *output_dam
 	box.y -= blur_sigma;
 	box.width += 2 * blur_sigma;
 	box.height += 2 * blur_sigma;
+
+	// Uses the outer radii of the window for a more realistic look
+	corner_radius = corner_radius + border_thickness;
 
 	pixman_region32_t damage;
 	pixman_region32_init(&damage);
@@ -1039,7 +1042,8 @@ static void render_containers_linear(struct sway_output *output,
 			float blur_sigma = 20;
 			struct wlr_box box = { state->x, state->y, state->width, state->height };
 			scale_box(&box, output->wlr_output->scale);
-			render_box_shadow(output, damage, &box, color, blur_sigma, deco_data.corner_radius);
+			render_box_shadow(output, damage, &box, color, blur_sigma,
+					deco_data.corner_radius, child->current.border_thickness);
 		} else {
 			render_container(output, damage, child,
 					parent->focused || child->current.focused);
