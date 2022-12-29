@@ -1286,6 +1286,17 @@ static void render_floating_container(struct sway_output *soutput,
 		} else if (state->border == B_PIXEL) {
 			render_top_border(soutput, damage, state, colors, deco_data.alpha, deco_data.corner_radius);
 		}
+
+		// render shadow
+		if (con->shadow_enabled
+			&& config->shadow_blur_sigma > 0
+			&& config->shadow_color[3] > 0.0) {
+			struct wlr_box box = { state->x, state->y, state->width, state->height };
+			scale_box(&box, soutput->wlr_output->scale);
+			render_box_shadow(soutput, damage, &box, config->shadow_color,
+					config->shadow_blur_sigma, deco_data.corner_radius,
+					state->border_thickness);
+		}
 	} else {
 		render_container(soutput, damage, con, state->focused);
 	}
