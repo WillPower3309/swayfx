@@ -591,7 +591,7 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		&& config->shadow_blur_sigma > 0
 		&& config->shadow_color[3] > 0.0) {
 		struct wlr_box box = { state->x, state->y, state->width, state->height };
-		scale_box(&box, output->wlr_output->scale);
+		scale_box(&box, output_scale);
 		render_box_shadow(output, damage, &box, config->shadow_color,
 				config->shadow_blur_sigma, deco_data.corner_radius,
 				con->current.border_thickness);
