@@ -625,8 +625,7 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 	glUseProgram(renderer->shaders.box_shadow.program);
 
 	glUniformMatrix3fv(renderer->shaders.box_shadow.proj, 1, GL_FALSE, gl_matrix);
-	glUniform3f(renderer->shaders.box_shadow.color, color[0], color[1], color[2]);
-	glUniform1f(renderer->shaders.box_shadow.alpha, color[3]);
+	glUniform4f(renderer->shaders.box_shadow.color, color[0], color[1], color[2], color[3]);
 	glUniform1f(renderer->shaders.box_shadow.blur_sigma, blur_sigma);
 	glUniform1f(renderer->shaders.box_shadow.corner_radius, corner_radius);
 

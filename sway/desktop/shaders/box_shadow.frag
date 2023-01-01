@@ -1,9 +1,9 @@
 // Writeup: https://madebyevan.com/shaders/fast-rounded-rectangle-shadows/
 
 precision mediump float;
+varying vec4 v_color;
 varying vec2 v_texcoord;
 
-uniform vec3 color;
 uniform vec2 position;
 uniform vec2 size;
 uniform float blur_sigma;
@@ -70,6 +70,5 @@ void main() {
     // dither the alpha to break up color bands
     frag_alpha += (random() - 0.5) / 128.0;
 
-    gl_FragColor = vec4(color, frag_alpha);
+    gl_FragColor = vec4(v_color.rgb, frag_alpha);
 }
-
