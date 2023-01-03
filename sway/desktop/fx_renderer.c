@@ -156,7 +156,8 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 
 	// TODO: wlr_egl_make_current or eglMakeCurrent?
 	// TODO: assert instead of conditional statement?
-	if (!wlr_egl_make_current(egl)) {
+	if (!eglMakeCurrent(wlr_egl_get_display(egl), EGL_NO_SURFACE, EGL_NO_SURFACE,
+			wlr_egl_get_context(egl))) {
 		sway_log(SWAY_ERROR, "GLES2 RENDERER: Could not make EGL current");
 		return NULL;
 	}
@@ -242,7 +243,11 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 		goto error;
 	}
 
-	wlr_egl_unset_current(renderer->egl);
+	if (!eglMakeCurrent(wlr_egl_get_display(renderer->egl),
+				EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT)) {
+		sway_log(SWAY_ERROR, "GLES2 RENDERER: Could not unset current EGL");
+		goto error;
+	}
 
 	sway_log(SWAY_INFO, "GLES2 RENDERER: Shaders Initialized Successfully");
 	return renderer;
@@ -257,7 +262,10 @@ error:
 	glDeleteProgram(renderer->shaders.tex_rgbx.program);
 	glDeleteProgram(renderer->shaders.tex_ext.program);
 
-	wlr_egl_unset_current(renderer->egl);
+	if (!eglMakeCurrent(wlr_egl_get_display(renderer->egl),
+				EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT)) {
+		sway_log(SWAY_ERROR, "GLES2 RENDERER: Could not unset current EGL");
+	}
 
 	// TODO: more freeing?
 	free(renderer);
