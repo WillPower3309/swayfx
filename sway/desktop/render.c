@@ -1315,7 +1315,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 		if (server.session_lock.lock != NULL) {
 			struct render_data data = {
 				.damage = damage,
-				.deco_data.alpha = 1.0f,
+				.deco_data = get_undecorated_decoration_data(),
 			};
 
 			struct wlr_session_lock_surface_v1 *lock_surface;
