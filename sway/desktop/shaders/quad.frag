@@ -4,4 +4,8 @@ varying vec2 v_texcoord;
 
 void main() {
     gl_FragColor = v_color;
+
+    if (gl_FragColor.a <= 0.01){
+        discard;
+    }
 }

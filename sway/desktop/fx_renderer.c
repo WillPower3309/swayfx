@@ -322,6 +322,34 @@ void fx_renderer_scissor(struct wlr_box *box) {
 		}
 }
 
+void fx_renderer_start_stenciling(bool color_mask_write) {
+	glEnable(GL_STENCIL_TEST);
+	glClearStencil(0);
+	glClear(GL_STENCIL_BUFFER_BIT);
+
+	glStencilFunc(GL_ALWAYS, 1, 0xFF);
+	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+	// Disable writing to color buffer
+	if (!color_mask_write) {
+		glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+	}
+}
+
+void fx_renderer_close_stenciling(bool color_mask_write) {
+	glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+	glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+	// Reenable writing to color buffer
+	if (!color_mask_write) {
+		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+	}
+}
+
+void fx_renderer_end_stenciling() {
+	glClearStencil(0);
+	glClear(GL_STENCIL_BUFFER_BIT);
+	glDisable(GL_STENCIL_TEST);
+}
+
 bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct wlr_texture *wlr_texture,
 		const struct wlr_fbox *src_box, const struct wlr_box *dst_box, const float matrix[static 9],
 		struct decoration_data deco_data) {
@@ -591,31 +619,6 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 
 	wlr_matrix_transpose(gl_matrix, gl_matrix);
 
-	// Init stencil work
-	// NOTE: Alpha needs to be set to 1.0 to be able to discard any "empty" pixels
-	const float col[4] = {0.0, 0.0, 0.0, 1.0};
-	struct wlr_box inner_box;
-	memcpy(&inner_box, box, sizeof(struct wlr_box));
-	inner_box.x += blur_sigma;
-	inner_box.y += blur_sigma;
-	inner_box.width  -= blur_sigma * 2;
-	inner_box.height -= blur_sigma * 2;
-
-	glEnable(GL_STENCIL_TEST);
-	glClearStencil(0);
-	glClear(GL_STENCIL_BUFFER_BIT);
-
-	// Use a rounded rect as a mask for the box shadow
-	glStencilFunc(GL_ALWAYS, 1, 0xFF);
-	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
-	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-
-	fx_render_rounded_rect(renderer, &inner_box, col, projection, corner_radius, ALL);
-
-	glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
-	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
-	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-
 	// blending will practically always be needed (unless we have a madman
 	// who uses opaque shadows with zero sigma), so just enable it
 	glEnable(GL_BLEND);
@@ -642,9 +645,4 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 	glDisableVertexAttribArray(renderer->shaders.box_shadow.pos_attrib);
 
 	glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-
-	// cleanup
-	glClearStencil(0);
-	glClear(GL_STENCIL_BUFFER_BIT);
-	glDisable(GL_STENCIL_TEST);
 }

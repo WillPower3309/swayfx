@@ -11,4 +11,8 @@ void main() {
     float distance = min(max(q.x,q.y),0.0) + length(max(q,0.0)) - radius;
     float smoothedAlpha = 1.0 - smoothstep(-1.0, 0.5, distance);
     gl_FragColor = mix(vec4(0), v_color, smoothedAlpha);
+
+    if (gl_FragColor.a <= 0.01){
+        discard;
+    }
 }

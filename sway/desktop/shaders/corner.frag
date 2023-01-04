@@ -24,6 +24,11 @@ void main() {
     float smoothedAlphaInner = 1.0 - smoothstep(-1.0, 0.5, distance + half_thickness);
     gl_FragColor = mix(vec4(0), v_color, smoothedAlphaOuter - smoothedAlphaInner);
 
+    if ((v_color.a == 1.0 && gl_FragColor.a <= 0.5) || gl_FragColor.a <= 0.01) {
+        discard;
+        return;
+    }
+
     if (is_top_left && (center.y > 0.0 || center.x > 0.0)) {
         discard;
     } else if (is_top_right && (center.y > 0.0 || center.x < 0.0)) {
