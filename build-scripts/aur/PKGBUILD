@@ -23,7 +23,7 @@ depends=(
 	"libxcb"
 	"libxkbcommon.so"
 	"pango"
-	"pcre2"
+	"pcre"
 	"ttf-font"
 	"wlroots0.15"
 )
