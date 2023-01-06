@@ -27,13 +27,18 @@ void main() {
     if (!has_titlebar || gl_FragCoord.y - position.y > radius) {
         vec2 corner_distance = min(gl_FragCoord.xy - position, size + position - gl_FragCoord.xy);
         if (max(corner_distance.x, corner_distance.y) < radius) {
-            float d = radius - distance(corner_distance, vec2(radius));
-            float smooth = smoothstep(-1.0f, 0.5f, d);
+            float dist = radius - distance(corner_distance, vec2(radius));
+            float smooth = smoothstep(-1.0f, 0.5f, dist);
             gl_FragColor = mix(vec4(0), gl_FragColor, smooth);
+            // Discards pixels outside the curve
+            if (dist < 0.0) {
+                discard;
+                return;
+            }
         }
     }
 
-    if (gl_FragColor.a <= 0.01){
+    if (gl_FragColor.a == 0.0) {
         discard;
     }
 }
