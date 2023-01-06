@@ -1017,7 +1017,8 @@ static void render_containers_linear(struct sway_output *output,
 			// render shadow
 			if (child->shadow_enabled
 				&& config->shadow_blur_sigma > 0
-				&& config->shadow_color[3] > 0.0) {
+				&& config->shadow_color[3] > 0.0
+				&& child->current.border != B_CSD) {
 				struct wlr_box box = { state->x, state->y, state->width, state->height };
 				scale_box(&box, output->wlr_output->scale);
 				render_box_shadow(output, damage, &box, config->shadow_color,
@@ -1126,7 +1127,8 @@ static void render_containers_tabbed(struct sway_output *output,
 	// render shadow
 	if (current->shadow_enabled
 		&& config->shadow_blur_sigma > 0
-		&& config->shadow_color[3] > 0.0) {
+		&& config->shadow_color[3] > 0.0
+		&& current->current.border != B_CSD) {
 		struct sway_container_state *state = &current->current;
 		struct wlr_box box = { state->x, state->y, state->width, state->height };
 		scale_box(&box, output->wlr_output->scale);
@@ -1218,7 +1220,8 @@ static void render_containers_stacked(struct sway_output *output,
 	// render shadow
 	if (current->shadow_enabled
 		&& config->shadow_blur_sigma > 0
-		&& config->shadow_color[3] > 0.0) {
+		&& config->shadow_color[3] > 0.0
+		&& current->current.border != B_CSD) {
 		struct sway_container_state *state = &current->current;
 		struct wlr_box box = { state->x, state->y, state->width, state->height };
 		scale_box(&box, output->wlr_output->scale);
@@ -1338,7 +1341,8 @@ static void render_floating_container(struct sway_output *soutput,
 		// render shadow
 		if (con->shadow_enabled
 			&& config->shadow_blur_sigma > 0
-			&& config->shadow_color[3] > 0.0) {
+			&& config->shadow_color[3] > 0.0
+			&& con->current.border != B_CSD) {
 			struct wlr_box box = { state->x, state->y, state->width, state->height };
 			scale_box(&box, soutput->wlr_output->scale);
 			render_box_shadow(soutput, damage, &box, config->shadow_color,
