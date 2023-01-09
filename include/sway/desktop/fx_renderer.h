@@ -113,12 +113,6 @@ void fx_renderer_clear(const float color[static 4]);
 
 void fx_renderer_scissor(struct wlr_box *box);
 
-void fx_renderer_start_stenciling(bool color_mask_write);
-
-void fx_renderer_close_stenciling(bool color_mask_write);
-
-void fx_renderer_end_stenciling();
-
 bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct wlr_texture *wlr_texture,
 		const struct wlr_fbox *src_box, const struct wlr_box *dst_box, const float matrix[static 9],
 		struct decoration_data deco_data);

@@ -1001,8 +1001,6 @@ static void render_containers_linear(struct sway_output *output,
 				.has_titlebar = has_titlebar,
 			};
 
-			fx_renderer_start_stenciling(true);
-
 			render_view(output, damage, child, colors, deco_data);
 			if (has_titlebar) {
 				render_titlebar(output, damage, child, floor(state->x), floor(state->y),
@@ -1012,21 +1010,16 @@ static void render_containers_linear(struct sway_output *output,
 				render_top_border(output, damage, state, colors, deco_data.alpha, deco_data.corner_radius);
 			}
 			
-			fx_renderer_close_stenciling(true);
-			
 			// render shadow
 			if (child->shadow_enabled
 				&& config->shadow_blur_sigma > 0
-				&& config->shadow_color[3] > 0.0
-				&& child->current.border != B_CSD) {
+				&& config->shadow_color[3] > 0.0) {
 				struct wlr_box box = { state->x, state->y, state->width, state->height };
 				scale_box(&box, output->wlr_output->scale);
 				render_box_shadow(output, damage, &box, config->shadow_color,
 						config->shadow_blur_sigma, deco_data.corner_radius,
 						state->border_thickness);
 			}
-			
-			fx_renderer_end_stenciling();
 		} else {
 			render_container(output, damage, child,
 					parent->focused || child->current.focused);
@@ -1053,8 +1046,6 @@ static void render_containers_tabbed(struct sway_output *output,
 	struct sway_container *current = parent->active_child;
 	struct border_colors *current_colors = &config->border_colors.unfocused;
 	int tab_width = parent->box.width / parent->children->length;
-
-	fx_renderer_start_stenciling(true);
 
 	// Render tabs
 	for (int i = 0; i < parent->children->length; ++i) {
@@ -1122,13 +1113,10 @@ static void render_containers_tabbed(struct sway_output *output,
 				parent->focused || current->current.focused);
 	}
 
-	fx_renderer_close_stenciling(true);
-
 	// render shadow
 	if (current->shadow_enabled
 		&& config->shadow_blur_sigma > 0
-		&& config->shadow_color[3] > 0.0
-		&& current->current.border != B_CSD) {
+		&& config->shadow_color[3] > 0.0) {
 		struct sway_container_state *state = &current->current;
 		struct wlr_box box = { state->x, state->y, state->width, state->height };
 		scale_box(&box, output->wlr_output->scale);
@@ -1136,8 +1124,6 @@ static void render_containers_tabbed(struct sway_output *output,
 				config->shadow_blur_sigma, current->corner_radius,
 				state->border_thickness);
 	}
-
-	fx_renderer_end_stenciling();
 }
 
 /**
@@ -1151,8 +1137,6 @@ static void render_containers_stacked(struct sway_output *output,
 	struct sway_container *current = parent->active_child;
 	struct border_colors *current_colors = &config->border_colors.unfocused;
 	size_t titlebar_height = container_titlebar_height();
-
-	fx_renderer_start_stenciling(true);
 
 	// Render titles
 	for (int i = 0; i < parent->children->length; ++i) {
@@ -1215,13 +1199,10 @@ static void render_containers_stacked(struct sway_output *output,
 				parent->focused || current->current.focused);
 	}
 
-	fx_renderer_close_stenciling(true);
-
 	// render shadow
 	if (current->shadow_enabled
 		&& config->shadow_blur_sigma > 0
-		&& config->shadow_color[3] > 0.0
-		&& current->current.border != B_CSD) {
+		&& config->shadow_color[3] > 0.0) {
 		struct sway_container_state *state = &current->current;
 		struct wlr_box box = { state->x, state->y, state->width, state->height };
 		scale_box(&box, output->wlr_output->scale);
@@ -1229,8 +1210,6 @@ static void render_containers_stacked(struct sway_output *output,
 				config->shadow_blur_sigma, current->corner_radius,
 				state->border_thickness);
 	}
-
-	fx_renderer_end_stenciling();
 }
 
 static void render_containers(struct sway_output *output,
@@ -1326,7 +1305,6 @@ static void render_floating_container(struct sway_output *soutput,
 			.corner_radius = con->corner_radius,
 			.has_titlebar = has_titlebar,
 		};
-		fx_renderer_start_stenciling(true);
 		render_view(soutput, damage, con, colors, deco_data);
 		if (has_titlebar) {
 			render_titlebar(soutput, damage, con, floor(state->x), floor(state->y),
@@ -1335,8 +1313,6 @@ static void render_floating_container(struct sway_output *soutput,
 		} else if (state->border == B_PIXEL) {
 			render_top_border(soutput, damage, state, colors, deco_data.alpha, deco_data.corner_radius);
 		}
-
-		fx_renderer_close_stenciling(true);
 
 		// render shadow
 		if (con->shadow_enabled
@@ -1349,8 +1325,6 @@ static void render_floating_container(struct sway_output *soutput,
 					config->shadow_blur_sigma, deco_data.corner_radius,
 					con->current.border_thickness);
 		}
-
-		fx_renderer_end_stenciling();
 	} else {
 		render_container(soutput, damage, con, state->focused);
 	}

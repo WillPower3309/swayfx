@@ -32,11 +32,6 @@ void main() {
             float dist = radius - distance(corner_distance, vec2(radius));
             float smooth = smoothstep(-1.0f, 0.5f, dist);
             gl_FragColor = mix(vec4(0), gl_FragColor, smooth);
-            // Discards pixels outside the curve
-            if (dist < 0.0) {
-                discard;
-                return;
-            }
         }
     }
 

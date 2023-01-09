@@ -12,8 +12,7 @@ void main() {
     float smoothedAlpha = 1.0 - smoothstep(-1.0, 0.5, dist);
     gl_FragColor = mix(vec4(0), v_color, smoothedAlpha);
 
-    // Discards outside the curve and transparent pixels
-    if (dist > 0.0 || gl_FragColor.a == 0.0) {
+    if (gl_FragColor.a == 0.0) {
         discard;
     }
 }
