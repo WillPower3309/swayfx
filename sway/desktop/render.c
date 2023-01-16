@@ -174,6 +174,21 @@ static void render_surface_iterator(struct sway_output *output,
 		dst_box.width = fmin(dst_box.width, clip_box->width);
 		dst_box.height = fmin(dst_box.height, clip_box->height);
 	}
+
+	// Only uses the view's width if it's the surfaces view (windows, not popups)
+	if (view && view->surface == surface) {
+		struct sway_container_state state = view->container->current;
+		dst_box.x = state.x - output->lx;
+		dst_box.y = state.y - output->ly;
+		dst_box.width = state.width;
+		dst_box.height = state.height;
+		if (!view->using_csd) {
+			dst_box.x += state.border_thickness;
+			dst_box.y += state.border_thickness;
+			dst_box.width -= state.border_thickness * 2;
+			dst_box.height -= state.border_thickness * 2;
+		}
+	}
 	scale_box(&dst_box, wlr_output->scale);
 
 	data->deco_data.corner_radius *= wlr_output->scale;
@@ -354,7 +369,7 @@ static void render_view_toplevels(struct sway_view *view, struct sway_output *ou
 		output->lx - view->geometry.x;
 	double oy = view->container->surface_y -
 		output->ly - view->geometry.y;
-	output_surface_for_each_surface(output, view->surface, ox, oy,
+	output_surface_for_each_surface(output, view->surface, view, ox, oy,
 			render_surface_iterator, &data);
 }
 
@@ -375,8 +390,6 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 	if (wl_list_empty(&view->saved_buffers)) {
 		return;
 	}
-
-	bool floating = container_is_current_floating(view->container);
 
 	struct sway_saved_buffer *saved_buf;
 	wl_list_for_each(saved_buf, &view->saved_buffers, link) {
@@ -410,13 +423,16 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 		wlr_matrix_project_box(matrix, &proj_box, transform, 0,
 			wlr_output->transform_matrix);
 
-		if (!floating) {
-			dst_box.width = fmin(dst_box.width,
-					view->container->current.content_width -
-					(saved_buf->x - view->container->current.content_x) + view->saved_geometry.x);
-			dst_box.height = fmin(dst_box.height,
-					view->container->current.content_height -
-					(saved_buf->y - view->container->current.content_y) + view->saved_geometry.y);
+		struct sway_container_state state = view->container->current;
+		dst_box.x = state.x - output->lx;
+		dst_box.y = state.y - output->ly;
+		dst_box.width = state.width;
+		dst_box.height = state.height;
+		if (!view->using_csd) {
+			dst_box.x += state.border_thickness;
+			dst_box.y += state.border_thickness;
+			dst_box.width -= state.border_thickness * 2;
+			dst_box.height -= state.border_thickness * 2;
 		}
 		scale_box(&dst_box, wlr_output->scale);
 
@@ -1330,7 +1346,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 				}
 
 				output_surface_for_each_surface(output, lock_surface->surface,
-					0.0, 0.0, render_surface_iterator, &data);
+					NULL, 0.0, 0.0, render_surface_iterator, &data);
 			}
 		}
 		goto renderer_end;
