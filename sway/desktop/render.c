@@ -472,7 +472,7 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 }
 
 /**
- * Render a view's surface, and left/bottom/right borders.
+ * Render a view's surface, shadow, and left/bottom/right borders.
  */
 static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		struct sway_container *con, struct border_colors *colors,
@@ -484,7 +484,22 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		render_view_toplevels(view, output, damage, deco_data);
 	}
 
-	if (con->current.border == B_NONE || con->current.border == B_CSD) {
+	// if CSD borders, don't render borders or shadow
+	if (con->current.border == B_CSD) {
+		return;
+	}
+
+	// render shadow
+	if (con->shadow_enabled && config->shadow_blur_sigma > 0 && config->shadow_color[3] > 0.0) {
+		struct sway_container_state *state = &con->current;
+		struct wlr_box box = { state->x, state->y, state->width, state->height };
+		scale_box(&box, output->wlr_output->scale);
+		render_box_shadow(output, damage, &box, config->shadow_color,
+			config->shadow_blur_sigma, con->corner_radius,
+			state->border_thickness);
+	}
+
+	if (con->current.border == B_NONE) {
 		return;
 	}
 
@@ -1009,17 +1024,7 @@ static void render_containers_linear(struct sway_output *output,
 			} else if (state->border == B_PIXEL) {
 				render_top_border(output, damage, state, colors, deco_data.alpha, deco_data.corner_radius);
 			}
-			
-			// render shadow
-			if (child->shadow_enabled
-				&& config->shadow_blur_sigma > 0
-				&& config->shadow_color[3] > 0.0) {
-				struct wlr_box box = { state->x, state->y, state->width, state->height };
-				scale_box(&box, output->wlr_output->scale);
-				render_box_shadow(output, damage, &box, config->shadow_color,
-						config->shadow_blur_sigma, deco_data.corner_radius,
-						state->border_thickness);
-			}
+
 		} else {
 			render_container(output, damage, child,
 					parent->focused || child->current.focused);
@@ -1112,18 +1117,6 @@ static void render_containers_tabbed(struct sway_output *output,
 		render_container(output, damage, current,
 				parent->focused || current->current.focused);
 	}
-
-	// render shadow
-	if (current->shadow_enabled
-		&& config->shadow_blur_sigma > 0
-		&& config->shadow_color[3] > 0.0) {
-		struct sway_container_state *state = &current->current;
-		struct wlr_box box = { state->x, state->y, state->width, state->height };
-		scale_box(&box, output->wlr_output->scale);
-		render_box_shadow(output, damage, &box, config->shadow_color,
-				config->shadow_blur_sigma, current->corner_radius,
-				state->border_thickness);
-	}
 }
 
 /**
@@ -1197,18 +1190,6 @@ static void render_containers_stacked(struct sway_output *output,
 	} else {
 		render_container(output, damage, current,
 				parent->focused || current->current.focused);
-	}
-
-	// render shadow
-	if (current->shadow_enabled
-		&& config->shadow_blur_sigma > 0
-		&& config->shadow_color[3] > 0.0) {
-		struct sway_container_state *state = &current->current;
-		struct wlr_box box = { state->x, state->y, state->width, state->height };
-		scale_box(&box, output->wlr_output->scale);
-		render_box_shadow(output, damage, &box, config->shadow_color,
-				config->shadow_blur_sigma, current->corner_radius,
-				state->border_thickness);
 	}
 }
 
@@ -1312,18 +1293,6 @@ static void render_floating_container(struct sway_output *soutput,
 					title_texture, marks_texture);
 		} else if (state->border == B_PIXEL) {
 			render_top_border(soutput, damage, state, colors, deco_data.alpha, deco_data.corner_radius);
-		}
-
-		// render shadow
-		if (con->shadow_enabled
-			&& config->shadow_blur_sigma > 0
-			&& config->shadow_color[3] > 0.0
-			&& con->current.border != B_CSD) {
-			struct wlr_box box = { state->x, state->y, state->width, state->height };
-			scale_box(&box, soutput->wlr_output->scale);
-			render_box_shadow(soutput, damage, &box, config->shadow_color,
-					config->shadow_blur_sigma, deco_data.corner_radius,
-					con->current.border_thickness);
 		}
 	} else {
 		render_container(soutput, damage, con, state->focused);
