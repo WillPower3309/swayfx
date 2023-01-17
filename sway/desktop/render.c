@@ -182,7 +182,8 @@ static void render_surface_iterator(struct sway_output *output,
 		dst_box.y = state.y - output->ly;
 		dst_box.width = state.width;
 		dst_box.height = state.height;
-		if (!view->using_csd) {
+		if (view->container->current.border == B_PIXEL
+			|| view->container->current.border == B_NORMAL) {
 			dst_box.x += state.border_thickness;
 			dst_box.y += state.border_thickness;
 			dst_box.width -= state.border_thickness * 2;
@@ -428,7 +429,8 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 		dst_box.y = state.y - output->ly;
 		dst_box.width = state.width;
 		dst_box.height = state.height;
-		if (!view->using_csd) {
+		if (view->container->current.border == B_PIXEL
+			|| view->container->current.border == B_NORMAL) {
 			dst_box.x += state.border_thickness;
 			dst_box.y += state.border_thickness;
 			dst_box.width -= state.border_thickness * 2;
