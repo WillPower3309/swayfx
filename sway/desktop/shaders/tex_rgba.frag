@@ -32,8 +32,4 @@ void main() {
             gl_FragColor = mix(vec4(0), gl_FragColor, smooth);
         }
     }
-
-    if (gl_FragColor.a == 0.0) {
-        discard;
-    }
 }

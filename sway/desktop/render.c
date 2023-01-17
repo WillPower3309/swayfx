@@ -1015,7 +1015,6 @@ static void render_containers_linear(struct sway_output *output,
 				.saturation = child->saturation,
 				.has_titlebar = has_titlebar,
 			};
-
 			render_view(output, damage, child, colors, deco_data);
 			if (has_titlebar) {
 				render_titlebar(output, damage, child, floor(state->x), floor(state->y),
@@ -1024,7 +1023,6 @@ static void render_containers_linear(struct sway_output *output,
 			} else if (state->border == B_PIXEL) {
 				render_top_border(output, damage, state, colors, deco_data.alpha, deco_data.corner_radius);
 			}
-
 		} else {
 			render_container(output, damage, child,
 					parent->focused || child->current.focused);
