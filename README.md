@@ -13,7 +13,11 @@ Sway is an incredible window manager, and certainly one of the most well establi
 
 + Corner radius: `corner_radius <val>`
 + Application saturation: `for_window [CRITERIA HERE] saturation <set|plus|minus> <val 0.0 <-> 2.0>`
-+ Dim unfocused windows: 
++ Window shadows: *ONLY ON SWAYFX-GIT, NOT YET RELEASED*
+    - `shadows on|off`
+    - `shadow_blur_radius <integer value 0 - 100>`
+    - `shadow_color <hex color with alpha> ex, #0000007F`
++ Dim unfocused windows:
     - `dim_inactive <float value 0.0 - 1.0>`
     - `dim_inactive_colors.unfocused <hex color> ex, #000000FF`
     - `dim_inactive_colors.urgent <hex color> ex, #900000FF`
@@ -22,7 +26,6 @@ Sway is an incredible window manager, and certainly one of the most well establi
 
 + fade in / out animations
 + window movement animations
-+ drop shadows
 + blur
 
 ## Installation
@@ -82,4 +85,5 @@ Here's a quick outline of where most of our changes lie vs the main sway reposit
 + `sway/desktop/fx_renderer.c`: the meat and potatoes of this project, structured as similarly to wlr_renderer as possible
 + `sway/desktop/shaders`: where all of the shaders that fx_renderer uses live
 
-Please join our (for the time being very small) Discord server for development chatter! https://discord.gg/jVjjFdcN
+Please join our (for the time being very small) Discord server for development chatter! https://discord.gg/R5hYhC2BFg
+
