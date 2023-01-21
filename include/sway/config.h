@@ -477,6 +477,14 @@ struct sway_config {
 	// SwayFX config options
 	int corner_radius;
 	bool smart_corner_radius;
+	struct wlr_texture *bottom_edge_border_texture;
+	struct wlr_texture *left_edge_border_texture;
+	struct wlr_texture *right_edge_border_texture;
+	struct wlr_texture *top_edge_border_texture;
+	struct wlr_texture *bl_corner_border_texture;
+	struct wlr_texture *br_corner_border_texture;
+	struct wlr_texture *tl_corner_border_texture;
+	struct wlr_texture *tr_corner_border_texture;
 	float dim_inactive;
 	// dim_inactive colors
 	struct {
@@ -486,6 +494,7 @@ struct sway_config {
 	bool shadow_enabled;
 	int shadow_blur_sigma;
 	float shadow_color[4];
+
 
 	char *swaynag_command;
 	struct swaynag_instance swaynag_config_errors;
