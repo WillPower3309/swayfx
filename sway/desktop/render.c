@@ -412,6 +412,7 @@ static void render_view_toplevels(struct sway_view *view, struct sway_output *ou
 		output->ly - view->geometry.y;
 	output_surface_for_each_surface(output, view->surface, view, ox, oy,
 			render_surface_iterator, &data);
+	output_view_for_each_surface(output, view, render_surface_iterator, &data);
 }
 
 static void render_view_popups(struct sway_view *view, struct sway_output *output,
@@ -1402,7 +1403,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 				}
 
 				output_surface_for_each_surface(output, lock_surface->surface,
-					NULL, 0.0, 0.0, render_surface_iterator, &data);
+					0.0, 0.0, render_surface_iterator, &data);
 			}
 		}
 		goto renderer_end;
