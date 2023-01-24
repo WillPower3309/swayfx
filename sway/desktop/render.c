@@ -504,7 +504,7 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 			state->border_thickness);
 	}
 
-	if (con->current.border == B_NONE) {
+	if (con->current.border == B_NONE || con->current.border == B_CSD) {
 		return;
 	}
 
