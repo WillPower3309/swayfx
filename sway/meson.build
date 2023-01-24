@@ -1,4 +1,5 @@
 sway_sources = files(
+	'border_textures.c',
 	'commands.c',
 	'config.c',
 	'criteria.c',
