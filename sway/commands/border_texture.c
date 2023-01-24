@@ -2,6 +2,8 @@
 #include <string.h>
 #include <drm_fourcc.h>
 #include "cairo.h"
+#include "stringop.h"
+#include "log.h"
 #include "sway/commands.h"
 #include "sway/config.h"
 #include "sway/output.h"
@@ -61,9 +63,26 @@ struct cmd_results *cmd_border_texture(int argc, char **argv) {
 	struct sway_output *output = root->outputs->items[0];
 	struct wlr_renderer *renderer = output->wlr_output->renderer;
 
-	const char *path = "contrib/borders/bevel.png";
+	char *path = strdup("contrib/borders/bevel.png");
+	if (!expand_path(&path)) {
+		error = cmd_results_new(CMD_INVALID, "Invalid syntax (%s)", path);
+		free(path);
+		return error;
+	}
+	if (!path) {
+		sway_log(SWAY_ERROR, "Failed to allocate expanded path");
+		return cmd_results_new(CMD_FAILURE, "Unable to allocate resource");
+	}
+
+	bool can_access = access(path, F_OK) != -1;
+	if (!can_access) {
+		free(path);
+		return cmd_results_new(CMD_FAILURE, "Unable to access border images file '%s'", path);
+
+	}
 
 	cairo_surface_t *combined_surface = cairo_image_surface_create_from_png(path);
+	free(path);
 	float w = cairo_image_surface_get_width(combined_surface);
 	float h = cairo_image_surface_get_height(combined_surface);
 
