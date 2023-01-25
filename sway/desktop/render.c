@@ -175,7 +175,10 @@ static void render_surface_iterator(struct sway_output *output,
 	if (clip_box != NULL) {
 		dst_box.width = fmin(dst_box.width, clip_box->width);
 		dst_box.height = fmin(dst_box.height, clip_box->height);
+		dst_box.x = fmax(dst_box.x, clip_box->x);
+		dst_box.y = fmax(dst_box.y, clip_box->y);
 	}
+
 	scale_box(&dst_box, wlr_output->scale);
 
 	data->deco_data.corner_radius *= wlr_output->scale;
@@ -384,21 +387,22 @@ static void render_view_toplevels(struct sway_view *view, struct sway_output *ou
 		.damage = damage,
 		.deco_data = deco_data,
 	};
+	// Clip the window to its view size, ignoring CSD
 	struct wlr_box clip_box;
-	if (!container_is_current_floating(view->container)) {
-		// As we pass the geometry offsets to the surface iterator, we will
-		// need to account for the offsets in the clip dimensions.
-		clip_box.width = view->container->current.content_width + view->geometry.x;
-		clip_box.height = view->container->current.content_height + view->geometry.y;
-		data.clip_box = &clip_box;
+	struct sway_container_state state = view->container->current;
+	clip_box.x = state.x - output->lx;
+	clip_box.y = state.y - output->ly;
+	clip_box.width = state.width;
+	clip_box.height = state.height;
+	if (state.border == B_PIXEL || state.border == B_NORMAL) {
+		clip_box.x += state.border_thickness;
+		clip_box.y += state.border_thickness;
+		clip_box.width -= state.border_thickness * 2;
+		clip_box.height -= state.border_thickness * 2;
 	}
-	// Render all toplevels without descending into popups
-	double ox = view->container->surface_x -
-		output->lx - view->geometry.x;
-	double oy = view->container->surface_y -
-		output->ly - view->geometry.y;
-	output_surface_for_each_surface(output, view->surface, ox, oy,
-			render_surface_iterator, &data);
+	data.clip_box = &clip_box;
+
+	output_view_for_each_surface(output, view, render_surface_iterator, &data);
 }
 
 static void render_view_popups(struct sway_view *view, struct sway_output *output,
@@ -418,8 +422,6 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 	if (wl_list_empty(&view->saved_buffers)) {
 		return;
 	}
-
-	bool floating = container_is_current_floating(view->container);
 
 	struct sway_saved_buffer *saved_buf;
 	wl_list_for_each(saved_buf, &view->saved_buffers, link) {
@@ -453,13 +455,16 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 		wlr_matrix_project_box(matrix, &proj_box, transform, 0,
 			wlr_output->transform_matrix);
 
-		if (!floating) {
-			dst_box.width = fmin(dst_box.width,
-					view->container->current.content_width -
-					(saved_buf->x - view->container->current.content_x) + view->saved_geometry.x);
-			dst_box.height = fmin(dst_box.height,
-					view->container->current.content_height -
-					(saved_buf->y - view->container->current.content_y) + view->saved_geometry.y);
+		struct sway_container_state state = view->container->current;
+		dst_box.x = state.x - output->lx;
+		dst_box.y = state.y - output->ly;
+		dst_box.width = state.width;
+		dst_box.height = state.height;
+		if (state.border == B_PIXEL || state.border == B_NORMAL) {
+			dst_box.x += state.border_thickness;
+			dst_box.y += state.border_thickness;
+			dst_box.width -= state.border_thickness * 2;
+			dst_box.height -= state.border_thickness * 2;
 		}
 		scale_box(&dst_box, wlr_output->scale);
 
@@ -1623,9 +1628,9 @@ void output_render(struct sway_output *output, struct timespec *when,
 				 ? config->dim_inactive_colors.urgent
 				 : config->dim_inactive_colors.unfocused,
 			.dim = focus->current.focused ? 0.0f: config->dim_inactive,
-			.corner_radius = focus->corner_radius,
+			.corner_radius = 0,
 			.saturation = focus->saturation,
-			.has_titlebar = focus->current.border == B_NORMAL,
+			.has_titlebar = false,
 		};
 		render_view_popups(focus->view, output, damage, deco_data);
 	}
