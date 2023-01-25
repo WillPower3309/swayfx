@@ -133,7 +133,7 @@ void delete_border_textures_manager(struct border_textures_manager* border_textu
 
 struct border_textures *get_border_textures(
 		struct wlr_renderer *renderer, struct border_textures_manager* border_textures_manager, int scale) {
-	struct border_textures *textures;
+	struct border_textures *textures = NULL;
 
 	if (scale < 1) {
 		return NULL;
@@ -146,7 +146,12 @@ struct border_textures *get_border_textures(
 		}
 	}
 
+	sway_log(SWAY_DEBUG, "Border textures: generating textures (%i).", scale);
 	textures = scale_border_textures(renderer, border_textures_manager, scale);
+	if (!textures) {
+		sway_log(SWAY_ERROR, "Failed generating border textures.");
+		return NULL;
+	}
 	if (border_textures_manager->scaled->length > 100) {
 		sway_log(SWAY_ERROR,
 				"Border texture cache contains more than 100 entries.");

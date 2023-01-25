@@ -10,21 +10,27 @@
 #include "sway/border_textures.h"
 #include "log.h"
 
-struct cmd_results *cmd_border_texture(int argc, char **argv) {
-	// Command needs to be defered for texture files to become accessible.
-	// Wish I knew why.
-	if (config->reading || !config->active) {
-		return cmd_results_new(CMD_DEFER, NULL);
-	}
+const char *bevel_txtr = "contrib/borders/bevel.png";
 
+struct cmd_results *get_texture_path(char **path, int argc, char **argv) {
 	struct cmd_results *error = NULL;
-	if ((error = checkarg(argc, "border_texture", EXPECTED_AT_LEAST, 1))) {
-		return error;
+
+	// default
+	if (argc == 0) {
+		*path = strdup(bevel_txtr);
+		return NULL;
+	}
+	*path = strdup(argv[0]);
+
+	// shorthands
+	if (strcmp(*path, "bevel") == 0) {
+		*path = strdup(bevel_txtr);
+		return NULL;
 	}
 
-	char *path = strdup("contrib/borders/bevel.png");
-	if (!expand_path(&path)) {
-		error = cmd_results_new(CMD_INVALID, "Invalid syntax (%s)", path);
+	// validation
+	if (!expand_path(path)) {
+		error = cmd_results_new(CMD_INVALID, "Invalid syntax (%s)", *path);
 		free(path);
 		return error;
 	}
@@ -33,21 +39,42 @@ struct cmd_results *cmd_border_texture(int argc, char **argv) {
 		return cmd_results_new(CMD_FAILURE, "Unable to allocate resource");
 	}
 
-	bool can_access = access(path, F_OK | R_OK) != -1;
+	bool can_access = access(*path, F_OK | R_OK) != -1;
 	if (!can_access) {
-		sway_log(SWAY_ERROR, "Unable to access border textures file '%s'", path);
-		error = cmd_results_new(CMD_FAILURE, "Unable to access border textures file '%s'", path);
+		sway_log(SWAY_ERROR, "Unable to access border textures file '%s'", *path);
+		error = cmd_results_new(CMD_FAILURE, "Unable to access border textures file '%s'", *path);
 		free(path);
 		return error;
 
 	}
 
+	return NULL;
+}
+
+struct cmd_results *cmd_border_texture(int argc, char **argv) {
+	// Command needs to be defered for texture files to become accessible.
+	// Wish I knew why.
+	if (config->reading || !config->active) {
+		return cmd_results_new(CMD_DEFER, NULL);
+	}
+
+	struct cmd_results *error = NULL;
+
+	char *path;
+	error = get_texture_path(&path, argc, argv);
+	if (error) {
+		return error;
+	}
+
 	cairo_surface_t *combined_surface = cairo_image_surface_create_from_png(path);
-	free(path);
 	config->border_textures_manager = create_border_textures_manager(combined_surface);
 	if (!config->border_textures_manager) {
-		return cmd_results_new(CMD_FAILURE, "Unable to initialize border textures. Is the texture valid?");
+		error = cmd_results_new(CMD_FAILURE,
+				"Unable to initialize border texture (%s). Is the texture valid?", path);
+		free(path);
+		return error;
 	}
+	free(path);
 	cairo_surface_destroy(combined_surface);
 
 	return cmd_results_new(CMD_SUCCESS, NULL);
