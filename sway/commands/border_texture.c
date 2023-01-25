@@ -44,8 +44,8 @@ struct cmd_results *cmd_border_texture(int argc, char **argv) {
 
 	cairo_surface_t *combined_surface = cairo_image_surface_create_from_png(path);
 	free(path);
-	config->border_texture_manager = create_border_textures_manager(combined_surface);
-	if (!config->border_texture_manager) {
+	config->border_textures_manager = create_border_textures_manager(combined_surface);
+	if (!config->border_textures_manager) {
 		return cmd_results_new(CMD_FAILURE, "Unable to initialize border textures. Is the texture valid?");
 	}
 	cairo_surface_destroy(combined_surface);

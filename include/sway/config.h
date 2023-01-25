@@ -477,7 +477,7 @@ struct sway_config {
 	// SwayFX config options
 	int corner_radius;
 	bool smart_corner_radius;
-	struct border_textures_manager *border_texture_manager;
+	struct border_textures_manager *border_textures_manager;
 	float dim_inactive;
 	// dim_inactive colors
 	struct {

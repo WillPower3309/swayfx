@@ -44,7 +44,7 @@ void delete_border_textures(struct border_textures*);
 void delete_border_textures_manager(struct border_textures_manager*);
 /**
  * Pull cached scaled textures or render a new set if appropriate scale wasn't found.
- * Returns NULL when scale < 1. This procedure is the only way you should interact with border_textures.
+ * Returns NULL when scale < 1. This procedure is the only way you should interact with border_textures_manager.
  */
 struct border_textures *get_border_textures(struct wlr_renderer *, struct border_textures_manager*, int);
 

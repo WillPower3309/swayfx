@@ -533,9 +533,9 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 
 	struct sway_container_state *state = &con->current;
 	struct border_textures* border_textures = NULL;
-	if (config->border_texture_manager) {
+	if (config->border_textures_manager) {
 		border_textures = get_border_textures(output->wlr_output->renderer,
-					config->border_texture_manager, state->border_thickness);
+					config->border_textures_manager, state->border_thickness);
 	}
 
 	struct wlr_box box;
@@ -701,9 +701,9 @@ static void render_titlebar(struct sway_output *output,
 	deco_data.alpha = alpha;
 
 	struct border_textures* border_textures = NULL;
-	if (config->border_texture_manager) {
+	if (config->border_textures_manager) {
 		border_textures = get_border_textures(output->wlr_output->renderer,
-					config->border_texture_manager, titlebar_border_thickness);
+					config->border_textures_manager, titlebar_border_thickness);
 	}
 
 	// Single pixel bar above title
@@ -1029,9 +1029,9 @@ static void render_top_border(struct sway_output *output,
 	deco_data.alpha = alpha;
 
 	struct border_textures* border_textures = NULL;
-	if (config->border_texture_manager) {
+	if (config->border_textures_manager) {
 		border_textures = get_border_textures(output->wlr_output->renderer,
-					config->border_texture_manager, state->border_thickness);
+					config->border_textures_manager, state->border_thickness);
 	}
 
 	// Child border - top edge
