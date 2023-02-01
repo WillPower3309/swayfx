@@ -18,6 +18,7 @@
 #include "sway/input/input-manager.h"
 #include "sway/input/seat.h"
 #include "sway/input/switch.h"
+#include "sway/border_textures.h"
 #include "sway/commands.h"
 #include "sway/config.h"
 #include "sway/criteria.h"
@@ -156,6 +157,9 @@ void free_config(struct sway_config *config) {
 			criteria_destroy(config->criteria->items[i]);
 		}
 		list_free(config->criteria);
+	}
+	if (config->border_textures_manager) {
+		delete_border_textures_manager(config->border_textures_manager);
 	}
 	list_free(config->no_focus);
 	list_free(config->active_bar_modifiers);
@@ -334,6 +338,7 @@ static void config_defaults(struct sway_config *config) {
 	color_to_rgba(config->border_colors.background, 0xFFFFFFFF);
 
 	// SwayFX defaults
+	config->border_textures_manager = NULL;
 	config->corner_radius = 0;
 	config->smart_corner_radius = true;
 	config->dim_inactive = 0.0f;

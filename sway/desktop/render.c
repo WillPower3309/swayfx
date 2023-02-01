@@ -11,6 +11,7 @@
 #include <wlr/types/wlr_buffer.h>
 #include <wlr/types/wlr_damage_ring.h>
 #include <wlr/types/wlr_matrix.h>
+#include <wlr/types/wlr_output_damage.h>
 #include <wlr/types/wlr_output_layout.h>
 #include <wlr/types/wlr_output.h>
 #include <wlr/types/wlr_compositor.h>
@@ -18,6 +19,7 @@
 #include "log.h"
 #include "config.h"
 #include "sway/config.h"
+#include "sway/border_textures.h"
 #include "sway/desktop/fx_renderer.h"
 #include "sway/input/input-manager.h"
 #include "sway/input/seat.h"
@@ -477,6 +479,32 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 }
 
 /**
+ * Render a single border texture.
+ */
+static void render_border_texture(struct sway_output *output,
+		pixman_region32_t *damage, struct wlr_box box,
+		struct wlr_texture *texture, struct decoration_data deco_data) {
+	struct wlr_output *wlr_output = output->wlr_output;
+
+	scale_box(&box, wlr_output->scale);
+
+	struct wlr_fbox src_box;
+	src_box.x = 0;
+	src_box.y = 0;
+	src_box.height = texture->height;
+	src_box.width = texture->width;
+
+	float matrix[9];
+	wlr_matrix_project_box(matrix, &box, WL_OUTPUT_TRANSFORM_NORMAL, 0.0,
+			output->wlr_output->transform_matrix);
+
+	pixman_region32_t texture_damage;
+	pixman_region32_init_rect(&texture_damage, box.x, box.y, box.width, box.height);
+	wlr_output_damage_add(wlr_output_damage_create(output->wlr_output), &texture_damage);
+	render_texture(wlr_output, damage, texture, &src_box, &box, matrix, deco_data);
+}
+
+/**
  * Render a view's surface, shadow, and left/bottom/right borders.
  */
 static void render_view(struct sway_output *output, pixman_region32_t *damage,
@@ -508,10 +536,16 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		return;
 	}
 
+	struct sway_container_state *state = &con->current;
+	struct border_textures* border_textures = NULL;
+	if (config->border_textures_manager) {
+		border_textures = get_border_textures(output->wlr_output->renderer,
+					config->border_textures_manager, state->border_thickness);
+	}
+
 	struct wlr_box box;
 	float output_scale = output->wlr_output->scale;
 	float color[4];
-	struct sway_container_state *state = &con->current;
 
 	if (state->border_left) {
 		memcpy(&color, colors->child_border, sizeof(float) * 4);
@@ -531,6 +565,11 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		}
 		scale_box(&box, output_scale);
 		render_rect(output, damage, &box, color);
+
+		if (border_textures) {
+			render_border_texture(output, damage, box,
+					border_textures->left_edge_texture, deco_data);
+		}
 	}
 
 	list_t *siblings = container_get_current_siblings(con);
@@ -559,6 +598,11 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		}
 		scale_box(&box, output_scale);
 		render_rect(output, damage, &box, color);
+
+		if (border_textures) {
+			render_border_texture(output, damage, box,
+					border_textures->right_edge_texture, deco_data);
+		}
 	}
 
 	if (state->border_bottom) {
@@ -580,6 +624,14 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		}
 		scale_box(&box, output_scale);
 		render_rect(output, damage, &box, color);
+
+		if (border_textures) {
+			// scale box down to leave space for corners
+			box.x = floor(state->content_x);
+			box.width = state->content_width;
+			render_border_texture(output, damage, box,
+					border_textures->bottom_edge_texture, deco_data);
+		}
 
 		// rounded bottom left & bottom right border corners
 		if (deco_data.corner_radius) {
@@ -603,6 +655,25 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 				scale_box(&box, output_scale);
 				render_border_corner(output, damage, &box, color,
 						scaled_corner_radius, scaled_thickness, BOTTOM_RIGHT);
+			}
+		} else {
+			if (border_textures && state->border_left) {
+				box.width = state->border_thickness;
+				box.height = state->border_thickness;
+				box.x = floor(state->x);
+				box.y = floor(state->y + state->height - state->border_thickness);
+				scale_box(&box, output_scale);
+				render_border_texture(output, damage, box,
+						border_textures->bl_corner_texture, deco_data);
+			}
+			if (border_textures && state->border_right) {
+				box.width = state->border_thickness;
+				box.height = state->border_thickness;
+				box.x = floor(state->x + state->width - state->border_thickness);
+				box.y = floor(state->y + state->height - state->border_thickness);
+				scale_box(&box, output_scale);
+				render_border_texture(output, damage, box,
+						border_textures->br_corner_texture, deco_data);
 			}
 		}
 	}
@@ -630,6 +701,15 @@ static void render_titlebar(struct sway_output *output,
 	int titlebar_h_padding = config->titlebar_h_padding;
 	int titlebar_v_padding = config->titlebar_v_padding;
 	enum alignment title_align = config->title_align;
+	struct sway_container_state *state = &con->current;
+	struct decoration_data deco_data = get_undecorated_decoration_data();
+	deco_data.alpha = alpha;
+
+	struct border_textures* border_textures = NULL;
+	if (config->border_textures_manager) {
+		border_textures = get_border_textures(output->wlr_output->renderer,
+					config->border_textures_manager, titlebar_border_thickness);
+	}
 
 	// Single pixel bar above title
 	memcpy(&color, colors->border, sizeof(float) * 4);
@@ -642,6 +722,11 @@ static void render_titlebar(struct sway_output *output,
 	scale_box(&box, output_scale);
 	render_rect(output, output_damage, &box, color);
 
+	if (border_textures) {
+		box.x = floor(state->x) + titlebar_border_thickness;
+		render_border_texture(output, output_damage, box, border_textures->top_edge_texture, deco_data);
+	}
+
 	// Single pixel bar below title
 	box.x = x;
 	box.y = y + container_titlebar_height() - titlebar_border_thickness;
@@ -649,6 +734,11 @@ static void render_titlebar(struct sway_output *output,
 	box.height = titlebar_border_thickness;
 	scale_box(&box, output_scale);
 	render_rect(output, output_damage, &box, color);
+
+	if (border_textures) {
+		box.x = floor(state->x) + titlebar_border_thickness;
+		render_border_texture(output, output_damage, box, border_textures->top_edge_texture, deco_data);
+	}
 
 	// Single pixel bar left edge
 	box.x = x;
@@ -658,6 +748,11 @@ static void render_titlebar(struct sway_output *output,
 	scale_box(&box, output_scale);
 	render_rect(output, output_damage, &box, color);
 
+	if (border_textures) {
+		box.y += titlebar_border_thickness;
+		render_border_texture(output, output_damage, box, border_textures->left_edge_texture, deco_data);
+	}
+
 	// Single pixel bar right edge
 	box.x = x + width - titlebar_border_thickness;
 	box.y = y + corner_radius;
@@ -666,7 +761,12 @@ static void render_titlebar(struct sway_output *output,
 	scale_box(&box, output_scale);
 	render_rect(output, output_damage, &box, color);
 
-	// if corner_radius: single pixel corners
+	if (border_textures) {
+		box.y += titlebar_border_thickness;
+		render_border_texture(output, output_damage, box, border_textures->right_edge_texture, deco_data);
+	}
+
+	// if corner_radius: single pixel rounded corners
 	if (corner_radius) {
 		// left corner
 		box.x = x;
@@ -685,6 +785,21 @@ static void render_titlebar(struct sway_output *output,
 		scale_box(&box, output_scale);
 		render_border_corner(output, output_damage, &box, color,
 			corner_radius, titlebar_border_thickness, TOP_RIGHT);
+	} else if (border_textures) {
+		box.width = titlebar_border_thickness;
+		box.height = titlebar_border_thickness;
+		box.x = x;
+		box.y = y;
+		scale_box(&box, output_scale);
+		render_border_texture(output, output_damage, box,
+				border_textures->tl_corner_texture, deco_data);
+		box.width = titlebar_border_thickness;
+		box.height = titlebar_border_thickness;
+		box.x = x + width - titlebar_border_thickness;
+		box.y = y;
+		scale_box(&box, output_scale);
+		render_border_texture(output, output_damage, box,
+				border_textures->tr_corner_texture, deco_data);
 	}
 
 	int inner_x = x - output_x + titlebar_h_padding;
@@ -699,7 +814,7 @@ static void render_titlebar(struct sway_output *output,
 			config->font_height, bg_y, output_scale);
 
 	// title marks textures should have no eyecandy
-	struct decoration_data deco_data = get_undecorated_decoration_data();
+	deco_data = get_undecorated_decoration_data();
 	deco_data.alpha = alpha;
 
 	// Marks
@@ -915,6 +1030,15 @@ static void render_top_border(struct sway_output *output,
 	float color[4];
 	float output_scale = output->wlr_output->scale;
 
+	struct decoration_data deco_data = get_undecorated_decoration_data();
+	deco_data.alpha = alpha;
+
+	struct border_textures* border_textures = NULL;
+	if (config->border_textures_manager) {
+		border_textures = get_border_textures(output->wlr_output->renderer,
+					config->border_textures_manager, state->border_thickness);
+	}
+
 	// Child border - top edge
 	memcpy(&color, colors->child_border, sizeof(float) * 4);
 	premultiply_alpha(color, alpha);
@@ -930,6 +1054,13 @@ static void render_top_border(struct sway_output *output,
 	}
 	scale_box(&box, output_scale);
 	render_rect(output, output_damage, &box, color);
+
+	if (border_textures) {
+		// scale box down to leave space for corners
+		box.x = floor(state->content_x);
+		box.width = state->content_width;
+		render_border_texture(output, output_damage, box, border_textures->top_edge_texture, deco_data);
+	}
 
 	// render rounded top corner borders if corner_radius is set > 0
 	if (corner_radius) {
@@ -956,6 +1087,25 @@ static void render_top_border(struct sway_output *output,
 			scale_box(&box, output_scale);
 			render_border_corner(output, output_damage, &box, color,
 					scaled_corner_radius, scaled_thickness, TOP_RIGHT);
+		}
+	} else if (border_textures) {
+		if (state->border_left) {
+			box.width = state->border_thickness;
+			box.height = state->border_thickness;
+			box.x = floor(state->x);
+			box.y = floor(state->y);
+			scale_box(&box, output_scale);
+			render_border_texture(output, output_damage, box,
+					border_textures->tl_corner_texture, deco_data);
+		}
+		if (border_textures) {
+			box.width = state->border_thickness;
+			box.height = state->border_thickness;
+			box.x = floor(state->x + state->width - state->border_thickness);
+			box.y = floor(state->y);
+			scale_box(&box, output_scale);
+			render_border_texture(output, output_damage, box,
+					border_textures->tr_corner_texture, deco_data);
 		}
 	}
 }

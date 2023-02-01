@@ -1,4 +1,5 @@
 sway_sources = files(
+	'border_textures.c',
 	'commands.c',
 	'config.c',
 	'criteria.c',
@@ -47,6 +48,7 @@ sway_sources = files(
 	'commands/bar.c',
 	'commands/bind.c',
 	'commands/border.c',
+	'commands/border_texture.c',
 	'commands/client.c',
 	'commands/corner_radius.c',
 	'commands/smart_corner_radius.c',
