@@ -3,6 +3,7 @@
 #include "sway/config.h"
 #include "log.h"
 #include "sway/output.h"
+#include "sway/tree/container.h"
 
 struct cmd_results *cmd_dim_inactive(int argc, char **argv) {
 	struct cmd_results *error = NULL;
@@ -16,14 +17,7 @@ struct cmd_results *cmd_dim_inactive(int argc, char **argv) {
 		return cmd_results_new(CMD_INVALID, "dim_inactive float invalid");
 	}
 
-	config->dim_inactive = val;
-
-	if (config->active) {
-		for (int i = 0; i < root->outputs->length; ++i) {
-			struct sway_output *output = root->outputs->items[i];
-			output_damage_whole(output);
-		}
-	}
-
+	struct sway_container *container = config->handler_context.container;
+    container->dim = val;
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }

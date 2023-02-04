@@ -125,6 +125,7 @@ sway_cmd cmd_default_border;
 sway_cmd cmd_default_floating_border;
 sway_cmd cmd_default_orientation;
 sway_cmd cmd_dim_inactive;
+sway_cmd cmd_default_dim_inactive;
 sway_cmd cmd_dim_inactive_colors_unfocused;
 sway_cmd cmd_dim_inactive_colors_urgent;
 sway_cmd cmd_exec;
