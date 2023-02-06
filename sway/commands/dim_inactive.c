@@ -19,7 +19,7 @@ struct cmd_results *cmd_dim_inactive(int argc, char **argv) {
 
 	struct sway_container *container = config->handler_context.container;
     if (!container) {
-        return cmd_results_new(CMD_INVALID, "cmd_dim connot be used without a for_window rule");
+        return cmd_results_new(CMD_INVALID, "cmd_dim cannot be used without a for_window rule");
     }
 
     container->dim = val;
