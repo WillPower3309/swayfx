@@ -55,7 +55,7 @@ sway_sources = files(
 	'commands/default_dim_inactive.c',
 	'commands/default_floating_border.c',
 	'commands/default_orientation.c',
-    'commands/dim_inactive.c',
+	'commands/dim_inactive.c',
 	'commands/dim_inactive_colors.c',
 	'commands/exit.c',
 	'commands/exec.c',
