@@ -1409,7 +1409,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 		pixman_box32_t *rects = pixman_region32_rectangles(damage, &nrects);
 		for (int i = 0; i < nrects; ++i) {
 			scissor_output(wlr_output, &rects[i]);
-			wlr_renderer_clear(renderer, clear_color);
+			fx_renderer_clear(clear_color);
 		}
 
 		if (server.session_lock.lock != NULL) {
