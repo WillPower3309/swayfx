@@ -60,7 +60,7 @@ static const struct cmd_handler handlers[] = {
 	{ "default_border", cmd_default_border },
 	{ "default_dim_inactive", cmd_default_dim_inactive },
 	{ "default_floating_border", cmd_default_floating_border },
-    { "dim_inactive", cmd_dim_inactive },
+	{ "dim_inactive", cmd_dim_inactive },
 	{ "dim_inactive_colors.unfocused", cmd_dim_inactive_colors_unfocused },
 	{ "dim_inactive_colors.urgent", cmd_dim_inactive_colors_urgent },
 	{ "exec", cmd_exec },
