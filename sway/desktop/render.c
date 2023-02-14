@@ -1115,9 +1115,7 @@ static void render_containers_tabbed(struct sway_output *output,
 			.dim_color = view_is_urgent(current->view)
 							 ? config->dim_inactive_colors.urgent
 							 : config->dim_inactive_colors.unfocused,
-			.dim = current->current.focused || parent->focused 
-                ? 0.0f
-                : current->dim,
+			.dim = current->current.focused || parent->focused ? 0.0f : current->dim,
 			.corner_radius = current->corner_radius,
 			.saturation = current->saturation,
 			.has_titlebar = true,
@@ -1191,9 +1189,7 @@ static void render_containers_stacked(struct sway_output *output,
 			.dim_color = view_is_urgent(current->view)
 							 ? config->dim_inactive_colors.urgent
 							 : config->dim_inactive_colors.unfocused,
-			.dim = current->current.focused || parent->focused 
-                ? 0.0f
-                : current->dim,
+			.dim = current->current.focused || parent->focused ? 0.0f : current->dim,
 			.saturation = current->saturation,
 			.corner_radius = current->corner_radius,
 			.has_titlebar = true,
@@ -1293,9 +1289,7 @@ static void render_floating_container(struct sway_output *soutput,
 			.dim_color = view_is_urgent(view)
 							 ? config->dim_inactive_colors.urgent
 							 : config->dim_inactive_colors.unfocused,
-			.dim = con->current.focused 
-                ? 0.0f
-                : con->dim,
+			.dim = con->current.focused ? 0.0f : con->dim,
 			.saturation = con->saturation,
 			.corner_radius = con->corner_radius,
 			.has_titlebar = has_titlebar,
@@ -1486,9 +1480,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 			.dim_color = view_is_urgent(focus->view)
 				 ? config->dim_inactive_colors.urgent
 				 : config->dim_inactive_colors.unfocused,
-			.dim = focus->current.focused 
-                ? 0.0f
-                : focus->dim,
+			.dim = focus->current.focused ? 0.0f : focus->dim,
 			.corner_radius = 0,
 			.saturation = focus->saturation,
 			.has_titlebar = false,
