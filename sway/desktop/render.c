@@ -1017,9 +1017,7 @@ static void render_containers_linear(struct sway_output *output,
 				.dim_color = view_is_urgent(view)
 								 ? config->dim_inactive_colors.urgent
 								 : config->dim_inactive_colors.unfocused,
-				.dim = child->current.focused || parent->focused 
-                    ? 0.0f
-                    : child->dim,
+				.dim = child->current.focused || parent->focused ? 0.0f : child->dim,
 				// no corner radius if no gaps (allows smart_gaps to work as expected)
 				.corner_radius = corner_radius,
 				.saturation = child->saturation,
