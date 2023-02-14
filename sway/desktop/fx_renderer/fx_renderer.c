@@ -10,6 +10,7 @@
 #include <wlr/render/egl.h>
 #include <wlr/render/gles2.h>
 #include <wlr/types/wlr_matrix.h>
+#include <wlr/types/wlr_output.h>
 #include <wlr/util/box.h>
 
 #include "log.h"
@@ -477,10 +478,16 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct fx_te
 
 	float* dim_color = deco_data.dim_color;
 
+	struct wlr_box transformed_box;
+	int width, height;
+	wlr_output_transformed_resolution(wlr_output, &width, &height);
+	wlr_box_transform(&transformed_box, dst_box,
+			wlr_output_transform_invert(wlr_output->transform), width, height);
+
 	glUniformMatrix3fv(shader->proj, 1, GL_FALSE, gl_matrix);
 	glUniform1i(shader->tex, 0);
-	glUniform2f(shader->size, dst_box->width, dst_box->height);
-	glUniform2f(shader->position, dst_box->x, dst_box->y);
+	glUniform2f(shader->size, transformed_box.width, transformed_box.height);
+	glUniform2f(shader->position, transformed_box.x, transformed_box.y);
 	glUniform1f(shader->alpha, deco_data.alpha);
 	glUniform1f(shader->dim, deco_data.dim);
 	glUniform4f(shader->dim_color, dim_color[0], dim_color[1], dim_color[2], dim_color[3]);
@@ -566,9 +573,10 @@ void fx_render_rect(struct fx_renderer *renderer, const struct wlr_box *box,
 	glDisableVertexAttribArray(renderer->shaders.quad.pos_attrib);
 }
 
-void fx_render_rounded_rect(struct fx_renderer *renderer, const struct wlr_box *box,
-		const float color[static 4], const float projection[static 9],
-		int radius, enum corner_location corner_location) {
+void fx_render_rounded_rect(struct fx_renderer *renderer, struct wlr_output *output, 
+		const struct wlr_box *box, const float color[static 4],
+		const float projection[static 9], int radius,
+		enum corner_location corner_location) {
 	if (box->width == 0 || box->height == 0) {
 		return;
 	}
@@ -602,6 +610,12 @@ void fx_render_rounded_rect(struct fx_renderer *renderer, const struct wlr_box *
 
 	wlr_matrix_transpose(gl_matrix, gl_matrix);
 
+	struct wlr_box transformed_box;
+	int width, height;
+	wlr_output_transformed_resolution(output, &width, &height);
+	wlr_box_transform(&transformed_box, box,
+			wlr_output_transform_invert(output->transform), width, height);
+
 	glEnable(GL_BLEND);
 
 	glUseProgram(shader->program);
@@ -610,8 +624,8 @@ void fx_render_rounded_rect(struct fx_renderer *renderer, const struct wlr_box *
 	glUniform4f(shader->color, color[0], color[1], color[2], color[3]);
 
 	// rounded corners
-	glUniform2f(shader->size, box->width, box->height);
-	glUniform2f(shader->position, box->x, box->y);
+	glUniform2f(shader->size, transformed_box.width, transformed_box.height);
+	glUniform2f(shader->position, transformed_box.x, transformed_box.y);
 	glUniform1f(shader->radius, radius);
 
 	glVertexAttribPointer(shader->pos_attrib, 2, GL_FLOAT, GL_FALSE,
@@ -624,9 +638,10 @@ void fx_render_rounded_rect(struct fx_renderer *renderer, const struct wlr_box *
 	glDisableVertexAttribArray(shader->pos_attrib);
 }
 
-void fx_render_border_corner(struct fx_renderer *renderer, const struct wlr_box *box,
-		const float color[static 4], const float projection[static 9],
-		enum corner_location corner_location, int radius, int border_thickness) {
+void fx_render_border_corner(struct fx_renderer *renderer, struct wlr_output *output,
+		const struct wlr_box *box, const float color[static 4],
+		const float projection[static 9], enum corner_location corner_location,
+		int radius, int border_thickness) {
 	if (border_thickness == 0 || box->width == 0 || box->height == 0) {
 		return;
 	}
@@ -641,6 +656,12 @@ void fx_render_border_corner(struct fx_renderer *renderer, const struct wlr_box 
 	// wlr_matrix_multiply(gl_matrix, flip_180, gl_matrix);
 
 	wlr_matrix_transpose(gl_matrix, gl_matrix);
+
+	struct wlr_box transformed_box;
+	int width, height;
+	wlr_output_transformed_resolution(output, &width, &height);
+	wlr_box_transform(&transformed_box, box,
+			wlr_output_transform_invert(output->transform), width, height);
 
 	if (color[3] == 1.0 && !radius) {
 		glDisable(GL_BLEND);
@@ -658,9 +679,9 @@ void fx_render_border_corner(struct fx_renderer *renderer, const struct wlr_box 
 	glUniform1f(renderer->shaders.corner.is_bottom_left, corner_location == BOTTOM_LEFT);
 	glUniform1f(renderer->shaders.corner.is_bottom_right, corner_location == BOTTOM_RIGHT);
 
-	glUniform2f(renderer->shaders.corner.position, box->x, box->y);
+	glUniform2f(renderer->shaders.corner.position, transformed_box.x, transformed_box.y);
 	glUniform1f(renderer->shaders.corner.radius, radius);
-	glUniform2f(renderer->shaders.corner.half_size, box->width / 2.0, box->height / 2.0);
+	glUniform2f(renderer->shaders.corner.half_size, transformed_box.width / 2.0, transformed_box.height / 2.0);
 	glUniform1f(renderer->shaders.corner.half_thickness, border_thickness / 2.0);
 
 	glVertexAttribPointer(renderer->shaders.corner.pos_attrib, 2, GL_FLOAT, GL_FALSE,
@@ -674,9 +695,9 @@ void fx_render_border_corner(struct fx_renderer *renderer, const struct wlr_box 
 }
 
 // TODO: alpha input arg?
-void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *box,
-		const float color[static 4], const float projection[static 9],
-		int corner_radius, float blur_sigma) {
+void fx_render_box_shadow(struct fx_renderer *renderer, struct wlr_output *output,
+		const struct wlr_box *box, const float color[static 4],
+		const float projection[static 9], int corner_radius, float blur_sigma) {
 	if (box->width == 0 || box->height == 0) {
 		return;
 	}
@@ -691,6 +712,12 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 	// wlr_matrix_multiply(gl_matrix, flip_180, gl_matrix);
 
 	wlr_matrix_transpose(gl_matrix, gl_matrix);
+
+	struct wlr_box transformed_box;
+	int width, height;
+	wlr_output_transformed_resolution(output, &width, &height);
+	wlr_box_transform(&transformed_box, box,
+			wlr_output_transform_invert(output->transform), width, height);
 
 	// Init stencil work
 	// NOTE: Alpha needs to be set to 1.0 to be able to discard any "empty" pixels
@@ -711,7 +738,7 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 	// Disable writing to color buffer
 	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 	// Draw the rounded rect as a mask
-	fx_render_rounded_rect(renderer, &inner_box, col, projection, corner_radius, ALL);
+	fx_render_rounded_rect(renderer, output, &inner_box, col, projection, corner_radius, ALL);
 	// Close the mask
 	glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
 	glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
@@ -731,8 +758,8 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 	glUniform1f(renderer->shaders.box_shadow.blur_sigma, blur_sigma);
 	glUniform1f(renderer->shaders.box_shadow.corner_radius, corner_radius);
 
-	glUniform2f(renderer->shaders.box_shadow.size, box->width, box->height);
-	glUniform2f(renderer->shaders.box_shadow.position, box->x, box->y);
+	glUniform2f(renderer->shaders.box_shadow.size, transformed_box.width, transformed_box.height);
+	glUniform2f(renderer->shaders.box_shadow.position, transformed_box.x, transformed_box.y);
 
 	glVertexAttribPointer(renderer->shaders.box_shadow.pos_attrib, 2, GL_FLOAT, GL_FALSE,
 			0, verts);
