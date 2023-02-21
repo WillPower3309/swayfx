@@ -24,6 +24,10 @@
       overlays.default = final: prev: {
         swayfx-unwrapped = prev.sway-unwrapped.overrideAttrs
           (old: { src = builtins.path { path = prev.lib.cleanSource ./.; }; });
+
+        wlroots = prev.wlroots_0_16.overrideAttrs (old: {
+          buildInputs = old.buildInputs ++ [ prev.hwdata ];
+        });
       };
 
       packages = nixpkgs.lib.genAttrs targetSystems (system:
