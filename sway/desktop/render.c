@@ -346,6 +346,16 @@ void render_box_shadow(struct sway_output *output, pixman_region32_t *output_dam
 	box.width += 2 * blur_sigma;
 	box.height += 2 * blur_sigma;
 
+  int visible_gap = config->gaps_inner;
+
+  // Area, unobscured by other contaners
+	struct wlr_box visible_area;
+	memcpy(&visible_area, _box, sizeof(struct wlr_box));
+	visible_area.x -= output->lx * wlr_output->scale + visible_gap;
+	visible_area.y -= output->ly * wlr_output->scale + visible_gap;
+	visible_area.width += 2*visible_gap;
+	visible_area.height += 2*visible_gap;
+
 	// Uses the outer radii of the window for a more realistic look
 	corner_radius = corner_radius + border_thickness;
 
@@ -353,6 +363,8 @@ void render_box_shadow(struct sway_output *output, pixman_region32_t *output_dam
 	pixman_region32_init(&damage);
 	pixman_region32_union_rect(&damage, &damage, box.x, box.y,
 		box.width, box.height);
+	pixman_region32_intersect_rect(&damage, &damage, visible_area.x, visible_area.y,
+		visible_area.width, visible_area.height);
 	pixman_region32_intersect(&damage, &damage, output_damage);
 	bool damaged = pixman_region32_not_empty(&damage);
 	if (!damaged) {
