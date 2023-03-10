@@ -11,12 +11,16 @@
 #include <wlr/render/gles2.h>
 #include <wlr/types/wlr_matrix.h>
 #include <wlr/util/box.h>
+#include <wlr/util/region.h>
+#include <wlr/render/gles2.h>
 #include "log.h"
 #include "sway/desktop/fx_renderer.h"
 #include "sway/output.h"
 #include "sway/server.h"
 
 // shaders
+#include "blur1_frag_src.h"
+#include "blur2_frag_src.h"
 #include "box_shadow_frag_src.h"
 #include "common_vert_src.h"
 #include "corner_frag_src.h"
@@ -75,6 +79,83 @@ static const float transforms[][9] = {
 		0.0f, 0.0f, 1.0f,
 	},
 };
+
+struct fx_texture fx_texture_from_texture(struct wlr_texture* texture) {
+	assert(wlr_texture_is_gles2(texture));
+	struct wlr_gles2_texture_attribs texture_attrs;
+	wlr_gles2_texture_get_attribs(texture, &texture_attrs);
+	return (struct fx_texture) {
+		.target = texture_attrs.target,
+		.id = texture_attrs.tex,
+		.has_alpha = texture_attrs.has_alpha,
+		.width = texture->width,
+		.height = texture->height,
+	};
+}
+
+static struct wlr_texture *get_texture_from_output (struct sway_output *output) {
+	/* GLuint fbo = wlr_gles2_renderer_get_current_fbo(output->wlr_output->renderer); */
+	return wlr_texture_from_buffer(output->wlr_output->renderer,
+			output->wlr_output->back_buffer);
+}
+
+static void bind_framebuffer(struct fx_framebuffer buffer, GLsizei width, GLsizei height) {
+	glBindFramebuffer(GL_FRAMEBUFFER, buffer.fb);
+	glViewport(0, 0, width, height);
+}
+
+static struct fx_framebuffer create_fx_framebuffer(struct wlr_output* output) {
+	uint32_t width = output->width;
+	uint32_t height = output->height;
+	GLuint fbo = wlr_gles2_renderer_get_current_fbo(output->renderer);
+	// Create a new framebuffer
+	struct fx_framebuffer buffer;
+
+	glGenFramebuffers(1, &buffer.fb);
+
+	glGenTextures(1, &buffer.texture.id);
+	glBindTexture(GL_TEXTURE_2D, buffer.texture.id);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	//
+	glBindTexture(GL_TEXTURE_2D, buffer.texture.id);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+	//
+	glBindFramebuffer(GL_FRAMEBUFFER, buffer.fb);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+			buffer.texture.id, 0);
+	buffer.texture.target = GL_TEXTURE_2D;
+	// TODO: Alpha??
+	buffer.texture.has_alpha = false;
+	buffer.texture.width = width;
+	buffer.texture.height = height;
+	GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	if (status != GL_FRAMEBUFFER_COMPLETE) {
+		sway_log(SWAY_ERROR, "Framebuffer incomplete, couldn't create! (FB status: %i)", status);
+		abort();
+	}
+	sway_log(SWAY_DEBUG, "Framebuffer created, status %i", status);
+
+	// Bind the default framebuffer
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+	return buffer;
+}
+
+static void release_fx_framebuffer(struct fx_framebuffer buffer) {
+	if (buffer.fb != (uint32_t)-1 && buffer.fb) {
+		glDeleteFramebuffers(1, &buffer.fb);
+	}
+	buffer.fb= -1;
+
+	if (buffer.texture.id) {
+		glDeleteTextures(1, &buffer.texture.id);
+	}
+	buffer.texture.id = 0;
+}
 
 static void matrix_projection(float mat[static 9], int width, int height,
 		enum wl_output_transform transform) {
@@ -324,6 +405,32 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	renderer->shaders.box_shadow.blur_sigma = glGetUniformLocation(prog, "blur_sigma");
 	renderer->shaders.box_shadow.corner_radius = glGetUniformLocation(prog, "corner_radius");
 
+	// Blur 1
+	prog = link_program(common_vert_src, blur1_frag_src);
+	renderer->shaders.blur1.program = prog;
+	if (!renderer->shaders.blur1.program) {
+		goto error;
+	}
+	renderer->shaders.blur1.proj = glGetUniformLocation(prog, "proj");
+	renderer->shaders.blur1.tex = glGetUniformLocation(prog, "tex");
+	renderer->shaders.blur1.pos_attrib = glGetAttribLocation(prog, "pos");
+	renderer->shaders.blur1.tex_attrib = glGetAttribLocation(prog, "texcoord");
+	renderer->shaders.blur1.radius = glGetUniformLocation(prog, "radius");
+	renderer->shaders.blur1.halfpixel = glGetUniformLocation(prog, "halfpixel");
+
+	// Blur 2
+	prog = link_program(common_vert_src, blur2_frag_src);
+	renderer->shaders.blur2.program = prog;
+	if (!renderer->shaders.blur2.program) {
+		goto error;
+	}
+	renderer->shaders.blur2.proj = glGetUniformLocation(prog, "proj");
+	renderer->shaders.blur2.tex = glGetUniformLocation(prog, "tex");
+	renderer->shaders.blur2.pos_attrib = glGetAttribLocation(prog, "pos");
+	renderer->shaders.blur2.tex_attrib = glGetAttribLocation(prog, "texcoord");
+	renderer->shaders.blur2.radius = glGetUniformLocation(prog, "radius");
+	renderer->shaders.blur2.halfpixel = glGetUniformLocation(prog, "halfpixel");
+
 	// fragment shaders
 	if (!link_tex_program(renderer, &renderer->shaders.tex_rgba,
 			WLR_GLES2_SHADER_SOURCE_TEXTURE_RGBA)) {
@@ -371,7 +478,14 @@ error:
 	return NULL;
 }
 
-void fx_renderer_begin(struct fx_renderer *renderer, uint32_t width, uint32_t height) {
+void fx_renderer_begin(struct fx_renderer *renderer, struct wlr_output* output) {
+	uint32_t width = output->width;
+	uint32_t height = output->height;
+
+	// Create a new blur framebuffer
+	renderer->blur_buffer = create_fx_framebuffer(output);
+	renderer->blur_buffer_swapped = create_fx_framebuffer(output);
+
 	// Create and render the stencil buffer
 	if (renderer->stencil_buffer_id == 0) {
 		glGenRenderbuffers(1, &renderer->stencil_buffer_id);
@@ -390,8 +504,10 @@ void fx_renderer_begin(struct fx_renderer *renderer, uint32_t width, uint32_t he
 	glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 }
 
-void fx_renderer_end() {
+void fx_renderer_end(struct fx_renderer *renderer) {
 	// TODO
+	release_fx_framebuffer(renderer->blur_buffer);
+	release_fx_framebuffer(renderer->blur_buffer_swapped);
 }
 
 void fx_renderer_clear(const float color[static 4]) {
@@ -401,26 +517,23 @@ void fx_renderer_clear(const float color[static 4]) {
 }
 
 void fx_renderer_scissor(struct wlr_box *box) {
-		if (box) {
-				glScissor(box->x, box->y, box->width, box->height);
-				glEnable(GL_SCISSOR_TEST);
-		} else {
-				glDisable(GL_SCISSOR_TEST);
-		}
+	if (box) {
+		glScissor(box->x, box->y, box->width, box->height);
+		glEnable(GL_SCISSOR_TEST);
+	} else {
+		glDisable(GL_SCISSOR_TEST);
+	}
 }
 
-bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct wlr_texture *wlr_texture,
+bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct fx_texture *fx_texture,
 		const struct wlr_fbox *src_box, const struct wlr_box *dst_box, const float matrix[static 9],
 		struct decoration_data deco_data) {
-	assert(wlr_texture_is_gles2(wlr_texture));
-	struct wlr_gles2_texture_attribs texture_attrs;
-	wlr_gles2_texture_get_attribs(wlr_texture, &texture_attrs);
 
 	struct gles2_tex_shader *shader = NULL;
 
-	switch (texture_attrs.target) {
+	switch (fx_texture->target) {
 	case GL_TEXTURE_2D:
-		if (texture_attrs.has_alpha) {
+		if (fx_texture->has_alpha) {
 			shader = &renderer->shaders.tex_rgba;
 		} else {
 			shader = &renderer->shaders.tex_rgbx;
@@ -448,16 +561,16 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct wlr_t
 	wlr_matrix_transpose(gl_matrix, gl_matrix);
 
 	// if there's no opacity or rounded corners we don't need to blend
-	if (!texture_attrs.has_alpha && deco_data.alpha == 1.0 && !deco_data.corner_radius) {
+	if (!fx_texture->has_alpha && deco_data.alpha == 1.0 && !deco_data.corner_radius) {
 		glDisable(GL_BLEND);
 	} else {
 		glEnable(GL_BLEND);
 	}
 
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(texture_attrs.target, texture_attrs.tex);
+	glBindTexture(fx_texture->target, fx_texture->id);
 
-	glTexParameteri(texture_attrs.target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(fx_texture->target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
 	glUseProgram(shader->program);
 
@@ -474,10 +587,10 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct wlr_t
 	glUniform1f(shader->saturation, deco_data.saturation);
 	glUniform1f(shader->radius, deco_data.corner_radius);
 
-	const GLfloat x1 = src_box->x / wlr_texture->width;
-	const GLfloat y1 = src_box->y / wlr_texture->height;
-	const GLfloat x2 = (src_box->x + src_box->width) / wlr_texture->width;
-	const GLfloat y2 = (src_box->y + src_box->height) / wlr_texture->height;
+	const GLfloat x1 = src_box->x / fx_texture->width;
+	const GLfloat y1 = src_box->y / fx_texture->height;
+	const GLfloat x2 = (src_box->x + src_box->width) / fx_texture->width;
+	const GLfloat y2 = (src_box->y + src_box->height) / fx_texture->height;
 	const GLfloat texcoord[] = {
 		x2, y1, // top right
 		x1, y1, // top left
@@ -496,21 +609,21 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct wlr_t
 	glDisableVertexAttribArray(shader->pos_attrib);
 	glDisableVertexAttribArray(shader->tex_attrib);
 
-	glBindTexture(texture_attrs.target, 0);
+	glBindTexture(fx_texture->target, 0);
 
 	return true;
 }
 
-bool fx_render_texture_with_matrix(struct fx_renderer *renderer, struct wlr_texture *wlr_texture,
+bool fx_render_texture_with_matrix(struct fx_renderer *renderer, struct fx_texture *texture,
 		const struct wlr_box *dst_box, const float matrix[static 9],
 		struct decoration_data deco_data) {
 	struct wlr_fbox src_box = {
 		.x = 0,
 		.y = 0,
-		.width = wlr_texture->width,
-		.height = wlr_texture->height,
+		.width = texture->width,
+		.height = texture->height,
 	};
-	return fx_render_subtexture_with_matrix(renderer, wlr_texture, &src_box,
+	return fx_render_subtexture_with_matrix(renderer, texture, &src_box,
 			dst_box, matrix, deco_data);
 }
 
@@ -734,4 +847,177 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 	glClearStencil(0);
 	glClear(GL_STENCIL_BUFFER_BIT);
 	glDisable(GL_STENCIL_TEST);
+}
+
+static void draw_blur(struct fx_renderer *renderer, struct sway_output *output,
+		const float matrix[static 9], pixman_region32_t* damage, const struct wlr_box box,
+		struct fx_framebuffer **buffer, struct blur_shader* shader, int blur_radius) {
+	int width = output->wlr_output->width;
+	int height = output->wlr_output->height;
+	if (*buffer == &renderer->blur_buffer) {
+		bind_framebuffer(renderer->blur_buffer_swapped, width, height);
+	} else {
+		bind_framebuffer(renderer->blur_buffer, width, height);
+	}
+
+	float gl_matrix[9];
+	wlr_matrix_transpose(gl_matrix, matrix);
+
+	glActiveTexture(GL_TEXTURE0);
+
+	glBindTexture((*buffer)->texture.target, (*buffer)->texture.id);
+
+	glTexParameteri((*buffer)->texture.target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+	glUseProgram(shader->program);
+
+	// OpenGL ES 2 requires the glUniformMatrix3fv transpose parameter to be set
+	// to GL_FALSE
+	glUniformMatrix3fv(shader->proj, 1, GL_FALSE, gl_matrix);
+	glUniform1i(shader->tex, 0);
+	glUniform1f(shader->radius, blur_radius);
+
+	if (shader == &renderer->shaders.blur1) {
+		glUniform2f(shader->halfpixel,
+				0.5f / (width / 2.0f),
+				0.5f / (height / 2.0f));
+	} else {
+		glUniform2f(shader->halfpixel,
+				0.5f / (width * 2.0f),
+				0.5f / (height * 2.0f));
+	}
+
+	glVertexAttribPointer(shader->pos_attrib, 2, GL_FLOAT, GL_FALSE, 0, verts);
+	glVertexAttribPointer(shader->tex_attrib, 2, GL_FLOAT, GL_FALSE, 0, verts);
+
+	glEnableVertexAttribArray(shader->pos_attrib);
+	glEnableVertexAttribArray(shader->tex_attrib);
+
+	if (pixman_region32_not_empty(damage)) {
+		int rectsNum = 0;
+		pixman_box32_t *rects = pixman_region32_rectangles(damage, &rectsNum);
+		for (int i = 0; i < rectsNum; ++i) {
+			const struct pixman_box32 box = rects[i];
+			struct wlr_box new_box = {box.x1, box.y1, box.x2 - box.x1, box.y2 - box.y1};
+			fx_renderer_scissor(&new_box);
+			glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+		}
+	}
+
+	glDisableVertexAttribArray(shader->pos_attrib);
+	glDisableVertexAttribArray(shader->tex_attrib);
+
+	if (*buffer != &renderer->blur_buffer) {
+		*buffer = &renderer->blur_buffer;
+	} else {
+		*buffer = &renderer->blur_buffer_swapped;
+	}
+}
+
+void fx_render_blur(struct fx_renderer *renderer, struct sway_output *output,
+		pixman_region32_t *original_damage, const float matrix[static 9],
+		const float box_matrix[static 9], const struct wlr_box box,
+		struct decoration_data deco_data) {
+	/* Blur */
+	glDisable(GL_BLEND);
+	glDisable(GL_STENCIL_TEST);
+
+	float gl_matrix[9];
+	wlr_matrix_multiply(gl_matrix, renderer->projection, matrix);
+
+	pixman_region32_t damage;
+	pixman_region32_init(&damage);
+	pixman_region32_copy(&damage, original_damage);
+	int t_width, t_height;
+	wlr_output_transformed_resolution(output->wlr_output, &t_width, &t_height);
+	wlr_region_transform(&damage, &damage, wlr_output_transform_invert(output->wlr_output->transform),
+			t_width, t_height);
+	wlr_region_expand(&damage, &damage, pow(2, deco_data.blur_passes) * deco_data.blur_radius);
+
+	// Get the main wlr framebuffer
+	struct wlr_texture *texture = get_texture_from_output(output);
+	struct fx_framebuffer primary_buffer = {
+		.fb = wlr_gles2_renderer_get_current_fbo(output->wlr_output->renderer),
+		.texture = fx_texture_from_texture(texture),
+	};
+	wlr_texture_destroy(texture);
+
+	// Bind to blur framebuffer
+	bind_framebuffer(renderer->blur_buffer, output->width, output->height);
+	glBindTexture(primary_buffer.texture.target, primary_buffer.texture.id);
+
+	// damage region will be scaled, make a temp
+	pixman_region32_t tempDamage;
+	pixman_region32_init(&tempDamage);
+	// When DOWNscaling, we make the region twice as small because it's the TARGET
+	wlr_region_scale(&tempDamage, &damage, 1.f / 2.f);
+
+	struct fx_framebuffer *current_buffer = &primary_buffer;
+
+	// First pass
+	draw_blur(renderer, output, gl_matrix, &tempDamage, box, &current_buffer,
+			&renderer->shaders.blur1, deco_data.blur_radius);
+
+	// Downscale
+	for (int i = 1; i < deco_data.blur_passes; ++i) {
+		wlr_region_scale(&tempDamage, &damage, 1.0f / (1 << (i + 1)));
+		draw_blur(renderer, output, gl_matrix, &tempDamage, box, &current_buffer,
+				&renderer->shaders.blur1, deco_data.blur_radius);
+	}
+
+	// Upscale
+	for (int i = deco_data.blur_passes - 1; i >= 0; --i) {
+		// when upsampling we make the region twice as big
+		wlr_region_scale(&tempDamage, &damage, 1.0f / (1 << i));
+		draw_blur(renderer, output, gl_matrix, &tempDamage, box, &current_buffer,
+				&renderer->shaders.blur2, deco_data.blur_radius);
+	}
+
+	pixman_region32_fini(&tempDamage);
+	pixman_region32_fini(&damage);
+
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+	bind_framebuffer(primary_buffer, output->width, output->height);
+
+	/* Stencil */
+	fx_renderer_scissor(NULL);
+	glClearStencil(0);
+	glClear(GL_STENCIL_BUFFER_BIT);
+	glEnable(GL_STENCIL_TEST);
+
+	glStencilFunc(GL_ALWAYS, 1, 0xFF);
+	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+	// Disable writing to color buffer
+	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+	// Draw the rounded rect as a mask
+	// NOTE: Alpha needs to be set to 1.0 to be able to discard any "empty" pixels
+	const float col[4] = {1.0, 0.0, 0.0, 0.5};
+	fx_render_rounded_rect(renderer, &box, col, box_matrix, deco_data.corner_radius, ALL);
+
+	// Close the mask
+	glStencilFunc(GL_EQUAL, 1, 0xFF);
+	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+	// Reenable writing to color buffer
+	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
+	// Render blurred texture
+	struct wlr_fbox src_box = {
+		.x = 0,
+		.y = 0,
+		.width = output->width * 0.5,
+		.height = output->height * 0.5,
+	};
+	// TODO: use monitor_box or box?
+	fx_render_subtexture_with_matrix(renderer, &renderer->blur_buffer.texture,
+			&src_box, &box, matrix, deco_data);
+
+	glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
+	glClearStencil(0);
+	glClear(GL_STENCIL_BUFFER_BIT);
+	glDisable(GL_STENCIL_TEST);
+	fx_renderer_scissor(NULL);
 }

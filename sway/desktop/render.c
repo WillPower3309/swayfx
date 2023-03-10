@@ -44,6 +44,9 @@ struct decoration_data get_undecorated_decoration_data() {
 		.corner_radius = 0,
 		.saturation = 1.0f,
 		.has_titlebar = false,
+		.blur = false,
+		.blur_passes = 3,
+		.blur_radius = 5,
 	};
 }
 
@@ -132,11 +135,12 @@ static void render_texture(struct wlr_output *wlr_output,
 	for (int i = 0; i < nrects; ++i) {
 		scissor_output(wlr_output, &rects[i]);
 		set_scale_filter(wlr_output, texture, output->scale_filter);
+		struct fx_texture fx_texture = fx_texture_from_texture(texture);
 		if (src_box != NULL) {
-			fx_render_subtexture_with_matrix(renderer, texture, src_box, dst_box,
+			fx_render_subtexture_with_matrix(renderer, &fx_texture, src_box, dst_box,
 					matrix, deco_data);
 		} else {
-			fx_render_texture_with_matrix(renderer, texture, dst_box, matrix, deco_data);
+			fx_render_texture_with_matrix(renderer, &fx_texture, dst_box, matrix, deco_data);
 		}
 	}
 
@@ -227,6 +231,65 @@ static void render_drag_icons(struct sway_output *output,
 	};
 	output_drag_icons_for_each_surface(output, drag_icons,
 		render_surface_iterator, &data);
+}
+
+void render_blur(struct sway_output *output, pixman_region32_t *output_damage,
+		const struct wlr_box *_box, struct wlr_surface *surface,
+		const struct decoration_data deco_data) {
+	struct wlr_output *wlr_output = output->wlr_output;
+	struct fx_renderer *renderer = output->server->renderer;
+
+	struct wlr_box box;
+	memcpy(&box, _box, sizeof(struct wlr_box));
+	box.x -= output->lx * wlr_output->scale;
+	box.y -= output->ly * wlr_output->scale;
+
+	pixman_region32_t damage;
+	pixman_region32_init(&damage);
+	// clip it to the box
+	pixman_region32_intersect_rect(&damage, output_damage, box.x, box.y, box.width, box.height);
+	if (!pixman_region32_not_empty(&damage)) {
+		pixman_region32_fini(&damage);
+		return;
+	}
+
+	pixman_box32_t surfbox = {
+		.x1 = 0,
+		.y1 = 0,
+		.x2 = surface->current.width * surface->current.scale,
+		.y2 = surface->current.height * surface->current.scale
+	};
+	pixman_region32_t inverse_opaque;
+	pixman_region32_init(&inverse_opaque);
+
+	// Alt
+	pixman_region32_copy(&inverse_opaque, &surface->current.opaque);
+	pixman_region32_inverse(&inverse_opaque, &inverse_opaque, &surfbox);
+	pixman_region32_intersect_rect(&inverse_opaque, &inverse_opaque, 0, 0, box.width, box.height);
+	if (!pixman_region32_not_empty(&inverse_opaque)) {
+		goto damage_finish;
+	}
+
+	wlr_region_scale(&inverse_opaque, &inverse_opaque, output->wlr_output->scale);
+
+	pixman_region32_translate(&inverse_opaque, box.x, box.y);
+	pixman_region32_intersect(&inverse_opaque, &inverse_opaque, &damage);
+
+	int width, height;
+	wlr_output_transformed_resolution(output->wlr_output, &width, &height);
+	struct wlr_box monitor_box = { 0, 0, width, height };
+	float matrix[9];
+	enum wl_output_transform transform =
+		wlr_output_transform_invert(output->wlr_output->transform);
+	wlr_matrix_project_box(matrix, &monitor_box, transform, 0.0,
+		wlr_output->transform_matrix);
+
+	/* fx_render_blur(renderer, output, output_damage, matrix, box, 10, blur_passes, blur_radius); */
+	fx_render_blur(renderer, output, &inverse_opaque, matrix, wlr_output->transform_matrix,
+			box, deco_data);
+
+damage_finish:
+	pixman_region32_fini(&inverse_opaque);
 }
 
 // _box.x and .y are expected to be layout-local
@@ -483,6 +546,22 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		struct sway_container *con, struct border_colors *colors,
 		struct decoration_data deco_data) {
 	struct sway_view *view = con->view;
+	// Render blur
+	// TODO: Remove this and add it into `fx_render_subtexture_with_matrix` for more control?
+	// TODO: Only render blur if view texture has alpha or deco_data.opacity < 1
+	if (deco_data.blur && deco_data.blur_passes > 0 && deco_data.blur_radius > 0) {
+		struct sway_container_state *state = &con->current;
+		struct wlr_box box = { floor(state->x), floor(state->y), state->width, state->height };
+		if (state->border == B_PIXEL || state->border == B_NORMAL) {
+			box.x += state->border_thickness;
+			box.y += state->border_thickness;
+			box.width -= state->border_thickness * 2;
+			box.height -= state->border_thickness * 2;
+		}
+		scale_box(&box, output->wlr_output->scale);
+		render_blur(output, damage, &box, view->surface, deco_data);
+	}
+
 	if (!wl_list_empty(&view->saved_buffers)) {
 		render_saved_view(view, output, damage, deco_data);
 	} else if (view->surface) {
@@ -1055,6 +1134,9 @@ static void render_containers_linear(struct sway_output *output,
 				.corner_radius = corner_radius,
 				.saturation = child->saturation,
 				.has_titlebar = has_titlebar,
+				.blur = false,
+				.blur_passes = 3,
+				.blur_radius = 5,
 			};
 			render_view(output, damage, child, colors, deco_data);
 			if (has_titlebar) {
@@ -1162,6 +1244,9 @@ static void render_containers_tabbed(struct sway_output *output,
 			.corner_radius = current->corner_radius,
 			.saturation = current->saturation,
 			.has_titlebar = true,
+			.blur = true,
+			.blur_passes = 3,
+			.blur_radius = 5,
 		};
 		render_view(output, damage, current, current_colors, deco_data);
 	} else {
@@ -1236,6 +1321,9 @@ static void render_containers_stacked(struct sway_output *output,
 			.saturation = current->saturation,
 			.corner_radius = current->corner_radius,
 			.has_titlebar = true,
+			.blur = true,
+			.blur_passes = 3,
+			.blur_radius = 5,
 		};
 		render_view(output, damage, current, current_colors, deco_data);
 	} else {
@@ -1336,6 +1424,9 @@ static void render_floating_container(struct sway_output *soutput,
 			.saturation = con->saturation,
 			.corner_radius = con->corner_radius,
 			.has_titlebar = has_titlebar,
+			.blur = true,
+			.blur_passes = 3,
+			.blur_radius = 5,
 		};
 		render_view(soutput, damage, con, colors, deco_data);
 		if (has_titlebar) {
@@ -1393,7 +1484,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 		fullscreen_con = workspace->current.fullscreen;
 	}
 
-	fx_renderer_begin(renderer, wlr_output->width, wlr_output->height);
+	fx_renderer_begin(renderer, wlr_output);
 
 	if (debug.damage == DAMAGE_RERENDER) {
 		int width, height;
@@ -1527,6 +1618,9 @@ void output_render(struct sway_output *output, struct timespec *when,
 			.corner_radius = 0,
 			.saturation = focus->saturation,
 			.has_titlebar = false,
+			.blur = false,
+			.blur_passes = 3,
+			.blur_radius = 5,
 		};
 		render_view_popups(focus->view, output, damage, deco_data);
 	}
@@ -1543,7 +1637,7 @@ renderer_end:
 	wlr_renderer_begin(output->server->wlr_renderer, wlr_output->width, wlr_output->height);
 	wlr_output_render_software_cursors(wlr_output, damage);
 	wlr_renderer_end(output->server->wlr_renderer);
-	fx_renderer_end();
+	fx_renderer_end(renderer);
 
 	int width, height;
 	wlr_output_transformed_resolution(wlr_output, &width, &height);
