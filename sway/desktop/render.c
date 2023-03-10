@@ -1134,7 +1134,7 @@ static void render_containers_linear(struct sway_output *output,
 				.corner_radius = corner_radius,
 				.saturation = child->saturation,
 				.has_titlebar = has_titlebar,
-				.blur = false,
+				.blur = true,
 				.blur_passes = 3,
 				.blur_radius = 5,
 			};
