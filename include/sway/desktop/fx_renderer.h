@@ -97,6 +97,15 @@ struct fx_renderer {
 			GLint corner_radius;
 		} box_shadow;
 
+		struct {
+			GLuint program;
+			GLint proj;
+			GLint tex;
+			GLint pos_attrib;
+			GLint tex_attrib;
+			GLint position;
+		} invert;
+
 		struct gles2_tex_shader tex_rgba;
 		struct gles2_tex_shader tex_rgbx;
 		struct gles2_tex_shader tex_ext;
