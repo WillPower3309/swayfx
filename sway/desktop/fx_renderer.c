@@ -5,6 +5,7 @@
 
 #include <assert.h>
 #include <GLES2/gl2.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <wlr/backend.h>
 #include <wlr/render/egl.h>
@@ -104,57 +105,89 @@ static void bind_framebuffer(struct fx_framebuffer buffer, GLsizei width, GLsize
 	glViewport(0, 0, width, height);
 }
 
-static struct fx_framebuffer create_fx_framebuffer(struct wlr_output* output) {
+static void create_fx_framebuffer(struct wlr_output* output, struct fx_framebuffer *buffer) {
+	bool firstAlloc = false;
 	uint32_t width = output->width;
 	uint32_t height = output->height;
 	GLuint fbo = wlr_gles2_renderer_get_current_fbo(output->renderer);
 	// Create a new framebuffer
-	struct fx_framebuffer buffer;
-
-	glGenFramebuffers(1, &buffer.fb);
-
-	glGenTextures(1, &buffer.texture.id);
-	glBindTexture(GL_TEXTURE_2D, buffer.texture.id);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	//
-	glBindTexture(GL_TEXTURE_2D, buffer.texture.id);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-	//
-	glBindFramebuffer(GL_FRAMEBUFFER, buffer.fb);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-			buffer.texture.id, 0);
-	buffer.texture.target = GL_TEXTURE_2D;
-	// TODO: Alpha??
-	buffer.texture.has_alpha = false;
-	buffer.texture.width = width;
-	buffer.texture.height = height;
-	GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-	if (status != GL_FRAMEBUFFER_COMPLETE) {
-		sway_log(SWAY_ERROR, "Framebuffer incomplete, couldn't create! (FB status: %i)", status);
-		abort();
+	if (buffer->fb == (uint32_t) -1) {
+		glGenFramebuffers(1, &buffer->fb);
+		firstAlloc = true;
 	}
-	sway_log(SWAY_DEBUG, "Framebuffer created, status %i", status);
+
+	if (buffer->texture.id == 0) {
+		firstAlloc = true;
+		glGenTextures(1, &buffer->texture.id);
+		glBindTexture(GL_TEXTURE_2D, buffer->texture.id);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	}
+
+	if (firstAlloc
+			|| buffer->texture.width != width
+			|| buffer->texture.height != height) {
+		glBindTexture(GL_TEXTURE_2D, buffer->texture.id);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+		//
+		glBindFramebuffer(GL_FRAMEBUFFER, buffer->fb);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+				buffer->texture.id, 0);
+		buffer->texture.target = GL_TEXTURE_2D;
+		// TODO: Alpha??
+		buffer->texture.has_alpha = false;
+		buffer->texture.width = width;
+		buffer->texture.height = height;
+		GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+		if (status != GL_FRAMEBUFFER_COMPLETE) {
+			sway_log(SWAY_ERROR, "Framebuffer incomplete, couldn't create! (FB status: %i)", status);
+			return;
+		}
+		sway_log(SWAY_DEBUG, "Framebuffer created, status %i", status);
+	}
 
 	// Bind the default framebuffer
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-
-	return buffer;
 }
 
-static void release_fx_framebuffer(struct fx_framebuffer buffer) {
-	if (buffer.fb != (uint32_t)-1 && buffer.fb) {
-		glDeleteFramebuffers(1, &buffer.fb);
+static void release_fx_framebuffer(struct fx_framebuffer *buffer) {
+	if (buffer->fb != (uint32_t)-1 && buffer->fb) {
+		glDeleteFramebuffers(1, &buffer->fb);
 	}
-	buffer.fb= -1;
+	buffer->fb= -1;
 
-	if (buffer.texture.id) {
-		glDeleteTextures(1, &buffer.texture.id);
+	if (buffer->texture.id) {
+		glDeleteTextures(1, &buffer->texture.id);
 	}
-	buffer.texture.id = 0;
+	buffer->texture.id = 0;
+}
+
+static void create_stencil_buffer(struct wlr_output* output, GLuint *buffer_id) {
+	uint32_t width = output->width;
+	uint32_t height = output->height;
+
+	glGenRenderbuffers(1, buffer_id);
+	glBindRenderbuffer(GL_RENDERBUFFER, *buffer_id);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_STENCIL_INDEX8, width, height);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT,
+			GL_RENDERBUFFER, *buffer_id);
+	GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	if (status != GL_FRAMEBUFFER_COMPLETE) {
+		sway_log(SWAY_ERROR, "Stencilbuffer incomplete, couldn't create! (FB status: %i)", status);
+		return;
+	}
+	sway_log(SWAY_DEBUG, "Stencilbuffer created, status %i", status);
+}
+
+static void release_stencil_buffer(GLuint *buffer_id) {
+	if (*buffer_id != (uint32_t)-1 && buffer_id) {
+		/* glDeleteFramebuffers(1, buffer_id); */
+		glDeleteRenderbuffers(1, buffer_id);
+	}
+	*buffer_id = -1;
 }
 
 static void matrix_projection(float mat[static 9], int width, int height,
@@ -326,6 +359,10 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	// TODO: needed?
 	renderer->egl = egl;
 
+	renderer->blur_buffer.fb = -1;
+	renderer->blur_buffer_swapped.fb = -1;
+	renderer->stencil_buffer_id = -1;
+
 	// get extensions
 	const char *exts_str = (const char *)glGetString(GL_EXTENSIONS);
 	if (exts_str == NULL) {
@@ -483,17 +520,11 @@ void fx_renderer_begin(struct fx_renderer *renderer, struct wlr_output* output) 
 	uint32_t height = output->height;
 
 	// Create a new blur framebuffer
-	renderer->blur_buffer = create_fx_framebuffer(output);
-	renderer->blur_buffer_swapped = create_fx_framebuffer(output);
+	create_fx_framebuffer(output, &renderer->blur_buffer);
+	create_fx_framebuffer(output, &renderer->blur_buffer_swapped);
 
 	// Create and render the stencil buffer
-	if (renderer->stencil_buffer_id == 0) {
-		glGenRenderbuffers(1, &renderer->stencil_buffer_id);
-	}
-	glBindRenderbuffer(GL_RENDERBUFFER, renderer->stencil_buffer_id);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_STENCIL_INDEX8, width, height);
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT,
-			GL_RENDERBUFFER, renderer->stencil_buffer_id);
+	create_stencil_buffer(output, &renderer->stencil_buffer_id);
 
 	glViewport(0, 0, width, height);
 
@@ -506,8 +537,11 @@ void fx_renderer_begin(struct fx_renderer *renderer, struct wlr_output* output) 
 
 void fx_renderer_end(struct fx_renderer *renderer) {
 	// TODO
-	release_fx_framebuffer(renderer->blur_buffer);
-	release_fx_framebuffer(renderer->blur_buffer_swapped);
+	// investigate why releasing blur buffers sometimes causes black pixels on
+	// overlapping windows (damage?)
+	release_fx_framebuffer(&renderer->blur_buffer);
+	release_fx_framebuffer(&renderer->blur_buffer_swapped);
+	release_stencil_buffer(&renderer->stencil_buffer_id);
 }
 
 void fx_renderer_clear(const float color[static 4]) {
