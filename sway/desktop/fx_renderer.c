@@ -917,7 +917,7 @@ static void draw_blur(struct fx_renderer *renderer, struct sway_output *output,
 void fx_render_blur(struct fx_renderer *renderer, struct sway_output *output,
 		pixman_region32_t *original_damage, const float matrix[static 9],
 		const float box_matrix[static 9], const struct wlr_box box,
-		struct decoration_data deco_data) {
+		struct decoration_data deco_data, int blur_radius, int blur_passes) {
 	/* Blur */
 	glDisable(GL_BLEND);
 	glDisable(GL_STENCIL_TEST);
@@ -932,7 +932,7 @@ void fx_render_blur(struct fx_renderer *renderer, struct sway_output *output,
 	wlr_output_transformed_resolution(output->wlr_output, &t_width, &t_height);
 	wlr_region_transform(&damage, &damage, wlr_output_transform_invert(output->wlr_output->transform),
 			t_width, t_height);
-	wlr_region_expand(&damage, &damage, pow(2, deco_data.blur_passes) * deco_data.blur_radius);
+	wlr_region_expand(&damage, &damage, pow(2, blur_passes) * blur_radius);
 
 	// Get the main wlr framebuffer
 	struct wlr_texture *texture = get_texture_from_output(output);
@@ -956,21 +956,21 @@ void fx_render_blur(struct fx_renderer *renderer, struct sway_output *output,
 
 	// First pass
 	draw_blur(renderer, output, gl_matrix, &tempDamage, box, &current_buffer,
-			&renderer->shaders.blur1, deco_data.blur_radius);
+			&renderer->shaders.blur1, blur_radius);
 
 	// Downscale
-	for (int i = 1; i < deco_data.blur_passes; ++i) {
+	for (int i = 1; i < blur_passes; ++i) {
 		wlr_region_scale(&tempDamage, &damage, 1.0f / (1 << (i + 1)));
 		draw_blur(renderer, output, gl_matrix, &tempDamage, box, &current_buffer,
-				&renderer->shaders.blur1, deco_data.blur_radius);
+				&renderer->shaders.blur1, blur_radius);
 	}
 
 	// Upscale
-	for (int i = deco_data.blur_passes - 1; i >= 0; --i) {
+	for (int i = blur_passes - 1; i >= 0; --i) {
 		// when upsampling we make the region twice as big
 		wlr_region_scale(&tempDamage, &damage, 1.0f / (1 << i));
 		draw_blur(renderer, output, gl_matrix, &tempDamage, box, &current_buffer,
-				&renderer->shaders.blur2, deco_data.blur_radius);
+				&renderer->shaders.blur2, blur_radius);
 	}
 
 	pixman_region32_fini(&tempDamage);

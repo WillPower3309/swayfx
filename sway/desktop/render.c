@@ -45,8 +45,6 @@ struct decoration_data get_undecorated_decoration_data() {
 		.saturation = 1.0f,
 		.has_titlebar = false,
 		.blur = false,
-		.blur_passes = 3,
-		.blur_radius = 5,
 	};
 }
 
@@ -235,7 +233,8 @@ static void render_drag_icons(struct sway_output *output,
 
 void render_blur(struct sway_output *output, pixman_region32_t *output_damage,
 		const struct wlr_box *_box, struct wlr_surface *surface,
-		const struct decoration_data deco_data) {
+		const struct decoration_data deco_data,
+		int blur_radius, int blur_passes) {
 	struct wlr_output *wlr_output = output->wlr_output;
 	struct fx_renderer *renderer = output->server->renderer;
 
@@ -284,9 +283,8 @@ void render_blur(struct sway_output *output, pixman_region32_t *output_damage,
 	wlr_matrix_project_box(matrix, &monitor_box, transform, 0.0,
 		wlr_output->transform_matrix);
 
-	/* fx_render_blur(renderer, output, output_damage, matrix, box, 10, blur_passes, blur_radius); */
 	fx_render_blur(renderer, output, &inverse_opaque, matrix, wlr_output->transform_matrix,
-			box, deco_data);
+			box, deco_data, blur_radius, blur_passes);
 
 damage_finish:
 	pixman_region32_fini(&inverse_opaque);
@@ -549,7 +547,10 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 	// Render blur
 	// TODO: Remove this and add it into `fx_render_subtexture_with_matrix` for more control?
 	// TODO: Only render blur if view texture has alpha or deco_data.opacity < 1
-	if (deco_data.blur && deco_data.blur_passes > 0 && deco_data.blur_radius > 0) {
+	if (deco_data.blur
+			&& con->blur_enabled 
+			&& config->blur_passes > 0 
+			&& config->blur_radius > 0) {
 		struct sway_container_state *state = &con->current;
 		struct wlr_box box = { floor(state->x), floor(state->y), state->width, state->height };
 		if (state->border == B_PIXEL || state->border == B_NORMAL) {
@@ -559,7 +560,8 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 			box.height -= state->border_thickness * 2;
 		}
 		scale_box(&box, output->wlr_output->scale);
-		render_blur(output, damage, &box, view->surface, deco_data);
+		render_blur(output, damage, &box, view->surface, deco_data,
+				config->blur_radius, config->blur_passes);
 	}
 
 	if (!wl_list_empty(&view->saved_buffers)) {
@@ -1135,8 +1137,6 @@ static void render_containers_linear(struct sway_output *output,
 				.saturation = child->saturation,
 				.has_titlebar = has_titlebar,
 				.blur = true,
-				.blur_passes = 3,
-				.blur_radius = 5,
 			};
 			render_view(output, damage, child, colors, deco_data);
 			if (has_titlebar) {
@@ -1245,8 +1245,6 @@ static void render_containers_tabbed(struct sway_output *output,
 			.saturation = current->saturation,
 			.has_titlebar = true,
 			.blur = true,
-			.blur_passes = 3,
-			.blur_radius = 5,
 		};
 		render_view(output, damage, current, current_colors, deco_data);
 	} else {
@@ -1322,8 +1320,6 @@ static void render_containers_stacked(struct sway_output *output,
 			.corner_radius = current->corner_radius,
 			.has_titlebar = true,
 			.blur = true,
-			.blur_passes = 3,
-			.blur_radius = 5,
 		};
 		render_view(output, damage, current, current_colors, deco_data);
 	} else {
@@ -1425,8 +1421,6 @@ static void render_floating_container(struct sway_output *soutput,
 			.corner_radius = con->corner_radius,
 			.has_titlebar = has_titlebar,
 			.blur = true,
-			.blur_passes = 3,
-			.blur_radius = 5,
 		};
 		render_view(soutput, damage, con, colors, deco_data);
 		if (has_titlebar) {
@@ -1619,8 +1613,6 @@ void output_render(struct sway_output *output, struct timespec *when,
 			.saturation = focus->saturation,
 			.has_titlebar = false,
 			.blur = false,
-			.blur_passes = 3,
-			.blur_radius = 5,
 		};
 		render_view_popups(focus->view, output, damage, deco_data);
 	}

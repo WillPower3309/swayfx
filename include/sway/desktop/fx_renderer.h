@@ -24,8 +24,6 @@ struct decoration_data {
 	bool has_titlebar;
 	// Blur
 	bool blur;
-	int blur_passes;
-	int blur_radius;
 };
 
 struct fx_texture {
@@ -180,6 +178,6 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 void fx_render_blur(struct fx_renderer *renderer, struct sway_output *wlr_output,
 		pixman_region32_t *damage, const float matrix[static 9],
 		const float box_matrix[static 9], const struct wlr_box box,
-		struct decoration_data deco_data);
+		struct decoration_data deco_data, int blur_radius, int blur_passes);
 
 #endif
