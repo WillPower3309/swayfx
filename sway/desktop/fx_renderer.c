@@ -2,7 +2,6 @@
 	The original wlr_renderer was heavily referenced in making this project
 	https://gitlab.freedesktop.org/wlroots/wlroots/-/tree/master/render/gles2
 */
-
 #include <assert.h>
 #include <GLES2/gl2.h>
 #include <stdint.h>
@@ -14,7 +13,9 @@
 #include <wlr/util/box.h>
 #include <wlr/util/region.h>
 #include <wlr/render/gles2.h>
+
 #include "log.h"
+#include "pixman.h"
 #include "sway/desktop/fx_renderer.h"
 #include "sway/output.h"
 #include "sway/server.h"
@@ -81,6 +82,31 @@ static const float transforms[][9] = {
 	},
 };
 
+static int get_blur_size(int blur_passes, int blur_radius) {
+	return pow(2, blur_passes) * blur_radius;
+}
+
+void fx_apply_container_expanded_size(struct sway_container *con, struct wlr_box* box) {
+	int expand = fx_get_container_expanded_size(con);
+	box->x -= expand;
+	box->y -= expand;
+	box->width += expand * 2;
+	box->height += expand * 2;
+}
+
+int fx_get_container_expanded_size(struct sway_container *con) {
+	bool shadow_enabled = config->shadow_enabled;
+	if (con) shadow_enabled = con->shadow_enabled;
+	int shadow_sigma = shadow_enabled ? config->shadow_blur_sigma : 0;
+
+	bool blur_enabled = config->blur_enabled;
+	if (con) blur_enabled = con->blur_enabled;
+	int blur_size =
+		blur_enabled ? get_blur_size(config->blur_passes, config->blur_radius) : 0;
+	// +1 as a margin of error
+	return MAX(shadow_sigma, blur_size) + 1;
+}
+
 struct fx_texture fx_texture_from_texture(struct wlr_texture* texture) {
 	assert(wlr_texture_is_gles2(texture));
 	struct wlr_gles2_texture_attribs texture_attrs;
@@ -107,8 +133,8 @@ static void bind_framebuffer(struct fx_framebuffer buffer, GLsizei width, GLsize
 
 static void create_fx_framebuffer(struct wlr_output* output, struct fx_framebuffer *buffer) {
 	bool firstAlloc = false;
-	uint32_t width = output->width;
-	uint32_t height = output->height;
+	int width, height;
+	wlr_output_transformed_resolution(output, &width, &height);
 	GLuint fbo = wlr_gles2_renderer_get_current_fbo(output->renderer);
 	// Create a new framebuffer
 	if (buffer->fb == (uint32_t) -1) {
@@ -126,9 +152,15 @@ static void create_fx_framebuffer(struct wlr_output* output, struct fx_framebuff
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	}
 
+<<<<<<< HEAD
 	if (firstAlloc
 			|| buffer->texture.width != width
 			|| buffer->texture.height != height) {
+=======
+	if (firstAlloc
+			|| (int) buffer->texture.width != width
+			|| (int) buffer->texture.height != height) {
+>>>>>>> 125f182e (Significantly improved blur damage. Still not fixed though)
 		glBindTexture(GL_TEXTURE_2D, buffer->texture.id);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 		//
@@ -169,22 +201,23 @@ static void create_stencil_buffer(struct wlr_output* output, GLuint *buffer_id) 
 	uint32_t width = output->width;
 	uint32_t height = output->height;
 
-	glGenRenderbuffers(1, buffer_id);
-	glBindRenderbuffer(GL_RENDERBUFFER, *buffer_id);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_STENCIL_INDEX8, width, height);
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT,
-			GL_RENDERBUFFER, *buffer_id);
-	GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-	if (status != GL_FRAMEBUFFER_COMPLETE) {
-		sway_log(SWAY_ERROR, "Stencilbuffer incomplete, couldn't create! (FB status: %i)", status);
-		return;
+	if (*buffer_id == (uint32_t) -1) {
+		glGenRenderbuffers(1, buffer_id);
+		glBindRenderbuffer(GL_RENDERBUFFER, *buffer_id);
+		glRenderbufferStorage(GL_RENDERBUFFER, GL_STENCIL_INDEX8, width, height);
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT,
+				GL_RENDERBUFFER, *buffer_id);
+		GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+		if (status != GL_FRAMEBUFFER_COMPLETE) {
+			sway_log(SWAY_ERROR, "Stencilbuffer incomplete, couldn't create! (FB status: %i)", status);
+			return;
+		}
+		sway_log(SWAY_DEBUG, "Stencilbuffer created, status %i", status);
 	}
-	sway_log(SWAY_DEBUG, "Stencilbuffer created, status %i", status);
 }
 
 static void release_stencil_buffer(GLuint *buffer_id) {
 	if (*buffer_id != (uint32_t)-1 && buffer_id) {
-		/* glDeleteFramebuffers(1, buffer_id); */
 		glDeleteRenderbuffers(1, buffer_id);
 	}
 	*buffer_id = -1;
@@ -360,7 +393,8 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	renderer->egl = egl;
 
 	renderer->blur_buffer.fb = -1;
-	renderer->blur_buffer_swapped.fb = -1;
+	renderer->effects_buffer.fb = -1;
+	renderer->effects_buffer_swapped.fb = -1;
 	renderer->stencil_buffer_id = -1;
 
 	// get extensions
@@ -499,6 +533,8 @@ error:
 	glDeleteProgram(renderer->shaders.rounded_tr_quad.program);
 	glDeleteProgram(renderer->shaders.corner.program);
 	glDeleteProgram(renderer->shaders.box_shadow.program);
+	glDeleteProgram(renderer->shaders.blur1.program);
+	glDeleteProgram(renderer->shaders.blur2.program);
 	glDeleteProgram(renderer->shaders.tex_rgba.program);
 	glDeleteProgram(renderer->shaders.tex_rgbx.program);
 	glDeleteProgram(renderer->shaders.tex_ext.program);
@@ -521,7 +557,8 @@ void fx_renderer_begin(struct fx_renderer *renderer, struct wlr_output* output) 
 
 	// Create a new blur framebuffer
 	create_fx_framebuffer(output, &renderer->blur_buffer);
-	create_fx_framebuffer(output, &renderer->blur_buffer_swapped);
+	create_fx_framebuffer(output, &renderer->effects_buffer);
+	create_fx_framebuffer(output, &renderer->effects_buffer_swapped);
 
 	// Create and render the stencil buffer
 	create_stencil_buffer(output, &renderer->stencil_buffer_id);
@@ -537,10 +574,14 @@ void fx_renderer_begin(struct fx_renderer *renderer, struct wlr_output* output) 
 
 void fx_renderer_end(struct fx_renderer *renderer) {
 	// TODO
+<<<<<<< HEAD
 	// investigate why releasing blur buffers sometimes causes black pixels on
 	// overlapping windows (damage?)
+=======
+>>>>>>> 125f182e (Significantly improved blur damage. Still not fixed though)
 	release_fx_framebuffer(&renderer->blur_buffer);
-	release_fx_framebuffer(&renderer->blur_buffer_swapped);
+	release_fx_framebuffer(&renderer->effects_buffer);
+	release_fx_framebuffer(&renderer->effects_buffer_swapped);
 	release_stencil_buffer(&renderer->stencil_buffer_id);
 }
 
@@ -884,18 +925,17 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 }
 
 static void draw_blur(struct fx_renderer *renderer, struct sway_output *output,
-		const float matrix[static 9], pixman_region32_t* damage, const struct wlr_box box,
-		struct fx_framebuffer **buffer, struct blur_shader* shader, int blur_radius) {
-	int width = output->wlr_output->width;
-	int height = output->wlr_output->height;
-	if (*buffer == &renderer->blur_buffer) {
-		bind_framebuffer(renderer->blur_buffer_swapped, width, height);
-	} else {
-		bind_framebuffer(renderer->blur_buffer, width, height);
-	}
+		const float matrix[static 9], pixman_region32_t* damage,
+		struct fx_framebuffer **buffer, struct blur_shader* shader,
+		struct wlr_box *box, int blur_radius) {
+	int width, height;
+	wlr_output_transformed_resolution(output->wlr_output, &width, &height);
 
-	float gl_matrix[9];
-	wlr_matrix_transpose(gl_matrix, matrix);
+	if (*buffer == &renderer->effects_buffer) {
+		bind_framebuffer(renderer->effects_buffer_swapped, width, height);
+	} else {
+		bind_framebuffer(renderer->effects_buffer, width, height);
+	}
 
 	glActiveTexture(GL_TEXTURE0);
 
@@ -907,7 +947,10 @@ static void draw_blur(struct fx_renderer *renderer, struct sway_output *output,
 
 	// OpenGL ES 2 requires the glUniformMatrix3fv transpose parameter to be set
 	// to GL_FALSE
+	float gl_matrix[9];
+	wlr_matrix_transpose(gl_matrix, matrix);
 	glUniformMatrix3fv(shader->proj, 1, GL_FALSE, gl_matrix);
+
 	glUniform1i(shader->tex, 0);
 	glUniform1f(shader->radius, blur_radius);
 
@@ -931,7 +974,7 @@ static void draw_blur(struct fx_renderer *renderer, struct sway_output *output,
 		int rectsNum = 0;
 		pixman_box32_t *rects = pixman_region32_rectangles(damage, &rectsNum);
 		for (int i = 0; i < rectsNum; ++i) {
-			const struct pixman_box32 box = rects[i];
+			const pixman_box32_t box = rects[i];
 			struct wlr_box new_box = {box.x1, box.y1, box.x2 - box.x1, box.y2 - box.y1};
 			fx_renderer_scissor(&new_box);
 			glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
@@ -941,20 +984,29 @@ static void draw_blur(struct fx_renderer *renderer, struct sway_output *output,
 	glDisableVertexAttribArray(shader->pos_attrib);
 	glDisableVertexAttribArray(shader->tex_attrib);
 
-	if (*buffer != &renderer->blur_buffer) {
-		*buffer = &renderer->blur_buffer;
+	if (*buffer != &renderer->effects_buffer) {
+		*buffer = &renderer->effects_buffer;
 	} else {
-		*buffer = &renderer->blur_buffer_swapped;
+		*buffer = &renderer->effects_buffer_swapped;
 	}
 }
 
-void fx_render_blur(struct fx_renderer *renderer, struct sway_output *output,
-		pixman_region32_t *original_damage, const float matrix[static 9],
-		const float box_matrix[static 9], const struct wlr_box box,
+/** Renders the back_buffer blur onto `fx_renderer->blur_buffer` */
+struct fx_framebuffer *fx_get_back_buffer_blur(struct fx_renderer *renderer, struct sway_output *output,
+		pixman_region32_t *original_damage, const float _matrix[static 9],
+		const float box_matrix[static 9], struct wlr_box box,
 		struct decoration_data deco_data, int blur_radius, int blur_passes) {
+	int width, height;
+	wlr_output_transformed_resolution(output->wlr_output, &width, &height);
+
 	/* Blur */
 	glDisable(GL_BLEND);
 	glDisable(GL_STENCIL_TEST);
+
+	const enum wl_output_transform transform = wlr_output_transform_invert(output->wlr_output->transform);
+	float matrix[9];
+	struct wlr_box monitor_box = { 0, 0, width, height };
+	wlr_matrix_project_box(matrix, &monitor_box, transform, 0, output->wlr_output->transform_matrix);
 
 	float gl_matrix[9];
 	wlr_matrix_multiply(gl_matrix, renderer->projection, matrix);
@@ -962,11 +1014,10 @@ void fx_render_blur(struct fx_renderer *renderer, struct sway_output *output,
 	pixman_region32_t damage;
 	pixman_region32_init(&damage);
 	pixman_region32_copy(&damage, original_damage);
-	int t_width, t_height;
-	wlr_output_transformed_resolution(output->wlr_output, &t_width, &t_height);
 	wlr_region_transform(&damage, &damage, wlr_output_transform_invert(output->wlr_output->transform),
-			t_width, t_height);
-	wlr_region_expand(&damage, &damage, pow(2, blur_passes) * blur_radius);
+			width, height);
+	int expanded = get_blur_size(blur_passes, blur_radius);
+	wlr_region_expand(&damage, &damage, expanded);
 
 	// Get the main wlr framebuffer
 	struct wlr_texture *texture = get_texture_from_output(output);
@@ -975,83 +1026,44 @@ void fx_render_blur(struct fx_renderer *renderer, struct sway_output *output,
 		.texture = fx_texture_from_texture(texture),
 	};
 	wlr_texture_destroy(texture);
+	struct fx_framebuffer *current_buffer = &primary_buffer;
 
 	// Bind to blur framebuffer
-	bind_framebuffer(renderer->blur_buffer, output->width, output->height);
+	bind_framebuffer(renderer->effects_buffer, width, height);
 	glBindTexture(primary_buffer.texture.target, primary_buffer.texture.id);
 
 	// damage region will be scaled, make a temp
 	pixman_region32_t tempDamage;
 	pixman_region32_init(&tempDamage);
 	// When DOWNscaling, we make the region twice as small because it's the TARGET
-	wlr_region_scale(&tempDamage, &damage, 1.f / 2.f);
-
-	struct fx_framebuffer *current_buffer = &primary_buffer;
+	wlr_region_scale(&tempDamage, &damage, 0.5f);
 
 	// First pass
-	draw_blur(renderer, output, gl_matrix, &tempDamage, box, &current_buffer,
-			&renderer->shaders.blur1, blur_radius);
+	draw_blur(renderer, output, gl_matrix, &tempDamage, &current_buffer,
+			&renderer->shaders.blur1, &box, blur_radius);
 
 	// Downscale
 	for (int i = 1; i < blur_passes; ++i) {
 		wlr_region_scale(&tempDamage, &damage, 1.0f / (1 << (i + 1)));
-		draw_blur(renderer, output, gl_matrix, &tempDamage, box, &current_buffer,
-				&renderer->shaders.blur1, blur_radius);
+		draw_blur(renderer, output, gl_matrix, &tempDamage, &current_buffer,
+				&renderer->shaders.blur1, &box, blur_radius);
 	}
 
 	// Upscale
 	for (int i = blur_passes - 1; i >= 0; --i) {
 		// when upsampling we make the region twice as big
 		wlr_region_scale(&tempDamage, &damage, 1.0f / (1 << i));
-		draw_blur(renderer, output, gl_matrix, &tempDamage, box, &current_buffer,
-				&renderer->shaders.blur2, blur_radius);
+		draw_blur(renderer, output, gl_matrix, &tempDamage, &current_buffer,
+				&renderer->shaders.blur2, &box, blur_radius);
 	}
 
 	pixman_region32_fini(&tempDamage);
 	pixman_region32_fini(&damage);
 
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+	// Bind back to the default buffer
+	glBindTexture(renderer->effects_buffer.texture.target, 0);
 
-	glBindTexture(GL_TEXTURE_2D, 0);
-	bind_framebuffer(primary_buffer, output->width, output->height);
+	bind_framebuffer(primary_buffer, width, height);
 
-	/* Stencil */
-	fx_renderer_scissor(NULL);
-	glClearStencil(0);
-	glClear(GL_STENCIL_BUFFER_BIT);
-	glEnable(GL_STENCIL_TEST);
-
-	glStencilFunc(GL_ALWAYS, 1, 0xFF);
-	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
-	// Disable writing to color buffer
-	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-	// Draw the rounded rect as a mask
-	// NOTE: Alpha needs to be set to 1.0 to be able to discard any "empty" pixels
-	const float col[4] = {1.0, 0.0, 0.0, 0.5};
-	fx_render_rounded_rect(renderer, &box, col, box_matrix, deco_data.corner_radius, ALL);
-
-	// Close the mask
-	glStencilFunc(GL_EQUAL, 1, 0xFF);
-	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
-	// Reenable writing to color buffer
-	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-
-	// Render blurred texture
-	struct wlr_fbox src_box = {
-		.x = 0,
-		.y = 0,
-		.width = output->width * 0.5,
-		.height = output->height * 0.5,
-	};
-	// TODO: use monitor_box or box?
-	fx_render_subtexture_with_matrix(renderer, &renderer->blur_buffer.texture,
-			&src_box, &box, matrix, deco_data);
-
-	glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-
-	glClearStencil(0);
-	glClear(GL_STENCIL_BUFFER_BIT);
-	glDisable(GL_STENCIL_TEST);
-	fx_renderer_scissor(NULL);
+	return current_buffer;
 }

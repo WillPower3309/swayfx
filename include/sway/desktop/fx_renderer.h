@@ -82,8 +82,10 @@ struct fx_renderer {
 
 	GLuint stencil_buffer_id;
 
-	struct fx_framebuffer blur_buffer;
-	struct fx_framebuffer blur_buffer_swapped;
+	// TODO: Initialize buffer.
+	struct fx_framebuffer blur_buffer; // Contains the blurred background for tiled windows
+	struct fx_framebuffer effects_buffer;
+	struct fx_framebuffer effects_buffer_swapped;
 
 	struct {
 		bool OES_egl_image_external;
@@ -142,6 +144,10 @@ struct fx_renderer {
 	} shaders;
 };
 
+void fx_apply_container_expanded_size(struct sway_container *con, struct wlr_box* box);
+
+int fx_get_container_expanded_size(struct sway_container *con);
+
 struct fx_texture fx_texture_from_texture(struct wlr_texture* tex);
 
 struct fx_renderer *fx_renderer_create(struct wlr_egl *egl);
@@ -175,7 +181,7 @@ void fx_render_border_corner(struct fx_renderer *renderer, const struct wlr_box 
 void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *box,
 		const float color[static 4], const float projection[static 9], int radius, float blur_sigma);
 
-void fx_render_blur(struct fx_renderer *renderer, struct sway_output *wlr_output,
+struct fx_framebuffer *fx_get_back_buffer_blur(struct fx_renderer *renderer, struct sway_output *wlr_output,
 		pixman_region32_t *damage, const float matrix[static 9],
 		const float box_matrix[static 9], const struct wlr_box box,
 		struct decoration_data deco_data, int blur_radius, int blur_passes);
