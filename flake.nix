@@ -40,7 +40,7 @@
           default = pkgs.mkShell {
             name = "swayfx-shell";
             depsBuildBuild = with pkgs; [ pkg-config ];
-            inputsFrom = [ self.packages.${system}.swayfx-unwrapped pkgs.wlroots ];
+            inputsFrom = [ self.packages.${system}.swayfx-unwrapped pkgs.wlroots_0_16 ];
 
             nativeBuildInputs = with pkgs; [
               cmake
@@ -49,12 +49,13 @@
               pkg-config
               wayland-scanner
               scdoc
+              hwdata # for wlroots
             ];
 
             shellHook = with pkgs; ''(
               mkdir -p "$PWD/subprojects"
               cd "$PWD/subprojects"
-              cp -R --no-preserve=mode,ownership ${wlroots.src} wlroots
+              cp -R --no-preserve=mode,ownership ${wlroots_0_16.src} wlroots
             )'';
           };
         });
