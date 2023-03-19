@@ -19,6 +19,7 @@
 
 // shaders
 #include "common_vert_src.h"
+#include "invert_frag_src.h"
 #include "quad_frag_src.h"
 #include "quad_round_frag_src.h"
 #include "quad_round_tl_frag_src.h"
@@ -294,6 +295,16 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 		goto error;
 	}
 
+	prog = link_program(common_vert_src, invert_frag_src);
+	renderer->shaders.invert.program = prog;
+	if (!renderer->shaders.invert.program) {
+		goto error;
+	}
+	renderer->shaders.invert.proj = glGetUniformLocation(prog, "proj");
+	renderer->shaders.invert.tex = glGetUniformLocation(prog, "tex");
+	renderer->shaders.invert.pos_attrib = glGetAttribLocation(prog, "pos");
+	renderer->shaders.invert.tex_attrib = glGetAttribLocation(prog, "texcoord");
+
 	// Border corner shader
 	prog = link_program(corner_frag_src, WLR_GLES2_SHADER_SOURCE_NOT_TEXTURE);
 	renderer->shaders.corner.program = prog;
@@ -352,6 +363,7 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 
 error:
 	glDeleteProgram(renderer->shaders.quad.program);
+	glDeleteProgram(renderer->shaders.invert.program);
 	glDeleteProgram(renderer->shaders.rounded_quad.program);
 	glDeleteProgram(renderer->shaders.rounded_tl_quad.program);
 	glDeleteProgram(renderer->shaders.rounded_tr_quad.program);
@@ -411,6 +423,78 @@ void fx_renderer_scissor(struct wlr_box *box) {
 		}
 }
 
+/**
+ * Applies a custom shader to a wlr_texture.
+ * Returns handle of resulting texture.
+ */
+GLuint fx_apply_shader(struct fx_renderer *renderer, struct wlr_texture *wlr_texture) {
+	assert(wlr_texture_is_gles2(wlr_texture));
+	struct wlr_gles2_texture_attribs texture_attrs;
+	wlr_gles2_texture_get_attribs(wlr_texture, &texture_attrs);
+
+	glEnable(GL_BLEND);
+
+	// FIXME rework this
+	GLint fbo_id = 0;
+	glGetIntegerv(GL_FRAMEBUFFER_BINDING, &fbo_id);
+
+	// read from wlr_texture
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(texture_attrs.target, texture_attrs.tex);
+	glTexParameteri(texture_attrs.target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+	// genereate new texture to write to
+	GLuint texColorBuffer;
+	glGenTextures(1, &texColorBuffer);
+	glBindTexture(GL_TEXTURE_2D, texColorBuffer);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, wlr_texture->width, wlr_texture->height, 0,
+			GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+	GLuint framebuffer;
+	glGenFramebuffers(1, &framebuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+			GL_TEXTURE_2D, texColorBuffer, 0);
+	GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	if (status != GL_FRAMEBUFFER_COMPLETE) {
+		sway_log(SWAY_ERROR, "Unable to initialize a framebuffer: %i", status);
+	}
+
+	glUseProgram(renderer->shaders.invert.program);
+
+	glUniformMatrix3fv(renderer->shaders.invert.proj, 1, GL_FALSE, transforms[WL_OUTPUT_TRANSFORM_NORMAL]);
+	glUniform1i(renderer->shaders.invert.tex, 0);
+
+	const GLfloat texcoord[] = {
+		1.0, 1.0, // top right
+		0.0, 1.0, // top left
+		1.0, 0.0, // bottom right
+		0.0, 0.0, // bottom left
+	};
+
+	glVertexAttribPointer(renderer->shaders.invert.pos_attrib, 2, GL_FLOAT, GL_FALSE, 0, verts);
+	glVertexAttribPointer(renderer->shaders.invert.tex_attrib, 2, GL_FLOAT, GL_FALSE, 0, texcoord);
+
+	glEnableVertexAttribArray(renderer->shaders.invert.pos_attrib);
+	glEnableVertexAttribArray(renderer->shaders.invert.tex_attrib);
+
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+	glDisableVertexAttribArray(renderer->shaders.invert.pos_attrib);
+	glDisableVertexAttribArray(renderer->shaders.invert.tex_attrib);
+
+	glDeleteFramebuffers(1, &framebuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo_id);
+	// TODO remove this check after figuring the default framebuffer thing
+	status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	if (status != GL_FRAMEBUFFER_COMPLETE) {
+		sway_log(SWAY_ERROR, "Unable to restore framebuffer: %i", status);
+	}
+
+	return texColorBuffer;
+}
+
 bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct wlr_texture *wlr_texture,
 		const struct wlr_fbox *src_box, const struct wlr_box *dst_box, const float matrix[static 9],
 		struct decoration_data deco_data) {
@@ -449,6 +533,9 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct wlr_t
 	// to GL_FALSE
 	wlr_matrix_transpose(gl_matrix, gl_matrix);
 
+	// Perform initial rendering pass
+	GLuint source_texture = fx_apply_shader(renderer, wlr_texture);
+
 	// if there's no opacity or rounded corners we don't need to blend
 	if (!texture_attrs.has_alpha && deco_data.alpha == 1.0 && !deco_data.corner_radius) {
 		glDisable(GL_BLEND);
@@ -457,7 +544,7 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct wlr_t
 	}
 
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(texture_attrs.target, texture_attrs.tex);
+	glBindTexture(texture_attrs.target, source_texture);
 
 	glTexParameteri(texture_attrs.target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
