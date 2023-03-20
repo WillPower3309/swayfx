@@ -598,11 +598,9 @@ static void handle_request_minimize(struct wl_listener *listener, void *data) {
 		} else if (container->pending.workspace) {
 			root_scratchpad_hide(container);
 		}
-		wlr_xwayland_surface_set_minimized(xsurface, true);
 	} else {
 		if(container->scratchpad) {
 			root_scratchpad_show(container);
-			wlr_xwayland_surface_set_minimized(xsurface, false);
 		}
 	}
 	transaction_commit_dirty();
