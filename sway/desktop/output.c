@@ -752,7 +752,6 @@ void output_damage_whole_container(struct sway_output *output,
 		.width = con->current.width + 2,
 		.height = con->current.height + 2,
 	};
-	fx_apply_container_expanded_size(con, &box);
 
 	scale_box(&box, output->wlr_output->scale);
 	if (wlr_damage_ring_add_box(&output->damage_ring, &box)) {

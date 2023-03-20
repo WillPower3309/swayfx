@@ -1,7 +1,15 @@
+<<<<<<< HEAD
 /*
 	The original wlr_renderer was heavily referenced in making this project
 	https://gitlab.freedesktop.org/wlroots/wlroots/-/tree/master/render/gles2
 */
+=======
+// The original wlr_renderer was heavily referenced in making this project
+// https://gitlab.freedesktop.org/wlroots/wlroots/-/tree/master/render/gles2
+
+// TODO: add push / pop_gles2_debug(renderer)?
+
+>>>>>>> 3160a5a8 (Minor fixes)
 #include <assert.h>
 #include <GLES2/gl2.h>
 #include <stdint.h>
@@ -86,12 +94,20 @@ static int get_blur_size(int blur_passes, int blur_radius) {
 	return pow(2, blur_passes) * blur_radius;
 }
 
-void fx_apply_container_expanded_size(struct sway_container *con, struct wlr_box* box) {
-	int expand = fx_get_container_expanded_size(con);
+int get_config_blur_size() {
+	return get_blur_size(config->blur_passes, config->blur_radius);
+}
+
+void fx_expand_box(struct wlr_box *box, int expand) {
 	box->x -= expand;
 	box->y -= expand;
 	box->width += expand * 2;
 	box->height += expand * 2;
+}
+
+void fx_apply_container_expanded_size(struct sway_container *con, struct wlr_box* box) {
+	int expand = fx_get_container_expanded_size(con);
+	fx_expand_box(box, expand);
 }
 
 int fx_get_container_expanded_size(struct sway_container *con) {
@@ -120,10 +136,10 @@ struct fx_texture fx_texture_from_texture(struct wlr_texture* texture) {
 	};
 }
 
-static struct wlr_texture *get_texture_from_output (struct sway_output *output) {
+static struct wlr_texture *get_texture_from_output (struct wlr_output *output) {
 	/* GLuint fbo = wlr_gles2_renderer_get_current_fbo(output->wlr_output->renderer); */
-	return wlr_texture_from_buffer(output->wlr_output->renderer,
-			output->wlr_output->back_buffer);
+	return wlr_texture_from_buffer(output->renderer,
+			output->back_buffer);
 }
 
 static void bind_framebuffer(struct fx_framebuffer buffer, GLsizei width, GLsizei height) {
@@ -152,15 +168,9 @@ static void create_fx_framebuffer(struct wlr_output* output, struct fx_framebuff
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	}
 
-<<<<<<< HEAD
-	if (firstAlloc
-			|| buffer->texture.width != width
-			|| buffer->texture.height != height) {
-=======
 	if (firstAlloc
 			|| (int) buffer->texture.width != width
 			|| (int) buffer->texture.height != height) {
->>>>>>> 125f182e (Significantly improved blur damage. Still not fixed though)
 		glBindTexture(GL_TEXTURE_2D, buffer->texture.id);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 		//
@@ -573,12 +583,6 @@ void fx_renderer_begin(struct fx_renderer *renderer, struct wlr_output* output) 
 }
 
 void fx_renderer_end(struct fx_renderer *renderer) {
-	// TODO
-<<<<<<< HEAD
-	// investigate why releasing blur buffers sometimes causes black pixels on
-	// overlapping windows (damage?)
-=======
->>>>>>> 125f182e (Significantly improved blur damage. Still not fixed though)
 	release_fx_framebuffer(&renderer->blur_buffer);
 	release_fx_framebuffer(&renderer->effects_buffer);
 	release_fx_framebuffer(&renderer->effects_buffer_swapped);
@@ -641,6 +645,8 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct fx_te
 	} else {
 		glEnable(GL_BLEND);
 	}
+
+	glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(fx_texture->target, fx_texture->id);
@@ -927,7 +933,7 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 static void draw_blur(struct fx_renderer *renderer, struct sway_output *output,
 		const float matrix[static 9], pixman_region32_t* damage,
 		struct fx_framebuffer **buffer, struct blur_shader* shader,
-		struct wlr_box *box, int blur_radius) {
+		const struct wlr_box *box, int blur_radius) {
 	int width, height;
 	wlr_output_transformed_resolution(output->wlr_output, &width, &height);
 
@@ -994,7 +1000,7 @@ static void draw_blur(struct fx_renderer *renderer, struct sway_output *output,
 /** Renders the back_buffer blur onto `fx_renderer->blur_buffer` */
 struct fx_framebuffer *fx_get_back_buffer_blur(struct fx_renderer *renderer, struct sway_output *output,
 		pixman_region32_t *original_damage, const float _matrix[static 9],
-		const float box_matrix[static 9], struct wlr_box box,
+		const float box_matrix[static 9], const struct wlr_box *box,
 		struct decoration_data deco_data, int blur_radius, int blur_passes) {
 	int width, height;
 	wlr_output_transformed_resolution(output->wlr_output, &width, &height);
@@ -1020,7 +1026,7 @@ struct fx_framebuffer *fx_get_back_buffer_blur(struct fx_renderer *renderer, str
 	wlr_region_expand(&damage, &damage, expanded);
 
 	// Get the main wlr framebuffer
-	struct wlr_texture *texture = get_texture_from_output(output);
+	struct wlr_texture *texture = get_texture_from_output(output->wlr_output);
 	struct fx_framebuffer primary_buffer = {
 		.fb = wlr_gles2_renderer_get_current_fbo(output->wlr_output->renderer),
 		.texture = fx_texture_from_texture(texture),
@@ -1040,13 +1046,13 @@ struct fx_framebuffer *fx_get_back_buffer_blur(struct fx_renderer *renderer, str
 
 	// First pass
 	draw_blur(renderer, output, gl_matrix, &tempDamage, &current_buffer,
-			&renderer->shaders.blur1, &box, blur_radius);
+			&renderer->shaders.blur1, box, blur_radius);
 
 	// Downscale
 	for (int i = 1; i < blur_passes; ++i) {
 		wlr_region_scale(&tempDamage, &damage, 1.0f / (1 << (i + 1)));
 		draw_blur(renderer, output, gl_matrix, &tempDamage, &current_buffer,
-				&renderer->shaders.blur1, &box, blur_radius);
+				&renderer->shaders.blur1, box, blur_radius);
 	}
 
 	// Upscale
@@ -1054,7 +1060,7 @@ struct fx_framebuffer *fx_get_back_buffer_blur(struct fx_renderer *renderer, str
 		// when upsampling we make the region twice as big
 		wlr_region_scale(&tempDamage, &damage, 1.0f / (1 << i));
 		draw_blur(renderer, output, gl_matrix, &tempDamage, &current_buffer,
-				&renderer->shaders.blur2, &box, blur_radius);
+				&renderer->shaders.blur2, box, blur_radius);
 	}
 
 	pixman_region32_fini(&tempDamage);

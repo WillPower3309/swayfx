@@ -232,17 +232,11 @@ static void render_drag_icons(struct sway_output *output,
 }
 
 void render_blur(bool optimized, struct sway_output *output,
-		pixman_region32_t *output_damage, const struct wlr_box *_box,
-		struct sway_view *view, struct decoration_data deco_data,
-		int blur_radius, int blur_passes) {
+		pixman_region32_t *output_damage, const struct wlr_fbox *src_box,
+		const struct wlr_box *dst_box, struct wlr_surface *surface,
+		struct decoration_data deco_data, int blur_radius, int blur_passes) {
 	struct wlr_output *wlr_output = output->wlr_output;
 	struct fx_renderer *renderer = output->server->renderer;
-	struct wlr_surface *surface = view->surface;
-
-	struct wlr_box box;
-	memcpy(&box, _box, sizeof(struct wlr_box));
-	box.x -= output->lx * wlr_output->scale;
-	box.y -= output->ly * wlr_output->scale;
 
 	int width, height;
 	wlr_output_transformed_resolution(output->wlr_output, &width, &height);
@@ -263,7 +257,7 @@ void render_blur(bool optimized, struct sway_output *output,
 	pixman_region32_init(&render_damage);
 
 	// Check if damage is inside of box rect
-	pixman_region32_union_rect(&damage, &damage, box.x, box.y, box.width, box.height);
+	pixman_region32_union_rect(&damage, &damage, dst_box->x, dst_box->y, dst_box->width, dst_box->height);
 	pixman_region32_intersect(&damage, &damage, output_damage);
 	// pixman_region32_intersect_rect(&damage, output_damage, box.x, box.y, box.width, box.height);
 	if (!pixman_region32_not_empty(&damage)) {
@@ -278,8 +272,8 @@ void render_blur(bool optimized, struct sway_output *output,
 	pixman_box32_t surface_box = {
 		.x1 = 0,
 		.y1 = 0,
-		.x2 = box.width,
-		.y2 = box.height,
+		.x2 = dst_box->width,
+		.y2 = dst_box->height,
 	};
 
 	// Gets the non opaque region
@@ -297,12 +291,12 @@ void render_blur(bool optimized, struct sway_output *output,
 	// TODO: Prerender blur for tiled windows
 	struct fx_framebuffer * buffer = &renderer->blur_buffer;
 	// if (!optimized) {
-		pixman_region32_translate(&inverse_opaque, box.x, box.y);
+		pixman_region32_translate(&inverse_opaque, dst_box->x, dst_box->y);
 		pixman_region32_intersect(&inverse_opaque, &inverse_opaque, &damage);
 
 		// Render the blur into its own buffer
 		buffer = fx_get_back_buffer_blur(renderer, output, &inverse_opaque, matrix,
-				wlr_output->transform_matrix, monitor_box, deco_data, blur_radius, blur_passes);
+				wlr_output->transform_matrix, dst_box, deco_data, blur_radius, blur_passes);
 	// }
 
 	/*
@@ -314,12 +308,6 @@ void render_blur(bool optimized, struct sway_output *output,
 		goto damage_finish;
 	}
 
-	struct wlr_fbox src_box = {
-		.x = 0,
-		.y = 0,
-		.width = width,
-		.height = height,
-	};
 	// TODO: Should blur follow window opacity?
 	deco_data.alpha = 1.0;
 
@@ -327,7 +315,7 @@ void render_blur(bool optimized, struct sway_output *output,
 	pixman_box32_t * rects = pixman_region32_rectangles(&render_damage, &nrects);
 	for (int i = 0; i < nrects; ++i) {
 		scissor_output(wlr_output, &rects[i]);
-		fx_render_subtexture_with_matrix(renderer, &buffer->texture, &src_box, &box, matrix, deco_data);
+		fx_render_subtexture_with_matrix(renderer, &buffer->texture, src_box, dst_box, matrix, deco_data);
 	}
 
 damage_finish:
@@ -610,13 +598,27 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 			box.width -= state->border_thickness * 2;
 			box.height -= state->border_thickness * 2;
 		}
+
+		// Scaling and src_box creation moved here from render_blur to make the
+		// function more portable when we eventually move it into
+		// render_surface_iterator or similar function
 		scale_box(&box, output->wlr_output->scale);
+		box.x -= output->lx * output->wlr_output->scale;
+		box.y -= output->ly * output->wlr_output->scale;
+
+		int width, height;
+		wlr_output_transformed_resolution(output->wlr_output, &width, &height);
+		struct wlr_fbox src_box = {
+			.x = 0,
+			.y = 0,
+			.width = width,
+			.height = height,
+		};
 
 		// Use the pre-rendered blurred buffer for tiled windows due tiled
 		// that all tiled windows are displaying the same content under the windows
 		bool is_floating = container_is_floating(con);
-		render_blur(!is_floating, output, damage, &box, view, deco_data,
-				config->blur_radius, config->blur_passes);
+		render_blur(!is_floating, output, damage, &src_box, &box,view->surface, deco_data, config->blur_radius, config->blur_passes);
 	}
 
 	if (!wl_list_empty(&view->saved_buffers)) {
@@ -1624,6 +1626,11 @@ void output_render(struct sway_output *output, struct timespec *when,
 #endif
 	} else {
 		float clear_color[] = {0.25f, 0.25f, 0.25f, 1.0f};
+		// Extend the damaged region
+		if ((config->blur_enabled || config->shadow_enabled) && !fullscreen_con) {
+			int expanded = fx_get_container_expanded_size(NULL);
+			wlr_region_expand(damage, damage, expanded);
+		}
 
 		int nrects;
 		pixman_box32_t *rects = pixman_region32_rectangles(damage, &nrects);
@@ -1632,12 +1639,6 @@ void output_render(struct sway_output *output, struct timespec *when,
 			fx_renderer_clear(clear_color);
 		}
 
-		// Extend the damaged region
-		// TODO: Check for shadows needed?
-		if (config->blur_enabled || config->shadow_enabled) {
-			int expanded = fx_get_container_expanded_size(NULL);
-			wlr_region_expand(damage, damage, expanded * 2);
-		}
 		render_layer_toplevel(output, damage,
 			&output->layers[ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND]);
 		render_layer_toplevel(output, damage,
@@ -1697,11 +1698,6 @@ renderer_end:
 
 	pixman_region32_t frame_damage;
 	pixman_region32_init(&frame_damage);
-
-	if (config->blur_enabled || config->shadow_enabled) {
-		int expanded = fx_get_container_expanded_size(NULL);
-		wlr_region_expand(&frame_damage, &frame_damage, expanded);
-	}
 
 	enum wl_output_transform transform =
 		wlr_output_transform_invert(wlr_output->transform);

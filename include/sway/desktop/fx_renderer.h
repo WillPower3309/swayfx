@@ -144,7 +144,11 @@ struct fx_renderer {
 	} shaders;
 };
 
+int get_config_blur_size();
+
 void fx_apply_container_expanded_size(struct sway_container *con, struct wlr_box* box);
+
+void fx_expand_box(struct wlr_box *box, int expand);
 
 int fx_get_container_expanded_size(struct sway_container *con);
 
@@ -183,7 +187,7 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 
 struct fx_framebuffer *fx_get_back_buffer_blur(struct fx_renderer *renderer, struct sway_output *wlr_output,
 		pixman_region32_t *damage, const float matrix[static 9],
-		const float box_matrix[static 9], const struct wlr_box box,
+		const float box_matrix[static 9], const struct wlr_box *box,
 		struct decoration_data deco_data, int blur_radius, int blur_passes);
 
 #endif
