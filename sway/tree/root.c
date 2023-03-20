@@ -111,6 +111,17 @@ void root_scratchpad_remove_container(struct sway_container *con) {
 	}
 }
 
+/* Set minimized state from scratchpad container `show` state */
+static void root_handle_container(struct sway_container *con, bool show) {
+	struct wlr_foreign_toplevel_handle_v1 *foreign_toplevel = con->view->foreign_toplevel;
+	struct wlr_xwayland_surface *xsurface = con->view->wlr_xwayland_surface;
+	if (xsurface) {
+		wlr_xwayland_surface_set_minimized(xsurface, !show);
+	} else if (foreign_toplevel) {
+		wlr_foreign_toplevel_handle_v1_set_minimized(foreign_toplevel, !show);
+	}
+}
+
 void root_scratchpad_show(struct sway_container *con) {
 	struct sway_seat *seat = input_manager_current_seat();
 	struct sway_workspace *new_ws = seat_get_focused_workspace(seat);
@@ -140,6 +151,9 @@ void root_scratchpad_show(struct sway_container *con) {
 		}
 	}
 	workspace_add_floating(new_ws, con);
+
+	// Set minimize state to normalized
+	root_handle_container(con, true);
 
 	// Make sure the container's center point overlaps this workspace
 	double center_lx = con->pending.x + con->pending.width / 2;
@@ -171,6 +185,9 @@ void root_scratchpad_hide(struct sway_container *con) {
 		// it should be shown until fullscreen has been disabled
 		return;
 	}
+
+	// Set minimize state to minimized
+	root_handle_container(con, false);
 
 	disable_fullscreen(con, NULL);
 	container_for_each_child(con, disable_fullscreen, NULL);

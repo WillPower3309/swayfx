@@ -575,6 +575,7 @@ static void handle_request_fullscreen(struct wl_listener *listener, void *data) 
 	transaction_commit_dirty();
 }
 
+/* Minimize to scratchpad */
 static void handle_request_minimize(struct wl_listener *listener, void *data) {
 	struct sway_xwayland_view *xwayland_view =
 		wl_container_of(listener, xwayland_view, request_minimize);
@@ -585,9 +586,26 @@ static void handle_request_minimize(struct wl_listener *listener, void *data) {
 	}
 
 	struct wlr_xwayland_minimize_event *e = data;
-	struct sway_seat *seat = input_manager_current_seat();
-	bool focused = seat_get_focus(seat) == &view->container->node;
-	wlr_xwayland_surface_set_minimized(xsurface, !focused && e->minimize);
+	struct sway_container *container = view->container;
+	if (!container->pending.workspace) {
+		while (container->pending.parent) {
+			container = container->pending.parent;
+		}
+	}
+	if(e->minimize) {
+		if (!container->scratchpad) {
+			root_scratchpad_add_container(container, NULL);
+		} else if (container->pending.workspace) {
+			root_scratchpad_hide(container);
+		}
+		wlr_xwayland_surface_set_minimized(xsurface, true);
+	} else {
+		if(container->scratchpad) {
+			root_scratchpad_show(container);
+			wlr_xwayland_surface_set_minimized(xsurface, false);
+		}
+	}
+	transaction_commit_dirty();
 }
 
 static void handle_request_move(struct wl_listener *listener, void *data) {
