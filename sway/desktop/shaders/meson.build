@@ -1,14 +1,14 @@
 embed = find_program('./embed.sh', native: true)
 
 shaders = [
+    'box_shadow.frag',
     'common.vert',
+    'corner.frag',
     'quad.frag',
     'quad_round.frag',
     'quad_round_tl.frag',
     'quad_round_tr.frag',
-    'corner.frag',
-    'box_shadow.frag',
-    'tex_decorated.frag',
+    'tex.frag',
 ]
 
 foreach name : shaders

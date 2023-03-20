@@ -1,9 +1,8 @@
-// The original wlr_renderer was heavily referenced in making this project
-// https://gitlab.freedesktop.org/wlroots/wlroots/-/tree/master/render/gles2
+/*
+	The original wlr_renderer was heavily referenced in making this project
+	https://gitlab.freedesktop.org/wlroots/wlroots/-/tree/master/render/gles2
+*/
 
-// TODO: add push / pop_gles2_debug(renderer)?
-
-#define _POSIX_C_SOURCE 200809L
 #include <assert.h>
 #include <GLES2/gl2.h>
 #include <stdlib.h>
@@ -18,15 +17,14 @@
 #include "sway/server.h"
 
 // shaders
+#include "box_shadow_frag_src.h"
 #include "common_vert_src.h"
+#include "corner_frag_src.h"
 #include "quad_frag_src.h"
 #include "quad_round_frag_src.h"
 #include "quad_round_tl_frag_src.h"
 #include "quad_round_tr_frag_src.h"
-#include "corner_frag_src.h"
-#include "box_shadow_frag_src.h"
-//#include "tex_frag_src.h"
-#include "tex_decorated_frag_src.h"
+#include "tex_frag_src.h"
 
 static const GLfloat verts[] = {
 	1, 0, // top right
@@ -166,7 +164,7 @@ error:
 static bool link_tex_program(struct fx_renderer *renderer,
 		struct gles2_tex_shader *shader, enum fx_gles2_shader_source source) {
 	GLuint prog;
-	const GLchar *frag_src = tex_decorated_frag_src;
+	const GLchar *frag_src = tex_frag_src;
 
 	shader->program = prog = link_program(frag_src, source);
 	if (!shader->program) {
