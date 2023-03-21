@@ -55,6 +55,17 @@ void root_destroy(struct sway_root *root) {
 	free(root);
 }
 
+/* Set minimized state from scratchpad container `show` state */
+static void root_scratchpad_set_minimize(struct sway_container *con, bool minimize) {
+	struct wlr_foreign_toplevel_handle_v1 *foreign_toplevel = con->view->foreign_toplevel;
+	struct wlr_xwayland_surface *xsurface = con->view->wlr_xwayland_surface;
+	if (xsurface) {
+		wlr_xwayland_surface_set_minimized(xsurface, minimize);
+	} else if (foreign_toplevel) {
+		wlr_foreign_toplevel_handle_v1_set_minimized(foreign_toplevel, minimize);
+	}
+}
+
 void root_scratchpad_add_container(struct sway_container *con, struct sway_workspace *ws) {
 	if (!sway_assert(!con->scratchpad, "Container is already in scratchpad")) {
 		return;
@@ -96,6 +107,9 @@ void root_scratchpad_add_container(struct sway_container *con, struct sway_works
 		seat_set_focus(seat, new_focus);
 	}
 
+	// Set minimize state to minimized
+	root_scratchpad_set_minimize(con, true);
+
 	ipc_event_window(con, "move");
 }
 
@@ -108,17 +122,6 @@ void root_scratchpad_remove_container(struct sway_container *con) {
 	if (index != -1) {
 		list_del(root->scratchpad, index);
 		ipc_event_window(con, "move");
-	}
-}
-
-/* Set minimized state from scratchpad container `show` state */
-static void root_handle_container(struct sway_container *con, bool show) {
-	struct wlr_foreign_toplevel_handle_v1 *foreign_toplevel = con->view->foreign_toplevel;
-	struct wlr_xwayland_surface *xsurface = con->view->wlr_xwayland_surface;
-	if (xsurface) {
-		wlr_xwayland_surface_set_minimized(xsurface, !show);
-	} else if (foreign_toplevel) {
-		wlr_foreign_toplevel_handle_v1_set_minimized(foreign_toplevel, !show);
 	}
 }
 
@@ -153,7 +156,7 @@ void root_scratchpad_show(struct sway_container *con) {
 	workspace_add_floating(new_ws, con);
 
 	// Set minimize state to normalized
-	root_handle_container(con, true);
+	root_scratchpad_set_minimize(con, false);
 
 	// Make sure the container's center point overlaps this workspace
 	double center_lx = con->pending.x + con->pending.width / 2;
@@ -187,7 +190,7 @@ void root_scratchpad_hide(struct sway_container *con) {
 	}
 
 	// Set minimize state to minimized
-	root_handle_container(con, false);
+	root_scratchpad_set_minimize(con, true);
 
 	disable_fullscreen(con, NULL);
 	container_for_each_child(con, disable_fullscreen, NULL);
