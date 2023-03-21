@@ -303,7 +303,7 @@ void render_blur(bool optimized, struct sway_output *output,
 	 * Draw the blurred texture
 	 */
 
-	pixman_region32_intersect_rect(&render_damage, &damage, box.x, box.y, box.width, box.height);
+	pixman_region32_intersect_rect(&render_damage, &damage, dst_box->x, dst_box->y, dst_box->width, dst_box->height);
 	if (!pixman_region32_not_empty(&render_damage)) {
 		goto damage_finish;
 	}
@@ -588,7 +588,7 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 			&& con->blur_enabled
 			// Check if window has alpha
 			&& !(view->surface->opaque && con->alpha >= 1.0f && deco_data.alpha >= 1.0f)
-			&& config->blur_passes >= 0 
+			&& config->blur_passes >= 0
 			&& config->blur_radius > 0) {
 		struct sway_container_state *state = &con->current;
 		struct wlr_box box = { floor(state->x), floor(state->y), state->width, state->height };

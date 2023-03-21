@@ -1,15 +1,8 @@
-<<<<<<< HEAD
 /*
 	The original wlr_renderer was heavily referenced in making this project
 	https://gitlab.freedesktop.org/wlroots/wlroots/-/tree/master/render/gles2
 */
-=======
-// The original wlr_renderer was heavily referenced in making this project
-// https://gitlab.freedesktop.org/wlroots/wlroots/-/tree/master/render/gles2
 
-// TODO: add push / pop_gles2_debug(renderer)?
-
->>>>>>> 3160a5a8 (Minor fixes)
 #include <assert.h>
 #include <GLES2/gl2.h>
 #include <stdint.h>
@@ -487,7 +480,7 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	renderer->shaders.box_shadow.corner_radius = glGetUniformLocation(prog, "corner_radius");
 
 	// Blur 1
-	prog = link_program(common_vert_src, blur1_frag_src);
+	prog = link_program(blur1_frag_src, WLR_GLES2_SHADER_SOURCE_NOT_TEXTURE);
 	renderer->shaders.blur1.program = prog;
 	if (!renderer->shaders.blur1.program) {
 		goto error;
@@ -500,7 +493,7 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	renderer->shaders.blur1.halfpixel = glGetUniformLocation(prog, "halfpixel");
 
 	// Blur 2
-	prog = link_program(common_vert_src, blur2_frag_src);
+	prog = link_program(blur2_frag_src, WLR_GLES2_SHADER_SOURCE_NOT_TEXTURE);
 	renderer->shaders.blur2.program = prog;
 	if (!renderer->shaders.blur2.program) {
 		goto error;
