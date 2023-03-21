@@ -35,7 +35,7 @@ dim_inactive_colors.unfocused #000000FF
 dim_inactive_colors.urgent #900000FF
 
 # Move minimized windows into Scratchpad
-scratchpad_minimize off
+scratchpad_minimize on
 
 ### Output configuration
 #
