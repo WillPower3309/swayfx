@@ -712,8 +712,6 @@ static void handle_foreign_fullscreen_request(
 
 static void handle_foreign_minimize(
 		struct wl_listener *listener, void *data) {
-	if (!config->scratchpad_minimize) return;
-
 	struct sway_view *view = wl_container_of(
 			listener, view, foreign_minimize);
 	struct wlr_foreign_toplevel_handle_v1_minimized_event *event = data;
@@ -748,6 +746,9 @@ static void handle_foreign_destroy(
 			listener, view, foreign_destroy);
 
 	wl_list_remove(&view->foreign_activate_request.link);
+	if (view->foreign_minimize.notify) {
+		wl_list_remove(&view->foreign_minimize.link);
+	}
 	wl_list_remove(&view->foreign_fullscreen_request.link);
 	wl_list_remove(&view->foreign_close_request.link);
 	wl_list_remove(&view->foreign_destroy.link);
@@ -821,9 +822,11 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 	view->foreign_destroy.notify = handle_foreign_destroy;
 	wl_signal_add(&view->foreign_toplevel->events.destroy,
 			&view->foreign_destroy);
-	view->foreign_minimize.notify = handle_foreign_minimize;
-	wl_signal_add(&view->foreign_toplevel->events.request_minimize,
-			&view->foreign_minimize);
+	if (config->scratchpad_minimize) {
+		view->foreign_minimize.notify = handle_foreign_minimize;
+		wl_signal_add(&view->foreign_toplevel->events.request_minimize,
+				&view->foreign_minimize);
+	}
 
 
 	struct sway_container *container = view->container;

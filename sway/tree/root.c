@@ -108,7 +108,9 @@ void root_scratchpad_add_container(struct sway_container *con, struct sway_works
 	}
 
 	// Set minimize state to minimized
-	root_scratchpad_set_minimize(con, true);
+	if (config->scratchpad_minimize) {
+		root_scratchpad_set_minimize(con, true);
+	}
 
 	ipc_event_window(con, "move");
 }
@@ -156,7 +158,9 @@ void root_scratchpad_show(struct sway_container *con) {
 	workspace_add_floating(new_ws, con);
 
 	// Set minimize state to normalized
-	root_scratchpad_set_minimize(con, false);
+	if (config->scratchpad_minimize) {
+		root_scratchpad_set_minimize(con, false);
+	}
 
 	// Make sure the container's center point overlaps this workspace
 	double center_lx = con->pending.x + con->pending.width / 2;
@@ -190,7 +194,9 @@ void root_scratchpad_hide(struct sway_container *con) {
 	}
 
 	// Set minimize state to minimized
-	root_scratchpad_set_minimize(con, true);
+	if (config->scratchpad_minimize) {
+		root_scratchpad_set_minimize(con, true);
+	}
 
 	disable_fullscreen(con, NULL);
 	container_for_each_child(con, disable_fullscreen, NULL);
