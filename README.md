@@ -26,6 +26,7 @@ Sway is an incredible window manager, and certainly one of the most well establi
     - `dim_inactive_colors.urgent <hex color> ex, #900000FF`
 + Application saturation: `for_window [CRITERIA HERE] saturation <set|plus|minus> <val 0.0 <-> 2.0>`
 + Keep/remove separator border between titlebar and content: `titlebar_separator enable|disable`
++ Treat Scratchpad as minimized: `scratchpad_minimize on|off`
 
 ## Roadmap
 

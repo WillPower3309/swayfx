@@ -71,6 +71,10 @@ The following commands may only be used in the configuration file.
 	*wordexp*(3) for details). The same include file can only be included once;
 	subsequent attempts will be ignored.
 
+*scratchpad_minimize* <value>
+	Adjusts if minimized windows should be moved into the scratchpad (on|off).
+	Must be set at config-time (when starting sway).
+
 *swaybg_command* <command>
 	Executes custom background _command_. Default is _swaybg_. Refer to
 	*sway-output*(5) for more information.

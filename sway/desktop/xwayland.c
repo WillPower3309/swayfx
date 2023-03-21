@@ -586,24 +586,30 @@ static void handle_request_minimize(struct wl_listener *listener, void *data) {
 	}
 
 	struct wlr_xwayland_minimize_event *e = data;
-	struct sway_container *container = view->container;
-	if (!container->pending.workspace) {
-		while (container->pending.parent) {
-			container = container->pending.parent;
+	if (config->scratchpad_minimize) {
+		struct sway_container *container = view->container;
+		if (!container->pending.workspace) {
+			while (container->pending.parent) {
+				container = container->pending.parent;
+			}
 		}
+		if(e->minimize) {
+			if (!container->scratchpad) {
+				root_scratchpad_add_container(container, NULL);
+			} else if (container->pending.workspace) {
+				root_scratchpad_hide(container);
+			}
+		} else {
+			if(container->scratchpad) {
+				root_scratchpad_show(container);
+			}
+		}
+		transaction_commit_dirty();
+		return;
 	}
-	if(e->minimize) {
-		if (!container->scratchpad) {
-			root_scratchpad_add_container(container, NULL);
-		} else if (container->pending.workspace) {
-			root_scratchpad_hide(container);
-		}
-	} else {
-		if(container->scratchpad) {
-			root_scratchpad_show(container);
-		}
-	}
-	transaction_commit_dirty();
+	struct sway_seat *seat = input_manager_current_seat();
+	bool focused = seat_get_focus(seat) == &view->container->node;
+	wlr_xwayland_surface_set_minimized(xsurface, !focused && e->minimize);
 }
 
 static void handle_request_move(struct wl_listener *listener, void *data) {

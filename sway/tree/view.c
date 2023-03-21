@@ -712,6 +712,8 @@ static void handle_foreign_fullscreen_request(
 
 static void handle_foreign_minimize(
 		struct wl_listener *listener, void *data) {
+	if (!config->scratchpad_minimize) return;
+
 	struct sway_view *view = wl_container_of(
 			listener, view, foreign_minimize);
 	struct wlr_foreign_toplevel_handle_v1_minimized_event *event = data;

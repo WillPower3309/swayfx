@@ -336,6 +336,11 @@ static void handle_request_maximize(struct wl_listener *listener, void *data) {
 static void handle_request_minimize(struct wl_listener *listener, void *data) {
 	struct sway_xdg_shell_view *xdg_shell_view =
 		wl_container_of(listener, xdg_shell_view, request_minimize);
+	if (!config->scratchpad_minimize) {
+		struct wlr_xdg_toplevel *toplevel = xdg_shell_view->view.wlr_xdg_toplevel;
+		wlr_xdg_surface_schedule_configure(toplevel->base);
+		return;
+	}
 
 	struct sway_container *container = xdg_shell_view->view.container;
 	if (!container->pending.workspace) {
