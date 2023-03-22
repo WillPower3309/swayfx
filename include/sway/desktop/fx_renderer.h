@@ -147,7 +147,7 @@ struct fx_renderer {
 
 int get_config_blur_size();
 
-void fx_apply_container_expanded_size(struct sway_container *con, struct wlr_box* box);
+void fx_apply_container_expanded_size(struct sway_container *con, struct wlr_box *box);
 
 void fx_expand_box(struct wlr_box *box, int expand);
 
