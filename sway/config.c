@@ -157,6 +157,13 @@ void free_config(struct sway_config *config) {
 		}
 		list_free(config->criteria);
 	}
+	if (config->foreign_shader_compile_queue) {
+		for (int i = 0; i < config->criteria->length; ++i) {
+			free_foreign_shader_compile_target(
+					config->foreign_shader_compile_queue->items[0]);
+		}
+		list_free(config->criteria);
+	}
 	list_free(config->no_focus);
 	list_free(config->active_bar_modifiers);
 	list_free_items_and_destroy(config->config_chain);
@@ -343,6 +350,7 @@ static void config_defaults(struct sway_config *config) {
 	config->shadows_on_csd_enabled = false;
 	config->shadow_blur_sigma = 20.0f;
 	color_to_rgba(config->shadow_color, 0x0000007F);
+	if (!(config->foreign_shader_compile_queue = create_list())) goto cleanup;
 
 	// The keysym to keycode translation
 	struct xkb_rule_names rules = {0};
@@ -927,6 +935,8 @@ bool read_config(FILE *file, struct sway_config *config,
 	config->current_config_line_number = 0;
 	config->current_config_line = NULL;
 
+	/* struct foreign_shader_compile_target *target = config->foreign_shader_compile_queue->items[0]; */
+	/* sway_log(SWAY_ERROR, "found %s %s at %p", target->label, target->frag, config->foreign_shader_compile_queue->items[0]); */
 	return success;
 }
 

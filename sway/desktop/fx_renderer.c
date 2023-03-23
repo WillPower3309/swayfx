@@ -3,6 +3,7 @@
 
 // TODO: add push / pop_gles2_debug(renderer)?
 
+#include <sys/stat.h>
 #define _POSIX_C_SOURCE 200809L
 #include <assert.h>
 #include <GLES2/gl2.h>
@@ -217,6 +218,58 @@ static void load_gl_proc(void *proc_ptr, const char *name) {
 	*(void **)proc_ptr = proc;
 }
 
+void compile_foreign_shader(struct fx_renderer *renderer,
+		struct foreign_shader_compile_target *target) {
+#define _fail_condition(condition, message, ...) \
+	if (condition) { \
+		sway_log(SWAY_ERROR, message, ##__VA_ARGS__);\
+		goto cleanup; \
+	}
+
+	char *src = NULL;
+	FILE *f = NULL;
+	struct foreign_shader *shader = NULL;
+	// TODO: remove this
+	_fail_condition(!target, "Unable to compile null path %s", target->label);
+
+	// Read file
+	sway_log(SWAY_ERROR, "Compiling %s", target->label);
+	f = fopen(target->frag, "r");
+	_fail_condition(!f, "Failed to open foreign shader file: %s", target->frag);
+	struct stat statbuf;
+	_fail_condition(fstat(fileno(f), &statbuf) < 0,
+			"Failed to stat foreign shader file: %s", target->frag);
+	size_t num_bytes = statbuf.st_size;
+	src = calloc(num_bytes + 1, sizeof(char));
+	_fail_condition(src == NULL,
+			"Unable to allocate string buffer during compilation of %s", target->frag);
+	size_t read_bytes = fread(src, sizeof(char), num_bytes, f);
+	_fail_condition(read_bytes < num_bytes || ferror(f),
+			"Failed to read foreign shader file: %s", target->frag);
+
+	// Compile shader
+	shader = malloc(sizeof(struct foreign_shader));
+	_fail_condition(shader == NULL, "Allocation error during compilation of %s", target->frag);
+	GLuint prog = link_program(common_vert_src, src);
+	_fail_condition(prog, "Failed to compile foreign shader: %s", target->frag);
+	sway_log(SWAY_ERROR, "Finished %s", target->label);
+
+	shader->program = prog;
+	shader->tex = glGetUniformLocation(prog, "tex");
+	shader->pos_attrib = glGetAttribLocation(prog, "pos");
+	shader->tex_attrib = glGetAttribLocation(prog, "texcoord");
+	list_add(renderer->shaders.foreign, &shader);
+
+cleanup:
+	if (f)
+		fclose(f);
+	if (src)
+		free(src);
+	if (shader)
+		free(shader);
+	free_foreign_shader_compile_target(target);
+}
+
 struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	struct fx_renderer *renderer = calloc(1, sizeof(struct fx_renderer));
 	if (renderer == NULL) {
@@ -336,6 +389,11 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 		goto error;
 	}
 
+	if (!(renderer->shaders.foreign = create_list())) {
+		sway_log(SWAY_ERROR, "Failed to allocate foreign shader list");
+		goto error;
+	}
+
 	if (!eglMakeCurrent(wlr_egl_get_display(renderer->egl),
 				EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT)) {
 		sway_log(SWAY_ERROR, "GLES2 RENDERER: Could not unset current EGL");
@@ -385,11 +443,26 @@ void fx_renderer_begin(struct fx_renderer *renderer, uint32_t width, uint32_t he
 	matrix_projection(renderer->projection, width, height,
 		WL_OUTPUT_TRANSFORM_FLIPPED_180);
 
+	// Compile foreign shaders
+	clock_t begin = clock();
+	int count = 0;
+	for (int i = config->foreign_shader_compile_queue->length - 1; i >= 0; --i) {
+		struct foreign_shader_compile_target *target =
+			config->foreign_shader_compile_queue->items[i];
+		compile_foreign_shader(renderer, target);
+		list_del(config->foreign_shader_compile_queue, i);
+		++count;
+	}
+	clock_t end = clock();
+	double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+	sway_log(SWAY_ERROR, "%i foreign shaders compiled in %f", count, time_spent);
+
 	glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 }
 
 void fx_renderer_end() {
 	// TODO
+	// FIXME: free foreign shader list
 }
 
 void fx_renderer_clear(const float color[static 4]) {
@@ -418,7 +491,8 @@ GLuint fx_apply_shader(struct fx_renderer *renderer, struct wlr_texture *wlr_tex
 
 	glEnable(GL_BLEND);
 
-	// FIXME rework this
+	// FIXME: rework this
+	// fbo id available in wlr_buffer object?
 	GLint fbo_id = 0;
 	glGetIntegerv(GL_FRAMEBUFFER_BINDING, &fbo_id);
 
@@ -431,9 +505,10 @@ GLuint fx_apply_shader(struct fx_renderer *renderer, struct wlr_texture *wlr_tex
 	GLuint texColorBuffer;
 	glGenTextures(1, &texColorBuffer);
 	glBindTexture(GL_TEXTURE_2D, texColorBuffer);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, wlr_texture->width, wlr_texture->height, 0,
-			GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, wlr_texture->width, wlr_texture->height, 0,
+			GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glBindTexture(GL_TEXTURE_2D, 0);
 
 	GLuint framebuffer;
 	glGenFramebuffers(1, &framebuffer);
@@ -452,9 +527,9 @@ GLuint fx_apply_shader(struct fx_renderer *renderer, struct wlr_texture *wlr_tex
 
 	const GLfloat texcoord[] = {
 		1.0, 1.0, // top right
-		0.0, 1.0, // top left
-		1.0, 0.0, // bottom right
-		0.0, 0.0, // bottom left
+		-1.0, 1.0, // top left
+		1.0, -1.0, // bottom right
+		-1.0, -1.0, // bottom left
 	};
 
 	glVertexAttribPointer(renderer->shaders.invert.pos_attrib, 2, GL_FLOAT, GL_FALSE, 0, verts);
@@ -463,6 +538,7 @@ GLuint fx_apply_shader(struct fx_renderer *renderer, struct wlr_texture *wlr_tex
 	glEnableVertexAttribArray(renderer->shaders.invert.pos_attrib);
 	glEnableVertexAttribArray(renderer->shaders.invert.tex_attrib);
 
+	glClear(GL_COLOR_BUFFER_BIT);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
 	glDisableVertexAttribArray(renderer->shaders.invert.pos_attrib);
@@ -470,7 +546,7 @@ GLuint fx_apply_shader(struct fx_renderer *renderer, struct wlr_texture *wlr_tex
 
 	glDeleteFramebuffers(1, &framebuffer);
 	glBindFramebuffer(GL_FRAMEBUFFER, fbo_id);
-	// TODO remove this check after figuring the default framebuffer thing
+	// TODO: remove this check after figuring the default framebuffer thing
 	status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 	if (status != GL_FRAMEBUFFER_COMPLETE) {
 		sway_log(SWAY_ERROR, "Unable to restore framebuffer: %i", status);

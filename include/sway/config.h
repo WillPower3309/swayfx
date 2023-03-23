@@ -470,6 +470,12 @@ enum xwayland_mode {
 	XWAYLAND_MODE_IMMEDIATE,
 };
 
+struct foreign_shader_compile_target {
+	char *frag; // frag shader file path
+	char *vert; // vert shader file path
+	char *label; // shader label
+};
+
 /**
  * The configuration struct. The result of loading a config file.
  */
@@ -487,6 +493,8 @@ struct sway_config {
 	bool shadows_on_csd_enabled;
 	int shadow_blur_sigma;
 	float shadow_color[4];
+	// foreign_shader_compile_target *, used by fx_rederer during initialization
+	list_t *foreign_shader_compile_queue;
 
 	char *swaynag_command;
 	struct swaynag_instance swaynag_config_errors;
@@ -715,6 +723,8 @@ void free_sway_binding(struct sway_binding *sb);
 void free_switch_binding(struct sway_switch_binding *binding);
 
 void free_gesture_binding(struct sway_gesture_binding *binding);
+
+void free_foreign_shader_compile_target(struct foreign_shader_compile_target *target);
 
 void seat_execute_command(struct sway_seat *seat, struct sway_binding *binding);
 

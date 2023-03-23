@@ -4,6 +4,7 @@
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 #include <stdbool.h>
+#include "list.h"
 
 enum corner_location { ALL, TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT, NONE };
 
@@ -14,6 +15,15 @@ struct decoration_data {
 	float dim;
 	float* dim_color;
 	bool has_titlebar;
+};
+
+// TODO: extra params in a list
+struct foreign_shader {
+	char *label;
+	GLuint program;
+	GLint tex;
+	GLint pos_attrib;
+	GLint tex_attrib;
 };
 
 struct gles2_tex_shader {
@@ -105,6 +115,8 @@ struct fx_renderer {
 			GLint tex_attrib;
 			GLint position;
 		} invert;
+
+		list_t *foreign; // struct foreign_shader*
 
 		struct gles2_tex_shader tex_rgba;
 		struct gles2_tex_shader tex_rgbx;

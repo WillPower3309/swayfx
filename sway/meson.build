@@ -14,6 +14,7 @@ sway_sources = files(
 	'xdg_decoration.c',
 
 	'desktop/desktop.c',
+	'desktop/foreign_shader.c',
 	'desktop/fx_renderer.c',
 	'desktop/idle_inhibit_v1.c',
 	'desktop/layer_shell.c',
@@ -109,6 +110,7 @@ sway_sources = files(
 	'commands/seat/shortcuts_inhibitor.c',
 	'commands/seat/xcursor_theme.c',
 	'commands/set.c',
+	'commands/shader.c',
 	'commands/shadow_blur_radius.c',
 	'commands/shadow_color.c',
 	'commands/shadows.c',
