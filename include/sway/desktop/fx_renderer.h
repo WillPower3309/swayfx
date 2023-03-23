@@ -81,7 +81,15 @@ struct fx_renderer {
 
 	float projection[9];
 
+	pixman_region32_t *original_damage;
+
+	GLint wlr_fb;
+
+	struct sway_output *sway_output;
+
 	GLuint stencil_buffer_id;
+
+	struct fx_framebuffer main_buffer; // The main FB used for rendering
 
 	// TODO: Initialize buffer.
 	struct fx_framebuffer blur_buffer; // Contains the blurred background for tiled windows
@@ -145,6 +153,9 @@ struct fx_renderer {
 	} shaders;
 };
 
+void scissor_output(struct wlr_output *wlr_output,
+		pixman_box32_t *rect);
+
 int get_config_blur_size();
 
 void fx_apply_container_expanded_size(struct sway_container *con, struct wlr_box *box);
@@ -157,7 +168,8 @@ struct fx_texture fx_texture_from_texture(struct wlr_texture* tex);
 
 struct fx_renderer *fx_renderer_create(struct wlr_egl *egl);
 
-void fx_renderer_begin(struct fx_renderer *renderer, struct wlr_output* output);
+void fx_renderer_begin(struct fx_renderer *renderer, struct sway_output *output,
+		pixman_region32_t *original_damage);
 
 void fx_renderer_end(struct fx_renderer *renderer);
 

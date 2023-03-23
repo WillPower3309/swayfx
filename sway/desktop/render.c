@@ -64,29 +64,6 @@ static int scale_length(int length, int offset, float scale) {
 	return round((offset + length) * scale) - round(offset * scale);
 }
 
-static void scissor_output(struct wlr_output *wlr_output,
-		pixman_box32_t *rect) {
-	struct sway_output *output = wlr_output->data;
-	struct fx_renderer *renderer = output->server->renderer;
-	assert(renderer);
-
-	struct wlr_box box = {
-		.x = rect->x1,
-		.y = rect->y1,
-		.width = rect->x2 - rect->x1,
-		.height = rect->y2 - rect->y1,
-	};
-
-	int ow, oh;
-	wlr_output_transformed_resolution(wlr_output, &ow, &oh);
-
-	enum wl_output_transform transform =
-		wlr_output_transform_invert(wlr_output->transform);
-	wlr_box_transform(&box, &box, transform, ow, oh);
-
-	fx_renderer_scissor(&box);
-}
-
 static void set_scale_filter(struct wlr_output *wlr_output,
 		struct wlr_texture *texture, enum scale_filter_mode scale_filter) {
 	if (!wlr_texture_is_gles2(texture)) {
@@ -1525,6 +1502,9 @@ void output_render(struct sway_output *output, struct timespec *when,
 	struct wlr_output *wlr_output = output->wlr_output;
 	struct fx_renderer *renderer = output->server->renderer;
 
+	pixman_region32_t extended_damage;
+	pixman_region32_init(&extended_damage);
+
 	struct sway_workspace *workspace = output->current.active_workspace;
 	if (workspace == NULL) {
 		return;
@@ -1535,7 +1515,15 @@ void output_render(struct sway_output *output, struct timespec *when,
 		fullscreen_con = workspace->current.fullscreen;
 	}
 
-	fx_renderer_begin(renderer, wlr_output);
+	// Extend the damaged region
+	if ((config->blur_enabled || config->shadow_enabled) && !fullscreen_con) {
+		int expanded = fx_get_container_expanded_size(NULL);
+		wlr_region_expand(damage, damage, expanded);
+		pixman_region32_copy(&extended_damage, damage);
+		wlr_region_expand(damage, damage, expanded);
+	} else {
+		pixman_region32_copy(&extended_damage, damage);
+	}
 
 	if (debug.damage == DAMAGE_RERENDER) {
 		int width, height;
@@ -1543,13 +1531,15 @@ void output_render(struct sway_output *output, struct timespec *when,
 		pixman_region32_union_rect(damage, damage, 0, 0, width, height);
 	}
 
+	if (debug.damage == DAMAGE_HIGHLIGHT) {
+		fx_renderer_clear((float[]){1, 1, 0, 1});
+	}
+
+	fx_renderer_begin(renderer, output, &extended_damage);
+
 	if (!pixman_region32_not_empty(damage)) {
 		// Output isn't damaged but needs buffer swap
 		goto renderer_end;
-	}
-
-	if (debug.damage == DAMAGE_HIGHLIGHT) {
-		fx_renderer_clear((float[]){1, 1, 0, 1});
 	}
 
 	if (server.session_lock.locked) {
@@ -1626,11 +1616,6 @@ void output_render(struct sway_output *output, struct timespec *when,
 #endif
 	} else {
 		float clear_color[] = {0.25f, 0.25f, 0.25f, 1.0f};
-		// Extend the damaged region
-		if ((config->blur_enabled || config->shadow_enabled) && !fullscreen_con) {
-			int expanded = fx_get_container_expanded_size(NULL);
-			wlr_region_expand(damage, damage, expanded);
-		}
 
 		int nrects;
 		pixman_box32_t *rects = pixman_region32_rectangles(damage, &nrects);
@@ -1687,11 +1672,11 @@ render_overlay:
 	render_drag_icons(output, damage, &root->drag_icons);
 
 renderer_end:
-	fx_renderer_scissor(NULL);
 	wlr_renderer_begin(output->server->wlr_renderer, wlr_output->width, wlr_output->height);
 	wlr_output_render_software_cursors(wlr_output, damage);
 	wlr_renderer_end(output->server->wlr_renderer);
 	fx_renderer_end(renderer);
+	fx_renderer_scissor(NULL);
 
 	int width, height;
 	wlr_output_transformed_resolution(wlr_output, &width, &height);
@@ -1701,8 +1686,11 @@ renderer_end:
 
 	enum wl_output_transform transform =
 		wlr_output_transform_invert(wlr_output->transform);
-	wlr_region_transform(&frame_damage, &output->damage_ring.current,
-		transform, width, height);
+	/*
+	 * Extend the frame damage by the blur size to properly calc damage for the
+	 * next buffer swap. Thanks Emersion for your excellent damage tracking blog-post!
+	 */
+	wlr_region_transform(&frame_damage, &extended_damage, transform, width, height);
 
 	if (debug.damage != DAMAGE_DEFAULT) {
 		pixman_region32_union_rect(&frame_damage, &frame_damage,
@@ -1710,6 +1698,8 @@ renderer_end:
 	}
 
 	wlr_output_set_damage(wlr_output, &frame_damage);
+
+	pixman_region32_fini(&extended_damage);
 	pixman_region32_fini(&frame_damage);
 
 	if (!wlr_output_commit(wlr_output)) {

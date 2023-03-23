@@ -83,6 +83,29 @@ static const float transforms[][9] = {
 	},
 };
 
+void scissor_output(struct wlr_output *wlr_output,
+		pixman_box32_t *rect) {
+	struct sway_output *output = wlr_output->data;
+	struct fx_renderer *renderer = output->server->renderer;
+	assert(renderer);
+
+	struct wlr_box box = {
+		.x = rect->x1,
+		.y = rect->y1,
+		.width = rect->x2 - rect->x1,
+		.height = rect->y2 - rect->y1,
+	};
+
+	int ow, oh;
+	wlr_output_transformed_resolution(wlr_output, &ow, &oh);
+
+	enum wl_output_transform transform =
+		wlr_output_transform_invert(wlr_output->transform);
+	wlr_box_transform(&box, &box, transform, ow, oh);
+
+	fx_renderer_scissor(&box);
+}
+
 static int get_blur_size(int blur_passes, int blur_radius) {
 	return pow(2, blur_passes) * blur_radius;
 }
@@ -129,22 +152,16 @@ struct fx_texture fx_texture_from_texture(struct wlr_texture* texture) {
 	};
 }
 
-static struct wlr_texture *get_texture_from_output (struct wlr_output *output) {
-	/* GLuint fbo = wlr_gles2_renderer_get_current_fbo(output->wlr_output->renderer); */
-	return wlr_texture_from_buffer(output->renderer,
-			output->back_buffer);
-}
-
 static void bind_framebuffer(struct fx_framebuffer buffer, GLsizei width, GLsizei height) {
 	glBindFramebuffer(GL_FRAMEBUFFER, buffer.fb);
 	glViewport(0, 0, width, height);
 }
 
-static void create_fx_framebuffer(struct wlr_output* output, struct fx_framebuffer *buffer) {
+static void create_fx_framebuffer(struct wlr_output *output, struct fx_framebuffer *buffer,
+		struct fx_framebuffer *main_buffer) {
 	bool firstAlloc = false;
 	int width, height;
 	wlr_output_transformed_resolution(output, &width, &height);
-	GLuint fbo = wlr_gles2_renderer_get_current_fbo(output->renderer);
 	// Create a new framebuffer
 	if (buffer->fb == (uint32_t) -1) {
 		glGenFramebuffers(1, &buffer->fb);
@@ -171,8 +188,7 @@ static void create_fx_framebuffer(struct wlr_output* output, struct fx_framebuff
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
 				buffer->texture.id, 0);
 		buffer->texture.target = GL_TEXTURE_2D;
-		// TODO: Alpha??
-		buffer->texture.has_alpha = false;
+		buffer->texture.has_alpha = true;
 		buffer->texture.width = width;
 		buffer->texture.height = height;
 		GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
@@ -185,7 +201,7 @@ static void create_fx_framebuffer(struct wlr_output* output, struct fx_framebuff
 
 	// Bind the default framebuffer
 	glBindTexture(GL_TEXTURE_2D, 0);
-	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, main_buffer->fb);
 }
 
 static void release_fx_framebuffer(struct fx_framebuffer *buffer) {
@@ -395,6 +411,8 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	// TODO: needed?
 	renderer->egl = egl;
 
+	renderer->main_buffer.fb = -1;
+
 	renderer->blur_buffer.fb = -1;
 	renderer->effects_buffer.fb = -1;
 	renderer->effects_buffer_swapped.fb = -1;
@@ -554,28 +572,90 @@ error:
 	return NULL;
 }
 
-void fx_renderer_begin(struct fx_renderer *renderer, struct wlr_output* output) {
+void fx_renderer_begin(struct fx_renderer *renderer, struct sway_output *sway_output,
+		pixman_region32_t *original_damage) {
+	struct wlr_output *output = sway_output->wlr_output;
+
 	uint32_t width = output->width;
 	uint32_t height = output->height;
 
-	// Create a new blur framebuffer
-	create_fx_framebuffer(output, &renderer->blur_buffer);
-	create_fx_framebuffer(output, &renderer->effects_buffer);
-	create_fx_framebuffer(output, &renderer->effects_buffer_swapped);
+	renderer->sway_output = sway_output;
+	renderer->original_damage = original_damage;
+	// Store the wlr framebuffer
+	glGetIntegerv(GL_FRAMEBUFFER_BINDING, &renderer->wlr_fb);
+
+	// Create the main framebuffer
+	create_fx_framebuffer(output, &renderer->main_buffer, &renderer->main_buffer);
+
+	// Create a new blur/effects framebuffers
+	create_fx_framebuffer(output, &renderer->blur_buffer, &renderer->main_buffer);
+	create_fx_framebuffer(output, &renderer->effects_buffer, &renderer->main_buffer);
+	create_fx_framebuffer(output, &renderer->effects_buffer_swapped, &renderer->main_buffer);
 
 	// Create and render the stencil buffer
 	create_stencil_buffer(output, &renderer->stencil_buffer_id);
-
-	glViewport(0, 0, width, height);
 
 	// refresh projection matrix
 	matrix_projection(renderer->projection, width, height,
 		WL_OUTPUT_TRANSFORM_FLIPPED_180);
 
 	glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
+	// Bind to our main framebuffer
+	bind_framebuffer(renderer->main_buffer, width, height);
+}
+
+void render_whole_output(struct fx_renderer *renderer) {
+	struct wlr_output *output = renderer->sway_output->wlr_output;
+	int width, height;
+	wlr_output_transformed_resolution(output, &width, &height);
+
+	struct wlr_box monitor_box = {0, 0, width, height};
+	scale_box(&monitor_box, output->scale);
+
+	float matrix[9];
+	enum wl_output_transform transform =
+		wlr_output_transform_invert(output->transform);
+	wlr_matrix_project_box(matrix, &monitor_box, transform, 0.0,
+		output->transform_matrix);
+
+	pixman_region32_t damage;
+	pixman_region32_init(&damage);
+	pixman_region32_union_rect(&damage, &damage, monitor_box.x, monitor_box.y,
+		monitor_box.width, monitor_box.height);
+	pixman_region32_intersect(&damage, &damage, renderer->original_damage);
+	bool damaged = pixman_region32_not_empty(&damage);
+	if (!damaged) {
+		goto damage_finish;
+	}
+
+	struct decoration_data deco_data = {
+		.alpha = 1.0f,
+		.dim = 0.0f,
+		.dim_color = config->dim_inactive_colors.unfocused,
+		.corner_radius = 0,
+		.saturation = 1.0f,
+		.has_titlebar = false,
+		.blur = false,
+	};
+
+	int nrects;
+	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
+	for (int i = 0; i < nrects; ++i) {
+		scissor_output(output, &rects[i]);
+		fx_render_texture_with_matrix(renderer, &renderer->main_buffer.texture, &monitor_box, matrix, deco_data);
+	}
+
+damage_finish:
+	pixman_region32_fini(&damage);
 }
 
 void fx_renderer_end(struct fx_renderer *renderer) {
+	// Draw the contents of our buffer into the wlr buffer
+	glBindFramebuffer(GL_FRAMEBUFFER, renderer->wlr_fb);
+	render_whole_output(renderer);
+
+	release_fx_framebuffer(&renderer->main_buffer);
 	release_fx_framebuffer(&renderer->blur_buffer);
 	release_fx_framebuffer(&renderer->effects_buffer);
 	release_fx_framebuffer(&renderer->effects_buffer_swapped);
@@ -1018,18 +1098,12 @@ struct fx_framebuffer *fx_get_back_buffer_blur(struct fx_renderer *renderer, str
 	int expanded = get_blur_size(blur_passes, blur_radius);
 	wlr_region_expand(&damage, &damage, expanded);
 
-	// Get the main wlr framebuffer
-	struct wlr_texture *texture = get_texture_from_output(output->wlr_output);
-	struct fx_framebuffer primary_buffer = {
-		.fb = wlr_gles2_renderer_get_current_fbo(output->wlr_output->renderer),
-		.texture = fx_texture_from_texture(texture),
-	};
-	wlr_texture_destroy(texture);
-	struct fx_framebuffer *current_buffer = &primary_buffer;
+	// Initially blur main_buffer content into the effects_buffers
+	struct fx_framebuffer *current_buffer = &renderer->main_buffer;
 
 	// Bind to blur framebuffer
 	bind_framebuffer(renderer->effects_buffer, width, height);
-	glBindTexture(primary_buffer.texture.target, primary_buffer.texture.id);
+	glBindTexture(renderer->main_buffer.texture.target, renderer->main_buffer.texture.id);
 
 	// damage region will be scaled, make a temp
 	pixman_region32_t tempDamage;
@@ -1062,7 +1136,9 @@ struct fx_framebuffer *fx_get_back_buffer_blur(struct fx_renderer *renderer, str
 	// Bind back to the default buffer
 	glBindTexture(renderer->effects_buffer.texture.target, 0);
 
-	bind_framebuffer(primary_buffer, width, height);
+	bind_framebuffer(renderer->main_buffer, width, height);
+
+	glBindTexture(GL_TEXTURE_2D, 0);
 
 	return current_buffer;
 }

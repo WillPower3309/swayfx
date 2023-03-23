@@ -243,8 +243,6 @@ static void apply_container_state(struct sway_container *container,
 				.width = saved_buf->width,
 				.height = saved_buf->height,
 			};
-			// Expand the before damage
-			fx_apply_container_expanded_size(container, &box);
 			desktop_damage_box(&box);
 		}
 	}
@@ -281,8 +279,6 @@ static void apply_container_state(struct sway_container *container,
 			.width = surface->current.width,
 			.height = surface->current.height,
 		};
-		// Expand the after damage
-		fx_apply_container_expanded_size(container, &box);
 		desktop_damage_box(&box);
 	}
 
