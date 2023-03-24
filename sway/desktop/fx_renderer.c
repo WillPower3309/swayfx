@@ -651,8 +651,17 @@ damage_finish:
 }
 
 void fx_renderer_end(struct fx_renderer *renderer) {
+	struct wlr_output *output = renderer->sway_output->wlr_output;
+
 	// Draw the contents of our buffer into the wlr buffer
 	glBindFramebuffer(GL_FRAMEBUFFER, renderer->wlr_fb);
+	float clear_color[] = {0.25f, 0.25f, 0.25f, 1.0f};
+	int nrects;
+	pixman_box32_t *rects = pixman_region32_rectangles(renderer->original_damage, &nrects);
+	for (int i = 0; i < nrects; ++i) {
+		scissor_output(output, &rects[i]);
+		fx_renderer_clear(clear_color);
+	}
 	render_whole_output(renderer);
 
 	release_fx_framebuffer(&renderer->main_buffer);
