@@ -72,8 +72,8 @@ The following commands may only be used in the configuration file.
 	subsequent attempts will be ignored.
 
 *scratchpad_minimize* <value>
-	Adjusts if minimized windows should be moved into the scratchpad (on|off).
-	Must be set at config-time (when starting sway).
+	Adjusts if minimized windows should be moved into the scratchpad
+	(enable|disable). Must be set at config-time (when starting sway).
 
 *swaybg_command* <command>
 	Executes custom background _command_. Default is _swaybg_. Refer to
