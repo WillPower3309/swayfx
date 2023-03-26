@@ -112,7 +112,7 @@ static GLuint compile_shader(GLuint type, const GLchar **srcs, size_t srcs_len) 
 		GLsizei length = 0;
 		glGetShaderInfoLog(shader, 1024, &length, log);
 		log[length-1] = '\0';
-		sway_log(SWAY_ERROR, "Error: %s", log);
+		sway_log(SWAY_ERROR, "Error log: \"%s\"", log);
 		
 		glDeleteShader(shader);
 		shader = 0;
