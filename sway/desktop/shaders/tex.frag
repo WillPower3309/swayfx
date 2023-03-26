@@ -56,7 +56,7 @@ void main() {
         vec2 corner_distance = min(gl_FragCoord.xy - position, size + position - gl_FragCoord.xy);
         if (max(corner_distance.x, corner_distance.y) < radius) {
             float d = radius - distance(corner_distance, vec2(radius));
-            float smooth = smoothstep(-1.0f, 0.5f, d);
+            float smooth = smoothstep(-1.0, 0.5, d);
             gl_FragColor = mix(vec4(0), gl_FragColor, smooth);
         }
     }
