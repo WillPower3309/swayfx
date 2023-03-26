@@ -488,6 +488,7 @@ struct sway_config {
 	int shadow_blur_sigma;
 	float shadow_color[4];
 	bool titlebar_separator;
+	bool scratchpad_minimize;
 
 	char *swaynag_command;
 	struct swaynag_instance swaynag_config_errors;

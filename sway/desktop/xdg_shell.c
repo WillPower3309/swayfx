@@ -332,6 +332,24 @@ static void handle_request_maximize(struct wl_listener *listener, void *data) {
 	wlr_xdg_surface_schedule_configure(toplevel->base);
 }
 
+/* Minimize to scratchpad */
+static void handle_request_minimize(struct wl_listener *listener, void *data) {
+	struct sway_xdg_shell_view *xdg_shell_view =
+		wl_container_of(listener, xdg_shell_view, request_minimize);
+	struct sway_container *container = xdg_shell_view->view.container;
+	if (!container->pending.workspace) {
+		while (container->pending.parent) {
+			container = container->pending.parent;
+		}
+	}
+	if (!container->scratchpad) {
+		root_scratchpad_add_container(container, NULL);
+	} else if (container->pending.workspace) {
+		root_scratchpad_hide(container);
+	}
+	transaction_commit_dirty();
+}
+
 static void handle_request_fullscreen(struct wl_listener *listener, void *data) {
 	struct sway_xdg_shell_view *xdg_shell_view =
 		wl_container_of(listener, xdg_shell_view, request_fullscreen);
@@ -406,6 +424,9 @@ static void handle_unmap(struct wl_listener *listener, void *data) {
 	wl_list_remove(&xdg_shell_view->commit.link);
 	wl_list_remove(&xdg_shell_view->new_popup.link);
 	wl_list_remove(&xdg_shell_view->request_maximize.link);
+	if (xdg_shell_view->request_minimize.notify) {
+		wl_list_remove(&xdg_shell_view->request_minimize.link);
+	}
 	wl_list_remove(&xdg_shell_view->request_fullscreen.link);
 	wl_list_remove(&xdg_shell_view->request_move.link);
 	wl_list_remove(&xdg_shell_view->request_resize.link);
@@ -457,6 +478,12 @@ static void handle_map(struct wl_listener *listener, void *data) {
 	xdg_shell_view->request_maximize.notify = handle_request_maximize;
 	wl_signal_add(&toplevel->events.request_maximize,
 			&xdg_shell_view->request_maximize);
+
+	if (config->scratchpad_minimize) {
+		xdg_shell_view->request_minimize.notify = handle_request_minimize;
+		wl_signal_add(&toplevel->events.request_minimize,
+				&xdg_shell_view->request_minimize);
+	}
 
 	xdg_shell_view->request_fullscreen.notify = handle_request_fullscreen;
 	wl_signal_add(&toplevel->events.request_fullscreen,

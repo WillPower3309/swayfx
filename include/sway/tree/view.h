@@ -134,6 +134,7 @@ struct sway_xdg_shell_view {
 	struct wl_listener request_move;
 	struct wl_listener request_resize;
 	struct wl_listener request_maximize;
+	struct wl_listener request_minimize;
 	struct wl_listener request_fullscreen;
 	struct wl_listener set_title;
 	struct wl_listener set_app_id;
