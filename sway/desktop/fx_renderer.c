@@ -107,6 +107,13 @@ static GLuint compile_shader(GLuint type, const GLchar **srcs, size_t srcs_len) 
 	glGetShaderiv(shader, GL_COMPILE_STATUS, &ok);
 	if (ok == GL_FALSE) {
 		sway_log(SWAY_ERROR, "Failed to compile shader");
+		
+		char log[1024];
+		GLsizei length = 0;
+		glGetShaderInfoLog(shader, 1024, &length, log);
+		log[length-1] = '\0';
+		sway_log(SWAY_ERROR, "Error: %s", log);
+		
 		glDeleteShader(shader);
 		shader = 0;
 	}
