@@ -34,6 +34,9 @@ dim_inactive 0.0
 dim_inactive_colors.unfocused #000000FF
 dim_inactive_colors.urgent #900000FF
 
+# Move minimized windows into Scratchpad (enable|disable)
+scratchpad_minimize enable
+
 ### Output configuration
 #
 # Default wallpaper (more resolutions are available in @datadir@/backgrounds/sway/)

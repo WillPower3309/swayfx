@@ -491,6 +491,7 @@ struct sway_config {
 	bool blur_enabled;
 	int blur_passes;
 	int blur_radius;
+	bool scratchpad_minimize;
 
 	char *swaynag_command;
 	struct swaynag_instance swaynag_config_errors;
