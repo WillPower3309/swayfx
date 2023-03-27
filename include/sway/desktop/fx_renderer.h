@@ -31,8 +31,8 @@ struct fx_texture {
 	GLuint target;
 	GLuint id;
 	bool has_alpha;
-	uint32_t width;
-	uint32_t height;
+	int width;
+	int height;
 };
 
 struct fx_framebuffer {
@@ -166,7 +166,14 @@ int fx_get_container_expanded_size(struct sway_container *con);
 
 struct fx_texture fx_texture_from_texture(struct wlr_texture* tex);
 
+void fx_bind_framebuffer(struct fx_framebuffer *buffer, GLsizei width, GLsizei height);
+
+void fx_create_framebuffer(struct wlr_output *output, struct fx_framebuffer *buffer,
+		bool bind);
+
 struct fx_renderer *fx_renderer_create(struct wlr_egl *egl);
+
+void fx_renderer_fini(struct fx_renderer *renderer);
 
 void fx_renderer_begin(struct fx_renderer *renderer, struct sway_output *output,
 		pixman_region32_t *original_damage);
@@ -176,6 +183,9 @@ void fx_renderer_end(struct fx_renderer *renderer);
 void fx_renderer_clear(const float color[static 4]);
 
 void fx_renderer_scissor(struct wlr_box *box);
+
+void fx_render_whole_output(struct fx_renderer *renderer, pixman_region32_t *original_damage,
+		struct fx_texture *texture);
 
 bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct fx_texture *fx_texture,
 		const struct wlr_fbox *src_box, const struct wlr_box *dst_box, const float matrix[static 9],

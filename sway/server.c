@@ -274,6 +274,7 @@ bool server_init(struct sway_server *server) {
 }
 
 void server_fini(struct sway_server *server) {
+	fx_renderer_fini(server->renderer);
 	// TODO: free sway-specific resources
 #if HAVE_XWAYLAND
 	wlr_xwayland_destroy(server->xwayland.wlr_xwayland);

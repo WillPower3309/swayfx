@@ -557,14 +557,15 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 	struct sway_view *view = con->view;
 	// Render blur
 	// TODO: Remove this and add it into `fx_render_subtexture_with_matrix` for more control?
-	// TODO: Only render blur if view texture has alpha or deco_data.opacity < 1
 	// TODO: Optimization: Render whole monitor blur once for all tiled windows,
 	//						rerender for floating windows
-	if (view->surface
-			&&deco_data.blur
+	struct wlr_gles2_texture_attribs attribs;
+	wlr_gles2_texture_get_attribs(view->surface->buffer->texture, &attribs);
+	if (deco_data.blur
 			&& con->blur_enabled
 			// Check if window has alpha
 			&& !(view->surface->opaque && con->alpha >= 1.0f && deco_data.alpha >= 1.0f)
+			&& attribs.has_alpha
 			&& config->blur_passes >= 0
 			&& config->blur_radius > 0) {
 		struct sway_container_state *state = &con->current;
@@ -595,7 +596,8 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		// Use the pre-rendered blurred buffer for tiled windows due tiled
 		// that all tiled windows are displaying the same content under the windows
 		bool is_floating = container_is_floating(con);
-		render_blur(!is_floating, output, damage, &src_box, &box,view->surface, deco_data, config->blur_radius, config->blur_passes);
+		render_blur(!is_floating, output, damage, &src_box, &box,view->surface,
+				deco_data, config->blur_radius, config->blur_passes);
 	}
 
 	if (!wl_list_empty(&view->saved_buffers)) {
@@ -1501,6 +1503,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 		pixman_region32_t *damage) {
 	struct wlr_output *wlr_output = output->wlr_output;
 	struct fx_renderer *renderer = output->server->renderer;
+	bool damage_not_empty = pixman_region32_not_empty(damage);
 
 	pixman_region32_t extended_damage;
 	pixman_region32_init(&extended_damage);
@@ -1515,29 +1518,30 @@ void output_render(struct sway_output *output, struct timespec *when,
 		fullscreen_con = workspace->current.fullscreen;
 	}
 
-	// Extend the damaged region
-	if ((config->blur_enabled || config->shadow_enabled) && !fullscreen_con) {
-		int expanded = fx_get_container_expanded_size(NULL);
-		wlr_region_expand(damage, damage, expanded);
-		pixman_region32_copy(&extended_damage, damage);
-		wlr_region_expand(damage, damage, expanded);
-	} else {
-		pixman_region32_copy(&extended_damage, damage);
-	}
-
 	if (debug.damage == DAMAGE_RERENDER) {
 		int width, height;
 		wlr_output_transformed_resolution(wlr_output, &width, &height);
 		pixman_region32_union_rect(damage, damage, 0, 0, width, height);
 	}
 
-	if (debug.damage == DAMAGE_HIGHLIGHT) {
+	// Extend the damaged region
+	int blur_expand_size = fx_get_container_expanded_size(NULL);
+	if ((config->blur_enabled || config->shadow_enabled) && blur_expand_size > 0
+			&& damage_not_empty && !fullscreen_con && !server.session_lock.locked) {
+		wlr_region_expand(damage, damage, blur_expand_size);
+		pixman_region32_copy(&extended_damage, damage);
+		wlr_region_expand(damage, damage, blur_expand_size);
+	} else {
+		pixman_region32_copy(&extended_damage, damage);
+	}
+
+	if (debug.damage == DAMAGE_HIGHLIGHT && damage_not_empty) {
 		fx_renderer_clear((float[]){1, 1, 0, 1});
 	}
 
 	fx_renderer_begin(renderer, output, &extended_damage);
 
-	if (!pixman_region32_not_empty(damage)) {
+	if (!damage_not_empty) {
 		// Output isn't damaged but needs buffer swap
 		goto renderer_end;
 	}
@@ -1672,10 +1676,10 @@ render_overlay:
 	render_drag_icons(output, damage, &root->drag_icons);
 
 renderer_end:
+	fx_renderer_end(renderer);
 	wlr_renderer_begin(output->server->wlr_renderer, wlr_output->width, wlr_output->height);
 	wlr_output_render_software_cursors(wlr_output, damage);
 	wlr_renderer_end(output->server->wlr_renderer);
-	fx_renderer_end(renderer);
 	fx_renderer_scissor(NULL);
 
 	int width, height;
