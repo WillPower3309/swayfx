@@ -110,22 +110,6 @@ static int get_blur_size(int blur_passes, int blur_radius) {
 	return pow(2, blur_passes) * blur_radius;
 }
 
-int get_config_blur_size() {
-	return get_blur_size(config->blur_passes, config->blur_radius);
-}
-
-void fx_expand_box(struct wlr_box *box, int expand) {
-	box->x -= expand;
-	box->y -= expand;
-	box->width += expand * 2;
-	box->height += expand * 2;
-}
-
-void fx_apply_container_expanded_size(struct sway_container *con, struct wlr_box* box) {
-	int expand = fx_get_container_expanded_size(con);
-	fx_expand_box(box, expand);
-}
-
 int fx_get_container_expanded_size(struct sway_container *con) {
 	bool shadow_enabled = config->shadow_enabled;
 	if (con) shadow_enabled = con->shadow_enabled;

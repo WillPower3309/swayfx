@@ -156,12 +156,6 @@ struct fx_renderer {
 void scissor_output(struct wlr_output *wlr_output,
 		pixman_box32_t *rect);
 
-int get_config_blur_size();
-
-void fx_apply_container_expanded_size(struct sway_container *con, struct wlr_box *box);
-
-void fx_expand_box(struct wlr_box *box, int expand);
-
 int fx_get_container_expanded_size(struct sway_container *con);
 
 struct fx_texture fx_texture_from_texture(struct wlr_texture* tex);
