@@ -559,13 +559,19 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 	// TODO: Remove this and add it into `fx_render_subtexture_with_matrix` for more control?
 	// TODO: Optimization: Render whole monitor blur once for all tiled windows,
 	//						rerender for floating windows
-	struct wlr_gles2_texture_attribs attribs;
-	wlr_gles2_texture_get_attribs(view->surface->buffer->texture, &attribs);
-	if (deco_data.blur
+	
+	bool has_alpha = false;
+	if (view->surface) {
+		struct wlr_gles2_texture_attribs attribs;
+		wlr_gles2_texture_get_attribs(view->surface->buffer->texture, &attribs);
+		has_alpha = attribs.has_alpha;
+	}
+	if (view->surface
+			&& deco_data.blur
 			&& con->blur_enabled
 			// Check if window has alpha
 			&& !(view->surface->opaque && con->alpha >= 1.0f && deco_data.alpha >= 1.0f)
-			&& attribs.has_alpha
+			&& has_alpha
 			&& config->blur_passes >= 0
 			&& config->blur_radius > 0) {
 		struct sway_container_state *state = &con->current;
