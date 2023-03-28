@@ -302,7 +302,6 @@ void render_blur(bool optimized, struct sway_output *output,
 	int width, height;
 	wlr_output_transformed_resolution(output->wlr_output, &width, &height);
 	struct wlr_box monitor_box = { 0, 0, width, height };
-	scale_box(&monitor_box, wlr_output->scale);
 
 	float matrix[9];
 	enum wl_output_transform transform =
@@ -321,6 +320,9 @@ void render_blur(bool optimized, struct sway_output *output,
 	pixman_region32_union_rect(&damage, &damage, dst_box->x, dst_box->y, dst_box->width, dst_box->height);
 	pixman_region32_intersect(&damage, &damage, output_damage);
 	// pixman_region32_intersect_rect(&damage, output_damage, box.x, box.y, box.width, box.height);
+
+	wlr_region_scale(&inverse_opaque, &inverse_opaque, wlr_output->scale);
+
 	if (!pixman_region32_not_empty(&damage)) {
 		goto damage_finish;
 	}
@@ -333,8 +335,8 @@ void render_blur(bool optimized, struct sway_output *output,
 	pixman_box32_t surface_box = {
 		.x1 = 0,
 		.y1 = 0,
-		.x2 = dst_box->width,
-		.y2 = dst_box->height,
+		.x2 = dst_box->width / wlr_output->scale,
+		.y2 = dst_box->height / wlr_output->scale,
 	};
 
 	// Gets the non opaque region
@@ -650,7 +652,7 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 			bool is_floating = container_is_floating(view->container);
 			render_blur(!is_floating, output, damage, &src_box, &dst_box,
 					&opaque_damage, saved_buf->width, saved_buf->height,
-					output->wlr_output->scale, deco_data, config->blur_radius,
+					1, deco_data, config->blur_radius,
 					config->blur_passes);
 		}
 

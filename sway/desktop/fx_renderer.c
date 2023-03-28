@@ -205,8 +205,8 @@ static void release_fx_framebuffer(struct fx_framebuffer *buffer) {
 }
 
 static void create_stencil_buffer(struct wlr_output* output, GLuint *buffer_id) {
-	uint32_t width = output->width;
-	uint32_t height = output->height;
+	int width, height;
+	wlr_output_transformed_resolution(output, &width, &height);
 
 	if (*buffer_id == (uint32_t) -1) {
 		glGenRenderbuffers(1, buffer_id);
@@ -574,8 +574,8 @@ void fx_renderer_begin(struct fx_renderer *renderer, struct sway_output *sway_ou
 		pixman_region32_t *original_damage) {
 	struct wlr_output *output = sway_output->wlr_output;
 
-	int32_t width = output->width;
-	int32_t height = output->height;
+	int width, height;
+	wlr_output_transformed_resolution(output, &width, &height);
 
 	renderer->sway_output = sway_output;
 	renderer->original_damage = original_damage;
@@ -607,7 +607,7 @@ void fx_renderer_end(struct fx_renderer *renderer) {
 	// Draw the contents of our buffer into the wlr buffer
 	glBindFramebuffer(GL_FRAMEBUFFER, renderer->wlr_fb);
 
-	float clear_color[] = {0.25f, 0.25f, 0.25f, 1.0f};
+	float clear_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
 	if (pixman_region32_not_empty(renderer->original_damage)) {
 		int nrects;
 		pixman_box32_t *rects = pixman_region32_rectangles(renderer->original_damage, &nrects);
@@ -645,9 +645,7 @@ void fx_render_whole_output(struct fx_renderer *renderer, pixman_region32_t *ori
 	struct wlr_output *output = renderer->sway_output->wlr_output;
 	int width, height;
 	wlr_output_transformed_resolution(output, &width, &height);
-
 	struct wlr_box monitor_box = {0, 0, width, height};
-	scale_box(&monitor_box, output->scale);
 
 	float matrix[9];
 	enum wl_output_transform transform =
