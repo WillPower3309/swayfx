@@ -90,11 +90,11 @@ struct fx_renderer {
 	GLuint stencil_buffer_id;
 
 	struct fx_framebuffer main_buffer; // The main FB used for rendering
-
-	// TODO: Initialize buffer.
 	struct fx_framebuffer blur_buffer; // Contains the blurred background for tiled windows
 	struct fx_framebuffer effects_buffer;
 	struct fx_framebuffer effects_buffer_swapped;
+
+	bool blur_buffer_dirty;
 
 	struct {
 		bool OES_egl_image_external;

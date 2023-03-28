@@ -247,8 +247,50 @@ static void render_drag_icons(struct sway_output *output,
 		render_surface_iterator, &data);
 }
 
-// TODO: Optimization: Render whole monitor blur once for all tiled windows,
-//						rerender for floating windows
+void render_monitor_blur(struct sway_output *output) {
+	struct wlr_output *wlr_output = output->wlr_output;
+	struct fx_renderer *renderer = output->server->renderer;
+	struct decoration_data deco_data = get_undecorated_decoration_data();
+	int blur_radius = config->blur_radius;
+	int blur_passes = config->blur_passes;
+
+	int width, height;
+	wlr_output_transformed_resolution(output->wlr_output, &width, &height);
+	struct wlr_box monitor_box = { 0, 0, width, height };
+	scale_box(&monitor_box, wlr_output->scale);
+
+	float matrix[9];
+	enum wl_output_transform transform =
+		wlr_output_transform_invert(output->wlr_output->transform);
+	wlr_matrix_project_box(matrix, &monitor_box, transform, 0.0,
+		wlr_output->transform_matrix);
+
+	pixman_region32_t fake_damage;
+	pixman_region32_init_rect(&fake_damage, 0, 0, width, height);
+	// Render the blur
+	struct fx_framebuffer *buffer = fx_get_back_buffer_blur(renderer, output,
+			&fake_damage, matrix, wlr_output->transform_matrix, &monitor_box,
+			deco_data, blur_radius, blur_passes);
+
+	// Render the newly blurred content into the blur_buffer
+	fx_create_framebuffer(output->wlr_output, &renderer->blur_buffer, false);
+	fx_bind_framebuffer(&renderer->blur_buffer, width, height);
+	// Clear the damaged region of the blur_buffer
+	float clear_color[] = {0.25f, 0.25f, 0.25f, 1.0f};
+	int nrects;
+	pixman_box32_t *rects = pixman_region32_rectangles(renderer->original_damage, &nrects);
+	for (int i = 0; i < nrects; ++i) {
+		scissor_output(output->wlr_output, &rects[i]);
+		fx_renderer_clear(clear_color);
+	}
+	fx_render_whole_output(renderer, &fake_damage, &buffer->texture);
+	fx_bind_framebuffer(&renderer->main_buffer, width, height);
+
+	pixman_region32_fini(&fake_damage);
+
+	renderer->blur_buffer_dirty = false;
+}
+
 void render_blur(bool optimized, struct sway_output *output,
 		pixman_region32_t *output_damage, const struct wlr_fbox *src_box,
 		const struct wlr_box *dst_box, pixman_region32_t *opaque_region,
@@ -307,16 +349,15 @@ void render_blur(bool optimized, struct sway_output *output,
 
 	wlr_region_scale(&inverse_opaque, &inverse_opaque, output->wlr_output->scale);
 
-	// TODO: Prerender blur for tiled windows
 	struct fx_framebuffer * buffer = &renderer->blur_buffer;
-	// if (!optimized) {
+	if (!buffer->texture.id || (!optimized && !config->blur_xray)) {
 		pixman_region32_translate(&inverse_opaque, dst_box->x, dst_box->y);
 		pixman_region32_intersect(&inverse_opaque, &inverse_opaque, &damage);
 
 		// Render the blur into its own buffer
 		buffer = fx_get_back_buffer_blur(renderer, output, &inverse_opaque, matrix,
 				wlr_output->transform_matrix, dst_box, deco_data, blur_radius, blur_passes);
-	// }
+	}
 
 	/*
 	 * Draw the blurred texture
@@ -1661,6 +1702,12 @@ void output_render(struct sway_output *output, struct timespec *when,
 			&output->layers[ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND]);
 		render_layer_toplevel(output, damage,
 			&output->layers[ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM]);
+
+		// TODO: Also check if there are any windows that would benefit from this
+		bool blur_enabled = config->blur_enabled && config->blur_radius > 0 && config->blur_passes > 0;
+		if (blur_enabled && renderer->blur_buffer_dirty) {
+			render_monitor_blur(output);
+		}
 
 		render_workspace(output, damage, workspace, workspace->current.focused);
 		render_floating(output, damage);

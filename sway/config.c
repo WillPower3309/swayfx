@@ -345,6 +345,7 @@ static void config_defaults(struct sway_config *config) {
 	color_to_rgba(config->shadow_color, 0x0000007F);
 	config->titlebar_separator = true;
 	config->blur_enabled = false;
+	config->blur_xray = false;
 	config->blur_passes = 2;
 	config->blur_radius = 5;
 	config->scratchpad_minimize = true;

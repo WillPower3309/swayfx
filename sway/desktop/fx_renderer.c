@@ -422,6 +422,8 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	renderer->effects_buffer_swapped.fb = -1;
 	renderer->stencil_buffer_id = -1;
 
+	renderer->blur_buffer_dirty = true;
+
 	// get extensions
 	const char *exts_str = (const char *)glGetString(GL_EXTENSIONS);
 	if (exts_str == NULL) {

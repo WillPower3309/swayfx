@@ -690,6 +690,10 @@ The default colors are:
 	Adjusts if blur should be enabled or not (on|off). Can also be set per
 	window with *for_window*.
 
+*blur_xray* <value>
+	Adjusts if blur should only display the background or not (on|off).
+	Can also be set per window with *for_window*.
+
 *blur_passes* <value>
 	Adjusts the blur passes of windows between 0 (disabled) and 10
 	while 2 is the default value.

@@ -290,6 +290,12 @@ static void handle_surface_commit(struct wl_listener *listener, void *data) {
 	struct sway_output *output = wlr_output->data;
 	struct wlr_box old_extent = layer->extent;
 
+	// Rerender the static blur on change
+	if (layer->layer == ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND
+			|| layer->layer == ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM) {
+		server.renderer->blur_buffer_dirty = true;
+	}
+
 	bool layer_changed = false;
 	if (layer_surface->current.committed != 0
 			|| layer->mapped != layer_surface->mapped) {

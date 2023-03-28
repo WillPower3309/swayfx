@@ -10,8 +10,8 @@
 #include "stringop.h"
 #include "util.h"
 
-struct cmd_results *cmd_blur(int argc, char **argv) {
-	struct cmd_results *error = checkarg(argc, "blur", EXPECTED_AT_LEAST, 1);
+struct cmd_results *cmd_blur_xray(int argc, char **argv) {
+	struct cmd_results *error = checkarg(argc, "blur_xray", EXPECTED_AT_LEAST, 1);
 
 	if (error) {
 		return error;
@@ -19,11 +19,11 @@ struct cmd_results *cmd_blur(int argc, char **argv) {
 
 	struct sway_container *con = config->handler_context.container;
 
-	bool result = parse_boolean(argv[0], config->blur_enabled);
+	bool result = parse_boolean(argv[0], config->blur_xray);
 	if (con == NULL) {
-		config->blur_enabled = result;
+		config->blur_xray = result;
 	} else {
-		con->blur_enabled = result;
+		con->blur_xray = result;
 		container_damage_whole(con);
 	}
 

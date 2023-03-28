@@ -52,6 +52,7 @@ static const struct cmd_handler handlers[] = {
 	{ "blur", cmd_blur },
 	{ "blur_passes", cmd_blur_passes },
 	{ "blur_radius", cmd_blur_radius },
+	{ "blur_xray", cmd_blur_xray },
 	{ "client.background", cmd_client_noop },
 	{ "client.focused", cmd_client_focused },
 	{ "client.focused_inactive", cmd_client_focused_inactive },

@@ -26,6 +26,7 @@ corner_radius 10
 
 # Window background blur
 blur off
+blur_xray off
 blur_passes 2
 blur_radius 5
 

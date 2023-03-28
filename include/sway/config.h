@@ -489,6 +489,7 @@ struct sway_config {
 	float shadow_color[4];
 	bool titlebar_separator;
 	bool blur_enabled;
+	bool blur_xray;
 	int blur_passes;
 	int blur_radius;
 	bool scratchpad_minimize;

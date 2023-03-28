@@ -116,6 +116,7 @@ struct sway_container {
 	bool shadow_enabled;
 
 	bool blur_enabled;
+	bool blur_xray;
 
 	float saturation;
 
