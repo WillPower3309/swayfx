@@ -86,12 +86,6 @@ bool server_init(struct sway_server *server) {
 		sway_log(SWAY_ERROR, "Failed to create wlr_renderer");
 		return false;
 	}
-	struct wlr_egl *egl = wlr_gles2_renderer_get_egl(server->wlr_renderer);
-	server->renderer = fx_renderer_create(egl);
-	if (!server->renderer) {
-		sway_log(SWAY_ERROR, "Failed to create fx_renderer");
-		return false;
-	}
 
 	wlr_renderer_init_wl_shm(server->wlr_renderer, server->wl_display);
 
@@ -274,7 +268,6 @@ bool server_init(struct sway_server *server) {
 }
 
 void server_fini(struct sway_server *server) {
-	fx_renderer_fini(server->renderer);
 	// TODO: free sway-specific resources
 #if HAVE_XWAYLAND
 	wlr_xwayland_destroy(server->xwayland.wlr_xwayland);

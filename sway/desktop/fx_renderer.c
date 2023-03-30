@@ -86,7 +86,7 @@ static const float transforms[][9] = {
 void scissor_output(struct wlr_output *wlr_output,
 		pixman_box32_t *rect) {
 	struct sway_output *output = wlr_output->data;
-	struct fx_renderer *renderer = output->server->renderer;
+	struct fx_renderer *renderer = output->renderer;
 	assert(renderer);
 
 	struct wlr_box box = {

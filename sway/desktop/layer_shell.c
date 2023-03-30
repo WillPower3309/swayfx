@@ -293,7 +293,7 @@ static void handle_surface_commit(struct wl_listener *listener, void *data) {
 	// Rerender the static blur on change
 	if (layer->layer == ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND
 			|| layer->layer == ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM) {
-		server.renderer->blur_buffer_dirty = true;
+		output->renderer->blur_buffer_dirty = true;
 	}
 
 	bool layer_changed = false;

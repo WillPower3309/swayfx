@@ -6,6 +6,7 @@
 #include <wayland-server-core.h>
 #include <wlr/backend/drm.h>
 #include <wlr/backend/headless.h>
+#include <wlr/render/gles2.h>
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/types/wlr_buffer.h>
 #include <wlr/types/wlr_drm_lease_v1.h>
@@ -798,6 +799,8 @@ static void handle_destroy(struct wl_listener *listener, void *data) {
 		output_disable(output);
 	}
 
+	fx_renderer_fini(output->renderer);
+
 	output_begin_destroy(output);
 
 	wl_list_remove(&output->link);
@@ -941,6 +944,14 @@ void handle_new_output(struct wl_listener *listener, void *data) {
 	int width, height;
 	wlr_output_transformed_resolution(output->wlr_output, &width, &height);
 	wlr_damage_ring_set_bounds(&output->damage_ring, width, height);
+
+	// Init FX Renderer
+	struct wlr_egl *egl = wlr_gles2_renderer_get_egl(server->wlr_renderer);
+	output->renderer = fx_renderer_create(egl);
+	if (!output->renderer) {
+		sway_log(SWAY_ERROR, "Failed to create fx_renderer");
+		abort();
+	}
 
 	wl_signal_add(&wlr_output->events.destroy, &output->destroy);
 	output->destroy.notify = handle_destroy;

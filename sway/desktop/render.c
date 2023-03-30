@@ -93,7 +93,7 @@ static void render_texture(struct wlr_output *wlr_output,
 		const struct wlr_fbox *src_box, const struct wlr_box *dst_box,
 		const float matrix[static 9], struct decoration_data deco_data) {
 	struct sway_output *output = wlr_output->data;
-	struct fx_renderer *renderer = output->server->renderer;
+	struct fx_renderer *renderer = output->renderer;
 
 	pixman_region32_t damage;
 	pixman_region32_init(&damage);
@@ -251,7 +251,7 @@ static void render_drag_icons(struct sway_output *output,
 
 void render_monitor_blur(struct sway_output *output) {
 	struct wlr_output *wlr_output = output->wlr_output;
-	struct fx_renderer *renderer = output->server->renderer;
+	struct fx_renderer *renderer = output->renderer;
 	struct decoration_data deco_data = get_undecorated_decoration_data();
 	int blur_radius = config->blur_radius;
 	int blur_passes = config->blur_passes;
@@ -299,7 +299,7 @@ void render_blur(bool optimized, struct sway_output *output,
 		int surface_width, int surface_height, int32_t surface_scale,
 		struct decoration_data deco_data, int blur_radius, int blur_passes) {
 	struct wlr_output *wlr_output = output->wlr_output;
-	struct fx_renderer *renderer = output->server->renderer;
+	struct fx_renderer *renderer = output->renderer;
 
 	int width, height;
 	wlr_output_transformed_resolution(output->wlr_output, &width, &height);
@@ -394,7 +394,7 @@ void render_rect(struct sway_output *output,
 		pixman_region32_t *output_damage, const struct wlr_box *_box,
 		float color[static 4]) {
 	struct wlr_output *wlr_output = output->wlr_output;
-	struct fx_renderer *renderer = output->server->renderer;
+	struct fx_renderer *renderer = output->renderer;
 
 	struct wlr_box box;
 	memcpy(&box, _box, sizeof(struct wlr_box));
@@ -426,7 +426,7 @@ void render_rounded_rect(struct sway_output *output, pixman_region32_t *output_d
 		const struct wlr_box *_box, float color[static 4], int corner_radius,
 		enum corner_location corner_location) {
 	struct wlr_output *wlr_output = output->wlr_output;
-	struct fx_renderer *renderer = output->server->renderer;
+	struct fx_renderer *renderer = output->renderer;
 
 	struct wlr_box box;
 	memcpy(&box, _box, sizeof(struct wlr_box));
@@ -461,7 +461,7 @@ void render_border_corner(struct sway_output *output, pixman_region32_t *output_
 		const struct wlr_box *_box, const float color[static 4], int corner_radius,
 		int border_thickness, enum corner_location corner_location) {
 	struct wlr_output *wlr_output = output->wlr_output;
-	struct fx_renderer *renderer = output->server->renderer;
+	struct fx_renderer *renderer = output->renderer;
 
 	struct wlr_box box;
 	memcpy(&box, _box, sizeof(struct wlr_box));
@@ -496,7 +496,7 @@ void render_box_shadow(struct sway_output *output, pixman_region32_t *output_dam
 		const struct wlr_box *_box, const float color[static 4],
 		float blur_sigma, float corner_radius, float border_thickness) {
 	struct wlr_output *wlr_output = output->wlr_output;
-	struct fx_renderer *renderer = output->server->renderer;
+	struct fx_renderer *renderer = output->renderer;
 
 	struct wlr_box box;
 	memcpy(&box, _box, sizeof(struct wlr_box));
@@ -1576,7 +1576,7 @@ static void render_seatops(struct sway_output *output,
 void output_render(struct sway_output *output, struct timespec *when,
 		pixman_region32_t *damage) {
 	struct wlr_output *wlr_output = output->wlr_output;
-	struct fx_renderer *renderer = output->server->renderer;
+	struct fx_renderer *renderer = output->renderer;
 	bool damage_not_empty = pixman_region32_not_empty(damage);
 
 	pixman_region32_t extended_damage;

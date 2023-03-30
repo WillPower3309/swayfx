@@ -27,7 +27,10 @@ struct cmd_results *cmd_blur_xray(int argc, char **argv) {
 		container_damage_whole(con);
 	}
 
-	server.renderer->blur_buffer_dirty = true;
+	struct sway_output *output;
+	wl_list_for_each(output, &root->all_outputs, link) {
+		if (output->renderer) output->renderer->blur_buffer_dirty = true;
+	}
 
 	arrange_root();
 
