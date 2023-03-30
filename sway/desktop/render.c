@@ -175,6 +175,8 @@ static void render_surface_iterator(struct sway_output *output,
 		opaque = (view->surface->opaque || !attribs.has_alpha);
 	}
 	if (view
+			// Don't render blur for subsurfaces
+			&& view->surface == surface
 			&& deco_data.blur
 			&& view->container->blur_enabled
 			// Check if window has alpha
