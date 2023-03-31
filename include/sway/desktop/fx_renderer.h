@@ -91,8 +91,9 @@ struct fx_renderer {
 
 	struct fx_framebuffer main_buffer; // The main FB used for rendering
 	struct fx_framebuffer blur_buffer; // Contains the blurred background for tiled windows
-	struct fx_framebuffer effects_buffer;
-	struct fx_framebuffer effects_buffer_swapped;
+	// Blur swaps between the two effects buffers everytime it scales the image
+	struct fx_framebuffer effects_buffer; // Buffer used for effects
+	struct fx_framebuffer effects_buffer_swapped; // Swap buffer used for effects
 
 	bool blur_buffer_dirty;
 
