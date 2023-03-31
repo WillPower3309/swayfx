@@ -18,7 +18,7 @@ struct cmd_results *cmd_blur_radius(int argc, char **argv) {
 		return cmd_results_new(CMD_FAILURE, "Invalid size specified");
 	}
 
-	config->blur_radius = value;
+	config->blur_params.radius = value;
 
 	arrange_root();
 

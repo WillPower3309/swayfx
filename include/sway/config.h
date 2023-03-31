@@ -470,28 +470,34 @@ enum xwayland_mode {
 	XWAYLAND_MODE_IMMEDIATE,
 };
 
+struct blur_parameters {
+	int num_passes;
+	int radius;
+};
+
 /**
  * The configuration struct. The result of loading a config file.
  */
 struct sway_config {
-	// SwayFX config options
 	int corner_radius;
 	bool smart_corner_radius;
+
 	float default_dim_inactive;
-	// dim_inactive colors
 	struct {
 		float unfocused[4];
 		float urgent[4];
 	} dim_inactive_colors;
+
 	bool shadow_enabled;
 	bool shadows_on_csd_enabled;
 	int shadow_blur_sigma;
 	float shadow_color[4];
-	bool titlebar_separator;
+
 	bool blur_enabled;
 	bool blur_xray;
-	int blur_passes;
-	int blur_radius;
+	struct blur_parameters blur_params;
+
+	bool titlebar_separator;
 	bool scratchpad_minimize;
 
 	char *swaynag_command;

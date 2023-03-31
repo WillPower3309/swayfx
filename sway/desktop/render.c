@@ -123,11 +123,15 @@ damage_finish:
 	pixman_region32_fini(&damage);
 }
 
+bool should_parameters_blur() {
+	return config->blur_params.radius > 0 && config->blur_params.num_passes > 0;
+};
+
 void render_blur(bool optimized, struct sway_output *output,
 		pixman_region32_t *output_damage, const struct wlr_fbox *src_box,
 		const struct wlr_box *dst_box, pixman_region32_t *opaque_region,
 		int surface_width, int surface_height, int32_t surface_scale,
-		struct decoration_data deco_data, int blur_radius, int blur_passes);
+		struct decoration_data deco_data, struct blur_parameters blur_params);
 
 static void render_surface_iterator(struct sway_output *output,
 		struct sway_view *view, struct wlr_surface *surface,
@@ -181,8 +185,7 @@ static void render_surface_iterator(struct sway_output *output,
 			&& view->container->blur_enabled
 			// Check if window has alpha
 			&& !(opaque && view->container->alpha >= 1.0f && deco_data.alpha >= 1.0f)
-			&& config->blur_passes >= 0
-			&& config->blur_radius > 0) {
+			&& should_parameters_blur()) {
 		int width, height;
 		wlr_output_transformed_resolution(output->wlr_output, &width, &height);
 		struct wlr_fbox src_box = {
@@ -197,7 +200,7 @@ static void render_surface_iterator(struct sway_output *output,
 		bool is_floating = container_is_floating(view->container);
 		render_blur(!is_floating, output, output_damage, &src_box, &dst_box,
 				&surface->opaque_region, surface->current.width, surface->current.height,
-				surface->current.scale, deco_data, config->blur_radius, config->blur_passes);
+				surface->current.scale, deco_data, config->blur_params);
 	}
 
 	render_texture(wlr_output, output_damage, texture, &src_box, &dst_box,
@@ -253,8 +256,6 @@ void render_monitor_blur(struct sway_output *output) {
 	struct wlr_output *wlr_output = output->wlr_output;
 	struct fx_renderer *renderer = output->renderer;
 	struct decoration_data deco_data = get_undecorated_decoration_data();
-	int blur_radius = config->blur_radius;
-	int blur_passes = config->blur_passes;
 
 	int width, height;
 	wlr_output_transformed_resolution(output->wlr_output, &width, &height);
@@ -270,9 +271,8 @@ void render_monitor_blur(struct sway_output *output) {
 	pixman_region32_t fake_damage;
 	pixman_region32_init_rect(&fake_damage, 0, 0, width, height);
 	// Render the blur
-	struct fx_framebuffer *buffer = fx_get_back_buffer_blur(renderer, output,
-			&fake_damage, matrix, wlr_output->transform_matrix, &monitor_box,
-			deco_data, blur_radius, blur_passes);
+	struct fx_framebuffer *buffer = fx_get_back_buffer_blur(renderer, output, &fake_damage,
+			matrix, wlr_output->transform_matrix, &monitor_box, deco_data, config->blur_params);
 
 	// Render the newly blurred content into the blur_buffer
 	fx_create_framebuffer(output->wlr_output, &renderer->blur_buffer, false);
@@ -297,7 +297,7 @@ void render_blur(bool optimized, struct sway_output *output,
 		pixman_region32_t *output_damage, const struct wlr_fbox *src_box,
 		const struct wlr_box *dst_box, pixman_region32_t *opaque_region,
 		int surface_width, int surface_height, int32_t surface_scale,
-		struct decoration_data deco_data, int blur_radius, int blur_passes) {
+		struct decoration_data deco_data, struct blur_parameters blur_params) {
 	struct wlr_output *wlr_output = output->wlr_output;
 	struct fx_renderer *renderer = output->renderer;
 
@@ -360,7 +360,7 @@ void render_blur(bool optimized, struct sway_output *output,
 
 		// Render the blur into its own buffer
 		buffer = fx_get_back_buffer_blur(renderer, output, &inverse_opaque, matrix,
-				wlr_output->transform_matrix, dst_box, deco_data, blur_radius, blur_passes);
+				wlr_output->transform_matrix, dst_box, deco_data, blur_params);
 	}
 
 	/*
@@ -634,8 +634,7 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 				&& view->container->blur_enabled
 				// Check if window has alpha
 				&& !(!attribs.has_alpha && view->container->alpha >= 1.0f && deco_data.alpha >= 1.0f)
-				&& config->blur_passes >= 0
-				&& config->blur_radius > 0) {
+				&& should_parameters_blur()) {
 			int width, height;
 			wlr_output_transformed_resolution(output->wlr_output, &width, &height);
 			struct wlr_fbox src_box = {
@@ -652,10 +651,8 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 			// Use the pre-rendered blurred buffer for tiled windows due tiled
 			// that all tiled windows are displaying the same content under the windows
 			bool is_floating = container_is_floating(view->container);
-			render_blur(!is_floating, output, damage, &src_box, &dst_box,
-					&opaque_damage, saved_buf->width, saved_buf->height,
-					1, deco_data, config->blur_radius,
-					config->blur_passes);
+			render_blur(!is_floating, output, damage, &src_box, &dst_box, &opaque_damage,
+					saved_buf->width, saved_buf->height, 1, deco_data, config->blur_params);
 		}
 
 		render_texture(wlr_output, damage, saved_buf->buffer->texture,
@@ -1708,7 +1705,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 			&output->layers[ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM]);
 
 		// TODO: Also check if there are any windows that would benefit from this
-		bool blur_enabled = config->blur_enabled && config->blur_radius > 0 && config->blur_passes > 0;
+		bool blur_enabled = config->blur_enabled && should_parameters_blur();
 		if (blur_enabled && renderer->blur_buffer_dirty) {
 			render_monitor_blur(output);
 		}

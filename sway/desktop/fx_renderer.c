@@ -16,6 +16,7 @@
 
 #include "log.h"
 #include "pixman.h"
+#include "sway/config.h"
 #include "sway/desktop/fx_renderer.h"
 #include "sway/output.h"
 #include "sway/server.h"
@@ -105,8 +106,8 @@ void scissor_output(struct wlr_output *wlr_output,
 	fx_renderer_scissor(&box);
 }
 
-static int get_blur_size(int blur_passes, int blur_radius) {
-	return pow(2, blur_passes) * blur_radius;
+static int get_blur_size() {
+	return pow(2, config->blur_params.num_passes) * config->blur_params.radius;
 }
 
 int fx_get_container_expanded_size(struct sway_container *con) {
@@ -116,8 +117,7 @@ int fx_get_container_expanded_size(struct sway_container *con) {
 
 	bool blur_enabled = config->blur_enabled;
 	if (con) blur_enabled = con->blur_enabled;
-	int blur_size =
-		blur_enabled ? get_blur_size(config->blur_passes, config->blur_radius) : 0;
+	int blur_size = blur_enabled ? get_blur_size() : 0;
 	// +1 as a margin of error
 	return MAX(shadow_sigma, blur_size) + 1;
 }
@@ -1078,9 +1078,8 @@ static void draw_blur(struct fx_renderer *renderer, struct sway_output *output,
 
 /** Renders the back_buffer blur onto `fx_renderer->blur_buffer` */
 struct fx_framebuffer *fx_get_back_buffer_blur(struct fx_renderer *renderer, struct sway_output *output,
-		pixman_region32_t *original_damage, const float _matrix[static 9],
-		const float box_matrix[static 9], const struct wlr_box *box,
-		struct decoration_data deco_data, int blur_radius, int blur_passes) {
+		pixman_region32_t *original_damage, const float _matrix[static 9], const float box_matrix[static 9],
+		const struct wlr_box *box, struct decoration_data deco_data, struct blur_parameters blur_params) {
 	int width, height;
 	wlr_output_transformed_resolution(output->wlr_output, &width, &height);
 
@@ -1101,8 +1100,7 @@ struct fx_framebuffer *fx_get_back_buffer_blur(struct fx_renderer *renderer, str
 	pixman_region32_copy(&damage, original_damage);
 	wlr_region_transform(&damage, &damage, wlr_output_transform_invert(output->wlr_output->transform),
 			width, height);
-	int expanded = get_blur_size(blur_passes, blur_radius);
-	wlr_region_expand(&damage, &damage, expanded);
+	wlr_region_expand(&damage, &damage, get_blur_size());
 
 	// Initially blur main_buffer content into the effects_buffers
 	struct fx_framebuffer *current_buffer = &renderer->main_buffer;
@@ -1116,6 +1114,9 @@ struct fx_framebuffer *fx_get_back_buffer_blur(struct fx_renderer *renderer, str
 	pixman_region32_init(&tempDamage);
 	// When DOWNscaling, we make the region twice as small because it's the TARGET
 	wlr_region_scale(&tempDamage, &damage, 0.5f);
+
+	int blur_radius = blur_params.radius;
+	int blur_passes = blur_params.num_passes;
 
 	// First pass
 	draw_blur(renderer, output, gl_matrix, &tempDamage, &current_buffer,

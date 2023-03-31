@@ -17,7 +17,7 @@ struct cmd_results *cmd_blur_passes(int argc, char **argv) {
 		return cmd_results_new(CMD_FAILURE, "Invalid size specified");
 	}
 
-	config->blur_passes = value;
+	config->blur_params.num_passes = value;
 
 	arrange_root();
 
