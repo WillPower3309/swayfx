@@ -23,7 +23,6 @@ struct decoration_data {
 	float dim;
 	float* dim_color;
 	bool has_titlebar;
-	// Blur
 	bool blur;
 };
 

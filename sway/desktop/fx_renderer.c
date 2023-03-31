@@ -13,7 +13,6 @@
 #include <wlr/types/wlr_matrix.h>
 #include <wlr/util/box.h>
 #include <wlr/util/region.h>
-#include <wlr/render/gles2.h>
 
 #include "log.h"
 #include "pixman.h"
