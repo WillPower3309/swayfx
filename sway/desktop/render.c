@@ -195,12 +195,24 @@ static void render_surface_iterator(struct sway_output *output,
 			.height = height,
 		};
 
+		// Use an empty opaque region if opacity is applied to the whole window
+		// through swayipc
+		pixman_region32_t opaque_region;
+		pixman_region32_init(&opaque_region);
+		if (view->container->alpha < 1.0f || deco_data.alpha < 1.0f) {
+			pixman_region32_union_rect(&opaque_region, &opaque_region, 0, 0, 0, 0);
+		} else {
+			pixman_region32_copy(&opaque_region, &surface->opaque_region);
+		}
+
 		// Use the pre-rendered blurred buffer for tiled windows due tiled
 		// that all tiled windows are displaying the same content under the windows
 		bool is_floating = container_is_floating(view->container);
 		render_blur(!is_floating, output, output_damage, &src_box, &dst_box,
-				&surface->opaque_region, surface->current.width, surface->current.height,
+				&opaque_region, surface->current.width, surface->current.height,
 				surface->current.scale, deco_data, config->blur_params);
+
+		pixman_region32_fini(&opaque_region);
 	}
 
 	render_texture(wlr_output, output_damage, texture, &src_box, &dst_box,
@@ -642,15 +654,17 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 				.height = height,
 			};
 
-			pixman_region32_t opaque_damage;
-			pixman_region32_init(&opaque_damage);
-			pixman_region32_union_rect(&opaque_damage, &opaque_damage, 0, 0, 0, 0);
+			pixman_region32_t opaque_region;
+			pixman_region32_init(&opaque_region);
+			pixman_region32_union_rect(&opaque_region, &opaque_region, 0, 0, 0, 0);
 
 			// Use the pre-rendered blurred buffer for tiled windows due tiled
 			// that all tiled windows are displaying the same content under the windows
 			bool is_floating = container_is_floating(view->container);
-			render_blur(!is_floating, output, damage, &src_box, &dst_box, &opaque_damage,
+			render_blur(!is_floating, output, damage, &src_box, &dst_box, &opaque_region,
 					saved_buf->width, saved_buf->height, 1, deco_data, config->blur_params);
+
+			pixman_region32_fini(&opaque_region);
 		}
 
 		render_texture(wlr_output, damage, saved_buf->buffer->texture,
