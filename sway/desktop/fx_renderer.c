@@ -169,7 +169,7 @@ void fx_framebuffer_create(struct wlr_output *output, struct fx_framebuffer *buf
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
 				buffer->texture.id, 0);
 		buffer->texture.target = GL_TEXTURE_2D;
-		buffer->texture.has_alpha = true;
+		buffer->texture.has_alpha = false;
 		buffer->texture.width = width;
 		buffer->texture.height = height;
 		GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
