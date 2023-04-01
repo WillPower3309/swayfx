@@ -115,9 +115,7 @@ int fx_get_container_expanded_size(struct sway_container *con) {
 	if (con) shadow_enabled = con->shadow_enabled;
 	int shadow_sigma = shadow_enabled ? config->shadow_blur_sigma : 0;
 
-	bool blur_enabled = config->blur_enabled;
-	if (con) blur_enabled = con->blur_enabled;
-	int blur_size = blur_enabled ? get_blur_size() : 0;
+	int blur_size = config->blur_enabled ? get_blur_size() : 0;
 	// +1 as a margin of error
 	return MAX(shadow_sigma, blur_size) + 1;
 }

@@ -182,7 +182,7 @@ static void render_surface_iterator(struct sway_output *output,
 			// Don't render blur for subsurfaces
 			&& view->surface == surface
 			&& deco_data.blur
-			&& view->container->blur_enabled
+			&& config->blur_enabled
 			// Check if window has alpha
 			&& !(opaque && view->container->alpha >= 1.0f && deco_data.alpha >= 1.0f)
 			&& should_parameters_blur()) {
@@ -320,7 +320,6 @@ void render_blur(bool optimized, struct sway_output *output,
 	// Check if damage is inside of box rect
 	pixman_region32_union_rect(&damage, &damage, dst_box->x, dst_box->y, dst_box->width, dst_box->height);
 	pixman_region32_intersect(&damage, &damage, output_damage);
-	// pixman_region32_intersect_rect(&damage, output_damage, box.x, box.y, box.width, box.height);
 
 	wlr_region_scale(&inverse_opaque, &inverse_opaque, wlr_output->scale);
 
@@ -630,7 +629,7 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 		struct wlr_gles2_texture_attribs attribs;
 		wlr_gles2_texture_get_attribs(saved_buf->buffer->texture, &attribs);
 		if (deco_data.blur
-				&& view->container->blur_enabled
+				&& config->blur_enabled
 				// Check if window has alpha
 				&& !(!attribs.has_alpha && view->container->alpha >= 1.0f && deco_data.alpha >= 1.0f)
 				&& should_parameters_blur()) {

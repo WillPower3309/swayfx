@@ -17,15 +17,8 @@ struct cmd_results *cmd_blur_xray(int argc, char **argv) {
 		return error;
 	}
 
-	struct sway_container *con = config->handler_context.container;
-
 	bool result = parse_boolean(argv[0], config->blur_xray);
-	if (con == NULL) {
-		config->blur_xray = result;
-	} else {
-		con->blur_xray = result;
-		container_damage_whole(con);
-	}
+	config->blur_xray = result;
 
 	struct sway_output *output;
 	wl_list_for_each(output, &root->all_outputs, link) {
