@@ -161,10 +161,12 @@ int fx_get_container_expanded_size(struct sway_container *con);
 
 struct fx_texture fx_texture_from_texture(struct wlr_texture* tex);
 
-void fx_bind_framebuffer(struct fx_framebuffer *buffer, GLsizei width, GLsizei height);
+void fx_framebuffer_bind(struct fx_framebuffer *buffer, GLsizei width, GLsizei height);
 
-void fx_create_framebuffer(struct wlr_output *output, struct fx_framebuffer *buffer,
+void fx_framebuffer_create(struct wlr_output *output, struct fx_framebuffer *buffer,
 		bool bind);
+
+void fx_framebuffer_release(struct fx_framebuffer *buffer);
 
 struct fx_renderer *fx_renderer_create(struct wlr_egl *egl);
 

@@ -135,12 +135,12 @@ struct fx_texture fx_texture_from_texture(struct wlr_texture* texture) {
 	};
 }
 
-void fx_bind_framebuffer(struct fx_framebuffer *buffer, GLsizei width, GLsizei height) {
+void fx_framebuffer_bind(struct fx_framebuffer *buffer, GLsizei width, GLsizei height) {
 	glBindFramebuffer(GL_FRAMEBUFFER, buffer->fb);
 	glViewport(0, 0, width, height);
 }
 
-void fx_create_framebuffer(struct wlr_output *output, struct fx_framebuffer *buffer,
+void fx_framebuffer_create(struct wlr_output *output, struct fx_framebuffer *buffer,
 		bool bind) {
 	bool firstAlloc = false;
 	int width, height;
@@ -185,11 +185,11 @@ void fx_create_framebuffer(struct wlr_output *output, struct fx_framebuffer *buf
 	// Bind the default framebuffer
 	glBindTexture(GL_TEXTURE_2D, 0);
 	if (bind) {
-		fx_bind_framebuffer(buffer, width, height);
+		fx_framebuffer_bind(buffer, width, height);
 	}
 }
 
-static void release_fx_framebuffer(struct fx_framebuffer *buffer) {
+void fx_framebuffer_release(struct fx_framebuffer *buffer) {
 	if (buffer->fb != (uint32_t) -1 && buffer->fb) {
 		glDeleteFramebuffers(1, &buffer->fb);
 	}
@@ -562,10 +562,10 @@ error:
 }
 
 void fx_renderer_fini(struct fx_renderer *renderer) {
-	release_fx_framebuffer(&renderer->main_buffer);
-	release_fx_framebuffer(&renderer->blur_buffer);
-	release_fx_framebuffer(&renderer->effects_buffer);
-	release_fx_framebuffer(&renderer->effects_buffer_swapped);
+	fx_framebuffer_release(&renderer->main_buffer);
+	fx_framebuffer_release(&renderer->blur_buffer);
+	fx_framebuffer_release(&renderer->effects_buffer);
+	fx_framebuffer_release(&renderer->effects_buffer_swapped);
 	release_stencil_buffer(&renderer->stencil_buffer_id);
 }
 
@@ -582,13 +582,13 @@ void fx_renderer_begin(struct fx_renderer *renderer, struct sway_output *sway_ou
 	glGetIntegerv(GL_FRAMEBUFFER_BINDING, &renderer->wlr_fb);
 
 	// Create the main framebuffer
-	fx_create_framebuffer(output, &renderer->main_buffer, true);
+	fx_framebuffer_create(output, &renderer->main_buffer, true);
 	// Create the stencil buffer and attach it to our main_buffer
 	create_stencil_buffer(output, &renderer->stencil_buffer_id);
 
 	// Create a new blur/effects framebuffers
-	fx_create_framebuffer(output, &renderer->effects_buffer, false);
-	fx_create_framebuffer(output, &renderer->effects_buffer_swapped, false);
+	fx_framebuffer_create(output, &renderer->effects_buffer, false);
+	fx_framebuffer_create(output, &renderer->effects_buffer_swapped, false);
 
 	// refresh projection matrix
 	matrix_projection(renderer->projection, width, height,
@@ -597,7 +597,7 @@ void fx_renderer_begin(struct fx_renderer *renderer, struct sway_output *sway_ou
 	glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
 	// Bind to our main framebuffer
-	fx_bind_framebuffer(&renderer->main_buffer, width, height);
+	fx_framebuffer_bind(&renderer->main_buffer, width, height);
 }
 
 void fx_renderer_end(struct fx_renderer *renderer) {
@@ -620,7 +620,7 @@ void fx_renderer_end(struct fx_renderer *renderer) {
 	fx_renderer_scissor(NULL);
 
 	// Release the main buffer
-	release_fx_framebuffer(&renderer->main_buffer);
+	fx_framebuffer_release(&renderer->main_buffer);
 	release_stencil_buffer(&renderer->stencil_buffer_id);
 }
 
@@ -1017,9 +1017,9 @@ static void draw_blur(struct fx_renderer *renderer, struct sway_output *output,
 	wlr_output_transformed_resolution(output->wlr_output, &width, &height);
 
 	if (*buffer == &renderer->effects_buffer) {
-		fx_bind_framebuffer(&renderer->effects_buffer_swapped, width, height);
+		fx_framebuffer_bind(&renderer->effects_buffer_swapped, width, height);
 	} else {
-		fx_bind_framebuffer(&renderer->effects_buffer, width, height);
+		fx_framebuffer_bind(&renderer->effects_buffer, width, height);
 	}
 
 	glActiveTexture(GL_TEXTURE0);
@@ -1106,7 +1106,7 @@ struct fx_framebuffer *fx_get_back_buffer_blur(struct fx_renderer *renderer, str
 	struct fx_framebuffer *current_buffer = &renderer->main_buffer;
 
 	// Bind to blur framebuffer
-	fx_bind_framebuffer(&renderer->effects_buffer, width, height);
+	fx_framebuffer_bind(&renderer->effects_buffer, width, height);
 	glBindTexture(renderer->main_buffer.texture.target, renderer->main_buffer.texture.id);
 
 	// damage region will be scaled, make a temp
@@ -1143,7 +1143,7 @@ struct fx_framebuffer *fx_get_back_buffer_blur(struct fx_renderer *renderer, str
 	// Bind back to the default buffer
 	glBindTexture(renderer->effects_buffer.texture.target, 0);
 
-	fx_bind_framebuffer(&renderer->main_buffer, width, height);
+	fx_framebuffer_bind(&renderer->main_buffer, width, height);
 
 	glBindTexture(GL_TEXTURE_2D, 0);
 
