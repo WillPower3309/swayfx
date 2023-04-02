@@ -182,7 +182,7 @@ static void render_surface_iterator(struct sway_output *output,
 			// Don't render blur for subsurfaces
 			&& view->surface == surface
 			&& deco_data.blur
-			&& config->blur_enabled
+			&& view->container->blur_enabled
 			// Check if window has alpha
 			&& !(opaque && view->container->alpha >= 1.0f && deco_data.alpha >= 1.0f)
 			&& should_parameters_blur()) {
@@ -641,7 +641,7 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 		struct wlr_gles2_texture_attribs attribs;
 		wlr_gles2_texture_get_attribs(saved_buf->buffer->texture, &attribs);
 		if (deco_data.blur
-				&& config->blur_enabled
+				&& view->container->blur_enabled
 				// Check if window has alpha
 				&& !(!attribs.has_alpha && view->container->alpha >= 1.0f && deco_data.alpha >= 1.0f)
 				&& should_parameters_blur()) {
@@ -1584,7 +1584,7 @@ static void render_seatops(struct sway_output *output,
 
 static bool find_blurred_con_iterator(struct sway_container *con, void *data) {
 	struct sway_view *view = con->view;
-	if (!view) return false;
+	if (!view || !con->blur_enabled) return false;
 	// Only test floating windows when xray is enabled
 	if (container_is_floating(con) && !config->blur_xray) return false;
 

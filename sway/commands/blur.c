@@ -17,8 +17,15 @@ struct cmd_results *cmd_blur(int argc, char **argv) {
 		return error;
 	}
 
+	struct sway_container *con = config->handler_context.container;
+
 	bool result = parse_boolean(argv[0], config->blur_enabled);
-	config->blur_enabled = result;
+	if (con == NULL) {
+		config->blur_enabled = result;
+	} else {
+		con->blur_enabled = result;
+		container_damage_whole(con);
+	}
 
 	struct sway_output *output;
 	wl_list_for_each(output, &root->all_outputs, link) {
