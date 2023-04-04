@@ -327,23 +327,17 @@ void render_blur(bool optimized, struct sway_output *output,
 	wlr_matrix_project_box(matrix, &monitor_box, transform, 0.0,
 		wlr_output->transform_matrix);
 
-	pixman_region32_t damage;
-	pixman_region32_init(&damage);
+	// Check if damage is inside of box rect
+	pixman_region32_t damage = create_damage(*dst_box, output_damage);
+
 	pixman_region32_t inverse_opaque;
 	pixman_region32_init(&inverse_opaque);
 	pixman_region32_t render_damage;
 	pixman_region32_init(&render_damage);
 
-	// Check if damage is inside of box rect
-	pixman_region32_union_rect(&damage, &damage, dst_box->x, dst_box->y, dst_box->width, dst_box->height);
-	pixman_region32_intersect(&damage, &damage, output_damage);
-
-	wlr_region_scale(&inverse_opaque, &inverse_opaque, wlr_output->scale);
-
 	if (!pixman_region32_not_empty(&damage)) {
 		goto damage_finish;
 	}
-
 
 	/*
 	 * Capture the back_buffer and blur it
@@ -355,6 +349,8 @@ void render_blur(bool optimized, struct sway_output *output,
 		.x2 = dst_box->width / wlr_output->scale,
 		.y2 = dst_box->height / wlr_output->scale,
 	};
+
+	wlr_region_scale(&inverse_opaque, &inverse_opaque, wlr_output->scale);
 
 	// Gets the non opaque region
 	pixman_region32_copy(&inverse_opaque, opaque_region);
