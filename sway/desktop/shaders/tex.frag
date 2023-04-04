@@ -1,4 +1,3 @@
-/* enum wlr_gles2_shader_source */
 #define SOURCE_TEXTURE_RGBA 1
 #define SOURCE_TEXTURE_RGBX 2
 #define SOURCE_TEXTURE_EXTERNAL 3

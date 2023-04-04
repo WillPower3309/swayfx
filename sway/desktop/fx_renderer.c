@@ -29,8 +29,6 @@
 #include "corner_frag_src.h"
 #include "quad_frag_src.h"
 #include "quad_round_frag_src.h"
-#include "quad_round_tl_frag_src.h"
-#include "quad_round_tr_frag_src.h"
 #include "tex_frag_src.h"
 
 static const GLfloat verts[] = {
@@ -251,9 +249,9 @@ static void matrix_projection(float mat[static 9], int width, int height,
 	mat[8] = 1.0f;
 }
 
-static GLuint compile_shader(GLuint type, const GLchar **srcs, size_t srcs_len) {
+static GLuint compile_shader(GLuint type, const GLchar *src) {
 	GLuint shader = glCreateShader(type);
-	glShaderSource(shader, srcs_len, srcs, NULL);
+	glShaderSource(shader, 1, &src, NULL);
 	glCompileShader(shader);
 
 	GLint ok;
@@ -267,24 +265,14 @@ static GLuint compile_shader(GLuint type, const GLchar **srcs, size_t srcs_len) 
 	return shader;
 }
 
-static GLuint link_program(const GLchar *frag_src, enum fx_gles2_shader_source source) {
+static GLuint link_program(const GLchar *frag_src) {
 	const GLchar *vert_src = common_vert_src;
-	GLuint vert = compile_shader(GL_VERTEX_SHADER, &vert_src, 1);
+	GLuint vert = compile_shader(GL_VERTEX_SHADER, vert_src);
 	if (!vert) {
 		goto error;
 	}
 
-	GLuint frag;
-	if (source != WLR_GLES2_SHADER_SOURCE_NOT_TEXTURE) {
-		static char frag_preamble[1024];
-		snprintf(frag_preamble, sizeof(frag_preamble),
-			"#define SOURCE %d\n", source);
-
-		const GLchar *frag_srcs[2] = { frag_preamble, frag_src };
-		frag = compile_shader(GL_FRAGMENT_SHADER, frag_srcs, 2);
-	} else {
-		frag = compile_shader(GL_FRAGMENT_SHADER, &frag_src, 1);
-	}
+	GLuint frag = compile_shader(GL_FRAGMENT_SHADER, frag_src);
 	if (!frag) {
 		glDeleteShader(vert);
 		goto error;
@@ -315,11 +303,13 @@ error:
 }
 
 static bool link_tex_program(struct fx_renderer *renderer,
-		struct gles2_tex_shader *shader, enum fx_gles2_shader_source source) {
-	GLuint prog;
-	const GLchar *frag_src = tex_frag_src;
+		struct gles2_tex_shader *shader, enum fx_tex_shader_source source) {
+	GLchar frag_src[2048];
+	snprintf(frag_src, sizeof(frag_src),
+		"#define SOURCE %d\n%s", source, tex_frag_src);
 
-	shader->program = prog = link_program(frag_src, source);
+	GLuint prog;
+	shader->program = prog = link_program(frag_src);
 	if (!shader->program) {
 		return false;
 	}
@@ -340,18 +330,25 @@ static bool link_tex_program(struct fx_renderer *renderer,
 	return true;
 }
 
-// initializes a provided rounded quad shader and returns false if unsuccessful
-bool init_rounded_quad_shader(struct rounded_quad_shader *shader, GLuint prog) {
-	shader->program = prog;
+static bool link_rounded_quad_program(struct fx_renderer *renderer,
+		struct rounded_quad_shader *shader, enum fx_rounded_quad_shader_source source) {
+	GLchar quad_src[2048];
+	snprintf(quad_src, sizeof(quad_src),
+		"#define SOURCE %d\n%s", source, quad_round_frag_src);
+
+	GLuint prog;
+	shader->program = prog = link_program(quad_src);
 	if (!shader->program) {
 		return false;
 	}
+
 	shader->proj = glGetUniformLocation(prog, "proj");
 	shader->color = glGetUniformLocation(prog, "color");
 	shader->pos_attrib = glGetAttribLocation(prog, "pos");
 	shader->size = glGetUniformLocation(prog, "size");
 	shader->position = glGetUniformLocation(prog, "position");
 	shader->radius = glGetUniformLocation(prog, "radius");
+
 	return true;
 }
 
@@ -432,7 +429,7 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	GLuint prog;
 
 	// quad fragment shader
-	prog = link_program(quad_frag_src, WLR_GLES2_SHADER_SOURCE_NOT_TEXTURE);
+	prog = link_program(quad_frag_src);
 	renderer->shaders.quad.program = prog;
 	if (!renderer->shaders.quad.program) {
 		goto error;
@@ -442,21 +439,21 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	renderer->shaders.quad.pos_attrib = glGetAttribLocation(prog, "pos");
 
 	// rounded quad fragment shaders
-	prog = link_program(quad_round_frag_src, WLR_GLES2_SHADER_SOURCE_NOT_TEXTURE);
-	if (!init_rounded_quad_shader(&renderer->shaders.rounded_quad, prog)) {
+	if (!link_rounded_quad_program(renderer, &renderer->shaders.rounded_quad,
+			SHADER_SOURCE_QUAD_ROUND)) {
 		goto error;
 	}
-	prog = link_program(quad_round_tl_frag_src, WLR_GLES2_SHADER_SOURCE_NOT_TEXTURE);
-	if (!init_rounded_quad_shader(&renderer->shaders.rounded_tl_quad, prog)) {
+	if (!link_rounded_quad_program(renderer, &renderer->shaders.rounded_tl_quad,
+			SHADER_SOURCE_QUAD_ROUND_TOP_LEFT)) {
 		goto error;
 	}
-	prog = link_program(quad_round_tr_frag_src, WLR_GLES2_SHADER_SOURCE_NOT_TEXTURE);
-	if (!init_rounded_quad_shader(&renderer->shaders.rounded_tr_quad, prog)) {
+	if (!link_rounded_quad_program(renderer, &renderer->shaders.rounded_tr_quad,
+			SHADER_SOURCE_QUAD_ROUND_TOP_RIGHT)) {
 		goto error;
 	}
 
 	// Border corner shader
-	prog = link_program(corner_frag_src, WLR_GLES2_SHADER_SOURCE_NOT_TEXTURE);
+	prog = link_program(corner_frag_src);
 	renderer->shaders.corner.program = prog;
 	if (!renderer->shaders.corner.program) {
 		goto error;
@@ -474,7 +471,7 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	renderer->shaders.corner.half_thickness = glGetUniformLocation(prog, "half_thickness");
 
 	// box shadow shader
-	prog = link_program(box_shadow_frag_src, WLR_GLES2_SHADER_SOURCE_NOT_TEXTURE);
+	prog = link_program(box_shadow_frag_src);
 	renderer->shaders.box_shadow.program = prog;
 	if (!renderer->shaders.box_shadow.program) {
 		goto error;
@@ -515,15 +512,15 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 
 	// fragment shaders
 	if (!link_tex_program(renderer, &renderer->shaders.tex_rgba,
-			WLR_GLES2_SHADER_SOURCE_TEXTURE_RGBA)) {
+			SHADER_SOURCE_TEXTURE_RGBA)) {
 		goto error;
 	}
 	if (!link_tex_program(renderer, &renderer->shaders.tex_rgbx,
-			WLR_GLES2_SHADER_SOURCE_TEXTURE_RGBX)) {
+			SHADER_SOURCE_TEXTURE_RGBX)) {
 		goto error;
 	}
 	if (!link_tex_program(renderer, &renderer->shaders.tex_ext,
-			WLR_GLES2_SHADER_SOURCE_TEXTURE_EXTERNAL)) {
+			SHADER_SOURCE_TEXTURE_EXTERNAL)) {
 		goto error;
 	}
 
