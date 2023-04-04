@@ -110,6 +110,15 @@ static void set_scale_filter(struct wlr_output *wlr_output,
 	}
 }
 
+pixman_region32_t create_damage(const struct wlr_box damage_box, pixman_region32_t *output_damage) {
+	pixman_region32_t damage;
+	pixman_region32_init(&damage);
+	pixman_region32_union_rect(&damage, &damage, damage_box.x, damage_box.y,
+		damage_box.width, damage_box.height);
+	pixman_region32_intersect(&damage, &damage, output_damage);
+	return damage;
+}
+
 static void render_texture(struct wlr_output *wlr_output,
 		pixman_region32_t *output_damage, struct wlr_texture *texture,
 		const struct wlr_fbox *src_box, const struct wlr_box *dst_box,
@@ -117,11 +126,7 @@ static void render_texture(struct wlr_output *wlr_output,
 	struct sway_output *output = wlr_output->data;
 	struct fx_renderer *renderer = output->server->renderer;
 
-	pixman_region32_t damage;
-	pixman_region32_init(&damage);
-	pixman_region32_union_rect(&damage, &damage, dst_box->x, dst_box->y,
-		dst_box->width, dst_box->height);
-	pixman_region32_intersect(&damage, &damage, output_damage);
+	pixman_region32_t damage = create_damage(*dst_box, output_damage);
 	bool damaged = pixman_region32_not_empty(&damage);
 	if (!damaged) {
 		goto damage_finish;
@@ -242,11 +247,7 @@ void render_rect(struct sway_output *output,
 	box.x -= output->lx * wlr_output->scale;
 	box.y -= output->ly * wlr_output->scale;
 
-	pixman_region32_t damage;
-	pixman_region32_init(&damage);
-	pixman_region32_union_rect(&damage, &damage, box.x, box.y,
-		box.width, box.height);
-	pixman_region32_intersect(&damage, &damage, output_damage);
+	pixman_region32_t damage = create_damage(box, output_damage);
 	bool damaged = pixman_region32_not_empty(&damage);
 	if (!damaged) {
 		goto damage_finish;
@@ -274,11 +275,7 @@ void render_rounded_rect(struct sway_output *output, pixman_region32_t *output_d
 	box.x -= output->lx * wlr_output->scale;
 	box.y -= output->ly * wlr_output->scale;
 
-	pixman_region32_t damage;
-	pixman_region32_init(&damage);
-	pixman_region32_union_rect(&damage, &damage, box.x, box.y,
-		box.width, box.height);
-	pixman_region32_intersect(&damage, &damage, output_damage);
+	pixman_region32_t damage = create_damage(box, output_damage);
 	bool damaged = pixman_region32_not_empty(&damage);
 	if (!damaged) {
 		goto damage_finish;
@@ -309,11 +306,7 @@ void render_border_corner(struct sway_output *output, pixman_region32_t *output_
 	box.x -= output->lx * wlr_output->scale;
 	box.y -= output->ly * wlr_output->scale;
 
-	pixman_region32_t damage;
-	pixman_region32_init(&damage);
-	pixman_region32_union_rect(&damage, &damage, box.x, box.y,
-		box.width, box.height);
-	pixman_region32_intersect(&damage, &damage, output_damage);
+	pixman_region32_t damage = create_damage(box, output_damage);
 	bool damaged = pixman_region32_not_empty(&damage);
 	if (!damaged) {
 		goto damage_finish;
@@ -349,11 +342,7 @@ void render_box_shadow(struct sway_output *output, pixman_region32_t *output_dam
 	// Uses the outer radii of the window for a more realistic look
 	corner_radius = corner_radius + border_thickness;
 
-	pixman_region32_t damage;
-	pixman_region32_init(&damage);
-	pixman_region32_union_rect(&damage, &damage, box.x, box.y,
-		box.width, box.height);
-	pixman_region32_intersect(&damage, &damage, output_damage);
+	pixman_region32_t damage = create_damage(box, output_damage);
 	bool damaged = pixman_region32_not_empty(&damage);
 	if (!damaged) {
 		goto damage_finish;
