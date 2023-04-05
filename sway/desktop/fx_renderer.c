@@ -105,6 +105,13 @@ static GLuint compile_shader(GLuint type, const GLchar *src) {
 	glGetShaderiv(shader, GL_COMPILE_STATUS, &ok);
 	if (ok == GL_FALSE) {
 		sway_log(SWAY_ERROR, "Failed to compile shader");
+		
+		char log[1024];
+		GLsizei length = 0;
+		glGetShaderInfoLog(shader, 1024, &length, log);
+		log[length-1] = '\0';
+		sway_log(SWAY_ERROR, "Error log: \"%s\"", log);
+		
 		glDeleteShader(shader);
 		shader = 0;
 	}
@@ -139,6 +146,13 @@ static GLuint link_program(const GLchar *frag_src) {
 	glGetProgramiv(prog, GL_LINK_STATUS, &ok);
 	if (ok == GL_FALSE) {
 		sway_log(SWAY_ERROR, "Failed to link shader");
+
+		char log[1024];
+		GLsizei length = 0;
+		glGetProgramInfoLog(prog, 1024, &length, log);
+		log[length-1] = '\0';
+		sway_log(SWAY_ERROR, "Error log: \"%s\"", log);
+
 		glDeleteProgram(prog);
 		goto error;
 	}
