@@ -528,15 +528,13 @@ void fx_renderer_fini(struct fx_renderer *renderer) {
 	release_stencil_buffer(&renderer->stencil_buffer_id);
 }
 
-void fx_renderer_begin(struct fx_renderer *renderer, struct sway_output *sway_output,
-		pixman_region32_t *original_damage) {
+void fx_renderer_begin(struct fx_renderer *renderer, struct sway_output *sway_output) {
 	struct wlr_output *output = sway_output->wlr_output;
 
 	int width, height;
 	wlr_output_transformed_resolution(output, &width, &height);
 
 	renderer->sway_output = sway_output;
-	renderer->original_damage = original_damage;
 	// Store the wlr framebuffer
 	glGetIntegerv(GL_FRAMEBUFFER_BINDING, &renderer->wlr_fb);
 

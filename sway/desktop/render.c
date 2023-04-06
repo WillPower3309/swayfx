@@ -1746,7 +1746,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 		fx_renderer_clear((float[]){1, 1, 0, 1});
 	}
 
-	fx_renderer_begin(renderer, output, &extended_damage);
+	fx_renderer_begin(renderer, output);
 
 	if (!damage_not_empty) {
 		// Output isn't damaged but needs buffer swap
@@ -1892,15 +1892,15 @@ renderer_end:
 	// Draw the contents of our buffer into the wlr buffer
 	glBindFramebuffer(GL_FRAMEBUFFER, renderer->wlr_fb);
 	float clear_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
-	if (pixman_region32_not_empty(renderer->original_damage)) {
+	if (pixman_region32_not_empty(&extended_damage)) {
 		int nrects;
-		pixman_box32_t *rects = pixman_region32_rectangles(renderer->original_damage, &nrects);
+		pixman_box32_t *rects = pixman_region32_rectangles(&extended_damage, &nrects);
 		for (int i = 0; i < nrects; ++i) {
 			scissor_output(wlr_output, &rects[i]);
 			fx_renderer_clear(clear_color);
 		}
 	}
-	render_whole_output(renderer, renderer->original_damage,
+	render_whole_output(renderer, &extended_damage,
 			&renderer->main_buffer.texture);
 	fx_renderer_scissor(NULL);
 	fx_renderer_end(renderer);

@@ -89,8 +89,6 @@ struct fx_renderer {
 
 	float projection[9];
 
-	pixman_region32_t *original_damage;
-
 	GLint wlr_fb;
 
 	struct sway_output *sway_output;
@@ -176,8 +174,7 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl);
 
 void fx_renderer_fini(struct fx_renderer *renderer);
 
-void fx_renderer_begin(struct fx_renderer *renderer, struct sway_output *output,
-		pixman_region32_t *original_damage);
+void fx_renderer_begin(struct fx_renderer *renderer, struct sway_output *output);
 
 void fx_renderer_end(struct fx_renderer *renderer);
 
