@@ -160,8 +160,7 @@ struct fx_renderer {
 	} shaders;
 };
 
-void scissor_output(struct wlr_output *wlr_output,
-		pixman_box32_t *rect);
+void fx_scissor_output(struct wlr_output *wlr_output, pixman_box32_t *rect);
 
 int fx_get_container_expanded_size(struct sway_container *con);
 

@@ -81,8 +81,7 @@ static const float transforms[][9] = {
 	},
 };
 
-void scissor_output(struct wlr_output *wlr_output,
-		pixman_box32_t *rect) {
+void fx_scissor_output(struct wlr_output *wlr_output, pixman_box32_t *rect) {
 	struct sway_output *output = wlr_output->data;
 	struct fx_renderer *renderer = output->renderer;
 	assert(renderer);
@@ -609,7 +608,7 @@ void fx_renderer_end(struct fx_renderer *renderer) {
 		int nrects;
 		pixman_box32_t *rects = pixman_region32_rectangles(renderer->original_damage, &nrects);
 		for (int i = 0; i < nrects; ++i) {
-			scissor_output(output, &rects[i]);
+			fx_scissor_output(output, &rects[i]);
 			fx_renderer_clear(clear_color);
 		}
 	}
@@ -673,7 +672,7 @@ void fx_render_whole_output(struct fx_renderer *renderer, pixman_region32_t *ori
 	int nrects;
 	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
 	for (int i = 0; i < nrects; ++i) {
-		scissor_output(output, &rects[i]);
+		fx_scissor_output(output, &rects[i]);
 		fx_render_texture_with_matrix(renderer, texture, &monitor_box, matrix, deco_data);
 	}
 
