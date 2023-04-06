@@ -81,22 +81,6 @@ static const float transforms[][9] = {
 	},
 };
 
-static int get_blur_size() {
-	return pow(2, config->blur_params.num_passes) * config->blur_params.radius;
-}
-
-int fx_get_container_expanded_size(struct sway_container *con) {
-	bool shadow_enabled = config->shadow_enabled;
-	if (con) shadow_enabled = con->shadow_enabled;
-	int shadow_sigma = shadow_enabled ? config->shadow_blur_sigma : 0;
-
-	bool blur_enabled = config->blur_enabled;
-	if (con) blur_enabled = con->blur_enabled;
-	int blur_size = blur_enabled ? get_blur_size() : 0;
-	// +1 as a margin of error
-	return MAX(shadow_sigma, blur_size) + 1;
-}
-
 struct fx_texture fx_texture_from_texture(struct wlr_texture* texture) {
 	assert(wlr_texture_is_gles2(texture));
 	struct wlr_gles2_texture_attribs texture_attrs;

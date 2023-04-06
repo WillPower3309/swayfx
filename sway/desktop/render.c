@@ -48,6 +48,18 @@ struct decoration_data get_undecorated_decoration_data() {
 	};
 }
 
+int get_container_expanded_size(struct sway_container *con) {
+	bool shadow_enabled = config->shadow_enabled;
+	if (con) shadow_enabled = con->shadow_enabled;
+	int shadow_sigma = shadow_enabled ? config->shadow_blur_sigma : 0;
+
+	bool blur_enabled = config->blur_enabled;
+	if (con) blur_enabled = con->blur_enabled;
+	int blur_size = blur_enabled ? get_blur_size() : 0;
+	// +1 as a margin of error
+	return MAX(shadow_sigma, blur_size) + 1;
+}
+
 /**
  * Apply scale to a width or height.
  *
@@ -1718,7 +1730,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 		should_blur_draw_optimize(output, damage);
 
 		// Extend the damaged region
-		int expanded_size = fx_get_container_expanded_size(NULL);
+		int expanded_size = get_container_expanded_size(NULL);
 		if ((config->blur_enabled || config->shadow_enabled) && expanded_size > 0) {
 			wlr_region_expand(damage, damage, expanded_size);
 			pixman_region32_copy(&extended_damage, damage);

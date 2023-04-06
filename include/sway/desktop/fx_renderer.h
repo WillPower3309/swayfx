@@ -8,6 +8,9 @@
 #include "sway/config.h"
 #include "sway/tree/container.h"
 
+#define get_blur_size() \
+	pow(2, config->blur_params.num_passes) * config->blur_params.radius
+
 enum corner_location { ALL, TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT, NONE };
 
 enum fx_tex_shader_source {
@@ -159,8 +162,6 @@ struct fx_renderer {
 		struct gles2_tex_shader tex_ext;
 	} shaders;
 };
-
-int fx_get_container_expanded_size(struct sway_container *con);
 
 struct fx_texture fx_texture_from_texture(struct wlr_texture* tex);
 
