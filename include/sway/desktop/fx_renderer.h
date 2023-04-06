@@ -160,8 +160,6 @@ struct fx_renderer {
 	} shaders;
 };
 
-void fx_scissor_output(struct wlr_output *wlr_output, pixman_box32_t *rect);
-
 int fx_get_container_expanded_size(struct sway_container *con);
 
 struct fx_texture fx_texture_from_texture(struct wlr_texture* tex);
@@ -185,9 +183,6 @@ void fx_renderer_end(struct fx_renderer *renderer);
 void fx_renderer_clear(const float color[static 4]);
 
 void fx_renderer_scissor(struct wlr_box *box);
-
-void fx_render_whole_output(struct fx_renderer *renderer, pixman_region32_t *original_damage,
-		struct fx_texture *texture);
 
 bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct fx_texture *fx_texture,
 		const struct wlr_fbox *src_box, const struct wlr_box *dst_box, const float matrix[static 9],

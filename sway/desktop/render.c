@@ -64,6 +64,29 @@ static int scale_length(int length, int offset, float scale) {
 	return round((offset + length) * scale) - round(offset * scale);
 }
 
+static void scissor_output(struct wlr_output *wlr_output,
+		pixman_box32_t *rect) {
+	struct sway_output *output = wlr_output->data;
+	struct fx_renderer *renderer = output->renderer;
+	assert(renderer);
+
+	struct wlr_box box = {
+		.x = rect->x1,
+		.y = rect->y1,
+		.width = rect->x2 - rect->x1,
+		.height = rect->y2 - rect->y1,
+	};
+
+	int ow, oh;
+	wlr_output_transformed_resolution(wlr_output, &ow, &oh);
+
+	enum wl_output_transform transform =
+		wlr_output_transform_invert(wlr_output->transform);
+	wlr_box_transform(&box, &box, transform, ow, oh);
+
+	fx_renderer_scissor(&box);
+}
+
 static void set_scale_filter(struct wlr_output *wlr_output,
 		struct wlr_texture *texture, enum scale_filter_mode scale_filter) {
 	if (!wlr_texture_is_gles2(texture)) {
@@ -113,7 +136,7 @@ static void render_texture(struct wlr_output *wlr_output,
 	int nrects;
 	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
 	for (int i = 0; i < nrects; ++i) {
-		fx_scissor_output(wlr_output, &rects[i]);
+		scissor_output(wlr_output, &rects[i]);
 		set_scale_filter(wlr_output, texture, output->scale_filter);
 		struct fx_texture fx_texture = fx_texture_from_texture(texture);
 		if (src_box != NULL) {
@@ -269,6 +292,50 @@ static void render_drag_icons(struct sway_output *output,
 		render_surface_iterator, &data);
 }
 
+void render_whole_output(struct fx_renderer *renderer, pixman_region32_t *original_damage,
+		struct fx_texture *texture) {
+	struct wlr_output *output = renderer->sway_output->wlr_output;
+	int width, height;
+	wlr_output_transformed_resolution(output, &width, &height);
+	struct wlr_box monitor_box = {0, 0, width, height};
+
+	float matrix[9];
+	enum wl_output_transform transform =
+		wlr_output_transform_invert(output->transform);
+	wlr_matrix_project_box(matrix, &monitor_box, transform, 0.0,
+		output->transform_matrix);
+
+	pixman_region32_t damage;
+	pixman_region32_init(&damage);
+	pixman_region32_union_rect(&damage, &damage, monitor_box.x, monitor_box.y,
+		monitor_box.width, monitor_box.height);
+	pixman_region32_intersect(&damage, &damage, original_damage);
+	bool damaged = pixman_region32_not_empty(&damage);
+	if (!damaged) {
+		goto damage_finish;
+	}
+
+	struct decoration_data deco_data = {
+		.alpha = 1.0f,
+		.dim = 0.0f,
+		.dim_color = config->dim_inactive_colors.unfocused,
+		.corner_radius = 0,
+		.saturation = 1.0f,
+		.has_titlebar = false,
+		.blur = false,
+	};
+
+	int nrects;
+	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
+	for (int i = 0; i < nrects; ++i) {
+		scissor_output(output, &rects[i]);
+		fx_render_texture_with_matrix(renderer, texture, &monitor_box, matrix, deco_data);
+	}
+
+damage_finish:
+	pixman_region32_fini(&damage);
+}
+
 void render_monitor_blur(struct sway_output *output, pixman_region32_t *damage) {
 	struct wlr_output *wlr_output = output->wlr_output;
 	struct fx_renderer *renderer = output->renderer;
@@ -298,10 +365,10 @@ void render_monitor_blur(struct sway_output *output, pixman_region32_t *damage) 
 	int nrects;
 	pixman_box32_t *rects = pixman_region32_rectangles(damage, &nrects);
 	for (int i = 0; i < nrects; ++i) {
-		fx_scissor_output(output->wlr_output, &rects[i]);
+		scissor_output(output->wlr_output, &rects[i]);
 		fx_renderer_clear(clear_color);
 	}
-	fx_render_whole_output(renderer, &fake_damage, &buffer->texture);
+	render_whole_output(renderer, &fake_damage, &buffer->texture);
 	fx_framebuffer_bind(&renderer->main_buffer, width, height);
 
 	pixman_region32_fini(&fake_damage);
@@ -389,7 +456,7 @@ void render_blur(bool optimized, struct sway_output *output,
 	int nrects;
 	pixman_box32_t * rects = pixman_region32_rectangles(&render_damage, &nrects);
 	for (int i = 0; i < nrects; ++i) {
-		fx_scissor_output(wlr_output, &rects[i]);
+		scissor_output(wlr_output, &rects[i]);
 		fx_render_subtexture_with_matrix(renderer, &buffer->texture, src_box, dst_box, matrix, deco_data);
 	}
 
@@ -421,7 +488,7 @@ void render_rect(struct sway_output *output,
 	int nrects;
 	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
 	for (int i = 0; i < nrects; ++i) {
-		fx_scissor_output(wlr_output, &rects[i]);
+		scissor_output(wlr_output, &rects[i]);
 		fx_render_rect(renderer, &box, color, wlr_output->transform_matrix);
 	}
 
@@ -449,7 +516,7 @@ void render_rounded_rect(struct sway_output *output, pixman_region32_t *output_d
 	int nrects;
 	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
 	for (int i = 0; i < nrects; ++i) {
-		fx_scissor_output(wlr_output, &rects[i]);
+		scissor_output(wlr_output, &rects[i]);
 		fx_render_rounded_rect(renderer, &box, color, wlr_output->transform_matrix,
 				corner_radius, corner_location);
 	}
@@ -480,7 +547,7 @@ void render_border_corner(struct sway_output *output, pixman_region32_t *output_
 	int nrects;
 	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
 	for (int i = 0; i < nrects; ++i) {
-		fx_scissor_output(wlr_output, &rects[i]);
+		scissor_output(wlr_output, &rects[i]);
 		fx_render_border_corner(renderer, &box, color, wlr_output->transform_matrix,
 				corner_location, corner_radius, border_thickness);
 	}
@@ -516,7 +583,7 @@ void render_box_shadow(struct sway_output *output, pixman_region32_t *output_dam
 	int nrects;
 	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
 	for (int i = 0; i < nrects; ++i) {
-		fx_scissor_output(wlr_output, &rects[i]);
+		scissor_output(wlr_output, &rects[i]);
 
 		fx_render_box_shadow(renderer, &box, color,
 				wlr_output->transform_matrix, corner_radius, blur_sigma);
@@ -1683,7 +1750,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 		int nrects;
 		pixman_box32_t *rects = pixman_region32_rectangles(damage, &nrects);
 		for (int i = 0; i < nrects; ++i) {
-			fx_scissor_output(wlr_output, &rects[i]);
+			scissor_output(wlr_output, &rects[i]);
 			fx_renderer_clear(clear_color);
 		}
 
@@ -1719,7 +1786,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 		int nrects;
 		pixman_box32_t *rects = pixman_region32_rectangles(damage, &nrects);
 		for (int i = 0; i < nrects; ++i) {
-			fx_scissor_output(wlr_output, &rects[i]);
+			scissor_output(wlr_output, &rects[i]);
 			fx_renderer_clear(clear_color);
 		}
 
@@ -1752,7 +1819,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 		int nrects;
 		pixman_box32_t *rects = pixman_region32_rectangles(damage, &nrects);
 		for (int i = 0; i < nrects; ++i) {
-			fx_scissor_output(wlr_output, &rects[i]);
+			scissor_output(wlr_output, &rects[i]);
 			fx_renderer_clear(clear_color);
 		}
 
@@ -1810,6 +1877,20 @@ render_overlay:
 	render_drag_icons(output, damage, &root->drag_icons);
 
 renderer_end:
+	// Draw the contents of our buffer into the wlr buffer
+	glBindFramebuffer(GL_FRAMEBUFFER, renderer->wlr_fb);
+	float clear_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
+	if (pixman_region32_not_empty(renderer->original_damage)) {
+		int nrects;
+		pixman_box32_t *rects = pixman_region32_rectangles(renderer->original_damage, &nrects);
+		for (int i = 0; i < nrects; ++i) {
+			scissor_output(wlr_output, &rects[i]);
+			fx_renderer_clear(clear_color);
+		}
+	}
+	render_whole_output(renderer, renderer->original_damage,
+			&renderer->main_buffer.texture);
+	fx_renderer_scissor(NULL);
 	fx_renderer_end(renderer);
 	wlr_renderer_begin(output->server->wlr_renderer, wlr_output->width, wlr_output->height);
 	wlr_output_render_software_cursors(wlr_output, damage);
