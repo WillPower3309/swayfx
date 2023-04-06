@@ -16,7 +16,6 @@
 #include "pango.h"
 #include "sway/config.h"
 #include "sway/desktop.h"
-#include "sway/desktop/fx_renderer.h"
 #include "sway/desktop/transaction.h"
 #include "sway/input/input-manager.h"
 #include "sway/input/seat.h"

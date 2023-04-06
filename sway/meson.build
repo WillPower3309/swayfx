@@ -14,7 +14,8 @@ sway_sources = files(
 	'xdg_decoration.c',
 
 	'desktop/desktop.c',
-	'desktop/fx_renderer.c',
+	'desktop/fx_renderer/fx_renderer.c',
+	'desktop/fx_renderer/matrix.c',
 	'desktop/idle_inhibit_v1.c',
 	'desktop/layer_shell.c',
 	'desktop/output.c',
@@ -224,7 +225,7 @@ sway_sources = files(
 	'tree/output.c',
 )
 
-subdir('desktop/shaders')
+subdir('desktop/fx_renderer/shaders')
 
 sway_deps = [
 	cairo,
