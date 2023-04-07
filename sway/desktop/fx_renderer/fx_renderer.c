@@ -14,10 +14,10 @@
 #include <wlr/util/box.h>
 #include <wlr/util/region.h>
 
-#include "log.h"
 #include "pixman.h"
-#include "sway/config.h"
-#include "sway/desktop/fx_renderer.h"
+#include "log.h"
+#include "sway/desktop/fx_renderer/fx_renderer.h"
+#include "sway/desktop/fx_renderer/matrix.h"
 #include "sway/output.h"
 #include "sway/server.h"
 
@@ -36,49 +36,6 @@ static const GLfloat verts[] = {
 	0, 0, // top left
 	1, 1, // bottom right
 	0, 1, // bottom left
-};
-
-static const float transforms[][9] = {
-	[WL_OUTPUT_TRANSFORM_NORMAL] = {
-		1.0f, 0.0f, 0.0f,
-		0.0f, 1.0f, 0.0f,
-		0.0f, 0.0f, 1.0f,
-	},
-	[WL_OUTPUT_TRANSFORM_90] = {
-		0.0f, 1.0f, 0.0f,
-		-1.0f, 0.0f, 0.0f,
-		0.0f, 0.0f, 1.0f,
-	},
-	[WL_OUTPUT_TRANSFORM_180] = {
-		-1.0f, 0.0f, 0.0f,
-		0.0f, -1.0f, 0.0f,
-		0.0f, 0.0f, 1.0f,
-	},
-	[WL_OUTPUT_TRANSFORM_270] = {
-		0.0f, -1.0f, 0.0f,
-		1.0f, 0.0f, 0.0f,
-		0.0f, 0.0f, 1.0f,
-	},
-	[WL_OUTPUT_TRANSFORM_FLIPPED] = {
-		-1.0f, 0.0f, 0.0f,
-		0.0f, 1.0f, 0.0f,
-		0.0f, 0.0f, 1.0f,
-	},
-	[WL_OUTPUT_TRANSFORM_FLIPPED_90] = {
-		0.0f, 1.0f, 0.0f,
-		1.0f, 0.0f, 0.0f,
-		0.0f, 0.0f, 1.0f,
-	},
-	[WL_OUTPUT_TRANSFORM_FLIPPED_180] = {
-		1.0f, 0.0f, 0.0f,
-		0.0f, -1.0f, 0.0f,
-		0.0f, 0.0f, 1.0f,
-	},
-	[WL_OUTPUT_TRANSFORM_FLIPPED_270] = {
-		0.0f, -1.0f, 0.0f,
-		-1.0f, 0.0f, 0.0f,
-		0.0f, 0.0f, 1.0f,
-	},
 };
 
 struct fx_texture fx_texture_from_texture(struct wlr_texture* texture) {
@@ -186,28 +143,6 @@ static void release_stencil_buffer(GLuint *buffer_id) {
 		glDeleteRenderbuffers(1, buffer_id);
 	}
 	*buffer_id = -1;
-}
-
-static void matrix_projection(float mat[static 9], int width, int height,
-		enum wl_output_transform transform) {
-	memset(mat, 0, sizeof(*mat) * 9);
-
-	const float *t = transforms[transform];
-	float x = 2.0f / width;
-	float y = 2.0f / height;
-
-	// Rotation + reflection
-	mat[0] = x * t[0];
-	mat[1] = x * t[1];
-	mat[3] = y * -t[3];
-	mat[4] = y * -t[4];
-
-	// Translation
-	mat[2] = -copysign(1.0f, mat[0] + mat[1]);
-	mat[5] = -copysign(1.0f, mat[3] + mat[4]);
-
-	// Identity
-	mat[8] = 1.0f;
 }
 
 static GLuint compile_shader(GLuint type, const GLchar *src) {

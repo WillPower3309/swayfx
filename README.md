@@ -13,10 +13,10 @@ Sway is an incredible window manager, and certainly one of the most well establi
 ## New Configuration Options
 
 + Corner radius: `corner_radius <val>`
-+ Smart corner radius: `smart_corner_radius on|off`
++ Smart corner radius: `smart_corner_radius enable|disable`
 + Window shadows:
-    - `shadows on|off`
-    - `shadows_on_csd on|off` (**Note**: The shadow might not fit some windows)
+    - `shadows enable|disable`
+    - `shadows_on_csd enable|disable` (**Note**: The shadow might not fit some windows)
     - `shadow_blur_radius <integer value 0 - 100>`
     - `shadow_color <hex color with alpha> ex, #0000007F`
 + Window blur: *ONLY ON SWAYFX-GIT, NOT YET RELEASED*
@@ -99,4 +99,3 @@ Here's a quick outline of where most of our changes lie vs the main sway reposit
 + `sway/desktop/shaders`: where all of the shaders that fx_renderer uses live
 
 Please join our (for the time being very small) Discord server for development chatter! https://discord.gg/R5hYhC2BFg
-

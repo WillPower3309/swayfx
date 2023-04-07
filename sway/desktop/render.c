@@ -18,7 +18,7 @@
 #include "log.h"
 #include "config.h"
 #include "sway/config.h"
-#include "sway/desktop/fx_renderer.h"
+#include "sway/desktop/fx_renderer/fx_renderer.h"
 #include "sway/input/input-manager.h"
 #include "sway/input/seat.h"
 #include "sway/layers.h"

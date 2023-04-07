@@ -6,7 +6,7 @@
 #include <wlr/types/wlr_damage_ring.h>
 #include <wlr/types/wlr_output.h>
 #include "config.h"
-#include "sway/desktop/fx_renderer.h"
+#include "sway/desktop/fx_renderer/fx_renderer.h"
 #include "sway/tree/node.h"
 #include "sway/tree/view.h"
 
