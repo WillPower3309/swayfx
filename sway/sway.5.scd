@@ -71,9 +71,9 @@ The following commands may only be used in the configuration file.
 	*wordexp*(3) for details). The same include file can only be included once;
 	subsequent attempts will be ignored.
 
-*scratchpad_minimize* <value>
-	Adjusts if minimized windows should be moved into the scratchpad
-	(enable|disable). Must be set at config-time (when starting sway).
+*scratchpad_minimize* enable|disable
+	Adjusts if minimized windows should be moved into the scratchpad.
+	Must be set at config-time (when starting sway).
 
 *swaybg_command* <command>
 	Executes custom background _command_. Default is _swaybg_. Refer to
@@ -653,7 +653,7 @@ The default colors are:
 *corner_radius* <radius>
 	Set corner radius for new windows.
 
-*smart_corner_radius* on|off
+*smart_corner_radius* enable|disable
 	Set corner radius only if there are gaps around the window.
 
 *default_dim_inactive* <value>
@@ -671,13 +671,13 @@ The default colors are:
 *dim_inactive_colors.urgent* <hex color>
 	The color to dim inactive urgent windows with. Example color: #900000FF
 
-*shadows* <value>
-	Adjusts if shadows should be enabled or not (on|off). Can also be set per
+*shadows* enable|disable
+	Sets whether or not shadows should be drawn. Can also be set per
 	window with *for_window*.
 
-*shadows_on_csd* <value>
+*shadows_on_csd* enable|disable
 	Adjusts if shadows should be drawn on windows that draw their own
-	decorations (on|off). *Note:* The shadow might not fit some windows.
+	decorations. *Note:* The shadow might not fit some windows.
 
 *shadow_blur_radius* <value>
 	Adjusts the shadow blur radius of windows between 0 (disabled) and 100
