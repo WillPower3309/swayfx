@@ -19,6 +19,7 @@
 #include "config.h"
 #include "log.h"
 #include "sway/config.h"
+#include "sway/desktop/fx_renderer/fx_framebuffer.h"
 #include "sway/desktop/fx_renderer/fx_renderer.h"
 #include "sway/input/input-manager.h"
 #include "sway/input/seat.h"
@@ -1819,6 +1820,9 @@ void output_render(struct sway_output *output, struct timespec *when,
 	pixman_region32_t extended_damage;
 	pixman_region32_init(&extended_damage);
 
+	int width, height;
+	wlr_output_transformed_resolution(wlr_output, &width, &height);
+
 	struct sway_workspace *workspace = output->current.active_workspace;
 	if (workspace == NULL) {
 		return;
@@ -2000,7 +2004,7 @@ render_overlay:
 
 renderer_end:
 	// Draw the contents of our buffer into the wlr buffer
-	glBindFramebuffer(GL_FRAMEBUFFER, renderer->wlr_fb);
+	fx_framebuffer_bind(&renderer->wlr_buffer, width, height);
 	float clear_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
 	if (pixman_region32_not_empty(&extended_damage)) {
 		int nrects;
@@ -2010,17 +2014,14 @@ renderer_end:
 			fx_renderer_clear(clear_color);
 		}
 	}
-	render_whole_output(renderer, &extended_damage,
-			&renderer->main_buffer.texture);
+	render_whole_output(renderer, &extended_damage, &renderer->main_buffer.texture);
 	fx_renderer_scissor(NULL);
 	fx_renderer_end(renderer);
+	// Draw the software cursors
 	wlr_renderer_begin(output->server->wlr_renderer, wlr_output->width, wlr_output->height);
 	wlr_output_render_software_cursors(wlr_output, damage);
 	wlr_renderer_end(output->server->wlr_renderer);
 	fx_renderer_scissor(NULL);
-
-	int width, height;
-	wlr_output_transformed_resolution(wlr_output, &width, &height);
 
 	pixman_region32_t frame_damage;
 	pixman_region32_init(&frame_damage);

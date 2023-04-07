@@ -75,12 +75,11 @@ struct fx_renderer {
 
 	float projection[9];
 
-	GLint wlr_fb;
-
 	struct sway_output *sway_output;
 
 	GLuint stencil_buffer_id;
 
+	struct fx_framebuffer wlr_buffer; // Just the framebuffer used by wlroots
 	struct fx_framebuffer main_buffer; // The main FB used for rendering
 	struct fx_framebuffer blur_buffer; // Contains the blurred background for tiled windows
 	// Blur swaps between the two effects buffers everytime it scales the image

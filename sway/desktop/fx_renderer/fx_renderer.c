@@ -390,7 +390,13 @@ void fx_renderer_begin(struct fx_renderer *renderer, struct sway_output *sway_ou
 
 	renderer->sway_output = sway_output;
 	// Store the wlr framebuffer
-	glGetIntegerv(GL_FRAMEBUFFER_BINDING, &renderer->wlr_fb);
+	GLint wlr_fb = -1;
+	glGetIntegerv(GL_FRAMEBUFFER_BINDING, &wlr_fb);
+	if (wlr_fb < 0) {
+		sway_log(SWAY_ERROR, "Failed to get wlr framebuffer!");
+		abort();
+	}
+	renderer->wlr_buffer.fb = wlr_fb;
 
 	// Create the main framebuffer
 	fx_framebuffer_create(output, &renderer->main_buffer, true);
