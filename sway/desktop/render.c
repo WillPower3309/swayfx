@@ -1,4 +1,3 @@
-#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <assert.h>
 #include <GLES2/gl2.h>
@@ -9,14 +8,16 @@
 #include <wlr/render/gles2.h>
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/types/wlr_buffer.h>
+#include <wlr/types/wlr_compositor.h>
 #include <wlr/types/wlr_damage_ring.h>
 #include <wlr/types/wlr_matrix.h>
-#include <wlr/types/wlr_output_layout.h>
 #include <wlr/types/wlr_output.h>
-#include <wlr/types/wlr_compositor.h>
+#include <wlr/types/wlr_output_layout.h>
+#include <wlr/util/box.h>
 #include <wlr/util/region.h>
-#include "log.h"
+
 #include "config.h"
+#include "log.h"
 #include "sway/config.h"
 #include "sway/desktop/fx_renderer/fx_renderer.h"
 #include "sway/input/input-manager.h"
@@ -584,9 +585,20 @@ void render_box_shadow(struct sway_output *output, pixman_region32_t *output_dam
 	box.height += 2 * blur_sigma;
 
 	// Uses the outer radii of the window for a more realistic look
-	corner_radius = corner_radius + border_thickness;
+	corner_radius += border_thickness;
 
 	pixman_region32_t damage = create_damage(box, output_damage);
+
+	// don't damage area behind window since we dont render it anyway
+	struct wlr_box inner_box;
+	memcpy(&inner_box, _box, sizeof(struct wlr_box));
+	inner_box.x += corner_radius;
+	inner_box.y += corner_radius;
+	inner_box.width -= 2 * corner_radius;
+	inner_box.height -= 2 * corner_radius;
+	pixman_region32_t inner_damage = create_damage(inner_box, output_damage);
+	pixman_region32_subtract(&damage, &damage, &inner_damage);
+
 	bool damaged = pixman_region32_not_empty(&damage);
 	if (!damaged) {
 		goto damage_finish;
