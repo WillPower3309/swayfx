@@ -1,4 +1,3 @@
-#version 100
 precision mediump float;
 varying mediump vec2 v_texcoord; // is in 0-1
 uniform sampler2D tex;
