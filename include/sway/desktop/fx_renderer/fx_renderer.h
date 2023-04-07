@@ -10,9 +10,6 @@
 #include "sway/desktop/fx_renderer/fx_framebuffer.h"
 #include "sway/desktop/fx_renderer/fx_texture.h"
 
-#define get_blur_size() \
-	pow(2, config->blur_params.num_passes) * config->blur_params.radius
-
 enum corner_location { ALL, TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT, NONE };
 
 enum fx_tex_shader_source {
@@ -183,8 +180,9 @@ void fx_render_border_corner(struct fx_renderer *renderer, const struct wlr_box 
 void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *box,
 		const float color[static 4], const float projection[static 9], int radius, float blur_sigma);
 
-struct fx_framebuffer *fx_get_back_buffer_blur(struct fx_renderer *renderer, struct sway_output *wlr_output,
-		pixman_region32_t *damage, const float matrix[static 9], const float box_matrix[static 9],
-		const struct wlr_box *box, struct decoration_data deco_data, struct blur_parameters blur_params);
+void fx_draw_blur(struct fx_renderer *renderer, struct sway_output *output,
+		const float matrix[static 9], pixman_region32_t* damage,
+		struct fx_framebuffer **buffer, struct blur_shader* shader,
+		const struct wlr_box *box, int blur_radius);
 
 #endif

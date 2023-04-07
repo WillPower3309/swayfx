@@ -758,18 +758,15 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 	glDisable(GL_STENCIL_TEST);
 }
 
-static void draw_blur(struct fx_renderer *renderer, struct sway_output *output,
+void fx_draw_blur(struct fx_renderer *renderer, struct sway_output *output,
 		const float matrix[static 9], pixman_region32_t* damage,
 		struct fx_framebuffer **buffer, struct blur_shader* shader,
 		const struct wlr_box *box, int blur_radius) {
+	glDisable(GL_BLEND);
+	glDisable(GL_STENCIL_TEST);
+
 	int width, height;
 	wlr_output_transformed_resolution(output->wlr_output, &width, &height);
-
-	if (*buffer == &renderer->effects_buffer) {
-		fx_framebuffer_bind(&renderer->effects_buffer_swapped, width, height);
-	} else {
-		fx_framebuffer_bind(&renderer->effects_buffer, width, height);
-	}
 
 	glActiveTexture(GL_TEXTURE0);
 
@@ -804,97 +801,8 @@ static void draw_blur(struct fx_renderer *renderer, struct sway_output *output,
 	glEnableVertexAttribArray(shader->pos_attrib);
 	glEnableVertexAttribArray(shader->tex_attrib);
 
-	if (pixman_region32_not_empty(damage)) {
-		int rectsNum = 0;
-		pixman_box32_t *rects = pixman_region32_rectangles(damage, &rectsNum);
-		for (int i = 0; i < rectsNum; ++i) {
-			const pixman_box32_t box = rects[i];
-			struct wlr_box new_box = {box.x1, box.y1, box.x2 - box.x1, box.y2 - box.y1};
-			fx_renderer_scissor(&new_box);
-			glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-		}
-	}
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
 	glDisableVertexAttribArray(shader->pos_attrib);
 	glDisableVertexAttribArray(shader->tex_attrib);
-
-	if (*buffer != &renderer->effects_buffer) {
-		*buffer = &renderer->effects_buffer;
-	} else {
-		*buffer = &renderer->effects_buffer_swapped;
-	}
-}
-
-/** Renders the back_buffer blur onto `fx_renderer->blur_buffer` */
-struct fx_framebuffer *fx_get_back_buffer_blur(struct fx_renderer *renderer, struct sway_output *output,
-		pixman_region32_t *original_damage, const float _matrix[static 9], const float box_matrix[static 9],
-		const struct wlr_box *box, struct decoration_data deco_data, struct blur_parameters blur_params) {
-	int width, height;
-	wlr_output_transformed_resolution(output->wlr_output, &width, &height);
-
-	/* Blur */
-	glDisable(GL_BLEND);
-	glDisable(GL_STENCIL_TEST);
-
-	const enum wl_output_transform transform = wlr_output_transform_invert(output->wlr_output->transform);
-	float matrix[9];
-	struct wlr_box monitor_box = { 0, 0, width, height };
-	wlr_matrix_project_box(matrix, &monitor_box, transform, 0, output->wlr_output->transform_matrix);
-
-	float gl_matrix[9];
-	wlr_matrix_multiply(gl_matrix, renderer->projection, matrix);
-
-	pixman_region32_t damage;
-	pixman_region32_init(&damage);
-	pixman_region32_copy(&damage, original_damage);
-	wlr_region_transform(&damage, &damage, wlr_output_transform_invert(output->wlr_output->transform),
-			width, height);
-	wlr_region_expand(&damage, &damage, get_blur_size());
-
-	// Initially blur main_buffer content into the effects_buffers
-	struct fx_framebuffer *current_buffer = &renderer->main_buffer;
-
-	// Bind to blur framebuffer
-	fx_framebuffer_bind(&renderer->effects_buffer, width, height);
-	glBindTexture(renderer->main_buffer.texture.target, renderer->main_buffer.texture.id);
-
-	// damage region will be scaled, make a temp
-	pixman_region32_t tempDamage;
-	pixman_region32_init(&tempDamage);
-	// When DOWNscaling, we make the region twice as small because it's the TARGET
-	wlr_region_scale(&tempDamage, &damage, 0.5f);
-
-	int blur_radius = blur_params.radius;
-	int blur_passes = blur_params.num_passes;
-
-	// First pass
-	draw_blur(renderer, output, gl_matrix, &tempDamage, &current_buffer,
-			&renderer->shaders.blur1, box, blur_radius);
-
-	// Downscale
-	for (int i = 1; i < blur_passes; ++i) {
-		wlr_region_scale(&tempDamage, &damage, 1.0f / (1 << (i + 1)));
-		draw_blur(renderer, output, gl_matrix, &tempDamage, &current_buffer,
-				&renderer->shaders.blur1, box, blur_radius);
-	}
-
-	// Upscale
-	for (int i = blur_passes - 1; i >= 0; --i) {
-		// when upsampling we make the region twice as big
-		wlr_region_scale(&tempDamage, &damage, 1.0f / (1 << i));
-		draw_blur(renderer, output, gl_matrix, &tempDamage, &current_buffer,
-				&renderer->shaders.blur2, box, blur_radius);
-	}
-
-	pixman_region32_fini(&tempDamage);
-	pixman_region32_fini(&damage);
-
-	// Bind back to the default buffer
-	glBindTexture(renderer->effects_buffer.texture.target, 0);
-
-	fx_framebuffer_bind(&renderer->main_buffer, width, height);
-
-	glBindTexture(GL_TEXTURE_2D, 0);
-
-	return current_buffer;
 }
