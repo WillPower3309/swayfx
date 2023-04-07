@@ -14,7 +14,9 @@ sway_sources = files(
 	'xdg_decoration.c',
 
 	'desktop/desktop.c',
+	'desktop/fx_renderer/fx_framebuffer.c',
 	'desktop/fx_renderer/fx_renderer.c',
+	'desktop/fx_renderer/fx_texture.c',
 	'desktop/fx_renderer/matrix.c',
 	'desktop/idle_inhibit_v1.c',
 	'desktop/layer_shell.c',

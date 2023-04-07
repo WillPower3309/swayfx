@@ -7,6 +7,8 @@
 
 #include "sway/config.h"
 #include "sway/tree/container.h"
+#include "sway/desktop/fx_renderer/fx_framebuffer.h"
+#include "sway/desktop/fx_renderer/fx_texture.h"
 
 #define get_blur_size() \
 	pow(2, config->blur_params.num_passes) * config->blur_params.radius
@@ -33,19 +35,6 @@ struct decoration_data {
 	float* dim_color;
 	bool has_titlebar;
 	bool blur;
-};
-
-struct fx_texture {
-	GLuint target;
-	GLuint id;
-	bool has_alpha;
-	int width;
-	int height;
-};
-
-struct fx_framebuffer {
-	struct fx_texture texture;
-	GLuint fb;
 };
 
 struct gles2_tex_shader {
@@ -160,15 +149,6 @@ struct fx_renderer {
 		struct gles2_tex_shader tex_ext;
 	} shaders;
 };
-
-struct fx_texture fx_texture_from_texture(struct wlr_texture* tex);
-
-void fx_framebuffer_bind(struct fx_framebuffer *buffer, GLsizei width, GLsizei height);
-
-void fx_framebuffer_create(struct wlr_output *output, struct fx_framebuffer *buffer,
-		bool bind);
-
-void fx_framebuffer_release(struct fx_framebuffer *buffer);
 
 struct fx_renderer *fx_renderer_create(struct wlr_egl *egl);
 
