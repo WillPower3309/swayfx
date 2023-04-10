@@ -1,5 +1,5 @@
 precision mediump float;
-varying mediump vec2 v_texcoord; // is in 0-1
+varying mediump vec2 v_texcoord;
 uniform sampler2D tex;
 
 uniform float radius;

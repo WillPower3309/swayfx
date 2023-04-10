@@ -32,12 +32,6 @@
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
 
-#define get_blur_size() \
-	pow(2, config->blur_params.num_passes) * config->blur_params.radius
-
-#define should_parameters_blur() \
-	config->blur_params.radius > 0 && config->blur_params.num_passes > 0
-
 struct render_data {
 	pixman_region32_t *damage;
 	struct wlr_box *clip_box;
@@ -56,16 +50,23 @@ struct decoration_data get_undecorated_decoration_data() {
 	};
 }
 
+int get_blur_size() {
+	return pow(2, config->blur_params.num_passes) * config->blur_params.radius;
+}
+
 int get_container_expanded_size(struct sway_container *con) {
-	bool shadow_enabled = config->shadow_enabled;
-	if (con) shadow_enabled = con->shadow_enabled;
+	bool shadow_enabled = con ? con->shadow_enabled : config->shadow_enabled;
 	int shadow_sigma = shadow_enabled ? config->shadow_blur_sigma : 0;
 
-	bool blur_enabled = config->blur_enabled;
-	if (con) blur_enabled = con->blur_enabled;
+	bool blur_enabled = con ? con->blur_enabled : config->blur_enabled;
 	int blur_size = blur_enabled ? get_blur_size() : 0;
+
 	// +1 as a margin of error
 	return MAX(shadow_sigma, blur_size) + 1;
+}
+
+bool should_parameters_blur() {
+	return config->blur_params.radius > 0 && config->blur_params.num_passes > 0;
 }
 
 /**
@@ -172,7 +173,7 @@ damage_finish:
 }
 
 /** Renders the blur for each damaged rect and swaps the buffer */
-void draw_blur_segments(struct fx_renderer *renderer, struct sway_output *output,
+void render_blur_segments(struct fx_renderer *renderer, struct sway_output *output,
 		const float matrix[static 9], pixman_region32_t* damage,
 		struct fx_framebuffer **buffer, struct blur_shader* shader,
 		const struct wlr_box *box, int blur_radius) {
@@ -192,7 +193,7 @@ void draw_blur_segments(struct fx_renderer *renderer, struct sway_output *output
 			const pixman_box32_t box = rects[i];
 			struct wlr_box new_box = {box.x1, box.y1, box.x2 - box.x1, box.y2 - box.y1};
 			fx_renderer_scissor(&new_box);
-			fx_draw_blur(renderer, output, matrix, damage, buffer, shader, &new_box, blur_radius);
+			fx_render_blur(renderer, output, matrix, buffer, shader, &new_box, blur_radius);
 		}
 	}
 
@@ -245,13 +246,13 @@ struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer,
 	int blur_passes = blur_params.num_passes;
 
 	// First pass
-	draw_blur_segments(renderer, output, gl_matrix, &tempDamage, &current_buffer,
+	render_blur_segments(renderer, output, gl_matrix, &tempDamage, &current_buffer,
 			&renderer->shaders.blur1, box, blur_radius);
 
 	// Downscale
 	for (int i = 1; i < blur_passes; ++i) {
 		wlr_region_scale(&tempDamage, &damage, 1.0f / (1 << (i + 1)));
-		draw_blur_segments(renderer, output, gl_matrix, &tempDamage, &current_buffer,
+		render_blur_segments(renderer, output, gl_matrix, &tempDamage, &current_buffer,
 				&renderer->shaders.blur1, box, blur_radius);
 	}
 
@@ -259,7 +260,7 @@ struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer,
 	for (int i = blur_passes - 1; i >= 0; --i) {
 		// when upsampling we make the region twice as big
 		wlr_region_scale(&tempDamage, &damage, 1.0f / (1 << i));
-		draw_blur_segments(renderer, output, gl_matrix, &tempDamage, &current_buffer,
+		render_blur_segments(renderer, output, gl_matrix, &tempDamage, &current_buffer,
 				&renderer->shaders.blur2, box, blur_radius);
 	}
 
@@ -327,7 +328,7 @@ void render_blur(bool optimized, struct sway_output *output,
 
 	wlr_region_scale(&inverse_opaque, &inverse_opaque, output->wlr_output->scale);
 
-	struct fx_framebuffer * buffer = &renderer->blur_buffer;
+	struct fx_framebuffer *buffer = &renderer->blur_buffer;
 	if (!buffer->texture.id || (!optimized && !config->blur_xray)) {
 		pixman_region32_translate(&inverse_opaque, dst_box->x, dst_box->y);
 		pixman_region32_intersect(&inverse_opaque, &inverse_opaque, &damage);
@@ -1773,11 +1774,10 @@ static bool find_blurred_con_iterator(struct sway_container *con, void *data) {
 		.y2 = surface->current.height,
 	};
 
+	// Gets the non opaque region
 	pixman_region32_t inverse_opaque;
 	pixman_region32_init(&inverse_opaque);
-	// Gets the non opaque region
-	pixman_region32_copy(&inverse_opaque, &surface->opaque_region);
-	pixman_region32_inverse(&inverse_opaque, &inverse_opaque, &surface_box);
+	pixman_region32_inverse(&inverse_opaque, &surface->opaque_region, &surface_box);
 	pixman_region32_intersect_rect(&inverse_opaque, &inverse_opaque, 0, 0,
 			surface->current.width,
 			surface->current.height);
@@ -1815,10 +1815,6 @@ void output_render(struct sway_output *output, struct timespec *when,
 		pixman_region32_t *damage) {
 	struct wlr_output *wlr_output = output->wlr_output;
 	struct fx_renderer *renderer = output->renderer;
-	bool damage_not_empty = pixman_region32_not_empty(damage);
-
-	pixman_region32_t extended_damage;
-	pixman_region32_init(&extended_damage);
 
 	int width, height;
 	wlr_output_transformed_resolution(wlr_output, &width, &height);
@@ -1834,11 +1830,13 @@ void output_render(struct sway_output *output, struct timespec *when,
 	}
 
 	if (debug.damage == DAMAGE_RERENDER) {
-		int width, height;
-		wlr_output_transformed_resolution(wlr_output, &width, &height);
 		pixman_region32_union_rect(damage, damage, 0, 0, width, height);
 	}
 
+
+	bool damage_not_empty = pixman_region32_not_empty(damage);
+	pixman_region32_t extended_damage;
+	pixman_region32_init(&extended_damage);
 	if (!fullscreen_con && !server.session_lock.locked && damage_not_empty) {
 		// Check if there are any windows to blur
 		should_blur_draw_optimize(output, damage);
@@ -2017,6 +2015,7 @@ renderer_end:
 	render_whole_output(renderer, &extended_damage, &renderer->main_buffer.texture);
 	fx_renderer_scissor(NULL);
 	fx_renderer_end(renderer);
+
 	// Draw the software cursors
 	wlr_renderer_begin(output->server->wlr_renderer, wlr_output->width, wlr_output->height);
 	wlr_output_render_software_cursors(wlr_output, damage);

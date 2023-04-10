@@ -6,8 +6,7 @@ void fx_framebuffer_bind(struct fx_framebuffer *buffer, GLsizei width, GLsizei h
 	glViewport(0, 0, width, height);
 }
 
-void fx_framebuffer_create(struct wlr_output *output, struct fx_framebuffer *buffer,
-		bool bind) {
+void fx_framebuffer_create(struct wlr_output *output, struct fx_framebuffer *buffer, bool bind) {
 	bool firstAlloc = false;
 	int width, height;
 	wlr_output_transformed_resolution(output, &width, &height);
@@ -27,12 +26,10 @@ void fx_framebuffer_create(struct wlr_output *output, struct fx_framebuffer *buf
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	}
 
-	if (firstAlloc
-			|| buffer->texture.width != width
-			|| buffer->texture.height != height) {
+	if (firstAlloc || buffer->texture.width != width || buffer->texture.height != height) {
 		glBindTexture(GL_TEXTURE_2D, buffer->texture.id);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-		//
+
 		glBindFramebuffer(GL_FRAMEBUFFER, buffer->fb);
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
 				buffer->texture.id, 0);

@@ -686,12 +686,12 @@ The default colors are:
 *shadow_color* <hex color with alpha>
 	The shadow color. Default color: #0000007F
 
-*blur* <value>
-	Adjusts if blur should be enabled or not (on|off). Can also be set per
-	window with *for_window*.
+*blur* enable|disable
+	Sets whether blur should be drawn. Can also be set per window with
+	*for_window*.
 
-*blur_xray* <value>
-	Adjusts if blur should only display the background or not (on|off).
+*blur_xray* enable|disable
+	Sets whether blur should only display the background.
 
 *blur_passes* <value>
 	Adjusts the blur passes of windows between 0 (disabled) and 10

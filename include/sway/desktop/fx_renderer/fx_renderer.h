@@ -27,7 +27,7 @@ struct decoration_data {
 	float saturation;
 	int corner_radius;
 	float dim;
-	float* dim_color;
+	float *dim_color;
 	bool has_titlebar;
 	bool blur;
 };
@@ -177,9 +177,8 @@ void fx_render_border_corner(struct fx_renderer *renderer, const struct wlr_box 
 void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *box,
 		const float color[static 4], const float projection[static 9], int radius, float blur_sigma);
 
-void fx_draw_blur(struct fx_renderer *renderer, struct sway_output *output,
-		const float matrix[static 9], pixman_region32_t* damage,
-		struct fx_framebuffer **buffer, struct blur_shader* shader,
-		const struct wlr_box *box, int blur_radius);
+void fx_render_blur(struct fx_renderer *renderer, struct sway_output *output,
+		const float matrix[static 9], struct fx_framebuffer **buffer,
+		struct blur_shader *shader, const struct wlr_box *box, int blur_radius);
 
 #endif

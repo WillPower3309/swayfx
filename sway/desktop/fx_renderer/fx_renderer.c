@@ -5,16 +5,13 @@
 
 #include <assert.h>
 #include <GLES2/gl2.h>
-#include <stdint.h>
 #include <stdlib.h>
 #include <wlr/backend.h>
 #include <wlr/render/egl.h>
 #include <wlr/render/gles2.h>
 #include <wlr/types/wlr_matrix.h>
 #include <wlr/util/box.h>
-#include <wlr/util/region.h>
 
-#include "pixman.h"
 #include "log.h"
 #include "sway/desktop/fx_renderer/fx_renderer.h"
 #include "sway/desktop/fx_renderer/matrix.h"
@@ -764,10 +761,9 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 	glDisable(GL_STENCIL_TEST);
 }
 
-void fx_draw_blur(struct fx_renderer *renderer, struct sway_output *output,
-		const float matrix[static 9], pixman_region32_t* damage,
-		struct fx_framebuffer **buffer, struct blur_shader* shader,
-		const struct wlr_box *box, int blur_radius) {
+void fx_render_blur(struct fx_renderer *renderer, struct sway_output *output,
+		const float matrix[static 9], struct fx_framebuffer **buffer,
+		struct blur_shader* shader, const struct wlr_box *box, int blur_radius) {
 	glDisable(GL_BLEND);
 	glDisable(GL_STENCIL_TEST);
 
