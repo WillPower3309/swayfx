@@ -3,7 +3,7 @@
 
 #include "sway/desktop/fx_renderer/fx_texture.h"
 
-struct fx_texture fx_texture_from_texture(struct wlr_texture* texture) {
+struct fx_texture fx_texture_from_wlr_texture(struct wlr_texture* texture) {
 	assert(wlr_texture_is_gles2(texture));
 	struct wlr_gles2_texture_attribs texture_attrs;
 	wlr_gles2_texture_get_attribs(texture, &texture_attrs);

@@ -13,6 +13,6 @@ struct fx_texture {
 	int height;
 };
 
-struct fx_texture fx_texture_from_texture(struct wlr_texture* tex);
+struct fx_texture fx_texture_from_wlr_texture(struct wlr_texture* tex);
 
 #endif

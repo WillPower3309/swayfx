@@ -158,7 +158,7 @@ static void render_texture(struct wlr_output *wlr_output,
 	for (int i = 0; i < nrects; ++i) {
 		scissor_output(wlr_output, &rects[i]);
 		set_scale_filter(wlr_output, texture, output->scale_filter);
-		struct fx_texture fx_texture = fx_texture_from_texture(texture);
+		struct fx_texture fx_texture = fx_texture_from_wlr_texture(texture);
 		if (src_box != NULL) {
 			fx_render_subtexture_with_matrix(renderer, &fx_texture, src_box, dst_box,
 					matrix, deco_data);
