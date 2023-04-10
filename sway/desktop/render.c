@@ -1760,30 +1760,14 @@ static void render_seatops(struct sway_output *output,
 
 static bool find_blurred_con_iterator(struct sway_container *con, void *data) {
 	struct sway_view *view = con->view;
-	if (!view || !con->blur_enabled) return false;
+	if (!view || !con->blur_enabled) {
+		return false;
+	}
 	// Only test floating windows when xray is enabled
-	if (container_is_floating(con) && !config->blur_xray) return false;
-
-	struct wlr_surface *surface = view->surface;
-	if (surface->opaque) return false;
-
-	pixman_box32_t surface_box = {
-		.x1 = 0,
-		.y1 = 0,
-		.x2 = surface->current.width,
-		.y2 = surface->current.height,
-	};
-
-	// Gets the non opaque region
-	pixman_region32_t inverse_opaque;
-	pixman_region32_init(&inverse_opaque);
-	pixman_region32_inverse(&inverse_opaque, &surface->opaque_region, &surface_box);
-	pixman_region32_intersect_rect(&inverse_opaque, &inverse_opaque, 0, 0,
-			surface->current.width,
-			surface->current.height);
-	bool not_empty = pixman_region32_not_empty(&inverse_opaque);
-	pixman_region32_fini(&inverse_opaque);
-	return not_empty;
+	if (container_is_floating(con) && !config->blur_xray) {
+		return false;
+	}
+	return !view->surface->opaque;
 }
 
 static void should_blur_draw_optimize(struct sway_output *sway_output,
