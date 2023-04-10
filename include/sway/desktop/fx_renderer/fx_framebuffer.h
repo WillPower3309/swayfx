@@ -3,7 +3,7 @@
 
 #include <GLES2/gl2.h>
 #include <stdbool.h>
-#include <wlr/types/wlr_output_layout.h>
+#include <wlr/types/wlr_output.h>
 
 #include "sway/desktop/fx_renderer/fx_texture.h"
 

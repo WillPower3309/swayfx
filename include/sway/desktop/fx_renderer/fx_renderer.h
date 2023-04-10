@@ -5,8 +5,6 @@
 #include <GLES2/gl2ext.h>
 #include <stdbool.h>
 
-#include "sway/config.h"
-#include "sway/tree/container.h"
 #include "sway/desktop/fx_renderer/fx_framebuffer.h"
 #include "sway/desktop/fx_renderer/fx_texture.h"
 
