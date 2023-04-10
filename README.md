@@ -20,8 +20,8 @@ Sway is an incredible window manager, and certainly one of the most well establi
     - `shadow_blur_radius <integer value 0 - 100>`
     - `shadow_color <hex color with alpha> ex, #0000007F`
 + Window blur: *ONLY ON SWAYFX-GIT, NOT YET RELEASED*
-    - `blur on|off`
-    - `blur_xray on|off`
+    - `blur enable|disable`
+    - `blur_xray enable|disable`
     - `blur_passes <integer value 0 - 10>`
     - `blur_radius <integer value 0 - 10>`
 + Dim unfocused windows:
