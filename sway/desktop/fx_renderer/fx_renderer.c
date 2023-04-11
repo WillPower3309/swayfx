@@ -763,7 +763,7 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 
 void fx_render_blur(struct fx_renderer *renderer, struct sway_output *output,
 		const float matrix[static 9], struct fx_framebuffer **buffer,
-		struct blur_shader* shader, const struct wlr_box *box, int blur_radius) {
+		struct blur_shader *shader, const struct wlr_box *box, int blur_radius) {
 	glDisable(GL_BLEND);
 	glDisable(GL_STENCIL_TEST);
 
