@@ -401,51 +401,6 @@ static void render_surface_iterator(struct sway_output *output,
 
 	data->deco_data.corner_radius *= wlr_output->scale;
 
-	// Render blur
-	struct decoration_data deco_data = data->deco_data;
-	bool opaque = true;
-	if (view && view->surface) {
-		struct wlr_gles2_texture_attribs attribs;
-		wlr_gles2_texture_get_attribs(view->surface->buffer->texture, &attribs);
-		opaque = (view->surface->opaque || !attribs.has_alpha);
-	}
-	if (view
-			// Don't render blur for subsurfaces
-			&& view->surface == surface
-			&& deco_data.blur
-			&& view->container->blur_enabled
-			// Check if window has alpha
-			&& !(opaque && view->container->alpha >= 1.0f && deco_data.alpha >= 1.0f)
-			&& should_parameters_blur()) {
-		int width, height;
-		wlr_output_transformed_resolution(output->wlr_output, &width, &height);
-		struct wlr_fbox src_box = {
-			.x = 0,
-			.y = 0,
-			.width = width,
-			.height = height,
-		};
-
-		// Use an empty opaque region if opacity is applied to the whole window
-		// through swayipc
-		pixman_region32_t opaque_region;
-		pixman_region32_init(&opaque_region);
-		if (view->container->alpha < 1.0f || deco_data.alpha < 1.0f) {
-			pixman_region32_union_rect(&opaque_region, &opaque_region, 0, 0, 0, 0);
-		} else {
-			pixman_region32_copy(&opaque_region, &surface->opaque_region);
-		}
-
-		// Use the pre-rendered blurred buffer for tiled windows due tiled
-		// that all tiled windows are displaying the same content under the windows
-		bool is_floating = container_is_floating(view->container);
-		render_blur(!is_floating, output, output_damage, &src_box, &dst_box,
-				&opaque_region, surface->current.width, surface->current.height,
-				surface->current.scale, deco_data, config->blur_params);
-
-		pixman_region32_fini(&opaque_region);
-	}
-
 	render_texture(wlr_output, output_damage, texture, &src_box, &dst_box,
 		matrix, data->deco_data);
 
@@ -813,36 +768,6 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 
 		deco_data.corner_radius *= wlr_output->scale;
 
-		// Render blur
-		struct wlr_gles2_texture_attribs attribs;
-		wlr_gles2_texture_get_attribs(saved_buf->buffer->texture, &attribs);
-		if (deco_data.blur
-				&& view->container->blur_enabled
-				// Check if window has alpha
-				&& !(!attribs.has_alpha && view->container->alpha >= 1.0f && deco_data.alpha >= 1.0f)
-				&& should_parameters_blur()) {
-			int width, height;
-			wlr_output_transformed_resolution(output->wlr_output, &width, &height);
-			struct wlr_fbox src_box = {
-				.x = 0,
-				.y = 0,
-				.width = width,
-				.height = height,
-			};
-
-			pixman_region32_t opaque_region;
-			pixman_region32_init(&opaque_region);
-			pixman_region32_union_rect(&opaque_region, &opaque_region, 0, 0, 0, 0);
-
-			// Use the pre-rendered blurred buffer for tiled windows due tiled
-			// that all tiled windows are displaying the same content under the windows
-			bool is_floating = container_is_floating(view->container);
-			render_blur(!is_floating, output, damage, &src_box, &dst_box, &opaque_region,
-					saved_buf->width, saved_buf->height, 1, deco_data, config->blur_params);
-
-			pixman_region32_fini(&opaque_region);
-		}
-
 		render_texture(wlr_output, damage, saved_buf->buffer->texture,
 				&saved_buf->source_box, &dst_box, matrix, deco_data);
 	}
@@ -859,6 +784,39 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		struct sway_container *con, struct border_colors *colors,
 		struct decoration_data deco_data) {
 	struct sway_view *view = con->view;
+	struct sway_container_state *state = &con->current;
+
+	// Render blur
+	bool has_alpha = false;
+	if (view->surface) {
+		struct wlr_gles2_texture_attribs attribs;
+		wlr_gles2_texture_get_attribs(view->surface->buffer->texture, &attribs);
+		has_alpha = attribs.has_alpha;
+	}
+	if (deco_data.blur && should_parameters_blur() && !(!has_alpha && deco_data.alpha >= 1.0f)) {
+		int width, height;
+		wlr_output_transformed_resolution(output->wlr_output, &width, &height);
+		struct wlr_fbox src_box = {
+			.x = 0,
+			.y = 0,
+			.width = width,
+			.height = height,
+		};
+
+		pixman_region32_t opaque_region;
+		pixman_region32_init(&opaque_region);
+		pixman_region32_union_rect(&opaque_region, &opaque_region, 0, 0, 0, 0);
+
+		// Use the pre-rendered blurred buffer for tiled windows due tiled
+		// that all tiled windows are displaying the same content under the windows
+		bool is_floating = container_is_floating(view->container);
+		struct wlr_box box = { floor(state->x), floor(state->y), state->width, state->height };
+		render_blur(!is_floating, output, damage, &src_box, &box, &opaque_region,
+				width, height, 1, deco_data, config->blur_params);
+
+		pixman_region32_fini(&opaque_region);
+	}
+
 	if (!wl_list_empty(&view->saved_buffers)) {
 		render_saved_view(view, output, damage, deco_data);
 	} else if (view->surface) {
@@ -872,7 +830,6 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 
 	// render shadow
 	if (con->shadow_enabled && config->shadow_blur_sigma > 0 && config->shadow_color[3] > 0.0) {
-		struct sway_container_state *state = &con->current;
 		struct wlr_box box = { floor(state->x), floor(state->y), state->width, state->height };
 		scale_box(&box, output->wlr_output->scale);
 		render_box_shadow(output, damage, &box, config->shadow_color,
@@ -887,7 +844,6 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 	struct wlr_box box;
 	float output_scale = output->wlr_output->scale;
 	float color[4];
-	struct sway_container_state *state = &con->current;
 
 	if (state->border_left) {
 		memcpy(&color, colors->child_border, sizeof(float) * 4);
