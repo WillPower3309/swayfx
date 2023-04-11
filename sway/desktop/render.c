@@ -347,7 +347,7 @@ void render_blur(bool optimized, struct sway_output *output,
 		goto damage_finish;
 	}
 
-	// TODO: Should blur follow window opacity?
+	// Blur Should not follow window opacity
 	deco_data.alpha = 1.0;
 
 	int nrects;
