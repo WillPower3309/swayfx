@@ -786,13 +786,24 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 	struct sway_view *view = con->view;
 	struct sway_container_state *state = &con->current;
 
-	// Render blur
+	// Check whether the texture has alpha or not
 	bool has_alpha = false;
-	if (view->surface) {
+	if (!wl_list_empty(&view->saved_buffers)) {
+		struct sway_saved_buffer *saved_buf;
+		wl_list_for_each(saved_buf, &view->saved_buffers, link) {
+			struct wlr_gles2_texture_attribs attribs;
+			wlr_gles2_texture_get_attribs(saved_buf->buffer->texture, &attribs);
+			if (attribs.has_alpha) {
+				has_alpha = true;
+				break;
+			}
+		}
+	} else if (view->surface) {
 		struct wlr_gles2_texture_attribs attribs;
 		wlr_gles2_texture_get_attribs(view->surface->buffer->texture, &attribs);
 		has_alpha = attribs.has_alpha;
 	}
+	// Render blur
 	if (deco_data.blur && should_parameters_blur() && !(!has_alpha && deco_data.alpha >= 1.0f)) {
 		int width, height;
 		wlr_output_transformed_resolution(output->wlr_output, &width, &height);
