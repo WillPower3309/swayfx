@@ -109,22 +109,15 @@ static void scissor_output(struct wlr_output *wlr_output,
 }
 
 static void set_scale_filter(struct wlr_output *wlr_output,
-		struct wlr_texture *texture, enum scale_filter_mode scale_filter) {
-	if (!wlr_texture_is_gles2(texture)) {
-		return;
-	}
-
-	struct wlr_gles2_texture_attribs attribs;
-	wlr_gles2_texture_get_attribs(texture, &attribs);
-
-	glBindTexture(attribs.target, attribs.tex);
+		struct fx_texture *texture, enum scale_filter_mode scale_filter) {
+	glBindTexture(texture->target, texture->id);
 
 	switch (scale_filter) {
 	case SCALE_FILTER_LINEAR:
-		glTexParameteri(attribs.target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(texture->target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		break;
 	case SCALE_FILTER_NEAREST:
-		glTexParameteri(attribs.target, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(texture->target, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		break;
 	case SCALE_FILTER_DEFAULT:
 	case SCALE_FILTER_SMART:
@@ -142,7 +135,7 @@ pixman_region32_t create_damage(const struct wlr_box damage_box, pixman_region32
 }
 
 static void render_texture(struct wlr_output *wlr_output,
-		pixman_region32_t *output_damage, struct wlr_texture *texture,
+		pixman_region32_t *output_damage, struct fx_texture *texture,
 		const struct wlr_fbox *src_box, const struct wlr_box *dst_box,
 		const float matrix[static 9], struct decoration_data deco_data) {
 	struct sway_output *output = wlr_output->data;
@@ -159,12 +152,11 @@ static void render_texture(struct wlr_output *wlr_output,
 	for (int i = 0; i < nrects; ++i) {
 		scissor_output(wlr_output, &rects[i]);
 		set_scale_filter(wlr_output, texture, output->scale_filter);
-		struct fx_texture fx_texture = fx_texture_from_wlr_texture(texture);
 		if (src_box != NULL) {
-			fx_render_subtexture_with_matrix(renderer, &fx_texture, src_box, dst_box,
+			fx_render_subtexture_with_matrix(renderer, texture, src_box, dst_box,
 					matrix, deco_data);
 		} else {
-			fx_render_texture_with_matrix(renderer, &fx_texture, dst_box, matrix, deco_data);
+			fx_render_texture_with_matrix(renderer, texture, dst_box, matrix, deco_data);
 		}
 	}
 
@@ -350,12 +342,8 @@ void render_blur(bool optimized, struct sway_output *output,
 	// Blur Should not follow window opacity
 	deco_data.alpha = 1.0;
 
-	int nrects;
-	pixman_box32_t * rects = pixman_region32_rectangles(&render_damage, &nrects);
-	for (int i = 0; i < nrects; ++i) {
-		scissor_output(wlr_output, &rects[i]);
-		fx_render_subtexture_with_matrix(renderer, &buffer->texture, src_box, dst_box, matrix, deco_data);
-	}
+	// Finally render the blur
+	render_texture(wlr_output, &render_damage, &buffer->texture, src_box, dst_box, matrix, deco_data);
 
 damage_finish:
 	pixman_region32_fini(&damage);
@@ -401,7 +389,8 @@ static void render_surface_iterator(struct sway_output *output,
 
 	data->deco_data.corner_radius *= wlr_output->scale;
 
-	render_texture(wlr_output, output_damage, texture, &src_box, &dst_box,
+	struct fx_texture fx_texture = fx_texture_from_wlr_texture(texture);
+	render_texture(wlr_output, output_damage, &fx_texture, &src_box, &dst_box,
 		matrix, data->deco_data);
 
 	wlr_presentation_surface_sampled_on_output(server.presentation, surface,
@@ -768,7 +757,8 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 
 		deco_data.corner_radius *= wlr_output->scale;
 
-		render_texture(wlr_output, damage, saved_buf->buffer->texture,
+		struct fx_texture fx_texture = fx_texture_from_wlr_texture(saved_buf->buffer->texture);
+		render_texture(wlr_output, damage, &fx_texture,
 				&saved_buf->source_box, &dst_box, matrix, deco_data);
 	}
 
@@ -1114,7 +1104,8 @@ static void render_titlebar(struct sway_output *output,
 		if (ob_inner_width < texture_box.width) {
 			texture_box.width = ob_inner_width;
 		}
-		render_texture(output->wlr_output, output_damage, marks_texture,
+		struct fx_texture fx_texture = fx_texture_from_wlr_texture(marks_texture);
+		render_texture(output->wlr_output, output_damage, &fx_texture,
 			NULL, &texture_box, matrix, deco_data);
 
 		// Padding above
@@ -1190,7 +1181,8 @@ static void render_titlebar(struct sway_output *output,
 			texture_box.width = ob_inner_width - ob_marks_width;
 		}
 
-		render_texture(output->wlr_output, output_damage, title_texture,
+		struct fx_texture fx_texture = fx_texture_from_wlr_texture(title_texture);
+		render_texture(output->wlr_output, output_damage, &fx_texture,
 			NULL, &texture_box, matrix, deco_data);
 
 		// Padding above
