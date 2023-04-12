@@ -287,8 +287,6 @@ void render_blur(bool optimized, struct sway_output *output,
 
 	pixman_region32_t inverse_opaque;
 	pixman_region32_init(&inverse_opaque);
-	pixman_region32_t render_damage;
-	pixman_region32_init(&render_damage);
 
 	if (!pixman_region32_not_empty(&damage)) {
 		goto damage_finish;
@@ -333,21 +331,15 @@ void render_blur(bool optimized, struct sway_output *output,
 	 * Draw the blurred texture
 	 */
 
-	pixman_region32_intersect_rect(&render_damage, &damage, dst_box->x, dst_box->y, dst_box->width, dst_box->height);
-	if (!pixman_region32_not_empty(&render_damage)) {
-		goto damage_finish;
-	}
-
 	// Blur Should not follow window opacity
 	deco_data.alpha = 1.0;
 
 	// Finally render the blur
-	render_texture(wlr_output, &render_damage, &buffer->texture, src_box, dst_box, matrix, deco_data);
+	render_texture(wlr_output, &damage, &buffer->texture, src_box, dst_box, matrix, deco_data);
 
 damage_finish:
 	pixman_region32_fini(&damage);
 	pixman_region32_fini(&inverse_opaque);
-	pixman_region32_fini(&render_damage);
 }
 
 
