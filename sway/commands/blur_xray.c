@@ -1,13 +1,6 @@
-#include <string.h>
 #include "sway/commands.h"
 #include "sway/config.h"
 #include "sway/output.h"
-#include "sway/server.h"
-#include "sway/tree/arrange.h"
-#include "sway/tree/view.h"
-#include "sway/tree/container.h"
-#include "log.h"
-#include "stringop.h"
 #include "util.h"
 
 struct cmd_results *cmd_blur_xray(int argc, char **argv) {

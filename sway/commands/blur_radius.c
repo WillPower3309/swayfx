@@ -1,10 +1,6 @@
-#include "log.h"
 #include "sway/commands.h"
 #include "sway/config.h"
 #include "sway/output.h"
-#include "sway/tree/arrange.h"
-#include "sway/tree/container.h"
-#include "util.h"
 
 struct cmd_results *cmd_blur_radius(int argc, char **argv) {
 	struct cmd_results *error = NULL;
