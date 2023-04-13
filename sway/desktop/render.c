@@ -268,7 +268,7 @@ void render_blur(bool optimized, struct sway_output *output,
 		pixman_region32_t *output_damage, const struct wlr_fbox *src_box,
 		const struct wlr_box *dst_box, pixman_region32_t *opaque_region,
 		int surface_width, int surface_height, int32_t surface_scale,
-		struct decoration_data deco_data) {
+		int corner_radius) {
 	struct wlr_output *wlr_output = output->wlr_output;
 	struct fx_renderer *renderer = output->renderer;
 
@@ -331,10 +331,8 @@ void render_blur(bool optimized, struct sway_output *output,
 	 * Draw the blurred texture
 	 */
 
-	// Blur Should not follow window opacity
-	deco_data.alpha = 1.0;
-
-	// Finally render the blur
+	struct decoration_data deco_data = get_undecorated_decoration_data();
+	deco_data.corner_radius = corner_radius;
 	render_texture(wlr_output, &damage, &buffer->texture, src_box, dst_box, matrix, deco_data);
 
 damage_finish:
@@ -401,7 +399,7 @@ static void render_surface_iterator(struct sway_output *output,
 			struct wlr_fbox src_box = { 0, 0, width, height };
 			bool is_floating = container_is_floating(view->container);
 			render_blur(!is_floating, output, output_damage, &src_box, &dst_box, &opaque_region,
-					surface->current.width, surface->current.height, 1, deco_data);
+					surface->current.width, surface->current.height, surface->current.scale, deco_data.corner_radius);
 		}
 
 		pixman_region32_fini(&opaque_region);
@@ -774,6 +772,7 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 
 		deco_data.corner_radius *= wlr_output->scale;
 
+		// render blur
 		if (deco_data.blur && should_parameters_blur()) {
 			struct wlr_gles2_texture_attribs attribs;
 			wlr_gles2_texture_get_attribs(saved_buf->buffer->texture, &attribs);
@@ -788,7 +787,7 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 				struct wlr_fbox src_box = { 0, 0, width, height };
 				bool is_floating = container_is_floating(view->container);
 				render_blur(!is_floating, output, damage, &src_box, &dst_box, &opaque_region,
-						saved_buf->width, saved_buf->height, 1, deco_data);
+						saved_buf->width, saved_buf->height, 1, deco_data.corner_radius);
 
 				pixman_region32_fini(&opaque_region);
 			}

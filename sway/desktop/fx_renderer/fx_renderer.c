@@ -36,22 +36,23 @@ static const GLfloat verts[] = {
 };
 
 static void create_stencil_buffer(struct wlr_output* output, GLuint *buffer_id) {
+	if (*buffer_id != (uint32_t) -1) {
+		return;
+	}
+
 	int width, height;
 	wlr_output_transformed_resolution(output, &width, &height);
 
-	if (*buffer_id == (uint32_t) -1) {
-		glGenRenderbuffers(1, buffer_id);
-		glBindRenderbuffer(GL_RENDERBUFFER, *buffer_id);
-		glRenderbufferStorage(GL_RENDERBUFFER, GL_STENCIL_INDEX8, width, height);
-		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT,
-				GL_RENDERBUFFER, *buffer_id);
-		GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-		if (status != GL_FRAMEBUFFER_COMPLETE) {
-			sway_log(SWAY_ERROR, "Stencilbuffer incomplete, couldn't create! (FB status: %i)", status);
-			return;
-		}
-		sway_log(SWAY_DEBUG, "Stencilbuffer created, status %i", status);
+	glGenRenderbuffers(1, buffer_id);
+	glBindRenderbuffer(GL_RENDERBUFFER, *buffer_id);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_STENCIL_INDEX8, width, height);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, *buffer_id);
+	GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	if (status != GL_FRAMEBUFFER_COMPLETE) {
+		sway_log(SWAY_ERROR, "Stencilbuffer incomplete, couldn't create! (FB status: %i)", status);
+		return;
 	}
+	sway_log(SWAY_DEBUG, "Stencilbuffer created, status %i", status);
 }
 
 static void release_stencil_buffer(GLuint *buffer_id) {
@@ -767,9 +768,6 @@ void fx_render_blur(struct fx_renderer *renderer, struct sway_output *output,
 	glDisable(GL_BLEND);
 	glDisable(GL_STENCIL_TEST);
 
-	int width, height;
-	wlr_output_transformed_resolution(output->wlr_output, &width, &height);
-
 	glActiveTexture(GL_TEXTURE0);
 
 	glBindTexture((*buffer)->texture.target, (*buffer)->texture.id);
@@ -787,14 +785,12 @@ void fx_render_blur(struct fx_renderer *renderer, struct sway_output *output,
 	glUniform1i(shader->tex, 0);
 	glUniform1f(shader->radius, blur_radius);
 
+	int width, height;
+	wlr_output_transformed_resolution(output->wlr_output, &width, &height);
 	if (shader == &renderer->shaders.blur1) {
-		glUniform2f(shader->halfpixel,
-				0.5f / (width / 2.0f),
-				0.5f / (height / 2.0f));
+		glUniform2f(shader->halfpixel, 0.5f / (width / 2.0f), 0.5f / (height / 2.0f));
 	} else {
-		glUniform2f(shader->halfpixel,
-				0.5f / (width * 2.0f),
-				0.5f / (height * 2.0f));
+		glUniform2f(shader->halfpixel, 0.5f / (width * 2.0f), 0.5f / (height * 2.0f));
 	}
 
 	glVertexAttribPointer(shader->pos_attrib, 2, GL_FLOAT, GL_FALSE, 0, verts);

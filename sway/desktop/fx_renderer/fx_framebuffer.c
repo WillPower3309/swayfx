@@ -8,8 +8,7 @@ void fx_framebuffer_bind(struct fx_framebuffer *buffer, GLsizei width, GLsizei h
 
 void fx_framebuffer_create(struct wlr_output *output, struct fx_framebuffer *buffer, bool bind) {
 	bool firstAlloc = false;
-	int width, height;
-	wlr_output_transformed_resolution(output, &width, &height);
+
 	// Create a new framebuffer
 	if (buffer->fb == (uint32_t) -1) {
 		glGenFramebuffers(1, &buffer->fb);
@@ -26,6 +25,9 @@ void fx_framebuffer_create(struct wlr_output *output, struct fx_framebuffer *buf
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	}
 
+	int width, height;
+	wlr_output_transformed_resolution(output, &width, &height);
+
 	if (firstAlloc || buffer->texture.width != width || buffer->texture.height != height) {
 		glBindTexture(GL_TEXTURE_2D, buffer->texture.id);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
@@ -37,6 +39,7 @@ void fx_framebuffer_create(struct wlr_output *output, struct fx_framebuffer *buf
 		buffer->texture.has_alpha = false;
 		buffer->texture.width = width;
 		buffer->texture.height = height;
+
 		GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 		if (status != GL_FRAMEBUFFER_COMPLETE) {
 			sway_log(SWAY_ERROR, "Framebuffer incomplete, couldn't create! (FB status: %i)", status);
