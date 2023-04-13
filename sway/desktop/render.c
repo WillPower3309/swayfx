@@ -134,6 +134,13 @@ pixman_region32_t create_damage(const struct wlr_box damage_box, pixman_region32
 	return damage;
 }
 
+struct wlr_box get_monitor_box(struct wlr_output *output) {
+	int width, height;
+	wlr_output_transformed_resolution(output, &width, &height);
+	struct wlr_box monitor_box = { 0, 0, width, height };
+	return monitor_box;
+}
+
 static void render_texture(struct wlr_output *wlr_output,
 		pixman_region32_t *output_damage, struct fx_texture *texture,
 		const struct wlr_fbox *src_box, const struct wlr_box *dst_box,
@@ -183,7 +190,7 @@ void render_blur_segments(struct fx_renderer *renderer, struct sway_output *outp
 		pixman_box32_t *rects = pixman_region32_rectangles(damage, &rectsNum);
 		for (int i = 0; i < rectsNum; ++i) {
 			const pixman_box32_t box = rects[i];
-			struct wlr_box new_box = {box.x1, box.y1, box.x2 - box.x1, box.y2 - box.y1};
+			struct wlr_box new_box = { box.x1, box.y1, box.x2 - box.x1, box.y2 - box.y1 };
 			fx_renderer_scissor(&new_box);
 			fx_render_blur(renderer, output, matrix, buffer, shader, &new_box, blur_radius);
 		}
@@ -197,17 +204,13 @@ void render_blur_segments(struct fx_renderer *renderer, struct sway_output *outp
 }
 
 /** Blurs the main_buffer content and returns the blurred framebuffer */
-struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer,
-		struct sway_output *output, pixman_region32_t *original_damage,
-		const float _matrix[static 9], const float box_matrix[static 9],
+struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer, struct sway_output *output,
+		pixman_region32_t *original_damage, const float _matrix[static 9], const float box_matrix[static 9],
 		const struct wlr_box *box) {
-	int width, height;
-	wlr_output_transformed_resolution(output->wlr_output, &width, &height);
+	struct wlr_box monitor_box = get_monitor_box(output->wlr_output);
 
-	/* Blur */
 	const enum wl_output_transform transform = wlr_output_transform_invert(output->wlr_output->transform);
 	float matrix[9];
-	struct wlr_box monitor_box = { 0, 0, width, height };
 	wlr_matrix_project_box(matrix, &monitor_box, transform, 0, output->wlr_output->transform_matrix);
 
 	float gl_matrix[9];
@@ -217,14 +220,14 @@ struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer,
 	pixman_region32_init(&damage);
 	pixman_region32_copy(&damage, original_damage);
 	wlr_region_transform(&damage, &damage, wlr_output_transform_invert(output->wlr_output->transform),
-			width, height);
+			monitor_box.width, monitor_box.height);
 	wlr_region_expand(&damage, &damage, get_blur_size());
 
 	// Initially blur main_buffer content into the effects_buffers
 	struct fx_framebuffer *current_buffer = &renderer->main_buffer;
 
 	// Bind to blur framebuffer
-	fx_framebuffer_bind(&renderer->effects_buffer, width, height);
+	fx_framebuffer_bind(&renderer->effects_buffer, monitor_box.width, monitor_box.height);
 	glBindTexture(renderer->main_buffer.texture.target, renderer->main_buffer.texture.id);
 
 	// damage region will be scaled, make a temp
@@ -259,7 +262,7 @@ struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer,
 	pixman_region32_fini(&damage);
 
 	// Bind back to the default buffer
-	fx_framebuffer_bind(&renderer->main_buffer, width, height);
+	fx_framebuffer_bind(&renderer->main_buffer, monitor_box.width, monitor_box.height);
 
 	return current_buffer;
 }
@@ -272,13 +275,11 @@ void render_blur(bool optimized, struct sway_output *output,
 	struct wlr_output *wlr_output = output->wlr_output;
 	struct fx_renderer *renderer = output->renderer;
 
-	int width, height;
-	wlr_output_transformed_resolution(output->wlr_output, &width, &height);
-	struct wlr_box monitor_box = { 0, 0, width, height };
 
-	float matrix[9];
+	struct wlr_box monitor_box = get_monitor_box(wlr_output);
 	enum wl_output_transform transform =
 		wlr_output_transform_invert(output->wlr_output->transform);
+	float matrix[9];
 	wlr_matrix_project_box(matrix, &monitor_box, transform, 0.0,
 		wlr_output->transform_matrix);
 
@@ -327,10 +328,7 @@ void render_blur(bool optimized, struct sway_output *output,
 				wlr_output->transform_matrix, dst_box);
 	}
 
-	/*
-	 * Draw the blurred texture
-	 */
-
+	// Draw the blurred texture
 	struct decoration_data deco_data = get_undecorated_decoration_data();
 	deco_data.corner_radius = corner_radius;
 	render_texture(wlr_output, &damage, &buffer->texture, src_box, dst_box, matrix, deco_data);
@@ -396,7 +394,6 @@ static void render_surface_iterator(struct sway_output *output,
 		if (has_alpha) {
 			int width, height;
 			wlr_output_transformed_resolution(output->wlr_output, &width, &height);
-			struct wlr_fbox src_box = { 0, 0, width, height };
 			bool is_floating = container_is_floating(view->container);
 			render_blur(!is_floating, output, output_damage, &src_box, &dst_box, &opaque_region,
 					surface->current.width, surface->current.height, surface->current.scale, deco_data.corner_radius);
@@ -458,13 +455,11 @@ static void render_drag_icons(struct sway_output *output,
 void render_whole_output(struct fx_renderer *renderer, pixman_region32_t *original_damage,
 		struct fx_texture *texture) {
 	struct wlr_output *output = renderer->sway_output->wlr_output;
-	int width, height;
-	wlr_output_transformed_resolution(output, &width, &height);
-	struct wlr_box monitor_box = {0, 0, width, height};
+	struct wlr_box monitor_box = get_monitor_box(output);
 
-	float matrix[9];
 	enum wl_output_transform transform =
 		wlr_output_transform_invert(output->transform);
+	float matrix[9];
 	wlr_matrix_project_box(matrix, &monitor_box, transform, 0.0,
 		output->transform_matrix);
 
@@ -478,21 +473,11 @@ void render_whole_output(struct fx_renderer *renderer, pixman_region32_t *origin
 		goto damage_finish;
 	}
 
-	struct decoration_data deco_data = {
-		.alpha = 1.0f,
-		.dim = 0.0f,
-		.dim_color = config->dim_inactive_colors.unfocused,
-		.corner_radius = 0,
-		.saturation = 1.0f,
-		.has_titlebar = false,
-		.blur = false,
-	};
-
 	int nrects;
 	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
 	for (int i = 0; i < nrects; ++i) {
 		scissor_output(output, &rects[i]);
-		fx_render_texture_with_matrix(renderer, texture, &monitor_box, matrix, deco_data);
+		fx_render_texture_with_matrix(renderer, texture, &monitor_box, matrix, get_undecorated_decoration_data());
 	}
 
 damage_finish:
@@ -503,9 +488,7 @@ void render_monitor_blur(struct sway_output *output, pixman_region32_t *damage) 
 	struct wlr_output *wlr_output = output->wlr_output;
 	struct fx_renderer *renderer = output->renderer;
 
-	int width, height;
-	wlr_output_transformed_resolution(output->wlr_output, &width, &height);
-	struct wlr_box monitor_box = { 0, 0, width, height };
+	struct wlr_box monitor_box = get_monitor_box(wlr_output);
 	scale_box(&monitor_box, wlr_output->scale);
 
 	float matrix[9];
@@ -515,7 +498,7 @@ void render_monitor_blur(struct sway_output *output, pixman_region32_t *damage) 
 		wlr_output->transform_matrix);
 
 	pixman_region32_t fake_damage;
-	pixman_region32_init_rect(&fake_damage, 0, 0, width, height);
+	pixman_region32_init_rect(&fake_damage, 0, 0, monitor_box.width, monitor_box.height);
 	// Render the blur
 	struct fx_framebuffer *buffer = get_main_buffer_blur(renderer, output, &fake_damage,
 			matrix, wlr_output->transform_matrix, &monitor_box);
@@ -523,7 +506,7 @@ void render_monitor_blur(struct sway_output *output, pixman_region32_t *damage) 
 	// Render the newly blurred content into the blur_buffer
 	fx_framebuffer_create(output->wlr_output, &renderer->blur_buffer, true);
 	// Clear the damaged region of the blur_buffer
-	float clear_color[] = {0, 0, 0, 0};
+	float clear_color[] = { 0, 0, 0, 0 };
 	int nrects;
 	pixman_box32_t *rects = pixman_region32_rectangles(damage, &nrects);
 	for (int i = 0; i < nrects; ++i) {
@@ -531,7 +514,7 @@ void render_monitor_blur(struct sway_output *output, pixman_region32_t *damage) 
 		fx_renderer_clear(clear_color);
 	}
 	render_whole_output(renderer, &fake_damage, &buffer->texture);
-	fx_framebuffer_bind(&renderer->main_buffer, width, height);
+	fx_framebuffer_bind(&renderer->main_buffer, monitor_box.width, monitor_box.height);
 
 	pixman_region32_fini(&fake_damage);
 
@@ -782,9 +765,8 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 				pixman_region32_init(&opaque_region);
 				pixman_region32_union_rect(&opaque_region, &opaque_region, 0, 0, 0, 0);
 
-				int width, height;
-				wlr_output_transformed_resolution(output->wlr_output, &width, &height);
-				struct wlr_fbox src_box = { 0, 0, width, height };
+				struct wlr_box monitor_box = get_monitor_box(wlr_output);
+				struct wlr_fbox src_box = { monitor_box.x, monitor_box.y, monitor_box.width, monitor_box.height };
 				bool is_floating = container_is_floating(view->container);
 				render_blur(!is_floating, output, damage, &src_box, &dst_box, &opaque_region,
 						saved_buf->width, saved_buf->height, 1, deco_data.corner_radius);
