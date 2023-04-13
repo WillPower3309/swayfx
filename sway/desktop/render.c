@@ -275,7 +275,6 @@ void render_blur(bool optimized, struct sway_output *output,
 	struct wlr_output *wlr_output = output->wlr_output;
 	struct fx_renderer *renderer = output->renderer;
 
-
 	struct wlr_box monitor_box = get_monitor_box(wlr_output);
 	enum wl_output_transform transform =
 		wlr_output_transform_invert(output->wlr_output->transform);
