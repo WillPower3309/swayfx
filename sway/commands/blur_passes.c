@@ -1,6 +1,7 @@
 #include <string.h>
 #include "sway/commands.h"
 #include "sway/config.h"
+#include "sway/output.h"
 #include "sway/tree/arrange.h"
 #include "sway/tree/container.h"
 #include "log.h"
@@ -19,7 +20,13 @@ struct cmd_results *cmd_blur_passes(int argc, char **argv) {
 
 	config->blur_params.num_passes = value;
 
-	arrange_root();
+	struct sway_output *output;
+	wl_list_for_each(output, &root->all_outputs, link) {
+		if (output->renderer) {
+			output->renderer->blur_buffer_dirty = true;
+			output_damage_whole(output);
+		}
+	}
 
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
