@@ -378,11 +378,38 @@ static void render_surface_iterator(struct sway_output *output,
 
 	scale_box(&dst_box, wlr_output->scale);
 
-	data->deco_data.corner_radius *= wlr_output->scale;
+	struct decoration_data deco_data = data->deco_data;
+	deco_data.corner_radius *= wlr_output->scale;
+
+	// render blur (view->surface == surface excludes blurring subsurfaces)
+	if (deco_data.blur && should_parameters_blur() && view->surface == surface) {
+		pixman_region32_t opaque_region;
+		pixman_region32_init(&opaque_region);
+
+		bool has_alpha = false;
+		if (deco_data.alpha < 1.0) {
+			has_alpha = true;
+			pixman_region32_union_rect(&opaque_region, &opaque_region, 0, 0, 0, 0);
+		} else {
+			has_alpha = !surface->opaque;
+			pixman_region32_copy(&opaque_region, &surface->opaque_region);
+		}
+
+		if (has_alpha) {
+			int width, height;
+			wlr_output_transformed_resolution(output->wlr_output, &width, &height);
+			struct wlr_fbox src_box = { 0, 0, width, height };
+			bool is_floating = container_is_floating(view->container);
+			render_blur(!is_floating, output, output_damage, &src_box, &dst_box, &opaque_region,
+					surface->current.width, surface->current.height, 1, deco_data);
+		}
+
+		pixman_region32_fini(&opaque_region);
+	}
 
 	struct fx_texture fx_texture = fx_texture_from_wlr_texture(texture);
 	render_texture(wlr_output, output_damage, &fx_texture, &src_box, &dst_box,
-		matrix, data->deco_data);
+		matrix, deco_data);
 
 	wlr_presentation_surface_sampled_on_output(server.presentation, surface,
 		wlr_output);
@@ -747,6 +774,26 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 
 		deco_data.corner_radius *= wlr_output->scale;
 
+		if (deco_data.blur && should_parameters_blur()) {
+			struct wlr_gles2_texture_attribs attribs;
+			wlr_gles2_texture_get_attribs(saved_buf->buffer->texture, &attribs);
+
+			if (deco_data.alpha < 1.0 || attribs.has_alpha) {
+				pixman_region32_t opaque_region;
+				pixman_region32_init(&opaque_region);
+				pixman_region32_union_rect(&opaque_region, &opaque_region, 0, 0, 0, 0);
+
+				int width, height;
+				wlr_output_transformed_resolution(output->wlr_output, &width, &height);
+				struct wlr_fbox src_box = { 0, 0, width, height };
+				bool is_floating = container_is_floating(view->container);
+				render_blur(!is_floating, output, damage, &src_box, &dst_box, &opaque_region,
+						saved_buf->width, saved_buf->height, 1, deco_data);
+
+				pixman_region32_fini(&opaque_region);
+			}
+		}
+
 		struct fx_texture fx_texture = fx_texture_from_wlr_texture(saved_buf->buffer->texture);
 		render_texture(wlr_output, damage, &fx_texture,
 				&saved_buf->source_box, &dst_box, matrix, deco_data);
@@ -765,46 +812,6 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		struct decoration_data deco_data) {
 	struct sway_view *view = con->view;
 	struct sway_container_state *state = &con->current;
-
-	// Render blur
-	if (deco_data.blur && should_parameters_blur()) {
-		pixman_region32_t opaque_region;
-		pixman_region32_init(&opaque_region);
-
-		bool has_alpha = false;
-		if (deco_data.alpha < 1.0) {
-			has_alpha = true;
-			pixman_region32_union_rect(&opaque_region, &opaque_region, 0, 0, 0, 0);
-		}
-		else if (!wl_list_empty(&view->saved_buffers)) {
-				struct sway_saved_buffer *saved_buf;
-				wl_list_for_each(saved_buf, &view->saved_buffers, link) {
-					struct wlr_gles2_texture_attribs attribs;
-					wlr_gles2_texture_get_attribs(saved_buf->buffer->texture, &attribs);
-					if (attribs.has_alpha) {
-						has_alpha = true;
-						break;
-					}
-				}
-				pixman_region32_union_rect(&opaque_region, &opaque_region, 0, 0, 0, 0);
-		}
-		else if (view->surface) {
-				has_alpha = !view->surface->opaque;
-				pixman_region32_copy(&opaque_region, &view->surface->opaque_region);
-		}
-
-		if (has_alpha) {
-			int width, height;
-			wlr_output_transformed_resolution(output->wlr_output, &width, &height);
-			struct wlr_fbox src_box = { 0, 0, width, height };
-			struct wlr_box box = { floor(state->x), floor(state->y), state->width, state->height };
-			bool is_floating = container_is_floating(view->container);
-			render_blur(!is_floating, output, damage, &src_box, &box, &opaque_region,
-					width, height, 1, deco_data);
-		}
-
-		pixman_region32_fini(&opaque_region);
-	}
 
 	// render view
 	if (!wl_list_empty(&view->saved_buffers)) {
