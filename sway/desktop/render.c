@@ -766,6 +766,7 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 				pixman_region32_union_rect(&opaque_region, &opaque_region, 0, 0, 0, 0);
 
 				struct wlr_box monitor_box = get_monitor_box(wlr_output);
+				// TODO: contribute wlroots function to allow creating an fbox from a box?
 				struct wlr_fbox src_box = { monitor_box.x, monitor_box.y, monitor_box.width, monitor_box.height };
 				bool is_floating = container_is_floating(view->container);
 				render_blur(!is_floating, output, damage, &src_box, &dst_box, &opaque_region,
