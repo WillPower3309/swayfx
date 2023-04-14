@@ -85,7 +85,6 @@ struct fx_renderer {
 	struct fx_framebuffer effects_buffer_swapped; // Swap buffer used for effects
 
 	bool blur_buffer_dirty;
-	bool blur_optimize_should_render;
 
 	struct {
 		bool OES_egl_image_external;

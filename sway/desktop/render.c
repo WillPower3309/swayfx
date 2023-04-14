@@ -1690,19 +1690,18 @@ static bool find_blurred_con_iterator(struct sway_container *con, void *data) {
 	return !view->surface->opaque;
 }
 
-static void should_blur_draw_optimize(struct sway_output *sway_output,
+static bool should_blur_draw_optimize(struct sway_output *sway_output,
 		pixman_region32_t *damage) {
 	struct fx_renderer *renderer = sway_output->renderer;
 	struct wlr_output *output = sway_output->wlr_output;
 	struct sway_workspace *workspace = sway_output->current.active_workspace;
 
 	if (!workspace_is_visible(workspace) || !renderer->blur_buffer_dirty) {
-		return;
+		return false;
 	}
 
 	if (!workspace_find_container(workspace, find_blurred_con_iterator, NULL)) {
-		renderer->blur_optimize_should_render = false;
-		return;
+		return false;
 	}
 
 	// Damage the whole output
@@ -1710,7 +1709,7 @@ static void should_blur_draw_optimize(struct sway_output *sway_output,
 	wlr_output_transformed_resolution(output, &width, &height);
 	pixman_region32_union_rect(damage, damage, 0, 0, width, height);
 
-	renderer->blur_optimize_should_render = true;
+	return true;
 }
 
 void output_render(struct sway_output *output, struct timespec *when,
@@ -1736,12 +1735,13 @@ void output_render(struct sway_output *output, struct timespec *when,
 	}
 
 
+	bool blur_optimize_should_render = false;
 	bool damage_not_empty = pixman_region32_not_empty(damage);
 	pixman_region32_t extended_damage;
 	pixman_region32_init(&extended_damage);
 	if (!fullscreen_con && !server.session_lock.locked && damage_not_empty) {
 		// Check if there are any windows to blur
-		should_blur_draw_optimize(output, damage);
+		blur_optimize_should_render = should_blur_draw_optimize(output, damage);
 
 		// Extend the damaged region
 		int expanded_size = get_container_expanded_size(NULL);
@@ -1855,8 +1855,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 			&output->layers[ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM]);
 
 		bool blur_enabled = config->blur_enabled && should_parameters_blur();
-		if (blur_enabled && renderer->blur_optimize_should_render
-				&& renderer->blur_buffer_dirty) {
+		if (blur_enabled && blur_optimize_should_render && renderer->blur_buffer_dirty) {
 			render_monitor_blur(output, damage);
 		}
 
@@ -1934,7 +1933,7 @@ renderer_end:
 	 */
 	wlr_region_transform(&frame_damage, &extended_damage, transform, width, height);
 
-	if (debug.damage != DAMAGE_DEFAULT || renderer->blur_optimize_should_render) {
+	if (debug.damage != DAMAGE_DEFAULT || blur_optimize_should_render) {
 		pixman_region32_union_rect(&frame_damage, &frame_damage,
 			0, 0, wlr_output->width, wlr_output->height);
 	}
