@@ -480,7 +480,6 @@ void render_monitor_blur(struct sway_output *output, pixman_region32_t *damage) 
 	struct fx_renderer *renderer = output->renderer;
 
 	struct wlr_box monitor_box = get_monitor_box(wlr_output);
-	scale_box(&monitor_box, wlr_output->scale);
 	pixman_region32_t fake_damage;
 	pixman_region32_init_rect(&fake_damage, 0, 0, monitor_box.width, monitor_box.height);
 
