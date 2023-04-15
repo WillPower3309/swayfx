@@ -329,7 +329,7 @@ damage_finish:
 // _box.width and .height are expected to be output-buffer-local
 void render_box_shadow(struct sway_output *output, pixman_region32_t *output_damage,
 		const struct wlr_box *_box, const float color[static 4],
-		float blur_sigma, float corner_radius, float border_thickness) {
+		float blur_sigma, float corner_radius) {
 	struct wlr_output *wlr_output = output->wlr_output;
 	struct fx_renderer *renderer = output->server->renderer;
 
@@ -339,9 +339,6 @@ void render_box_shadow(struct sway_output *output, pixman_region32_t *output_dam
 	box.y -= output->ly * wlr_output->scale + blur_sigma;
 	box.width += 2 * blur_sigma;
 	box.height += 2 * blur_sigma;
-
-	// Uses the outer radii of the window for a more realistic look
-	corner_radius += border_thickness;
 
 	pixman_region32_t damage = create_damage(box, output_damage);
 
@@ -490,29 +487,28 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		render_view_toplevels(view, output, damage, deco_data);
 	}
 
+	struct sway_container_state *state = &con->current;
+
 	// Only draw shadows on CSD windows if shadows_on_csd is enabled
-	if (con->current.border == B_CSD && !config->shadows_on_csd_enabled) {
+	if (state->border == B_CSD && !config->shadows_on_csd_enabled) {
 		return;
 	}
 
 	// render shadow
 	if (con->shadow_enabled && config->shadow_blur_sigma > 0 && config->shadow_color[3] > 0.0) {
-		struct sway_container_state *state = &con->current;
 		struct wlr_box box = { floor(state->x), floor(state->y), state->width, state->height };
 		scale_box(&box, output->wlr_output->scale);
-		render_box_shadow(output, damage, &box, config->shadow_color,
-			config->shadow_blur_sigma, con->corner_radius,
-			state->border_thickness);
+		render_box_shadow(output, damage, &box, config->shadow_color, config->shadow_blur_sigma,
+				con->corner_radius + state->border_thickness);
 	}
 
-	if (con->current.border == B_NONE || con->current.border == B_CSD) {
+	if (state->border == B_NONE || state->border == B_CSD) {
 		return;
 	}
 
 	struct wlr_box box;
 	float output_scale = output->wlr_output->scale;
 	float color[4];
-	struct sway_container_state *state = &con->current;
 
 	if (state->border_left) {
 		memcpy(&color, colors->child_border, sizeof(float) * 4);
