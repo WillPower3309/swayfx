@@ -1690,25 +1690,16 @@ static bool find_blurred_con_iterator(struct sway_container *con, void *data) {
 	return !view->surface->opaque;
 }
 
-static bool should_blur_draw_optimize(struct sway_output *sway_output,
-		pixman_region32_t *damage) {
+static bool should_blur_draw_optimize(struct sway_output *sway_output) {
 	struct fx_renderer *renderer = sway_output->renderer;
-	struct wlr_output *output = sway_output->wlr_output;
 	struct sway_workspace *workspace = sway_output->current.active_workspace;
 
 	if (!workspace_is_visible(workspace) || !renderer->blur_buffer_dirty) {
 		return false;
 	}
-
 	if (!workspace_find_container(workspace, find_blurred_con_iterator, NULL)) {
 		return false;
 	}
-
-	// Damage the whole output
-	int width, height;
-	wlr_output_transformed_resolution(output, &width, &height);
-	pixman_region32_union_rect(damage, damage, 0, 0, width, height);
-
 	return true;
 }
 
@@ -1741,11 +1732,15 @@ void output_render(struct sway_output *output, struct timespec *when,
 	pixman_region32_init(&extended_damage);
 	if (!fullscreen_con && !server.session_lock.locked && damage_not_empty) {
 		// Check if there are any windows to blur
-		blur_optimize_should_render = should_blur_draw_optimize(output, damage);
+		if (should_blur_draw_optimize(output)) {
+			blur_optimize_should_render = true;
+			// Damage the whole output
+			pixman_region32_union_rect(damage, damage, 0, 0, width, height);
+		}
 
 		// Extend the damaged region
 		int expanded_size = get_container_expanded_size(NULL);
-		if ((config->blur_enabled || config->shadow_enabled) && expanded_size > 0) {
+		if (expanded_size > 0) {
 			wlr_region_expand(damage, damage, expanded_size);
 			pixman_region32_copy(&extended_damage, damage);
 			wlr_region_expand(damage, damage, expanded_size);
