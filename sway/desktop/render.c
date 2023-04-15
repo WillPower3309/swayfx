@@ -38,6 +38,13 @@ struct render_data {
 	struct decoration_data deco_data;
 };
 
+struct workspace_effect_info {
+	bool container_wants_blur;
+	bool container_wants_shadow;
+	bool should_render_optimized_blur;
+	int expanded_size;
+};
+
 struct decoration_data get_undecorated_decoration_data() {
 	return (struct decoration_data) {
 		.alpha = 1.0f,
@@ -52,17 +59,6 @@ struct decoration_data get_undecorated_decoration_data() {
 
 int get_blur_size() {
 	return pow(2, config->blur_params.num_passes) * config->blur_params.radius;
-}
-
-int get_container_expanded_size(struct sway_container *con) {
-	bool shadow_enabled = con ? con->shadow_enabled : config->shadow_enabled;
-	int shadow_sigma = shadow_enabled ? config->shadow_blur_sigma : 0;
-
-	bool blur_enabled = con ? con->blur_enabled : config->blur_enabled;
-	int blur_size = blur_enabled ? get_blur_size() : 0;
-
-	// +1 as a margin of error
-	return MAX(shadow_sigma, blur_size) + 1;
 }
 
 bool should_parameters_blur() {
@@ -1680,29 +1676,73 @@ static void render_seatops(struct sway_output *output,
 	}
 }
 
-static bool find_blurred_con_iterator(struct sway_container *con, void *data) {
+struct find_effect_iter_data {
+	struct workspace_effect_info *effect_info;
+	bool blur_buffer_dirty;
+};
+
+static bool find_con_effect_iterator(struct sway_container *con, void* _data) {
 	struct sway_view *view = con->view;
-	if (!view || !con->blur_enabled) {
+	struct find_effect_iter_data *data = _data;
+	struct workspace_effect_info *effect_info = data->effect_info;
+
+	if (!view) {
 		return false;
 	}
-	// Only test floating windows when xray is enabled
-	if (container_is_floating(con) && !config->blur_xray) {
-		return false;
+
+	if (con->blur_enabled && !view->surface->opaque) {
+		effect_info->container_wants_blur = true;
+
+		bool is_floating = container_is_floating(con);
+		// Check if we should render optimized blur
+		if (data->blur_buffer_dirty
+				// Only test floating windows when xray is enabled
+				&& (!is_floating || (is_floating && config->blur_xray))) {
+			effect_info->should_render_optimized_blur = true;
+		}
 	}
-	return !view->surface->opaque;
+	if (con->shadow_enabled) {
+		effect_info->container_wants_shadow = true;
+	}
+
+	// Stop the iteration if all of the effects have been found.
+	// Ensures that no effect is skipped if returning early
+	return effect_info->container_wants_blur
+		&& effect_info->container_wants_shadow
+		&& effect_info->should_render_optimized_blur;
 }
 
-static bool should_blur_draw_optimize(struct sway_output *sway_output) {
+static struct workspace_effect_info get_workspace_effect_info(struct sway_output *sway_output) {
 	struct fx_renderer *renderer = sway_output->renderer;
 	struct sway_workspace *workspace = sway_output->current.active_workspace;
 
-	if (!workspace_is_visible(workspace) || !renderer->blur_buffer_dirty) {
-		return false;
+	struct workspace_effect_info effect_info = {
+		.container_wants_blur = false,
+		.container_wants_shadow = false,
+		.should_render_optimized_blur = false,
+		.expanded_size = 0
+	};
+
+	if (!workspace_is_visible(workspace)) {
+		return effect_info;
 	}
-	if (!workspace_find_container(workspace, find_blurred_con_iterator, NULL)) {
-		return false;
-	}
-	return true;
+
+	// Iterate through the workspace containers and check if any effects are requested
+	struct find_effect_iter_data iter_data = {
+		.effect_info = &effect_info,
+		.blur_buffer_dirty = renderer->blur_buffer_dirty
+	};
+	workspace_find_container(workspace, find_con_effect_iterator, &iter_data);
+
+	// Set the expanded damage region
+	bool shadow_enabled = effect_info.container_wants_shadow || config->shadow_enabled;
+	int shadow_sigma = shadow_enabled ? config->shadow_blur_sigma : 0;
+	bool blur_enabled = effect_info.container_wants_blur || config->blur_enabled;
+	int blur_size = blur_enabled ? get_blur_size() : 0;
+	// +1 as a margin of error
+	effect_info.expanded_size = MAX(shadow_sigma, blur_size) + 1;
+
+	return effect_info;
 }
 
 void output_render(struct sway_output *output, struct timespec *when,
@@ -1734,14 +1774,15 @@ void output_render(struct sway_output *output, struct timespec *when,
 	pixman_region32_init(&extended_damage);
 	if (!fullscreen_con && !server.session_lock.locked && damage_not_empty) {
 		// Check if there are any windows to blur
-		if (should_blur_draw_optimize(output)) {
+		struct workspace_effect_info effect_info = get_workspace_effect_info(output);
+		if (effect_info.should_render_optimized_blur) {
 			blur_optimize_should_render = true;
 			// Damage the whole output
 			pixman_region32_union_rect(damage, damage, 0, 0, width, height);
 		}
 
 		// Extend the damaged region
-		int expanded_size = get_container_expanded_size(NULL);
+		int expanded_size = effect_info.expanded_size;
 		if (expanded_size > 0) {
 			wlr_region_expand(damage, damage, expanded_size);
 			pixman_region32_copy(&extended_damage, damage);
