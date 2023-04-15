@@ -65,6 +65,16 @@ bool should_parameters_blur() {
 	return config->blur_params.radius > 0 && config->blur_params.num_passes > 0;
 }
 
+// TODO: contribute wlroots function to allow creating an box from a pixman_region32?
+struct wlr_box wlr_box_from_pixman_region32(pixman_region32_t *region) {
+	return (struct wlr_box) {
+		.x = region->extents.x1,
+		.y = region->extents.y1,
+		.width = region->extents.x2 - region->extents.x1,
+		.height = region->extents.y2 - region->extents.y1,
+	};
+}
+
 /**
  * Apply scale to a width or height.
  *
@@ -1782,7 +1792,11 @@ void output_render(struct sway_output *output, struct timespec *when,
 
 		// Extend the damaged region
 		int expanded_size = effect_info.expanded_size;
-		if (expanded_size > 0) {
+		struct wlr_box damage_box = wlr_box_from_pixman_region32(damage);
+		if (expanded_size > 0
+				// Don't expand the damage any further if it's already
+				// larger than the monitor size
+				&& damage_box.width <= width && damage_box.height <= height) {
 			wlr_region_expand(damage, damage, expanded_size);
 			pixman_region32_copy(&extended_damage, damage);
 			wlr_region_expand(damage, damage, expanded_size);
