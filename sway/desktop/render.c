@@ -778,6 +778,8 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 	struct sway_view *view = con->view;
 	struct sway_container_state *state = &con->current;
 
+	deco_data.blur = con->blur_enabled;
+
 	// render view
 	if (!wl_list_empty(&view->saved_buffers)) {
 		render_saved_view(view, output, damage, deco_data);
