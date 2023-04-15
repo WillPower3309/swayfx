@@ -774,8 +774,6 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 	struct sway_view *view = con->view;
 	struct sway_container_state *state = &con->current;
 
-	deco_data.blur = con->blur_enabled;
-
 	// render view
 	if (!wl_list_empty(&view->saved_buffers)) {
 		render_saved_view(view, output, damage, deco_data);
@@ -1349,7 +1347,7 @@ static void render_containers_linear(struct sway_output *output,
 				.corner_radius = corner_radius,
 				.saturation = child->saturation,
 				.has_titlebar = has_titlebar,
-				.blur = true,
+				.blur = child->blur_enabled,
 			};
 			render_view(output, damage, child, colors, deco_data);
 			if (has_titlebar) {
@@ -1457,7 +1455,7 @@ static void render_containers_tabbed(struct sway_output *output,
 			.corner_radius = current->corner_radius,
 			.saturation = current->saturation,
 			.has_titlebar = true,
-			.blur = true,
+			.blur = current->blur_enabled,
 		};
 		render_view(output, damage, current, current_colors, deco_data);
 	} else {
@@ -1532,7 +1530,7 @@ static void render_containers_stacked(struct sway_output *output,
 			.saturation = current->saturation,
 			.corner_radius = current->corner_radius,
 			.has_titlebar = true,
-			.blur = true,
+			.blur = current->blur_enabled,
 		};
 		render_view(output, damage, current, current_colors, deco_data);
 	} else {
@@ -1633,7 +1631,7 @@ static void render_floating_container(struct sway_output *soutput,
 			.saturation = con->saturation,
 			.corner_radius = con->corner_radius,
 			.has_titlebar = has_titlebar,
-			.blur = true,
+			.blur = con->blur_enabled,
 		};
 		render_view(soutput, damage, con, colors, deco_data);
 		if (has_titlebar) {
