@@ -191,9 +191,9 @@ void render_blur_segments(struct fx_renderer *renderer, struct sway_output *outp
 	}
 
 	if (pixman_region32_not_empty(damage)) {
-		int rectsNum = 0;
-		pixman_box32_t *rects = pixman_region32_rectangles(damage, &rectsNum);
-		for (int i = 0; i < rectsNum; ++i) {
+		int nrects;
+		pixman_box32_t *rects = pixman_region32_rectangles(damage, &nrects);
+		for (int i = 0; i < nrects; ++i) {
 			const pixman_box32_t box = rects[i];
 			struct wlr_box new_box = { box.x1, box.y1, box.x2 - box.x1, box.y2 - box.y1 };
 			fx_renderer_scissor(&new_box);
