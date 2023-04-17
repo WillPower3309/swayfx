@@ -1792,11 +1792,15 @@ void output_render(struct sway_output *output, struct timespec *when,
 
 		// Extend the damaged region
 		int expanded_size = effect_info.expanded_size;
-		struct wlr_box damage_box = wlr_box_from_pixman_region32(damage);
-		if (expanded_size > 0
-				// Don't expand the damage any further if it's already
-				// larger than the monitor size
-				&& damage_box.width <= width && damage_box.height <= height) {
+		if (expanded_size > 0) {
+			struct wlr_box damage_box = wlr_box_from_pixman_region32(damage);
+			if (damage_box.width > width || damage_box.height > height) {
+				// Limit the damage extent to the size of the monitor.
+				// Fixes an issue where the damage region size would be
+				// INT32_MAX and would result in an integer overflow when
+				// expanding the region further.
+				pixman_region32_intersect_rect(damage, damage, 0, 0, width, height);
+			}
 			wlr_region_expand(damage, damage, expanded_size);
 			pixman_region32_copy(&extended_damage, damage);
 			wlr_region_expand(damage, damage, expanded_size);
