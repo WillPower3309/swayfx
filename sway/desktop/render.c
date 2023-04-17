@@ -778,8 +778,6 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		render_view_toplevels(view, output, damage, deco_data);
 	}
 
-	struct sway_container_state *state = &con->current;
-
 	// Only draw shadows on CSD windows if shadows_on_csd is enabled
 	if (state->border == B_CSD && !config->shadows_on_csd_enabled) {
 		return;
