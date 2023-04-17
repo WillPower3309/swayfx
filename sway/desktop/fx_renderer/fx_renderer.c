@@ -19,6 +19,8 @@
 #include "sway/server.h"
 
 // shaders
+#include "blur1_frag_src.h"
+#include "blur2_frag_src.h"
 #include "box_shadow_frag_src.h"
 #include "common_vert_src.h"
 #include "corner_frag_src.h"
@@ -32,6 +34,33 @@ static const GLfloat verts[] = {
 	1, 1, // bottom right
 	0, 1, // bottom left
 };
+
+static void create_stencil_buffer(struct wlr_output* output, GLuint *buffer_id) {
+	if (*buffer_id != (uint32_t) -1) {
+		return;
+	}
+
+	int width, height;
+	wlr_output_transformed_resolution(output, &width, &height);
+
+	glGenRenderbuffers(1, buffer_id);
+	glBindRenderbuffer(GL_RENDERBUFFER, *buffer_id);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_STENCIL_INDEX8, width, height);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, *buffer_id);
+	GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	if (status != GL_FRAMEBUFFER_COMPLETE) {
+		sway_log(SWAY_ERROR, "Stencilbuffer incomplete, couldn't create! (FB status: %i)", status);
+		return;
+	}
+	sway_log(SWAY_DEBUG, "Stencilbuffer created, status %i", status);
+}
+
+static void release_stencil_buffer(GLuint *buffer_id) {
+	if (*buffer_id != (uint32_t)-1 && buffer_id) {
+		glDeleteRenderbuffers(1, buffer_id);
+	}
+	*buffer_id = -1;
+}
 
 static GLuint compile_shader(GLuint type, const GLchar *src) {
 	GLuint shader = glCreateShader(type);
@@ -179,6 +208,15 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	// TODO: needed?
 	renderer->egl = egl;
 
+	renderer->main_buffer.fb = -1;
+
+	renderer->blur_buffer.fb = -1;
+	renderer->effects_buffer.fb = -1;
+	renderer->effects_buffer_swapped.fb = -1;
+	renderer->stencil_buffer_id = -1;
+
+	renderer->blur_buffer_dirty = true;
+
 	// get extensions
 	const char *exts_str = (const char *)glGetString(GL_EXTENSIONS);
 	if (exts_str == NULL) {
@@ -258,6 +296,32 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	renderer->shaders.box_shadow.blur_sigma = glGetUniformLocation(prog, "blur_sigma");
 	renderer->shaders.box_shadow.corner_radius = glGetUniformLocation(prog, "corner_radius");
 
+	// Blur 1
+	prog = link_program(blur1_frag_src);
+	renderer->shaders.blur1.program = prog;
+	if (!renderer->shaders.blur1.program) {
+		goto error;
+	}
+	renderer->shaders.blur1.proj = glGetUniformLocation(prog, "proj");
+	renderer->shaders.blur1.tex = glGetUniformLocation(prog, "tex");
+	renderer->shaders.blur1.pos_attrib = glGetAttribLocation(prog, "pos");
+	renderer->shaders.blur1.tex_attrib = glGetAttribLocation(prog, "texcoord");
+	renderer->shaders.blur1.radius = glGetUniformLocation(prog, "radius");
+	renderer->shaders.blur1.halfpixel = glGetUniformLocation(prog, "halfpixel");
+
+	// Blur 2
+	prog = link_program(blur2_frag_src);
+	renderer->shaders.blur2.program = prog;
+	if (!renderer->shaders.blur2.program) {
+		goto error;
+	}
+	renderer->shaders.blur2.proj = glGetUniformLocation(prog, "proj");
+	renderer->shaders.blur2.tex = glGetUniformLocation(prog, "tex");
+	renderer->shaders.blur2.pos_attrib = glGetAttribLocation(prog, "pos");
+	renderer->shaders.blur2.tex_attrib = glGetAttribLocation(prog, "texcoord");
+	renderer->shaders.blur2.radius = glGetUniformLocation(prog, "radius");
+	renderer->shaders.blur2.halfpixel = glGetUniformLocation(prog, "halfpixel");
+
 	// fragment shaders
 	if (!link_tex_program(renderer, &renderer->shaders.tex_rgba,
 			SHADER_SOURCE_TEXTURE_RGBA)) {
@@ -289,6 +353,8 @@ error:
 	glDeleteProgram(renderer->shaders.rounded_tr_quad.program);
 	glDeleteProgram(renderer->shaders.corner.program);
 	glDeleteProgram(renderer->shaders.box_shadow.program);
+	glDeleteProgram(renderer->shaders.blur1.program);
+	glDeleteProgram(renderer->shaders.blur2.program);
 	glDeleteProgram(renderer->shaders.tex_rgba.program);
 	glDeleteProgram(renderer->shaders.tex_rgbx.program);
 	glDeleteProgram(renderer->shaders.tex_ext.program);
@@ -305,27 +371,53 @@ error:
 	return NULL;
 }
 
-void fx_renderer_begin(struct fx_renderer *renderer, uint32_t width, uint32_t height) {
-	// Create and render the stencil buffer
-	if (renderer->stencil_buffer_id == 0) {
-		glGenRenderbuffers(1, &renderer->stencil_buffer_id);
-	}
-	glBindRenderbuffer(GL_RENDERBUFFER, renderer->stencil_buffer_id);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_STENCIL_INDEX8, width, height);
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT,
-			GL_RENDERBUFFER, renderer->stencil_buffer_id);
+void fx_renderer_fini(struct fx_renderer *renderer) {
+	fx_framebuffer_release(&renderer->main_buffer);
+	fx_framebuffer_release(&renderer->blur_buffer);
+	fx_framebuffer_release(&renderer->effects_buffer);
+	fx_framebuffer_release(&renderer->effects_buffer_swapped);
+	release_stencil_buffer(&renderer->stencil_buffer_id);
+}
 
-	glViewport(0, 0, width, height);
+void fx_renderer_begin(struct fx_renderer *renderer, struct sway_output *sway_output) {
+	struct wlr_output *output = sway_output->wlr_output;
+
+	int width, height;
+	wlr_output_transformed_resolution(output, &width, &height);
+
+	renderer->sway_output = sway_output;
+	// Store the wlr framebuffer
+	GLint wlr_fb = -1;
+	glGetIntegerv(GL_FRAMEBUFFER_BINDING, &wlr_fb);
+	if (wlr_fb < 0) {
+		sway_log(SWAY_ERROR, "Failed to get wlr framebuffer!");
+		abort();
+	}
+	renderer->wlr_buffer.fb = wlr_fb;
+
+	// Create the main framebuffer
+	fx_framebuffer_create(output, &renderer->main_buffer, true);
+	// Create the stencil buffer and attach it to our main_buffer
+	create_stencil_buffer(output, &renderer->stencil_buffer_id);
+
+	// Create a new blur/effects framebuffers
+	fx_framebuffer_create(output, &renderer->effects_buffer, false);
+	fx_framebuffer_create(output, &renderer->effects_buffer_swapped, false);
 
 	// refresh projection matrix
 	matrix_projection(renderer->projection, width, height,
 		WL_OUTPUT_TRANSFORM_FLIPPED_180);
 
 	glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
+	// Bind to our main framebuffer
+	fx_framebuffer_bind(&renderer->main_buffer, width, height);
 }
 
-void fx_renderer_end() {
-	// TODO
+void fx_renderer_end(struct fx_renderer *renderer) {
+	// Release the main buffer
+	fx_framebuffer_release(&renderer->main_buffer);
+	release_stencil_buffer(&renderer->stencil_buffer_id);
 }
 
 void fx_renderer_clear(const float color[static 4]) {
@@ -335,26 +427,23 @@ void fx_renderer_clear(const float color[static 4]) {
 }
 
 void fx_renderer_scissor(struct wlr_box *box) {
-		if (box) {
-				glScissor(box->x, box->y, box->width, box->height);
-				glEnable(GL_SCISSOR_TEST);
-		} else {
-				glDisable(GL_SCISSOR_TEST);
-		}
+	if (box) {
+		glScissor(box->x, box->y, box->width, box->height);
+		glEnable(GL_SCISSOR_TEST);
+	} else {
+		glDisable(GL_SCISSOR_TEST);
+	}
 }
 
-bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct wlr_texture *wlr_texture,
+bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct fx_texture *fx_texture,
 		const struct wlr_fbox *src_box, const struct wlr_box *dst_box, const float matrix[static 9],
 		struct decoration_data deco_data) {
-	assert(wlr_texture_is_gles2(wlr_texture));
-	struct wlr_gles2_texture_attribs texture_attrs;
-	wlr_gles2_texture_get_attribs(wlr_texture, &texture_attrs);
 
 	struct gles2_tex_shader *shader = NULL;
 
-	switch (texture_attrs.target) {
+	switch (fx_texture->target) {
 	case GL_TEXTURE_2D:
-		if (texture_attrs.has_alpha) {
+		if (fx_texture->has_alpha) {
 			shader = &renderer->shaders.tex_rgba;
 		} else {
 			shader = &renderer->shaders.tex_rgbx;
@@ -382,16 +471,18 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct wlr_t
 	wlr_matrix_transpose(gl_matrix, gl_matrix);
 
 	// if there's no opacity or rounded corners we don't need to blend
-	if (!texture_attrs.has_alpha && deco_data.alpha == 1.0 && !deco_data.corner_radius) {
+	if (!fx_texture->has_alpha && deco_data.alpha == 1.0 && !deco_data.corner_radius) {
 		glDisable(GL_BLEND);
 	} else {
 		glEnable(GL_BLEND);
 	}
 
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(texture_attrs.target, texture_attrs.tex);
+	glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
-	glTexParameteri(texture_attrs.target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(fx_texture->target, fx_texture->id);
+
+	glTexParameteri(fx_texture->target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
 	glUseProgram(shader->program);
 
@@ -408,10 +499,10 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct wlr_t
 	glUniform1f(shader->saturation, deco_data.saturation);
 	glUniform1f(shader->radius, deco_data.corner_radius);
 
-	const GLfloat x1 = src_box->x / wlr_texture->width;
-	const GLfloat y1 = src_box->y / wlr_texture->height;
-	const GLfloat x2 = (src_box->x + src_box->width) / wlr_texture->width;
-	const GLfloat y2 = (src_box->y + src_box->height) / wlr_texture->height;
+	const GLfloat x1 = src_box->x / fx_texture->width;
+	const GLfloat y1 = src_box->y / fx_texture->height;
+	const GLfloat x2 = (src_box->x + src_box->width) / fx_texture->width;
+	const GLfloat y2 = (src_box->y + src_box->height) / fx_texture->height;
 	const GLfloat texcoord[] = {
 		x2, y1, // top right
 		x1, y1, // top left
@@ -430,21 +521,21 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct wlr_t
 	glDisableVertexAttribArray(shader->pos_attrib);
 	glDisableVertexAttribArray(shader->tex_attrib);
 
-	glBindTexture(texture_attrs.target, 0);
+	glBindTexture(fx_texture->target, 0);
 
 	return true;
 }
 
-bool fx_render_texture_with_matrix(struct fx_renderer *renderer, struct wlr_texture *wlr_texture,
+bool fx_render_texture_with_matrix(struct fx_renderer *renderer, struct fx_texture *texture,
 		const struct wlr_box *dst_box, const float matrix[static 9],
 		struct decoration_data deco_data) {
 	struct wlr_fbox src_box = {
 		.x = 0,
 		.y = 0,
-		.width = wlr_texture->width,
-		.height = wlr_texture->height,
+		.width = texture->width,
+		.height = texture->height,
 	};
-	return fx_render_subtexture_with_matrix(renderer, wlr_texture, &src_box,
+	return fx_render_subtexture_with_matrix(renderer, texture, &src_box,
 			dst_box, matrix, deco_data);
 }
 
@@ -668,4 +759,47 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 	glClearStencil(0);
 	glClear(GL_STENCIL_BUFFER_BIT);
 	glDisable(GL_STENCIL_TEST);
+}
+
+void fx_render_blur(struct fx_renderer *renderer, struct sway_output *output,
+		const float matrix[static 9], struct fx_framebuffer **buffer,
+		struct blur_shader *shader, const struct wlr_box *box, int blur_radius) {
+	glDisable(GL_BLEND);
+	glDisable(GL_STENCIL_TEST);
+
+	glActiveTexture(GL_TEXTURE0);
+
+	glBindTexture((*buffer)->texture.target, (*buffer)->texture.id);
+
+	glTexParameteri((*buffer)->texture.target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+	glUseProgram(shader->program);
+
+	// OpenGL ES 2 requires the glUniformMatrix3fv transpose parameter to be set
+	// to GL_FALSE
+	float gl_matrix[9];
+	wlr_matrix_transpose(gl_matrix, matrix);
+	glUniformMatrix3fv(shader->proj, 1, GL_FALSE, gl_matrix);
+
+	glUniform1i(shader->tex, 0);
+	glUniform1f(shader->radius, blur_radius);
+
+	int width, height;
+	wlr_output_transformed_resolution(output->wlr_output, &width, &height);
+	if (shader == &renderer->shaders.blur1) {
+		glUniform2f(shader->halfpixel, 0.5f / (width / 2.0f), 0.5f / (height / 2.0f));
+	} else {
+		glUniform2f(shader->halfpixel, 0.5f / (width * 2.0f), 0.5f / (height * 2.0f));
+	}
+
+	glVertexAttribPointer(shader->pos_attrib, 2, GL_FLOAT, GL_FALSE, 0, verts);
+	glVertexAttribPointer(shader->tex_attrib, 2, GL_FLOAT, GL_FALSE, 0, verts);
+
+	glEnableVertexAttribArray(shader->pos_attrib);
+	glEnableVertexAttribArray(shader->tex_attrib);
+
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+	glDisableVertexAttribArray(shader->pos_attrib);
+	glDisableVertexAttribArray(shader->tex_attrib);
 }

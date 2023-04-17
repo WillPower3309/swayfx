@@ -686,6 +686,21 @@ The default colors are:
 *shadow_color* <hex color with alpha>
 	The shadow color. Default color: #0000007F
 
+*blur* enable|disable
+	Sets whether blur should be drawn. Can also be set per window with
+	*for_window*.
+
+*blur_xray* enable|disable
+	Sets whether blur should only display the background.
+
+*blur_passes* <value>
+	Adjusts the blur passes of windows between 0 (disabled) and 10
+	while 2 is the default value.
+
+*blur_radius* <value>
+	Adjusts the blur radius of windows between 0 (disabled) and 10
+	while 5 is the default value.
+
 *default_border* normal|none|pixel [<n>]
 	Set default border style for new tiled windows.
 

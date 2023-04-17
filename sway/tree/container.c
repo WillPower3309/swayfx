@@ -43,6 +43,7 @@ struct sway_container *container_create(struct sway_view *view) {
 	c->saturation = 1.0f;
 	c->dim = config->default_dim_inactive;
 	c->shadow_enabled = config->shadow_enabled;
+	c->blur_enabled = config->blur_enabled;
 	c->corner_radius = config->corner_radius;
 
 	if (!view) {

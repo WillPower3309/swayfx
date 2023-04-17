@@ -19,6 +19,11 @@ Sway is an incredible window manager, and certainly one of the most well establi
     - `shadows_on_csd enable|disable` (**Note**: The shadow might not fit some windows)
     - `shadow_blur_radius <integer value 0 - 100>`
     - `shadow_color <hex color with alpha> ex, #0000007F`
++ Window blur: *ONLY ON SWAYFX-GIT, NOT YET RELEASED*
+    - `blur enable|disable`
+    - `blur_xray enable|disable`
+    - `blur_passes <integer value 0 - 10>`
+    - `blur_radius <integer value 0 - 10>`
 + Dim unfocused windows:
     - `default_dim_inactive <float value 0.0 - 1.0>`
     - `for_window [CRITERIA_HERE] dim_inactive <float value 0.0 - 1.0>`

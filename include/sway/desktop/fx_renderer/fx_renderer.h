@@ -5,6 +5,9 @@
 #include <GLES2/gl2ext.h>
 #include <stdbool.h>
 
+#include "sway/desktop/fx_renderer/fx_framebuffer.h"
+#include "sway/desktop/fx_renderer/fx_texture.h"
+
 enum corner_location { ALL, TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT, NONE };
 
 enum fx_tex_shader_source {
@@ -24,8 +27,9 @@ struct decoration_data {
 	float saturation;
 	int corner_radius;
 	float dim;
-	float* dim_color;
+	float *dim_color;
 	bool has_titlebar;
+	bool blur;
 };
 
 struct gles2_tex_shader {
@@ -54,12 +58,33 @@ struct rounded_quad_shader {
 	GLint radius;
 };
 
+struct blur_shader {
+	GLuint program;
+	GLint proj;
+	GLint tex;
+	GLint pos_attrib;
+	GLint tex_attrib;
+	GLint radius;
+	GLint halfpixel;
+};
+
 struct fx_renderer {
 	struct wlr_egl *egl;
 
 	float projection[9];
 
+	struct sway_output *sway_output;
+
 	GLuint stencil_buffer_id;
+
+	struct fx_framebuffer wlr_buffer; // Just the framebuffer used by wlroots
+	struct fx_framebuffer main_buffer; // The main FB used for rendering
+	struct fx_framebuffer blur_buffer; // Contains the blurred background for tiled windows
+	// Blur swaps between the two effects buffers everytime it scales the image
+	struct fx_framebuffer effects_buffer; // Buffer used for effects
+	struct fx_framebuffer effects_buffer_swapped; // Swap buffer used for effects
+
+	bool blur_buffer_dirty;
 
 	struct {
 		bool OES_egl_image_external;
@@ -82,6 +107,9 @@ struct fx_renderer {
 		struct rounded_quad_shader rounded_quad;
 		struct rounded_quad_shader rounded_tl_quad;
 		struct rounded_quad_shader rounded_tr_quad;
+
+		struct blur_shader blur1;
+		struct blur_shader blur2;
 
 		struct {
 			GLuint program;
@@ -117,19 +145,21 @@ struct fx_renderer {
 
 struct fx_renderer *fx_renderer_create(struct wlr_egl *egl);
 
-void fx_renderer_begin(struct fx_renderer *renderer, uint32_t width, uint32_t height);
+void fx_renderer_fini(struct fx_renderer *renderer);
 
-void fx_renderer_end();
+void fx_renderer_begin(struct fx_renderer *renderer, struct sway_output *output);
+
+void fx_renderer_end(struct fx_renderer *renderer);
 
 void fx_renderer_clear(const float color[static 4]);
 
 void fx_renderer_scissor(struct wlr_box *box);
 
-bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct wlr_texture *wlr_texture,
+bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct fx_texture *fx_texture,
 		const struct wlr_fbox *src_box, const struct wlr_box *dst_box, const float matrix[static 9],
 		struct decoration_data deco_data);
 
-bool fx_render_texture_with_matrix(struct fx_renderer *renderer, struct wlr_texture *wlr_texture,
+bool fx_render_texture_with_matrix(struct fx_renderer *renderer, struct fx_texture *fx_texture,
 		const struct wlr_box *dst_box, const float matrix[static 9], struct decoration_data deco_data);
 
 void fx_render_rect(struct fx_renderer *renderer, const struct wlr_box *box,
@@ -145,5 +175,9 @@ void fx_render_border_corner(struct fx_renderer *renderer, const struct wlr_box 
 
 void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *box,
 		const float color[static 4], const float projection[static 9], int radius, float blur_sigma);
+
+void fx_render_blur(struct fx_renderer *renderer, struct sway_output *output,
+		const float matrix[static 9], struct fx_framebuffer **buffer,
+		struct blur_shader *shader, const struct wlr_box *box, int blur_radius);
 
 #endif

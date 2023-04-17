@@ -290,6 +290,12 @@ static void handle_surface_commit(struct wl_listener *listener, void *data) {
 	struct sway_output *output = wlr_output->data;
 	struct wlr_box old_extent = layer->extent;
 
+	// Rerender the static blur on change
+	if (layer->layer == ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND
+			|| layer->layer == ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM) {
+		output->renderer->blur_buffer_dirty = true;
+	}
+
 	bool layer_changed = false;
 	if (layer_surface->current.committed != 0
 			|| layer->mapped != layer_surface->mapped) {
@@ -366,6 +372,13 @@ static void handle_destroy(struct wl_listener *listener, void *data) {
 	struct wlr_output *wlr_output = sway_layer->layer_surface->output;
 	sway_assert(wlr_output, "wlr_layer_surface_v1 has null output");
 	struct sway_output *output = wlr_output->data;
+
+	// Rerender the static blur
+	if (sway_layer->layer == ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND
+			|| sway_layer->layer == ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM) {
+		output->renderer->blur_buffer_dirty = true;
+	}
+
 	arrange_layers(output);
 	transaction_commit_dirty();
 	wl_list_remove(&sway_layer->output_destroy.link);

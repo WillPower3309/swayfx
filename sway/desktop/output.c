@@ -6,6 +6,7 @@
 #include <wayland-server-core.h>
 #include <wlr/backend/drm.h>
 #include <wlr/backend/headless.h>
+#include <wlr/render/gles2.h>
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/types/wlr_buffer.h>
 #include <wlr/types/wlr_drm_lease_v1.h>
@@ -745,12 +746,11 @@ static void damage_child_views_iterator(struct sway_container *con,
 void output_damage_whole_container(struct sway_output *output,
 		struct sway_container *con) {
 	// Pad the box by 1px, because the width is a double and might be a fraction
-	int shadow_sigma = con->shadow_enabled ? config->shadow_blur_sigma : 0;
 	struct wlr_box box = {
-		.x = con->current.x - output->lx - 1 - shadow_sigma,
-		.y = con->current.y - output->ly - 1 - shadow_sigma,
-		.width = con->current.width + 2 + shadow_sigma * 2,
-		.height = con->current.height + 2 + shadow_sigma * 2,
+		.x = con->current.x - output->lx - 1,
+		.y = con->current.y - output->ly - 1,
+		.width = con->current.width + 2,
+		.height = con->current.height + 2,
 	};
 	scale_box(&box, output->wlr_output->scale);
 	if (wlr_damage_ring_add_box(&output->damage_ring, &box)) {
@@ -797,6 +797,8 @@ static void handle_destroy(struct wl_listener *listener, void *data) {
 	if (output->enabled) {
 		output_disable(output);
 	}
+
+	fx_renderer_fini(output->renderer);
 
 	output_begin_destroy(output);
 
@@ -939,6 +941,14 @@ void handle_new_output(struct wl_listener *listener, void *data) {
 	output->server = server;
 	wlr_damage_ring_init(&output->damage_ring);
 
+	// Init FX Renderer
+	struct wlr_egl *egl = wlr_gles2_renderer_get_egl(server->wlr_renderer);
+	output->renderer = fx_renderer_create(egl);
+	if (!output->renderer) {
+		sway_log(SWAY_ERROR, "Failed to create fx_renderer");
+		abort();
+	}
+
 	wl_signal_add(&wlr_output->events.destroy, &output->destroy);
 	output->destroy.notify = handle_destroy;
 	wl_signal_add(&wlr_output->events.commit, &output->commit);
@@ -963,6 +973,10 @@ void handle_new_output(struct wl_listener *listener, void *data) {
 
 	transaction_commit_dirty();
 
+	// From sway upstream (fixes damage_ring bounds being INT_MAX)
+	int width, height;
+	wlr_output_transformed_resolution(output->wlr_output, &width, &height);
+	wlr_damage_ring_set_bounds(&output->damage_ring, width, height);
 	update_output_manager_config(server);
 }
 

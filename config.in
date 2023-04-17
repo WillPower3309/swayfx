@@ -24,6 +24,12 @@ set $menu dmenu_path | dmenu | xargs swaymsg exec --
 # window corner radius in px
 corner_radius 10
 
+# Window background blur
+blur off
+blur_xray off
+blur_passes 2
+blur_radius 5
+
 shadows off
 shadows_on_csd off
 shadow_blur_radius 20
