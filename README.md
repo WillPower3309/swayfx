@@ -1,8 +1,15 @@
+<div align = center>
+
 # SwayFX: A Beautiful Sway Fork
+
+https://discord.gg/qsSx397rkh
+
+</div>
 
 ![swayfx_screenshot](assets/swayfx_screenshot.jpg)
 Sway is an incredible window manager, and certainly one of the most well established wayland window managers. However, it is restricted to only include the functionality that existed in i3. This fork ditches the simple wlr_renderer, and replaces it with our fx_renderer, capable of rendering with fancy GLES2 effects. This, along with a couple of minor changes, expands sway's featureset to include the following:
 
++ **Blur**
 + **Anti-aliased rounded corners, borders, and titlebars**
 + **Shadows**
 + **Dim unfocused windows**
@@ -37,7 +44,6 @@ Sway is an incredible window manager, and certainly one of the most well establi
 
 + fade in / out animations
 + window movement animations
-+ blur
 
 ## Installation
 
