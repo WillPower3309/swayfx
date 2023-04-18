@@ -783,20 +783,25 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		return;
 	}
 
+	float output_scale = output->wlr_output->scale;
+	struct wlr_box box;
+
 	// render shadow
 	if (con->shadow_enabled && config->shadow_blur_sigma > 0 && config->shadow_color[3] > 0.0) {
-		struct wlr_box box = { floor(state->x), floor(state->y), state->width, state->height };
-		scale_box(&box, output->wlr_output->scale);
+		box.x = floor(state->x);
+		box.y = floor(state->y);
+		box.width = state->width;
+		box.height = state->height;
+		scale_box(&box, output_scale);
+		int scaled_corner_radius = (con->corner_radius + state->border_thickness) * output_scale;
 		render_box_shadow(output, damage, &box, config->shadow_color, config->shadow_blur_sigma,
-				con->corner_radius + state->border_thickness);
+				scaled_corner_radius);
 	}
 
 	if (state->border == B_NONE || state->border == B_CSD) {
 		return;
 	}
 
-	struct wlr_box box;
-	float output_scale = output->wlr_output->scale;
 	float color[4];
 
 	if (state->border_left) {
