@@ -656,7 +656,8 @@ static void render_view_toplevels(struct sway_view *view, struct sway_output *ou
 	clip_box.y = state.y - output->ly;
 	clip_box.width = state.width;
 	clip_box.height = state.height;
-	if (state.border == B_PIXEL || state.border == B_NORMAL) {
+	if (state.fullscreen_mode == FULLSCREEN_NONE
+			&& (state.border == B_PIXEL || state.border == B_NORMAL)) {
 		clip_box.x += state.border_thickness;
 		clip_box.y += state.border_thickness;
 		clip_box.width -= state.border_thickness * 2;
