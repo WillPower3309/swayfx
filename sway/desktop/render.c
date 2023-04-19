@@ -32,12 +32,6 @@
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
 
-struct render_data {
-	pixman_region32_t *damage;
-	struct wlr_box *clip_box;
-	struct decoration_data deco_data;
-};
-
 struct workspace_effect_info {
 	bool container_wants_blur;
 	bool container_wants_shadow;
@@ -333,7 +327,7 @@ damage_finish:
 static void render_surface_iterator(struct sway_output *output,
 		struct sway_view *view, struct wlr_surface *surface,
 		struct wlr_box *_box, void *_data) {
-	struct render_data *data = _data;
+	struct fx_render_data *data = _data;
 	struct wlr_output *wlr_output = output->wlr_output;
 	pixman_region32_t *output_damage = data->damage;
 
@@ -364,7 +358,16 @@ static void render_surface_iterator(struct sway_output *output,
 	deco_data.corner_radius *= wlr_output->scale;
 
 	// render blur (view->surface == surface excludes blurring subsurfaces)
-	if (deco_data.blur && should_parameters_blur() && view->surface == surface) {
+	bool is_subsurface = true;
+	bool is_floating = true;
+	if (data->is_toplevel_surface) {
+		is_subsurface = false;
+		is_floating = !config->blur_xray;
+	} else if (view) {
+		is_subsurface = view->surface != surface;
+		is_floating = container_is_floating(view->container);
+	}
+	if (deco_data.blur && should_parameters_blur() && !is_subsurface) {
 		pixman_region32_t opaque_region;
 		pixman_region32_init(&opaque_region);
 
@@ -381,7 +384,6 @@ static void render_surface_iterator(struct sway_output *output,
 			int width, height;
 			wlr_output_transformed_resolution(wlr_output, &width, &height);
 			struct wlr_fbox blur_src_box = { 0, 0, width, height };
-			bool is_floating = container_is_floating(view->container);
 			render_blur(!is_floating, output, output_damage, &blur_src_box, &dst_box, &opaque_region,
 					surface->current.width, surface->current.height, surface->current.scale, deco_data.corner_radius);
 		}
@@ -401,7 +403,7 @@ static void render_surface_iterator(struct sway_output *output,
 
 static void render_layer_toplevel(struct sway_output *output,
 		pixman_region32_t *damage, struct wl_list *layer_surfaces) {
-	struct render_data data = {
+	struct fx_render_data data = {
 		.damage = damage,
 		.deco_data = get_undecorated_decoration_data(),
 	};
@@ -411,7 +413,7 @@ static void render_layer_toplevel(struct sway_output *output,
 
 static void render_layer_popups(struct sway_output *output,
 		pixman_region32_t *damage, struct wl_list *layer_surfaces) {
-	struct render_data data = {
+	struct fx_render_data data = {
 		.damage = damage,
 		.deco_data = get_undecorated_decoration_data(),
 	};
@@ -422,7 +424,7 @@ static void render_layer_popups(struct sway_output *output,
 #if HAVE_XWAYLAND
 static void render_unmanaged(struct sway_output *output,
 		pixman_region32_t *damage, struct wl_list *unmanaged) {
-	struct render_data data = {
+	struct fx_render_data data = {
 		.damage = damage,
 		.deco_data = get_undecorated_decoration_data(),
 	};
@@ -433,7 +435,7 @@ static void render_unmanaged(struct sway_output *output,
 
 static void render_drag_icons(struct sway_output *output,
 		pixman_region32_t *damage, struct wl_list *drag_icons) {
-	struct render_data data = {
+	struct fx_render_data data = {
 		.damage = damage,
 		.deco_data = get_undecorated_decoration_data(),
 	};
@@ -645,7 +647,7 @@ void premultiply_alpha(float color[4], float opacity) {
 
 static void render_view_toplevels(struct sway_view *view, struct sway_output *output,
 		pixman_region32_t *damage, struct decoration_data deco_data) {
-	struct render_data data = {
+	struct fx_render_data data = {
 		.damage = damage,
 		.deco_data = deco_data,
 	};
@@ -669,7 +671,7 @@ static void render_view_toplevels(struct sway_view *view, struct sway_output *ou
 
 static void render_view_popups(struct sway_view *view, struct sway_output *output,
 		pixman_region32_t *damage, struct decoration_data deco_data) {
-	struct render_data data = {
+	struct fx_render_data data = {
 		.damage = damage,
 		.deco_data = deco_data,
 	};
@@ -1826,7 +1828,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 		}
 
 		if (server.session_lock.lock != NULL) {
-			struct render_data data = {
+			struct fx_render_data data = {
 				.damage = damage,
 				.deco_data = get_undecorated_decoration_data(),
 			};

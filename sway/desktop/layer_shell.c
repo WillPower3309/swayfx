@@ -685,6 +685,15 @@ void handle_layer_shell_surface(struct wl_listener *listener, void *data) {
 	sway_layer->layer_surface = layer_surface;
 	layer_surface->data = sway_layer;
 
+	enum zwlr_layer_shell_v1_layer layer = layer_surface->current.layer;
+	// TODO: Effects bool in config?
+	if (layer != ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM && layer != ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND) {
+		printf("Namespace: %s\n", layer_surface->namespace);
+		sway_layer->should_blur = true;
+		sway_layer->should_corner_radius = true;
+		sway_layer->should_shadow = true;
+	}
+
 	struct sway_output *output = layer_surface->output->data;
 	sway_layer->output_destroy.notify = handle_output_destroy;
 	wl_signal_add(&output->events.disable, &sway_layer->output_destroy);

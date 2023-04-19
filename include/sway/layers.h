@@ -27,6 +27,10 @@ struct sway_layer_surface {
 	enum zwlr_layer_shell_v1_layer layer;
 
 	struct wl_list subsurfaces;
+
+	bool should_blur;
+	bool should_corner_radius;
+	bool should_shadow;
 };
 
 struct sway_layer_popup {
