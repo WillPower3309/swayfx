@@ -1,3 +1,4 @@
+#include <wlr/util/box.h>
 #include "log.h"
 #include "sway/desktop/fx_renderer/fx_framebuffer.h"
 
@@ -26,15 +27,16 @@ void fx_framebuffer_create(struct fx_framebuffer *buffer, int width, int height,
 
 	if (firstAlloc || buffer->texture.width != width || buffer->texture.height != height) {
 		glBindTexture(GL_TEXTURE_2D, buffer->texture.id);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
+				monitor_box.width, monitor_box.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 
 		glBindFramebuffer(GL_FRAMEBUFFER, buffer->fb);
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
 				buffer->texture.id, 0);
 		buffer->texture.target = GL_TEXTURE_2D;
 		buffer->texture.has_alpha = false;
-		buffer->texture.width = width;
-		buffer->texture.height = height;
+		buffer->texture.width = monitor_box.width;
+		buffer->texture.height = monitor_box.height;
 
 		GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 		if (status != GL_FRAMEBUFFER_COMPLETE) {

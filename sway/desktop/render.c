@@ -178,7 +178,6 @@ void render_blur_segments(struct fx_renderer *renderer,
 		const float matrix[static 9], pixman_region32_t* damage,
 		struct fx_framebuffer **buffer, struct blur_shader* shader,
 		const struct wlr_box *box, int blur_radius) {
-
 	if (*buffer == &renderer->effects_buffer) {
 		fx_framebuffer_bind(&renderer->effects_buffer_swapped);
 	} else {
@@ -206,11 +205,12 @@ void render_blur_segments(struct fx_renderer *renderer,
 /** Blurs the main_buffer content and returns the blurred framebuffer */
 struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer, struct sway_output *output,
 		pixman_region32_t *original_damage, const float box_matrix[static 9], const struct wlr_box *box) {
-	struct wlr_box monitor_box = get_monitor_box(output->wlr_output);
+	struct wlr_output *wlr_output = output->wlr_output;
+	struct wlr_box monitor_box = get_monitor_box(wlr_output);
 
-	const enum wl_output_transform transform = wlr_output_transform_invert(output->wlr_output->transform);
+	const enum wl_output_transform transform = wlr_output_transform_invert(wlr_output->transform);
 	float matrix[9];
-	wlr_matrix_project_box(matrix, &monitor_box, transform, 0, output->wlr_output->transform_matrix);
+	wlr_matrix_project_box(matrix, &monitor_box, transform, 0, wlr_output->transform_matrix);
 
 	float gl_matrix[9];
 	wlr_matrix_multiply(gl_matrix, renderer->projection, matrix);
@@ -218,7 +218,7 @@ struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer, struct
 	pixman_region32_t damage;
 	pixman_region32_init(&damage);
 	pixman_region32_copy(&damage, original_damage);
-	wlr_region_transform(&damage, &damage, wlr_output_transform_invert(output->wlr_output->transform),
+	wlr_region_transform(&damage, &damage, wlr_output_transform_invert(wlr_output->transform),
 			monitor_box.width, monitor_box.height);
 	wlr_region_expand(&damage, &damage, get_blur_size());
 
@@ -1986,7 +1986,11 @@ render_overlay:
 
 renderer_end:
 	// Draw the contents of our buffer into the wlr buffer
+<<<<<<< HEAD
 	fx_framebuffer_bind(&renderer->wlr_buffer);
+=======
+	fx_framebuffer_bind(&renderer->wlr_buffer, wlr_output);
+>>>>>>> f1ff836b (Fixed rendering)
 	float clear_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
 	if (pixman_region32_not_empty(&extended_damage)) {
 		int nrects;
