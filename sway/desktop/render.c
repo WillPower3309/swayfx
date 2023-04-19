@@ -149,16 +149,23 @@ static void render_texture(struct wlr_output *wlr_output,
 		goto damage_finish;
 	}
 
+	// ensure the box is updated as per the output orientation
+	struct wlr_box transformed_box;
+	int width, height;
+	wlr_output_transformed_resolution(wlr_output, &width, &height);
+	wlr_box_transform(&transformed_box, dst_box,
+			wlr_output_transform_invert(wlr_output->transform), width, height);
+
 	int nrects;
 	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
 	for (int i = 0; i < nrects; ++i) {
 		scissor_output(wlr_output, &rects[i]);
 		set_scale_filter(wlr_output, texture, output->scale_filter);
 		if (src_box != NULL) {
-			fx_render_subtexture_with_matrix(renderer, texture, wlr_output, src_box, dst_box,
+			fx_render_subtexture_with_matrix(renderer, texture, src_box, &transformed_box,
 					matrix, deco_data);
 		} else {
-			fx_render_texture_with_matrix(renderer, texture, wlr_output, dst_box, matrix, deco_data);
+			fx_render_texture_with_matrix(renderer, texture, &transformed_box, matrix, deco_data);
 		}
 	}
 
@@ -545,11 +552,22 @@ void render_rounded_rect(struct sway_output *output, pixman_region32_t *output_d
 		goto damage_finish;
 	}
 
+	float matrix[9];
+	wlr_matrix_project_box(matrix, &box, WL_OUTPUT_TRANSFORM_NORMAL, 0,
+			wlr_output->transform_matrix);
+
+	// ensure the box is updated as per the output orientation
+	struct wlr_box transformed_box;
+	int width, height;
+	wlr_output_transformed_resolution(wlr_output, &width, &height);
+	wlr_box_transform(&transformed_box, &box,
+			wlr_output_transform_invert(wlr_output->transform), width, height);
+
 	int nrects;
 	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
 	for (int i = 0; i < nrects; ++i) {
 		scissor_output(wlr_output, &rects[i]);
-		fx_render_rounded_rect(renderer, wlr_output, &box, color, wlr_output->transform_matrix,
+		fx_render_rounded_rect(renderer, &transformed_box, color, matrix,
 				corner_radius, corner_location);
 	}
 
@@ -576,11 +594,22 @@ void render_border_corner(struct sway_output *output, pixman_region32_t *output_
 		goto damage_finish;
 	}
 
+	float matrix[9];
+	wlr_matrix_project_box(matrix, &box, WL_OUTPUT_TRANSFORM_NORMAL, 0,
+			wlr_output->transform_matrix);
+
+	// ensure the box is updated as per the output orientation
+	struct wlr_box transformed_box;
+	int width, height;
+	wlr_output_transformed_resolution(wlr_output, &width, &height);
+	wlr_box_transform(&transformed_box, &box,
+			wlr_output_transform_invert(wlr_output->transform), width, height);
+
 	int nrects;
 	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
 	for (int i = 0; i < nrects; ++i) {
 		scissor_output(wlr_output, &rects[i]);
-		fx_render_border_corner(renderer, wlr_output, &box, color, wlr_output->transform_matrix,
+		fx_render_border_corner(renderer, &transformed_box, color, matrix,
 				corner_location, corner_radius, border_thickness);
 	}
 
@@ -620,13 +649,24 @@ void render_box_shadow(struct sway_output *output, pixman_region32_t *output_dam
 		goto damage_finish;
 	}
 
+	float matrix[9];
+	wlr_matrix_project_box(matrix, &box, WL_OUTPUT_TRANSFORM_NORMAL, 0,
+			wlr_output->transform_matrix);
+
+	// ensure the box is updated as per the output orientation
+	struct wlr_box transformed_box;
+	int width, height;
+	wlr_output_transformed_resolution(wlr_output, &width, &height);
+	wlr_box_transform(&transformed_box, &box,
+			wlr_output_transform_invert(wlr_output->transform), width, height);
+
 	int nrects;
 	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
 	for (int i = 0; i < nrects; ++i) {
 		scissor_output(wlr_output, &rects[i]);
 
-		fx_render_box_shadow(renderer, wlr_output, &box, color,
-				wlr_output->transform_matrix, corner_radius, blur_sigma);
+		fx_render_box_shadow(renderer, &transformed_box, color, matrix,
+				corner_radius, blur_sigma);
 	}
 
 damage_finish:
