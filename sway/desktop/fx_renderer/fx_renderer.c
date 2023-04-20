@@ -629,6 +629,8 @@ void fx_render_border_corner(struct fx_renderer *renderer, const struct wlr_box 
 	}
 	assert(box->width > 0 && box->height > 0);
 
+	struct wlr_output *wlr_output = renderer->sway_output->wlr_output;
+
 	float gl_matrix[9];
 	wlr_matrix_multiply(gl_matrix, renderer->projection, matrix);
 
@@ -652,6 +654,66 @@ void fx_render_border_corner(struct fx_renderer *renderer, const struct wlr_box 
 	glUniform1f(renderer->shaders.corner.is_top_right, corner_location == TOP_RIGHT);
 	glUniform1f(renderer->shaders.corner.is_bottom_left, corner_location == BOTTOM_LEFT);
 	glUniform1f(renderer->shaders.corner.is_bottom_right, corner_location == BOTTOM_RIGHT);
+
+	// TODO: Remove this ugly abomination with a complete border rework...
+	bool top_left = false;
+	bool top_right = false;
+	bool bottom_left = false;
+	bool bottom_right = false;
+	switch (wlr_output_transform_invert(wlr_output->transform)) {
+		case WL_OUTPUT_TRANSFORM_NORMAL:
+			top_left = corner_location == TOP_LEFT;
+			top_right = corner_location == TOP_RIGHT;
+			bottom_left = corner_location == BOTTOM_LEFT;
+			bottom_right = corner_location == BOTTOM_RIGHT;
+			break;
+		case WL_OUTPUT_TRANSFORM_90:
+			top_left = corner_location == BOTTOM_LEFT;
+			top_right = corner_location == TOP_LEFT;
+			bottom_left = corner_location == BOTTOM_RIGHT;
+			bottom_right = corner_location == TOP_RIGHT;
+			break;
+		case WL_OUTPUT_TRANSFORM_180:
+			top_left = corner_location == BOTTOM_RIGHT;
+			top_right = corner_location == BOTTOM_LEFT;
+			bottom_left = corner_location == TOP_RIGHT;
+			bottom_right = corner_location == TOP_LEFT;
+			break;
+		case WL_OUTPUT_TRANSFORM_270:
+			top_left = corner_location == TOP_RIGHT;
+			top_right = corner_location == BOTTOM_RIGHT;
+			bottom_left = corner_location == TOP_LEFT;
+			bottom_right = corner_location == BOTTOM_LEFT;
+			break;
+		case WL_OUTPUT_TRANSFORM_FLIPPED:
+			top_left = corner_location == TOP_RIGHT;
+			top_right = corner_location == TOP_LEFT;
+			bottom_left = corner_location == BOTTOM_RIGHT;
+			bottom_right = corner_location == BOTTOM_LEFT;
+			break;
+		case WL_OUTPUT_TRANSFORM_FLIPPED_90:
+			top_left = corner_location == TOP_LEFT;
+			top_right = corner_location == BOTTOM_LEFT;
+			bottom_left = corner_location == TOP_RIGHT;
+			bottom_right = corner_location == BOTTOM_RIGHT;
+			break;
+		case WL_OUTPUT_TRANSFORM_FLIPPED_180:
+			top_left = corner_location == BOTTOM_LEFT;
+			top_right = corner_location == BOTTOM_RIGHT;
+			bottom_left = corner_location == TOP_LEFT;
+			bottom_right = corner_location == TOP_RIGHT;
+			break;
+		case WL_OUTPUT_TRANSFORM_FLIPPED_270:
+			top_left = corner_location == BOTTOM_RIGHT;
+			top_right = corner_location == TOP_RIGHT;
+			bottom_left = corner_location == BOTTOM_LEFT;
+			bottom_right = corner_location == TOP_LEFT;
+			break;
+	}
+	glUniform1f(renderer->shaders.corner.is_top_left, top_left);
+	glUniform1f(renderer->shaders.corner.is_top_right, top_right);
+	glUniform1f(renderer->shaders.corner.is_bottom_left, bottom_left);
+	glUniform1f(renderer->shaders.corner.is_bottom_right, bottom_right);
 
 	glUniform2f(renderer->shaders.corner.position, box->x, box->y);
 	glUniform1f(renderer->shaders.corner.radius, radius);
