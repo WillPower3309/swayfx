@@ -65,6 +65,15 @@ bool should_parameters_blur() {
 	return config->blur_params.radius > 0 && config->blur_params.num_passes > 0;
 }
 
+struct wlr_fbox wlr_fbox_from_wlr_box(struct wlr_box *box) {
+	return (struct wlr_fbox) {
+		.x = box->x,
+		.y = box->y,
+		.width = box->width,
+		.height = box->height,
+	};
+}
+
 /**
  * Apply scale to a width or height.
  *
@@ -383,9 +392,10 @@ static void render_surface_iterator(struct sway_output *output,
 		}
 
 		if (has_alpha) {
-			int width, height;
-			wlr_output_transformed_resolution(wlr_output, &width, &height);
-			struct wlr_fbox blur_src_box = { 0, 0, width, height };
+			struct wlr_box monitor_box = get_monitor_box(wlr_output);
+			wlr_box_transform(&monitor_box, &monitor_box,
+					wlr_output_transform_invert(wlr_output->transform), monitor_box.width, monitor_box.height);
+			struct wlr_fbox blur_src_box = wlr_fbox_from_wlr_box(&monitor_box);
 			bool is_floating = container_is_floating(view->container);
 			render_blur(!is_floating, output, output_damage, &blur_src_box, &dst_box, &opaque_region,
 					surface->current.width, surface->current.height, surface->current.scale, deco_data.corner_radius);
@@ -780,8 +790,10 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 				pixman_region32_union_rect(&opaque_region, &opaque_region, 0, 0, 0, 0);
 
 				struct wlr_box monitor_box = get_monitor_box(wlr_output);
+				wlr_box_transform(&monitor_box, &monitor_box,
+						wlr_output_transform_invert(wlr_output->transform), monitor_box.width, monitor_box.height);
 				// TODO: contribute wlroots function to allow creating an fbox from a box?
-				struct wlr_fbox src_box = { monitor_box.x, monitor_box.y, monitor_box.width, monitor_box.height };
+				struct wlr_fbox src_box = wlr_fbox_from_wlr_box(&monitor_box);
 				bool is_floating = container_is_floating(view->container);
 				render_blur(!is_floating, output, damage, &src_box, &dst_box, &opaque_region,
 						saved_buf->width, saved_buf->height, 1, deco_data.corner_radius);
@@ -1986,11 +1998,7 @@ render_overlay:
 
 renderer_end:
 	// Draw the contents of our buffer into the wlr buffer
-<<<<<<< HEAD
 	fx_framebuffer_bind(&renderer->wlr_buffer);
-=======
-	fx_framebuffer_bind(&renderer->wlr_buffer, wlr_output);
->>>>>>> f1ff836b (Fixed rendering)
 	float clear_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
 	if (pixman_region32_not_empty(&extended_damage)) {
 		int nrects;
