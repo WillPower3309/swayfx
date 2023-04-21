@@ -74,6 +74,33 @@ struct wlr_fbox wlr_fbox_from_wlr_box(struct wlr_box *box) {
 	};
 }
 
+// TODO: Remove this ugly abomination with a complete border rework...
+enum corner_location get_rotated_corner(enum corner_location corner_location,
+		enum wl_output_transform transform) {
+	if (corner_location == ALL || corner_location == NONE) {
+		return corner_location;
+	}
+	switch (transform) {
+		case WL_OUTPUT_TRANSFORM_NORMAL:
+			return corner_location;
+		case WL_OUTPUT_TRANSFORM_90:
+			return (corner_location + 1) % 4;
+		case WL_OUTPUT_TRANSFORM_180:
+			return (corner_location + 2) % 4;
+		case WL_OUTPUT_TRANSFORM_270:
+			return (corner_location + 3) % 4;
+		case WL_OUTPUT_TRANSFORM_FLIPPED:
+			return (corner_location + (1 - 2 * (corner_location % 2))) % 4;
+		case WL_OUTPUT_TRANSFORM_FLIPPED_90:
+			return (corner_location + (4 - 2 * (corner_location % 2))) % 4;
+		case WL_OUTPUT_TRANSFORM_FLIPPED_180:
+			return (corner_location + (3 - 2 * (corner_location % 2))) % 4;
+		case WL_OUTPUT_TRANSFORM_FLIPPED_270:
+			return (corner_location + (2 - 2 * (corner_location % 2))) % 4;
+	}
+	return corner_location;
+}
+
 /**
  * Apply scale to a width or height.
  *
@@ -566,12 +593,15 @@ void render_rounded_rect(struct sway_output *output, pixman_region32_t *output_d
 	wlr_matrix_project_box(matrix, &box, WL_OUTPUT_TRANSFORM_NORMAL, 0,
 			wlr_output->transform_matrix);
 
+	enum wl_output_transform transform = wlr_output_transform_invert(wlr_output->transform);
+
 	// ensure the box is updated as per the output orientation
 	struct wlr_box transformed_box;
 	int width, height;
 	wlr_output_transformed_resolution(wlr_output, &width, &height);
-	wlr_box_transform(&transformed_box, &box,
-			wlr_output_transform_invert(wlr_output->transform), width, height);
+	wlr_box_transform(&transformed_box, &box, transform, width, height);
+
+	corner_location = get_rotated_corner(corner_location, transform);
 
 	int nrects;
 	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
@@ -608,12 +638,15 @@ void render_border_corner(struct sway_output *output, pixman_region32_t *output_
 	wlr_matrix_project_box(matrix, &box, WL_OUTPUT_TRANSFORM_NORMAL, 0,
 			wlr_output->transform_matrix);
 
+	enum wl_output_transform transform = wlr_output_transform_invert(wlr_output->transform);
+
 	// ensure the box is updated as per the output orientation
 	struct wlr_box transformed_box;
 	int width, height;
 	wlr_output_transformed_resolution(wlr_output, &width, &height);
-	wlr_box_transform(&transformed_box, &box,
-			wlr_output_transform_invert(wlr_output->transform), width, height);
+	wlr_box_transform(&transformed_box, &box, transform, width, height);
+
+	corner_location = get_rotated_corner(corner_location, transform);
 
 	int nrects;
 	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
