@@ -71,6 +71,14 @@ The following commands may only be used in the configuration file.
 	*wordexp*(3) for details). The same include file can only be included once;
 	subsequent attempts will be ignored.
 
+*layer_effects* <layer-namespace> <effects>
+	Apply effects on specific layer shell surfaces, eg waybar or rofi.
+	At least one effect needs to be provided.
+
+	Effects:
+	- *blur*
+	- *corner_rounding*
+
 *scratchpad_minimize* enable|disable
 	Adjusts if minimized windows should be moved into the scratchpad.
 	Must be set at config-time (when starting sway).

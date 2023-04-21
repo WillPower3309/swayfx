@@ -475,6 +475,12 @@ struct blur_parameters {
 	int radius;
 };
 
+struct layer_effects {
+	char *namespace;
+	bool blur;
+	bool corner_radius;
+};
+
 /**
  * The configuration struct. The result of loading a config file.
  */
@@ -499,6 +505,8 @@ struct sway_config {
 
 	bool titlebar_separator;
 	bool scratchpad_minimize;
+
+	list_t *layer_effects;
 
 	char *swaynag_command;
 	struct swaynag_instance swaynag_config_errors;

@@ -157,6 +157,14 @@ void free_config(struct sway_config *config) {
 		}
 		list_free(config->criteria);
 	}
+	if (config->layer_effects) {
+		for (int i = 0; i < config->layer_effects->length; ++i) {
+			struct layer_effects *effect = config->criteria->items[i];
+			free(effect->namespace);
+			free(effect);
+		}
+		list_free(config->layer_effects);
+	}
 	list_free(config->no_focus);
 	list_free(config->active_bar_modifiers);
 	list_free_items_and_destroy(config->config_chain);
@@ -353,6 +361,8 @@ static void config_defaults(struct sway_config *config) {
 
 	config->titlebar_separator = true;
 	config->scratchpad_minimize = true;
+
+	if (!(config->layer_effects = create_list())) goto cleanup;
 
 	// The keysym to keycode translation
 	struct xkb_rule_names rules = {0};

@@ -686,12 +686,14 @@ void handle_layer_shell_surface(struct wl_listener *listener, void *data) {
 	layer_surface->data = sway_layer;
 
 	enum zwlr_layer_shell_v1_layer layer = layer_surface->current.layer;
-	// TODO: Effects bool in config?
 	if (layer != ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM && layer != ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND) {
-		printf("Namespace: %s\n", layer_surface->namespace);
-		sway_layer->should_blur = true;
-		sway_layer->should_corner_radius = true;
-		sway_layer->should_shadow = true;
+		for (int i = 0; i < config->layer_effects->length; ++i) {
+			struct layer_effects *effect = config->layer_effects->items[i];
+			if (strcmp(effect->namespace, layer_surface->namespace) == 0) {
+				sway_layer->effects = effect;
+				break;
+			}
+		}
 	}
 
 	struct sway_output *output = layer_surface->output->data;

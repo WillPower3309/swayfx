@@ -119,6 +119,7 @@ static const struct cmd_handler handlers[] = {
 static const struct cmd_handler config_handlers[] = {
 	{ "default_orientation", cmd_default_orientation },
 	{ "include", cmd_include },
+	{ "layer_effects", cmd_layer_effects },
 	{ "scratchpad_minimize", cmd_scratchpad_minimize },
 	{ "swaybg_command", cmd_swaybg_command },
 	{ "swaynag_command", cmd_swaynag_command },
