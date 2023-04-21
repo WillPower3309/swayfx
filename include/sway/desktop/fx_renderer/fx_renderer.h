@@ -21,6 +21,8 @@ enum fx_rounded_quad_shader_source {
 	SHADER_SOURCE_QUAD_ROUND = 1,
 	SHADER_SOURCE_QUAD_ROUND_TOP_LEFT = 2,
 	SHADER_SOURCE_QUAD_ROUND_TOP_RIGHT = 3,
+	SHADER_SOURCE_QUAD_ROUND_BOTTOM_RIGHT = 4,
+	SHADER_SOURCE_QUAD_ROUND_BOTTOM_LEFT = 5,
 };
 
 struct decoration_data {
@@ -106,6 +108,8 @@ struct fx_renderer {
 		struct rounded_quad_shader rounded_quad;
 		struct rounded_quad_shader rounded_tl_quad;
 		struct rounded_quad_shader rounded_tr_quad;
+		struct rounded_quad_shader rounded_bl_quad;
+		struct rounded_quad_shader rounded_br_quad;
 
 		struct blur_shader blur1;
 		struct blur_shader blur2;
