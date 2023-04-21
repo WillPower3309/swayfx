@@ -36,7 +36,7 @@ shadow_blur_radius 20
 shadow_color #0000007F
 
 # inactive window fade amount. 0.0 = no dimming, 1.0 = fully dimmed
-dim_inactive 0.0
+default_dim_inactive 0.0
 dim_inactive_colors.unfocused #000000FF
 dim_inactive_colors.urgent #900000FF
 
