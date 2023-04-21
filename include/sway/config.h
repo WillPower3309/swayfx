@@ -478,6 +478,7 @@ struct blur_parameters {
 struct layer_effects {
 	char *namespace;
 	bool blur;
+	bool shadow;
 	bool corner_radius;
 };
 

@@ -14,6 +14,7 @@ struct cmd_results *cmd_layer_effects(int argc, char **argv) {
 	effect->namespace = malloc(len + 1);
 	memcpy(effect->namespace, argv[0], len);
 	effect->blur = false;
+	effect->shadow = false;
 	effect->corner_radius = false;
 
 	// Parse the commands
@@ -22,6 +23,9 @@ struct cmd_results *cmd_layer_effects(int argc, char **argv) {
 		if (strcmp(arg, "blur") == 0) {
 			effect->blur = true;
 			continue;
+		} else if (strcmp(arg, "shadow") == 0) {
+			effect->shadow = true;
+			continue;
 		} else if (strcmp(arg, "corner_rounding") == 0) {
 			effect->corner_radius = true;
 			continue;
@@ -29,7 +33,7 @@ struct cmd_results *cmd_layer_effects(int argc, char **argv) {
 		return cmd_results_new(CMD_INVALID, "Invalid layer_effects effect! Got \"%s\"", arg);
 	}
 
-	if (!effect->blur && !effect->corner_radius) {
+	if (!effect->blur && !effect->shadow && !effect->corner_radius) {
 		return cmd_results_new(CMD_SUCCESS, NULL);
 	}
 

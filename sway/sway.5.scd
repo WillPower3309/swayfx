@@ -77,6 +77,7 @@ The following commands may only be used in the configuration file.
 
 	Effects:
 	- *blur*
+	- *shadow*
 	- *corner_rounding*
 
 *scratchpad_minimize* enable|disable

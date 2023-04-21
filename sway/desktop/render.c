@@ -48,6 +48,7 @@ struct decoration_data get_undecorated_decoration_data() {
 		.saturation = 1.0f,
 		.has_titlebar = false,
 		.blur = false,
+		.shadow = false,
 	};
 }
 
@@ -57,6 +58,10 @@ int get_blur_size() {
 
 bool should_parameters_blur() {
 	return config->blur_params.radius > 0 && config->blur_params.num_passes > 0;
+}
+
+bool should_parameters_shadow() {
+	return config->shadow_blur_sigma > 0 && config->shadow_color[3] > 0.0;
 }
 
 /**
@@ -323,6 +328,51 @@ damage_finish:
 	pixman_region32_fini(&inverse_opaque);
 }
 
+// _box.x and .y are expected to be layout-local
+// _box.width and .height are expected to be output-buffer-local
+void render_box_shadow(struct sway_output *output, pixman_region32_t *output_damage,
+		const struct wlr_box *_box, const float color[static 4],
+		float blur_sigma, float corner_radius) {
+	struct wlr_output *wlr_output = output->wlr_output;
+	struct fx_renderer *renderer = output->renderer;
+
+	struct wlr_box box;
+	memcpy(&box, _box, sizeof(struct wlr_box));
+	box.x -= output->lx * wlr_output->scale + blur_sigma;
+	box.y -= output->ly * wlr_output->scale + blur_sigma;
+	box.width += 2 * blur_sigma;
+	box.height += 2 * blur_sigma;
+
+	pixman_region32_t damage = create_damage(box, output_damage);
+
+	// don't damage area behind window since we dont render it anyway
+	struct wlr_box inner_box;
+	memcpy(&inner_box, _box, sizeof(struct wlr_box));
+	inner_box.x += corner_radius;
+	inner_box.y += corner_radius;
+	inner_box.width -= 2 * corner_radius;
+	inner_box.height -= 2 * corner_radius;
+	pixman_region32_t inner_damage = create_damage(inner_box, output_damage);
+	pixman_region32_subtract(&damage, &damage, &inner_damage);
+
+	bool damaged = pixman_region32_not_empty(&damage);
+	if (!damaged) {
+		goto damage_finish;
+	}
+
+	int nrects;
+	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
+	for (int i = 0; i < nrects; ++i) {
+		scissor_output(wlr_output, &rects[i]);
+
+		fx_render_box_shadow(renderer, &box, color,
+				wlr_output->transform_matrix, corner_radius, blur_sigma);
+	}
+
+damage_finish:
+	pixman_region32_fini(&damage);
+}
+
 
 static void render_surface_iterator(struct sway_output *output,
 		struct sway_view *view, struct wlr_surface *surface,
@@ -391,6 +441,7 @@ static void render_surface_iterator(struct sway_output *output,
 		pixman_region32_fini(&opaque_region);
 	}
 
+	// Render surface texture
 	struct wlr_fbox src_box;
 	wlr_surface_get_buffer_source_box(surface, &src_box);
 	struct fx_texture fx_texture = fx_texture_from_wlr_texture(texture);
@@ -399,6 +450,34 @@ static void render_surface_iterator(struct sway_output *output,
 
 	wlr_presentation_surface_sampled_on_output(server.presentation, surface,
 		wlr_output);
+
+	// render shadow (view->surface == surface excludes shadow on subsurfaces)
+	if (deco_data.shadow && should_parameters_shadow() && !is_subsurface) {
+		enum sway_container_border border = B_NONE;
+		int corner_radius = deco_data.corner_radius;
+		struct wlr_box box;
+		if (data->is_toplevel_surface) {
+			memcpy(&box, &dst_box, sizeof(struct wlr_box));
+		} else if (view) {
+			struct sway_container *con = view->container;
+			struct sway_container_state *state = &con->current;
+
+			border = view->container->current.border;
+			corner_radius = (con->corner_radius + state->border_thickness) * wlr_output->scale;
+
+			box.x = floor(state->x);
+			box.y = floor(state->y);
+			box.width = state->width;
+			box.height = state->height;
+		}
+		// Only draw shadows on CSD windows if shadows_on_csd is enabled
+		if (border == B_CSD && !config->shadows_on_csd_enabled) {
+			return;
+		}
+		scale_box(&box, wlr_output->scale);
+		render_box_shadow(output, output_damage, &box, config->shadow_color,
+				config->shadow_blur_sigma, corner_radius);
+	}
 }
 
 static void render_layer_toplevel(struct sway_output *output,
@@ -597,51 +676,6 @@ damage_finish:
 	pixman_region32_fini(&damage);
 }
 
-// _box.x and .y are expected to be layout-local
-// _box.width and .height are expected to be output-buffer-local
-void render_box_shadow(struct sway_output *output, pixman_region32_t *output_damage,
-		const struct wlr_box *_box, const float color[static 4],
-		float blur_sigma, float corner_radius) {
-	struct wlr_output *wlr_output = output->wlr_output;
-	struct fx_renderer *renderer = output->renderer;
-
-	struct wlr_box box;
-	memcpy(&box, _box, sizeof(struct wlr_box));
-	box.x -= output->lx * wlr_output->scale + blur_sigma;
-	box.y -= output->ly * wlr_output->scale + blur_sigma;
-	box.width += 2 * blur_sigma;
-	box.height += 2 * blur_sigma;
-
-	pixman_region32_t damage = create_damage(box, output_damage);
-
-	// don't damage area behind window since we dont render it anyway
-	struct wlr_box inner_box;
-	memcpy(&inner_box, _box, sizeof(struct wlr_box));
-	inner_box.x += corner_radius;
-	inner_box.y += corner_radius;
-	inner_box.width -= 2 * corner_radius;
-	inner_box.height -= 2 * corner_radius;
-	pixman_region32_t inner_damage = create_damage(inner_box, output_damage);
-	pixman_region32_subtract(&damage, &damage, &inner_damage);
-
-	bool damaged = pixman_region32_not_empty(&damage);
-	if (!damaged) {
-		goto damage_finish;
-	}
-
-	int nrects;
-	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
-	for (int i = 0; i < nrects; ++i) {
-		scissor_output(wlr_output, &rects[i]);
-
-		fx_render_box_shadow(renderer, &box, color,
-				wlr_output->transform_matrix, corner_radius, blur_sigma);
-	}
-
-damage_finish:
-	pixman_region32_fini(&damage);
-}
-
 void premultiply_alpha(float color[4], float opacity) {
 	color[3] *= opacity;
 	color[0] *= color[3];
@@ -724,7 +758,8 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 		enum wl_output_transform transform = wlr_output_transform_invert(saved_buf->transform);
 		wlr_matrix_project_box(matrix, &proj_box, transform, 0, wlr_output->transform_matrix);
 
-		struct sway_container_state state = view->container->current;
+		struct sway_container *con = view->container;
+		struct sway_container_state state = con->current;
 		dst_box.x = state.x - output->lx;
 		dst_box.y = state.y - output->ly;
 		dst_box.width = state.width;
@@ -752,7 +787,7 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 				struct wlr_box monitor_box = get_monitor_box(wlr_output);
 				// TODO: contribute wlroots function to allow creating an fbox from a box?
 				struct wlr_fbox src_box = { monitor_box.x, monitor_box.y, monitor_box.width, monitor_box.height };
-				bool is_floating = container_is_floating(view->container);
+				bool is_floating = container_is_floating(con);
 				render_blur(!is_floating, output, damage, &src_box, &dst_box, &opaque_region,
 						saved_buf->width, saved_buf->height, 1, deco_data.corner_radius);
 
@@ -760,9 +795,26 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 			}
 		}
 
+		// Render saved surface texture
 		struct fx_texture fx_texture = fx_texture_from_wlr_texture(saved_buf->buffer->texture);
 		render_texture(wlr_output, damage, &fx_texture,
 				&saved_buf->source_box, &dst_box, matrix, deco_data);
+
+		// render shadow
+		if (deco_data.shadow && should_parameters_shadow()
+				// Only draw shadows on CSD windows if shadows_on_csd is enabled
+				&& !(con->current.border == B_CSD && !config->shadows_on_csd_enabled)) {
+			struct wlr_box box = {
+				.x = floor(state.x),
+				.y = floor(state.y),
+				.width = state.width,
+				.height = state.height,
+			};
+			int corner_radius = (con->corner_radius + state.border_thickness) * wlr_output->scale;
+			scale_box(&box, wlr_output->scale);
+			render_box_shadow(output, damage, &box, config->shadow_color,
+					config->shadow_blur_sigma, corner_radius);
+		}
 	}
 
 	// FIXME: we should set the surface that this saved buffer originates from
@@ -793,18 +845,6 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 
 	float output_scale = output->wlr_output->scale;
 	struct wlr_box box;
-
-	// render shadow
-	if (con->shadow_enabled && config->shadow_blur_sigma > 0 && config->shadow_color[3] > 0.0) {
-		box.x = floor(state->x);
-		box.y = floor(state->y);
-		box.width = state->width;
-		box.height = state->height;
-		scale_box(&box, output_scale);
-		int scaled_corner_radius = (con->corner_radius + state->border_thickness) * output_scale;
-		render_box_shadow(output, damage, &box, config->shadow_color, config->shadow_blur_sigma,
-				scaled_corner_radius);
-	}
 
 	if (state->border == B_NONE || state->border == B_CSD) {
 		return;
@@ -1357,6 +1397,7 @@ static void render_containers_linear(struct sway_output *output,
 				.saturation = child->saturation,
 				.has_titlebar = has_titlebar,
 				.blur = child->blur_enabled,
+				.shadow = child->shadow_enabled,
 			};
 			render_view(output, damage, child, colors, deco_data);
 			if (has_titlebar) {
@@ -1465,6 +1506,7 @@ static void render_containers_tabbed(struct sway_output *output,
 			.saturation = current->saturation,
 			.has_titlebar = true,
 			.blur = current->blur_enabled,
+			.shadow = current->shadow_enabled,
 		};
 		render_view(output, damage, current, current_colors, deco_data);
 	} else {
@@ -1540,6 +1582,7 @@ static void render_containers_stacked(struct sway_output *output,
 			.corner_radius = current->corner_radius,
 			.has_titlebar = true,
 			.blur = current->blur_enabled,
+			.shadow = current->shadow_enabled,
 		};
 		render_view(output, damage, current, current_colors, deco_data);
 	} else {
@@ -1641,6 +1684,7 @@ static void render_floating_container(struct sway_output *soutput,
 			.corner_radius = con->corner_radius,
 			.has_titlebar = has_titlebar,
 			.blur = con->blur_enabled,
+			.shadow = con->shadow_enabled,
 		};
 		render_view(soutput, damage, con, colors, deco_data);
 		if (has_titlebar) {
@@ -1944,6 +1988,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 			.saturation = focus->saturation,
 			.has_titlebar = false,
 			.blur = false,
+			.shadow = false,
 		};
 		render_view_popups(focus->view, output, damage, deco_data);
 	}

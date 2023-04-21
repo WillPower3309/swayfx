@@ -202,9 +202,9 @@ void output_layer_for_each_toplevel_surface(struct sway_output *output,
 		struct fx_render_data *data = user_data;
 		struct layer_effects *effects = layer_surface->effects;
 		if (effects) {
-			data->deco_data.blur = effects->blur;
-			data->deco_data.corner_radius =
-				effects->corner_radius? config->corner_radius: 0;
+			data->deco_data.blur = effects->blur && config->blur_enabled;
+			data->deco_data.shadow = effects->shadow && config->shadow_enabled;
+			data->deco_data.corner_radius = effects->corner_radius? config->corner_radius: 0;
 		}
 
 		output_surface_for_each_surface(output, wlr_layer_surface_v1->surface,
