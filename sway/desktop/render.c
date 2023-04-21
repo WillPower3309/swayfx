@@ -405,6 +405,7 @@ static void render_layer_toplevel(struct sway_output *output,
 		pixman_region32_t *damage, struct wl_list *layer_surfaces) {
 	struct fx_render_data data = {
 		.damage = damage,
+		.is_toplevel_surface = true,
 		.deco_data = get_undecorated_decoration_data(),
 	};
 	output_layer_for_each_toplevel_surface(output, layer_surfaces,
@@ -415,6 +416,7 @@ static void render_layer_popups(struct sway_output *output,
 		pixman_region32_t *damage, struct wl_list *layer_surfaces) {
 	struct fx_render_data data = {
 		.damage = damage,
+		.is_toplevel_surface = false,
 		.deco_data = get_undecorated_decoration_data(),
 	};
 	output_layer_for_each_popup_surface(output, layer_surfaces,
@@ -426,6 +428,7 @@ static void render_unmanaged(struct sway_output *output,
 		pixman_region32_t *damage, struct wl_list *unmanaged) {
 	struct fx_render_data data = {
 		.damage = damage,
+		.is_toplevel_surface = false,
 		.deco_data = get_undecorated_decoration_data(),
 	};
 	output_unmanaged_for_each_surface(output, unmanaged,
@@ -437,6 +440,7 @@ static void render_drag_icons(struct sway_output *output,
 		pixman_region32_t *damage, struct wl_list *drag_icons) {
 	struct fx_render_data data = {
 		.damage = damage,
+		.is_toplevel_surface = false,
 		.deco_data = get_undecorated_decoration_data(),
 	};
 	output_drag_icons_for_each_surface(output, drag_icons,
@@ -649,6 +653,7 @@ static void render_view_toplevels(struct sway_view *view, struct sway_output *ou
 		pixman_region32_t *damage, struct decoration_data deco_data) {
 	struct fx_render_data data = {
 		.damage = damage,
+		.is_toplevel_surface = false,
 		.deco_data = deco_data,
 	};
 	// Clip the window to its view size, ignoring CSD
@@ -673,6 +678,7 @@ static void render_view_popups(struct sway_view *view, struct sway_output *outpu
 		pixman_region32_t *damage, struct decoration_data deco_data) {
 	struct fx_render_data data = {
 		.damage = damage,
+		.is_toplevel_surface = false,
 		.deco_data = deco_data,
 	};
 	output_view_for_each_popup_surface(output, view,
@@ -1830,6 +1836,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 		if (server.session_lock.lock != NULL) {
 			struct fx_render_data data = {
 				.damage = damage,
+				.is_toplevel_surface = false,
 				.deco_data = get_undecorated_decoration_data(),
 			};
 

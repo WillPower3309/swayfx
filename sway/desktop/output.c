@@ -205,7 +205,6 @@ void output_layer_for_each_toplevel_surface(struct sway_output *output,
 			data->deco_data.blur = effects->blur;
 			data->deco_data.corner_radius =
 				effects->corner_radius? config->corner_radius: 0;
-			data->is_toplevel_surface = true;
 		}
 
 		output_surface_for_each_surface(output, wlr_layer_surface_v1->surface,
