@@ -230,6 +230,11 @@ following properties:
 :  string
 :  The transform currently in use for the output. This can be _normal_, _90_,
    _180_, _270_, _flipped-90_, _flipped-180_, or _flipped-270_
+|- layer_shell_surfaces
+:  array
+:  An array of all layer-shell surfaces attached to the output. Each object
+   contains _namespace_, _layer_, and _extent_ object that contains _x_, _y_
+   _width_, and _height_
 |- current_workspace
 :  string
 :  The workspace currently visible on the output or _null_ for disabled outputs
@@ -259,6 +264,28 @@ following properties:
 		"scale": 1.0,
 		"subpixel_hinting": "rgb",
 		"transform": "normal",
+		"layer_shell_surfaces": [
+			{
+				"namespace": "wallpaper",
+				"layer": "background",
+				"extent": {
+					"width": 2560,
+					"height": 1440,
+					"x": 0,
+					"y": 0
+				}
+			},
+			{
+				"namespace": "waybar",
+				"layer": "top",
+				"extent": {
+					"width": 2548,
+					"height": 31,
+					"x": 6,
+					"y": 6
+				}
+			}
+		],
 		"current_workspace": "1",
 		"modes": [
 			{
