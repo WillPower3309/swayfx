@@ -338,8 +338,8 @@ void render_box_shadow(struct sway_output *output, pixman_region32_t *output_dam
 
 	struct wlr_box box;
 	memcpy(&box, _box, sizeof(struct wlr_box));
-	box.x -= output->lx * wlr_output->scale + blur_sigma;
-	box.y -= output->ly * wlr_output->scale + blur_sigma;
+	box.x -= blur_sigma;
+	box.y -= blur_sigma;
 	box.width += 2 * blur_sigma;
 	box.height += 2 * blur_sigma;
 
