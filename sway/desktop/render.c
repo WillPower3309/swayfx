@@ -453,29 +453,19 @@ static void render_surface_iterator(struct sway_output *output,
 
 	// render shadow (view->surface == surface excludes shadow on subsurfaces)
 	if (deco_data.shadow && should_parameters_shadow() && !is_subsurface) {
-		enum sway_container_border border = B_NONE;
 		int corner_radius = deco_data.corner_radius;
-		struct wlr_box box;
-		if (data->is_toplevel_surface) {
-			memcpy(&box, &dst_box, sizeof(struct wlr_box));
-		} else if (view) {
+		if (view) {
 			struct sway_container *con = view->container;
 			struct sway_container_state *state = &con->current;
 
-			border = view->container->current.border;
-			corner_radius = (con->corner_radius + state->border_thickness) * wlr_output->scale;
+			// Only draw shadows on CSD windows if shadows_on_csd is enabled
+			if (con->current.border == B_CSD && !config->shadows_on_csd_enabled) {
+				return;
+			}
 
-			box.x = floor(state->x);
-			box.y = floor(state->y);
-			box.width = state->width;
-			box.height = state->height;
+			corner_radius = (con->corner_radius + state->border_thickness) * wlr_output->scale;
 		}
-		// Only draw shadows on CSD windows if shadows_on_csd is enabled
-		if (border == B_CSD && !config->shadows_on_csd_enabled) {
-			return;
-		}
-		scale_box(&box, wlr_output->scale);
-		render_box_shadow(output, output_damage, &box, config->shadow_color,
+		render_box_shadow(output, output_damage, &dst_box, config->shadow_color,
 				config->shadow_blur_sigma, corner_radius);
 	}
 }
@@ -804,15 +794,8 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 		if (deco_data.shadow && should_parameters_shadow()
 				// Only draw shadows on CSD windows if shadows_on_csd is enabled
 				&& !(con->current.border == B_CSD && !config->shadows_on_csd_enabled)) {
-			struct wlr_box box = {
-				.x = floor(state.x),
-				.y = floor(state.y),
-				.width = state.width,
-				.height = state.height,
-			};
 			int corner_radius = (con->corner_radius + state.border_thickness) * wlr_output->scale;
-			scale_box(&box, wlr_output->scale);
-			render_box_shadow(output, damage, &box, config->shadow_color,
+			render_box_shadow(output, damage, &dst_box, config->shadow_color,
 					config->shadow_blur_sigma, corner_radius);
 		}
 	}
