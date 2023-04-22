@@ -159,7 +159,7 @@ void free_config(struct sway_config *config) {
 	}
 	if (config->layer_effects) {
 		for (int i = 0; i < config->layer_effects->length; ++i) {
-			struct layer_effects *effect = config->criteria->items[i];
+			struct layer_effects *effect = config->layer_effects->items[i];
 			free(effect->namespace);
 			free(effect);
 		}

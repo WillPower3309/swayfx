@@ -51,7 +51,7 @@ struct cmd_results *cmd_layer_effects(int argc, char **argv) {
 	}
 
 	if (effect) {
-		list_add(config->layer_effects, effect);
+		list_add(effects, effect);
 	}
 
 	return cmd_results_new(CMD_SUCCESS, NULL);
