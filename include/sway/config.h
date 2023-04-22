@@ -479,7 +479,7 @@ struct layer_effects {
 	char *namespace;
 	bool blur;
 	bool shadow;
-	bool corner_radius;
+	bool corner_rounding;
 };
 
 /**
