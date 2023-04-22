@@ -373,6 +373,21 @@ static void ipc_json_describe_enabled_output(struct sway_output *output,
 					json_object_new_int(lsurface->extent.y));
 			json_object_object_add(layer, "extent", extent);
 
+			json_object *effects = json_object_new_array();
+			struct layer_effects *layer_effects = lsurface->effects;
+			if (layer_effects) {
+				if (layer_effects->blur) {
+					json_object_array_add(effects, json_object_new_string("blur"));
+				}
+				if (layer_effects->shadow) {
+					json_object_array_add(effects, json_object_new_string("shadow"));
+				}
+				if (layer_effects->corner_rounding) {
+					json_object_array_add(effects, json_object_new_string("corner_rounding"));
+				}
+			}
+			json_object_object_add(layer, "effects", effects);
+
 			json_object_array_add(layers, layer);
 		}
 	}

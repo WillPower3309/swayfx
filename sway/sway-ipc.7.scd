@@ -233,7 +233,7 @@ following properties:
 |- layer_shell_surfaces
 :  array
 :  An array of all layer-shell surfaces attached to the output. Each object
-   contains _namespace_, _layer_, and _extent_ object that contains _x_, _y_
+   contains _namespace_, _layer_, _effects_, and _extent_ object that contains _x_, _y_
    _width_, and _height_
 |- current_workspace
 :  string
@@ -273,7 +273,9 @@ following properties:
 					"height": 1440,
 					"x": 0,
 					"y": 0
-				}
+				},
+				"effects": [
+				]
 			},
 			{
 				"namespace": "waybar",
@@ -283,7 +285,12 @@ following properties:
 					"height": 31,
 					"x": 6,
 					"y": 6
-				}
+				},
+				"effects": [
+					"blur",
+					"shadow",
+					"corner_rounding"
+				]
 			}
 		],
 		"current_workspace": "1",
