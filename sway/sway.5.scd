@@ -73,7 +73,9 @@ The following commands may only be used in the configuration file.
 
 *layer_effects* <layer-namespace> <effects>
 	Apply effects on specific layer shell surfaces, eg waybar or rofi.
-	At least one effect needs to be provided.
+	At least one effect needs to be provided. The <layer-namespace> can be
+	gotten through *sway-ipc*. Note: only surfaces in the _top_ and _overlay_
+	layers can use these effects.
 
 	Effects:
 	- *blur*
