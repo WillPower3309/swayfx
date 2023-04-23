@@ -464,6 +464,13 @@ static void render_surface_iterator(struct sway_output *output,
 			}
 
 			corner_radius = (con->corner_radius + state->border_thickness) * wlr_output->scale;
+
+			// Account for titlebars
+			dst_box.x = floor(state->x);
+			dst_box.y = floor(state->y);
+			dst_box.width = state->width;
+			dst_box.height = state->height;
+			scale_box(&dst_box, wlr_output->scale);
 		}
 		render_box_shadow(output, output_damage, &dst_box, config->shadow_color,
 				config->shadow_blur_sigma, corner_radius);
