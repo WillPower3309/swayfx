@@ -12,7 +12,7 @@ struct fx_framebuffer {
 	GLuint fb;
 };
 
-void fx_framebuffer_bind(struct fx_framebuffer *buffer, GLsizei width, GLsizei height);
+void fx_framebuffer_bind(struct fx_framebuffer *buffer);
 
 void fx_framebuffer_create(struct fx_framebuffer *buffer, int width, int height, bool bind);
 

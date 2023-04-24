@@ -1,9 +1,8 @@
 #include "log.h"
 #include "sway/desktop/fx_renderer/fx_framebuffer.h"
 
-void fx_framebuffer_bind(struct fx_framebuffer *buffer, GLsizei width, GLsizei height) {
+void fx_framebuffer_bind(struct fx_framebuffer *buffer) {
 	glBindFramebuffer(GL_FRAMEBUFFER, buffer->fb);
-	glViewport(0, 0, width, height);
 }
 
 void fx_framebuffer_create(struct fx_framebuffer *buffer, int width, int height, bool bind) {
@@ -48,7 +47,7 @@ void fx_framebuffer_create(struct fx_framebuffer *buffer, int width, int height,
 	// Bind the default framebuffer
 	glBindTexture(GL_TEXTURE_2D, 0);
 	if (bind) {
-		fx_framebuffer_bind(buffer, width, height);
+		fx_framebuffer_bind(buffer);
 	}
 }
 

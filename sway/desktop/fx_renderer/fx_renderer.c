@@ -374,6 +374,7 @@ void fx_renderer_fini(struct fx_renderer *renderer) {
 }
 
 void fx_renderer_begin(struct fx_renderer *renderer, int width, int height) {
+	glViewport(0, 0, width, height);
 	renderer->viewport_width = width;
 	renderer->viewport_height = height;
 
@@ -399,7 +400,7 @@ void fx_renderer_begin(struct fx_renderer *renderer, int width, int height) {
 	glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
 	// Bind to our main framebuffer
-	fx_framebuffer_bind(&renderer->main_buffer, width, height);
+	fx_framebuffer_bind(&renderer->main_buffer);
 }
 
 void fx_renderer_end(struct fx_renderer *renderer) {

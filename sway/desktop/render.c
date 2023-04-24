@@ -167,17 +167,15 @@ damage_finish:
 }
 
 /* Renders the blur for each damaged rect and swaps the buffer */
-void render_blur_segments(struct fx_renderer *renderer, struct sway_output *output,
+void render_blur_segments(struct fx_renderer *renderer,
 		const float matrix[static 9], pixman_region32_t* damage,
 		struct fx_framebuffer **buffer, struct blur_shader* shader,
 		const struct wlr_box *box, int blur_radius) {
-	int width, height;
-	wlr_output_transformed_resolution(output->wlr_output, &width, &height);
 
 	if (*buffer == &renderer->effects_buffer) {
-		fx_framebuffer_bind(&renderer->effects_buffer_swapped, width, height);
+		fx_framebuffer_bind(&renderer->effects_buffer_swapped);
 	} else {
-		fx_framebuffer_bind(&renderer->effects_buffer, width, height);
+		fx_framebuffer_bind(&renderer->effects_buffer);
 	}
 
 	if (pixman_region32_not_empty(damage)) {
@@ -221,7 +219,7 @@ struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer, struct
 	struct fx_framebuffer *current_buffer = &renderer->main_buffer;
 
 	// Bind to blur framebuffer
-	fx_framebuffer_bind(&renderer->effects_buffer, monitor_box.width, monitor_box.height);
+	fx_framebuffer_bind(&renderer->effects_buffer);
 	glBindTexture(renderer->main_buffer.texture.target, renderer->main_buffer.texture.id);
 
 	// damage region will be scaled, make a temp
@@ -234,13 +232,13 @@ struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer, struct
 	int blur_passes = config->blur_params.num_passes;
 
 	// First pass
-	render_blur_segments(renderer, output, gl_matrix, &tempDamage, &current_buffer,
+	render_blur_segments(renderer, gl_matrix, &tempDamage, &current_buffer,
 			&renderer->shaders.blur1, box, blur_radius);
 
 	// Downscale
 	for (int i = 1; i < blur_passes; ++i) {
 		wlr_region_scale(&tempDamage, &damage, 1.0f / (1 << (i + 1)));
-		render_blur_segments(renderer, output, gl_matrix, &tempDamage, &current_buffer,
+		render_blur_segments(renderer, gl_matrix, &tempDamage, &current_buffer,
 				&renderer->shaders.blur1, box, blur_radius);
 	}
 
@@ -248,7 +246,7 @@ struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer, struct
 	for (int i = blur_passes - 1; i >= 0; --i) {
 		// when upsampling we make the region twice as big
 		wlr_region_scale(&tempDamage, &damage, 1.0f / (1 << i));
-		render_blur_segments(renderer, output, gl_matrix, &tempDamage, &current_buffer,
+		render_blur_segments(renderer, gl_matrix, &tempDamage, &current_buffer,
 				&renderer->shaders.blur2, box, blur_radius);
 	}
 
@@ -256,7 +254,7 @@ struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer, struct
 	pixman_region32_fini(&damage);
 
 	// Bind back to the default buffer
-	fx_framebuffer_bind(&renderer->main_buffer, monitor_box.width, monitor_box.height);
+	fx_framebuffer_bind(&renderer->main_buffer);
 
 	return current_buffer;
 }
@@ -493,7 +491,7 @@ void render_monitor_blur(struct sway_output *output, pixman_region32_t *damage) 
 		fx_renderer_clear(clear_color);
 	}
 	render_whole_output(renderer, wlr_output, &fake_damage, &buffer->texture);
-	fx_framebuffer_bind(&renderer->main_buffer, monitor_box.width, monitor_box.height);
+	fx_framebuffer_bind(&renderer->main_buffer);
 
 	pixman_region32_fini(&fake_damage);
 
@@ -1762,7 +1760,6 @@ void output_render(struct sway_output *output, struct timespec *when,
 	int width, height;
 	wlr_output_transformed_resolution(wlr_output, &width, &height);
 
-
 	fx_renderer_begin(renderer, width, height);
 
 	if (debug.damage == DAMAGE_RERENDER) {
@@ -1949,7 +1946,7 @@ render_overlay:
 
 renderer_end:
 	// Draw the contents of our buffer into the wlr buffer
-	fx_framebuffer_bind(&renderer->wlr_buffer, width, height);
+	fx_framebuffer_bind(&renderer->wlr_buffer);
 	float clear_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
 	if (pixman_region32_not_empty(&extended_damage)) {
 		int nrects;
