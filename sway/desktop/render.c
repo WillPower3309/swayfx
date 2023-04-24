@@ -1775,6 +1775,39 @@ static struct workspace_effect_info get_workspace_effect_info(struct sway_output
 	};
 	workspace_find_container(workspace, find_con_effect_iterator, &iter_data);
 
+	if (effect_info.container_wants_blur
+		&& effect_info.container_wants_shadow
+		&& effect_info.should_render_optimized_blur) {
+		goto end;
+	}
+
+	// Check if any layer-shell surfaces will render effects
+	size_t len = sizeof(sway_output->layers) / sizeof(sway_output->layers[0]);
+	for (size_t i = 0; i < len; ++i) {
+		struct sway_layer_surface *lsurface;
+		wl_list_for_each(lsurface, &sway_output->layers[i], link) {
+			struct layer_effects *layer_effects = lsurface->effects;
+			if (layer_effects) {
+				if (layer_effects->blur && !lsurface->layer_surface->surface->opaque) {
+					effect_info.container_wants_blur = true;
+					// Check if we should render optimized blur
+					if (renderer->blur_buffer_dirty && config->blur_xray) {
+						effect_info.should_render_optimized_blur = true;
+					}
+				}
+				if (layer_effects->shadow) {
+					effect_info.container_wants_shadow = true;
+				}
+			}
+			if (effect_info.container_wants_blur
+				&& effect_info.container_wants_shadow
+				&& effect_info.should_render_optimized_blur) {
+				goto end;
+			}
+		}
+	}
+
+end:;
 	// Set the expanded damage region
 	bool shadow_enabled = effect_info.container_wants_shadow || config->shadow_enabled;
 	int shadow_sigma = shadow_enabled ? config->shadow_blur_sigma : 0;
