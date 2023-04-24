@@ -14,8 +14,7 @@ struct fx_framebuffer {
 
 void fx_framebuffer_bind(struct fx_framebuffer *buffer, GLsizei width, GLsizei height);
 
-void fx_framebuffer_create(struct wlr_output *output, struct fx_framebuffer *buffer,
-		bool bind);
+void fx_framebuffer_create(struct fx_framebuffer *buffer, int width, int height, bool bind);
 
 void fx_framebuffer_release(struct fx_framebuffer *buffer);
 

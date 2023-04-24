@@ -4,6 +4,7 @@
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 #include <stdbool.h>
+#include <wlr/render/egl.h>
 
 #include "sway/desktop/fx_renderer/fx_framebuffer.h"
 #include "sway/desktop/fx_renderer/fx_texture.h"
@@ -69,11 +70,9 @@ struct blur_shader {
 };
 
 struct fx_renderer {
-	struct wlr_egl *egl;
-
 	float projection[9];
 
-	struct sway_output *sway_output;
+	int viewport_width, viewport_height;
 
 	GLuint stencil_buffer_id;
 
@@ -147,7 +146,7 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl);
 
 void fx_renderer_fini(struct fx_renderer *renderer);
 
-void fx_renderer_begin(struct fx_renderer *renderer, struct sway_output *output);
+void fx_renderer_begin(struct fx_renderer *renderer, int width, int height);
 
 void fx_renderer_end(struct fx_renderer *renderer);
 
@@ -176,8 +175,8 @@ void fx_render_border_corner(struct fx_renderer *renderer, const struct wlr_box 
 void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *box,
 		const float color[static 4], const float projection[static 9], int radius, float blur_sigma);
 
-void fx_render_blur(struct fx_renderer *renderer, struct sway_output *output,
-		const float matrix[static 9], struct fx_framebuffer **buffer,
-		struct blur_shader *shader, const struct wlr_box *box, int blur_radius);
+void fx_render_blur(struct fx_renderer *renderer, const float matrix[static 9],
+		struct fx_framebuffer **buffer, struct blur_shader *shader, const struct wlr_box *box,
+		int blur_radius);
 
 #endif

@@ -15,7 +15,6 @@
 #include "log.h"
 #include "sway/desktop/fx_renderer/fx_renderer.h"
 #include "sway/desktop/fx_renderer/matrix.h"
-#include "sway/output.h"
 #include "sway/server.h"
 
 // shaders
@@ -35,13 +34,10 @@ static const GLfloat verts[] = {
 	0, 1, // bottom left
 };
 
-static void create_stencil_buffer(struct wlr_output* output, GLuint *buffer_id) {
+static void create_stencil_buffer(GLuint *buffer_id, int width, int height) {
 	if (*buffer_id != (uint32_t) -1) {
 		return;
 	}
-
-	int width, height;
-	wlr_output_transformed_resolution(output, &width, &height);
 
 	glGenRenderbuffers(1, buffer_id);
 	glBindRenderbuffer(GL_RENDERBUFFER, *buffer_id);
@@ -205,8 +201,6 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 		sway_log(SWAY_ERROR, "GLES2 RENDERER: Could not make EGL current");
 		return NULL;
 	}
-	// TODO: needed?
-	renderer->egl = egl;
 
 	renderer->main_buffer.fb = -1;
 
@@ -337,7 +331,7 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	}
 
 
-	if (!eglMakeCurrent(wlr_egl_get_display(renderer->egl),
+	if (!eglMakeCurrent(wlr_egl_get_display(egl),
 				EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT)) {
 		sway_log(SWAY_ERROR, "GLES2 RENDERER: Could not unset current EGL");
 		goto error;
@@ -359,7 +353,7 @@ error:
 	glDeleteProgram(renderer->shaders.tex_rgbx.program);
 	glDeleteProgram(renderer->shaders.tex_ext.program);
 
-	if (!eglMakeCurrent(wlr_egl_get_display(renderer->egl),
+	if (!eglMakeCurrent(wlr_egl_get_display(egl),
 				EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT)) {
 		sway_log(SWAY_ERROR, "GLES2 RENDERER: Could not unset current EGL");
 	}
@@ -379,13 +373,10 @@ void fx_renderer_fini(struct fx_renderer *renderer) {
 	release_stencil_buffer(&renderer->stencil_buffer_id);
 }
 
-void fx_renderer_begin(struct fx_renderer *renderer, struct sway_output *sway_output) {
-	struct wlr_output *output = sway_output->wlr_output;
+void fx_renderer_begin(struct fx_renderer *renderer, int width, int height) {
+	renderer->viewport_width = width;
+	renderer->viewport_height = height;
 
-	int width, height;
-	wlr_output_transformed_resolution(output, &width, &height);
-
-	renderer->sway_output = sway_output;
 	// Store the wlr framebuffer
 	GLint wlr_fb = -1;
 	glGetIntegerv(GL_FRAMEBUFFER_BINDING, &wlr_fb);
@@ -395,14 +386,11 @@ void fx_renderer_begin(struct fx_renderer *renderer, struct sway_output *sway_ou
 	}
 	renderer->wlr_buffer.fb = wlr_fb;
 
-	// Create the main framebuffer
-	fx_framebuffer_create(output, &renderer->main_buffer, true);
-	// Create the stencil buffer and attach it to our main_buffer
-	create_stencil_buffer(output, &renderer->stencil_buffer_id);
-
-	// Create a new blur/effects framebuffers
-	fx_framebuffer_create(output, &renderer->effects_buffer, false);
-	fx_framebuffer_create(output, &renderer->effects_buffer_swapped, false);
+	// Create the framebuffers
+	fx_framebuffer_create(&renderer->main_buffer, width, height, true);
+	fx_framebuffer_create(&renderer->effects_buffer, width, height, false);
+	fx_framebuffer_create(&renderer->effects_buffer_swapped, width, height, false);
+	create_stencil_buffer(&renderer->stencil_buffer_id, width, height);
 
 	// refresh projection matrix
 	matrix_projection(renderer->projection, width, height,
@@ -761,9 +749,9 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 	glDisable(GL_STENCIL_TEST);
 }
 
-void fx_render_blur(struct fx_renderer *renderer, struct sway_output *output,
-		const float matrix[static 9], struct fx_framebuffer **buffer,
-		struct blur_shader *shader, const struct wlr_box *box, int blur_radius) {
+void fx_render_blur(struct fx_renderer *renderer, const float matrix[static 9],
+		struct fx_framebuffer **buffer, struct blur_shader *shader,
+		const struct wlr_box *box, int blur_radius) {
 	glDisable(GL_BLEND);
 	glDisable(GL_STENCIL_TEST);
 
@@ -784,12 +772,10 @@ void fx_render_blur(struct fx_renderer *renderer, struct sway_output *output,
 	glUniform1i(shader->tex, 0);
 	glUniform1f(shader->radius, blur_radius);
 
-	int width, height;
-	wlr_output_transformed_resolution(output->wlr_output, &width, &height);
 	if (shader == &renderer->shaders.blur1) {
-		glUniform2f(shader->halfpixel, 0.5f / (width / 2.0f), 0.5f / (height / 2.0f));
+		glUniform2f(shader->halfpixel, 0.5f / (renderer->viewport_width / 2.0f), 0.5f / (renderer->viewport_height / 2.0f));
 	} else {
-		glUniform2f(shader->halfpixel, 0.5f / (width * 2.0f), 0.5f / (height * 2.0f));
+		glUniform2f(shader->halfpixel, 0.5f / (renderer->viewport_width * 2.0f), 0.5f / (renderer->viewport_height * 2.0f));
 	}
 
 	glVertexAttribPointer(shader->pos_attrib, 2, GL_FLOAT, GL_FALSE, 0, verts);

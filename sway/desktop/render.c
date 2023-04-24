@@ -187,7 +187,7 @@ void render_blur_segments(struct fx_renderer *renderer, struct sway_output *outp
 			const pixman_box32_t box = rects[i];
 			struct wlr_box new_box = { box.x1, box.y1, box.x2 - box.x1, box.y2 - box.y1 };
 			fx_renderer_scissor(&new_box);
-			fx_render_blur(renderer, output, matrix, buffer, shader, &new_box, blur_radius);
+			fx_render_blur(renderer, matrix, buffer, shader, &new_box, blur_radius);
 		}
 	}
 
@@ -441,14 +441,13 @@ static void render_drag_icons(struct sway_output *output,
 		render_surface_iterator, &data);
 }
 
-void render_whole_output(struct fx_renderer *renderer, pixman_region32_t *original_damage,
-		struct fx_texture *texture) {
-	struct wlr_output *output = renderer->sway_output->wlr_output;
-	struct wlr_box monitor_box = get_monitor_box(output);
+void render_whole_output(struct fx_renderer *renderer, struct wlr_output *wlr_output,
+		pixman_region32_t *original_damage, struct fx_texture *texture) {
+	struct wlr_box monitor_box = get_monitor_box(wlr_output);
 
-	enum wl_output_transform transform = wlr_output_transform_invert(output->transform);
+	enum wl_output_transform transform = wlr_output_transform_invert(wlr_output->transform);
 	float matrix[9];
-	wlr_matrix_project_box(matrix, &monitor_box, transform, 0.0, output->transform_matrix);
+	wlr_matrix_project_box(matrix, &monitor_box, transform, 0.0, wlr_output->transform_matrix);
 
 	pixman_region32_t damage;
 	pixman_region32_init(&damage);
@@ -463,7 +462,7 @@ void render_whole_output(struct fx_renderer *renderer, pixman_region32_t *origin
 	int nrects;
 	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
 	for (int i = 0; i < nrects; ++i) {
-		scissor_output(output, &rects[i]);
+		scissor_output(wlr_output, &rects[i]);
 		fx_render_texture_with_matrix(renderer, texture, &monitor_box, matrix, get_undecorated_decoration_data());
 	}
 
@@ -484,7 +483,7 @@ void render_monitor_blur(struct sway_output *output, pixman_region32_t *damage) 
 			wlr_output->transform_matrix, &monitor_box);
 
 	// Render the newly blurred content into the blur_buffer
-	fx_framebuffer_create(wlr_output, &renderer->blur_buffer, true);
+	fx_framebuffer_create(&renderer->blur_buffer, monitor_box.width, monitor_box.height, true);
 	// Clear the damaged region of the blur_buffer
 	float clear_color[] = { 0, 0, 0, 0 };
 	int nrects;
@@ -493,7 +492,7 @@ void render_monitor_blur(struct sway_output *output, pixman_region32_t *damage) 
 		scissor_output(wlr_output, &rects[i]);
 		fx_renderer_clear(clear_color);
 	}
-	render_whole_output(renderer, &fake_damage, &buffer->texture);
+	render_whole_output(renderer, wlr_output, &fake_damage, &buffer->texture);
 	fx_framebuffer_bind(&renderer->main_buffer, monitor_box.width, monitor_box.height);
 
 	pixman_region32_fini(&fake_damage);
@@ -1750,9 +1749,6 @@ void output_render(struct sway_output *output, struct timespec *when,
 	struct wlr_output *wlr_output = output->wlr_output;
 	struct fx_renderer *renderer = output->renderer;
 
-	int width, height;
-	wlr_output_transformed_resolution(wlr_output, &width, &height);
-
 	struct sway_workspace *workspace = output->current.active_workspace;
 	if (workspace == NULL) {
 		return;
@@ -1762,6 +1758,12 @@ void output_render(struct sway_output *output, struct timespec *when,
 	if (!fullscreen_con) {
 		fullscreen_con = workspace->current.fullscreen;
 	}
+
+	int width, height;
+	wlr_output_transformed_resolution(wlr_output, &width, &height);
+
+
+	fx_renderer_begin(renderer, width, height);
 
 	if (debug.damage == DAMAGE_RERENDER) {
 		pixman_region32_union_rect(damage, damage, 0, 0, width, height);
@@ -1805,8 +1807,6 @@ void output_render(struct sway_output *output, struct timespec *when,
 	if (debug.damage == DAMAGE_HIGHLIGHT && damage_not_empty) {
 		fx_renderer_clear((float[]){1, 1, 0, 1});
 	}
-
-	fx_renderer_begin(renderer, output);
 
 	if (!damage_not_empty) {
 		// Output isn't damaged but needs buffer swap
@@ -1959,7 +1959,7 @@ renderer_end:
 			fx_renderer_clear(clear_color);
 		}
 	}
-	render_whole_output(renderer, &extended_damage, &renderer->main_buffer.texture);
+	render_whole_output(renderer, wlr_output, &extended_damage, &renderer->main_buffer.texture);
 	fx_renderer_scissor(NULL);
 	fx_renderer_end(renderer);
 
