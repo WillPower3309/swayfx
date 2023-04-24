@@ -409,13 +409,13 @@ static void render_surface_iterator(struct sway_output *output,
 
 	// render blur (view->surface == surface excludes blurring subsurfaces)
 	bool is_subsurface = true;
-	bool is_floating = true;
+	bool should_optimize_blur = false;
 	if (data->is_toplevel_surface) {
 		is_subsurface = false;
-		is_floating = !config->blur_xray;
+		should_optimize_blur = config->blur_xray;
 	} else if (view) {
 		is_subsurface = view->surface != surface;
-		is_floating = container_is_floating(view->container);
+		should_optimize_blur = !container_is_floating(view->container);
 	}
 	if (deco_data.blur && should_parameters_blur() && !is_subsurface) {
 		pixman_region32_t opaque_region;
@@ -434,7 +434,7 @@ static void render_surface_iterator(struct sway_output *output,
 			int width, height;
 			wlr_output_transformed_resolution(wlr_output, &width, &height);
 			struct wlr_fbox blur_src_box = { 0, 0, width, height };
-			render_blur(!is_floating, output, output_damage, &blur_src_box, &dst_box, &opaque_region,
+			render_blur(should_optimize_blur, output, output_damage, &blur_src_box, &dst_box, &opaque_region,
 					surface->current.width, surface->current.height, surface->current.scale, deco_data.corner_radius);
 		}
 
@@ -784,8 +784,8 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 				struct wlr_box monitor_box = get_monitor_box(wlr_output);
 				// TODO: contribute wlroots function to allow creating an fbox from a box?
 				struct wlr_fbox src_box = { monitor_box.x, monitor_box.y, monitor_box.width, monitor_box.height };
-				bool is_floating = container_is_floating(con);
-				render_blur(!is_floating, output, damage, &src_box, &dst_box, &opaque_region,
+				bool should_optimize_blur = !container_is_floating(con);
+				render_blur(should_optimize_blur, output, damage, &src_box, &dst_box, &opaque_region,
 						saved_buf->width, saved_buf->height, 1, deco_data.corner_radius);
 
 				pixman_region32_fini(&opaque_region);
