@@ -466,8 +466,8 @@ static void render_surface_iterator(struct sway_output *output,
 			corner_radius = (con->corner_radius + state->border_thickness) * wlr_output->scale;
 
 			// Account for titlebars
-			dst_box.x = floor(state->x);
-			dst_box.y = floor(state->y);
+			dst_box.x = floor(state->x) - output->lx;
+			dst_box.y = floor(state->y) - output->ly;
 			dst_box.width = state->width;
 			dst_box.height = state->height;
 			scale_box(&dst_box, wlr_output->scale);
