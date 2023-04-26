@@ -1842,11 +1842,16 @@ void output_render(struct sway_output *output, struct timespec *when,
 		fullscreen_con = workspace->current.fullscreen;
 	}
 
+
+	struct wlr_box monitor_box = get_monitor_box(wlr_output);
+	wlr_box_transform(&monitor_box, &monitor_box,
+			wlr_output_transform_invert(wlr_output->transform),
+			monitor_box.width, monitor_box.height);
+
+	fx_renderer_begin(renderer, monitor_box.width, monitor_box.height);
+
 	int width, height;
 	wlr_output_transformed_resolution(wlr_output, &width, &height);
-
-	fx_renderer_begin(renderer, width, height);
-
 	if (debug.damage == DAMAGE_RERENDER) {
 		pixman_region32_union_rect(damage, damage, 0, 0, width, height);
 	}

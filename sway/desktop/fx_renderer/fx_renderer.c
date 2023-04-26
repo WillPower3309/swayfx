@@ -41,7 +41,7 @@ static void create_stencil_buffer(GLuint *buffer_id, int width, int height) {
 
 	glGenRenderbuffers(1, buffer_id);
 	glBindRenderbuffer(GL_RENDERBUFFER, *buffer_id);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_STENCIL_INDEX8, monitor_box.width, monitor_box.height);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_STENCIL_INDEX8, width, height);
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, *buffer_id);
 	GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 	if (status != GL_FRAMEBUFFER_COMPLETE) {
@@ -404,7 +404,7 @@ void fx_renderer_begin(struct fx_renderer *renderer, int width, int height) {
 	create_stencil_buffer(&renderer->stencil_buffer_id, width, height);
 
 	// refresh projection matrix
-	matrix_projection(renderer->projection, monitor_box.width, monitor_box.height,
+	matrix_projection(renderer->projection, width, height,
 		WL_OUTPUT_TRANSFORM_FLIPPED_180);
 
 	glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
