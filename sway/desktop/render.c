@@ -65,6 +65,7 @@ bool should_parameters_blur() {
 	return config->blur_params.radius > 0 && config->blur_params.num_passes > 0;
 }
 
+// TODO: contribute wlroots function to allow creating an fbox from a box?
 struct wlr_fbox wlr_fbox_from_wlr_box(struct wlr_box *box) {
 	return (struct wlr_fbox) {
 		.x = box->x,
@@ -238,7 +239,7 @@ void render_blur_segments(struct fx_renderer *renderer,
 	}
 }
 
-/** Blurs the main_buffer content and returns the blurred framebuffer */
+// Blurs the main_buffer content and returns the blurred framebuffer
 struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer, struct sway_output *output,
 		pixman_region32_t *original_damage, const float box_matrix[static 9], const struct wlr_box *box) {
 	struct wlr_output *wlr_output = output->wlr_output;
@@ -384,6 +385,7 @@ static void render_surface_iterator(struct sway_output *output,
 	}
 
 	struct wlr_box proj_box = *_box;
+
 	scale_box(&proj_box, wlr_output->scale);
 
 	float matrix[9];
@@ -825,7 +827,6 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 				struct wlr_box monitor_box = get_monitor_box(wlr_output);
 				wlr_box_transform(&monitor_box, &monitor_box,
 						wlr_output_transform_invert(wlr_output->transform), monitor_box.width, monitor_box.height);
-				// TODO: contribute wlroots function to allow creating an fbox from a box?
 				struct wlr_fbox src_box = wlr_fbox_from_wlr_box(&monitor_box);
 				bool is_floating = container_is_floating(view->container);
 				render_blur(!is_floating, output, damage, &src_box, &dst_box, &opaque_region,

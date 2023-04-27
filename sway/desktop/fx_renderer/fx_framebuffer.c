@@ -1,4 +1,3 @@
-#include <wlr/util/box.h>
 #include "log.h"
 #include "sway/desktop/fx_renderer/fx_framebuffer.h"
 
