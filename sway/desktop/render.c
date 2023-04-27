@@ -255,7 +255,7 @@ struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer, struct
 	pixman_region32_t damage;
 	pixman_region32_init(&damage);
 	pixman_region32_copy(&damage, original_damage);
-	wlr_region_transform(&damage, &damage, wlr_output_transform_invert(wlr_output->transform),
+	wlr_region_transform(&damage, &damage, transform,
 			monitor_box.width, monitor_box.height);
 	wlr_region_expand(&damage, &damage, get_blur_size());
 
@@ -527,7 +527,8 @@ void render_monitor_blur(struct sway_output *output, pixman_region32_t *damage) 
 			wlr_output->transform_matrix, &monitor_box);
 
 	// Render the newly blurred content into the blur_buffer
-	fx_framebuffer_create(&renderer->blur_buffer, monitor_box.width, monitor_box.height, true);
+	fx_framebuffer_create(&renderer->blur_buffer,
+			output->renderer->viewport_width, output->renderer->viewport_height, true);
 	// Clear the damaged region of the blur_buffer
 	float clear_color[] = { 0, 0, 0, 0 };
 	int nrects;
