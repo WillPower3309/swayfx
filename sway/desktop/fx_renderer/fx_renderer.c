@@ -257,6 +257,14 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 			SHADER_SOURCE_QUAD_ROUND_TOP_RIGHT)) {
 		goto error;
 	}
+	if (!link_rounded_quad_program(renderer, &renderer->shaders.rounded_bl_quad,
+			SHADER_SOURCE_QUAD_ROUND_BOTTOM_LEFT)) {
+		goto error;
+	}
+	if (!link_rounded_quad_program(renderer, &renderer->shaders.rounded_br_quad,
+			SHADER_SOURCE_QUAD_ROUND_BOTTOM_RIGHT)) {
+		goto error;
+	}
 
 	// Border corner shader
 	prog = link_program(corner_frag_src);
@@ -345,6 +353,8 @@ error:
 	glDeleteProgram(renderer->shaders.rounded_quad.program);
 	glDeleteProgram(renderer->shaders.rounded_tl_quad.program);
 	glDeleteProgram(renderer->shaders.rounded_tr_quad.program);
+	glDeleteProgram(renderer->shaders.rounded_bl_quad.program);
+	glDeleteProgram(renderer->shaders.rounded_br_quad.program);
 	glDeleteProgram(renderer->shaders.corner.program);
 	glDeleteProgram(renderer->shaders.box_shadow.program);
 	glDeleteProgram(renderer->shaders.blur1.program);
@@ -567,8 +577,8 @@ void fx_render_rect(struct fx_renderer *renderer, const struct wlr_box *box,
 }
 
 void fx_render_rounded_rect(struct fx_renderer *renderer, const struct wlr_box *box,
-		const float color[static 4], const float projection[static 9],
-		int radius, enum corner_location corner_location) {
+		const float color[static 4], const float matrix[static 9], int radius,
+		enum corner_location corner_location) {
 	if (box->width == 0 || box->height == 0) {
 		return;
 	}
@@ -586,13 +596,16 @@ void fx_render_rounded_rect(struct fx_renderer *renderer, const struct wlr_box *
 		case TOP_RIGHT:
 			shader = &renderer->shaders.rounded_tr_quad;
 			break;
+		case BOTTOM_LEFT:
+			shader = &renderer->shaders.rounded_bl_quad;
+			break;
+		case BOTTOM_RIGHT:
+			shader = &renderer->shaders.rounded_br_quad;
+			break;
 		default:
 			sway_log(SWAY_ERROR, "Invalid Corner Location. Aborting render");
 			abort();
 	}
-
-	float matrix[9];
-	wlr_matrix_project_box(matrix, box, WL_OUTPUT_TRANSFORM_NORMAL, 0, projection);
 
 	float gl_matrix[9];
 	wlr_matrix_multiply(gl_matrix, renderer->projection, matrix);
@@ -625,14 +638,12 @@ void fx_render_rounded_rect(struct fx_renderer *renderer, const struct wlr_box *
 }
 
 void fx_render_border_corner(struct fx_renderer *renderer, const struct wlr_box *box,
-		const float color[static 4], const float projection[static 9],
+		const float color[static 4], const float matrix[static 9],
 		enum corner_location corner_location, int radius, int border_thickness) {
 	if (border_thickness == 0 || box->width == 0 || box->height == 0) {
 		return;
 	}
 	assert(box->width > 0 && box->height > 0);
-	float matrix[9];
-	wlr_matrix_project_box(matrix, box, WL_OUTPUT_TRANSFORM_NORMAL, 0, projection);
 
 	float gl_matrix[9];
 	wlr_matrix_multiply(gl_matrix, renderer->projection, matrix);
@@ -675,14 +686,12 @@ void fx_render_border_corner(struct fx_renderer *renderer, const struct wlr_box 
 
 // TODO: alpha input arg?
 void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *box,
-		const float color[static 4], const float projection[static 9],
-		int corner_radius, float blur_sigma) {
+		const float color[static 4], const float matrix [static 9], int corner_radius,
+		float blur_sigma) {
 	if (box->width == 0 || box->height == 0) {
 		return;
 	}
 	assert(box->width > 0 && box->height > 0);
-	float matrix[9];
-	wlr_matrix_project_box(matrix, box, WL_OUTPUT_TRANSFORM_NORMAL, 0, projection);
 
 	float gl_matrix[9];
 	wlr_matrix_multiply(gl_matrix, renderer->projection, matrix);
@@ -711,7 +720,7 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 	// Disable writing to color buffer
 	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 	// Draw the rounded rect as a mask
-	fx_render_rounded_rect(renderer, &inner_box, col, projection, corner_radius, ALL);
+	fx_render_rounded_rect(renderer, &inner_box, col, matrix, corner_radius, ALL);
 	// Close the mask
 	glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
 	glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);

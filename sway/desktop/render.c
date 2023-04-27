@@ -65,6 +65,43 @@ bool should_parameters_blur() {
 	return config->blur_params.radius > 0 && config->blur_params.num_passes > 0;
 }
 
+// TODO: contribute wlroots function to allow creating an fbox from a box?
+struct wlr_fbox wlr_fbox_from_wlr_box(struct wlr_box *box) {
+	return (struct wlr_fbox) {
+		.x = box->x,
+		.y = box->y,
+		.width = box->width,
+		.height = box->height,
+	};
+}
+
+// TODO: Remove this ugly abomination with a complete border rework...
+enum corner_location get_rotated_corner(enum corner_location corner_location,
+		enum wl_output_transform transform) {
+	if (corner_location == ALL || corner_location == NONE) {
+		return corner_location;
+	}
+	switch (transform) {
+		case WL_OUTPUT_TRANSFORM_NORMAL:
+			return corner_location;
+		case WL_OUTPUT_TRANSFORM_90:
+			return (corner_location + 1) % 4;
+		case WL_OUTPUT_TRANSFORM_180:
+			return (corner_location + 2) % 4;
+		case WL_OUTPUT_TRANSFORM_270:
+			return (corner_location + 3) % 4;
+		case WL_OUTPUT_TRANSFORM_FLIPPED:
+			return (corner_location + (1 - 2 * (corner_location % 2))) % 4;
+		case WL_OUTPUT_TRANSFORM_FLIPPED_90:
+			return (corner_location + (4 - 2 * (corner_location % 2))) % 4;
+		case WL_OUTPUT_TRANSFORM_FLIPPED_180:
+			return (corner_location + (3 - 2 * (corner_location % 2))) % 4;
+		case WL_OUTPUT_TRANSFORM_FLIPPED_270:
+			return (corner_location + (2 - 2 * (corner_location % 2))) % 4;
+	}
+	return corner_location;
+}
+
 /**
  * Apply scale to a width or height.
  *
@@ -149,16 +186,23 @@ static void render_texture(struct wlr_output *wlr_output,
 		goto damage_finish;
 	}
 
+	// ensure the box is updated as per the output orientation
+	struct wlr_box transformed_box;
+	int width, height;
+	wlr_output_transformed_resolution(wlr_output, &width, &height);
+	wlr_box_transform(&transformed_box, dst_box,
+			wlr_output_transform_invert(wlr_output->transform), width, height);
+
 	int nrects;
 	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
 	for (int i = 0; i < nrects; ++i) {
 		scissor_output(wlr_output, &rects[i]);
 		set_scale_filter(wlr_output, texture, output->scale_filter);
 		if (src_box != NULL) {
-			fx_render_subtexture_with_matrix(renderer, texture, src_box, dst_box,
+			fx_render_subtexture_with_matrix(renderer, texture, src_box, &transformed_box,
 					matrix, deco_data);
 		} else {
-			fx_render_texture_with_matrix(renderer, texture, dst_box, matrix, deco_data);
+			fx_render_texture_with_matrix(renderer, texture, &transformed_box, matrix, deco_data);
 		}
 	}
 
@@ -171,7 +215,6 @@ void render_blur_segments(struct fx_renderer *renderer,
 		const float matrix[static 9], pixman_region32_t* damage,
 		struct fx_framebuffer **buffer, struct blur_shader* shader,
 		const struct wlr_box *box, int blur_radius) {
-
 	if (*buffer == &renderer->effects_buffer) {
 		fx_framebuffer_bind(&renderer->effects_buffer_swapped);
 	} else {
@@ -196,14 +239,15 @@ void render_blur_segments(struct fx_renderer *renderer,
 	}
 }
 
-/** Blurs the main_buffer content and returns the blurred framebuffer */
+// Blurs the main_buffer content and returns the blurred framebuffer
 struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer, struct sway_output *output,
 		pixman_region32_t *original_damage, const float box_matrix[static 9], const struct wlr_box *box) {
-	struct wlr_box monitor_box = get_monitor_box(output->wlr_output);
+	struct wlr_output *wlr_output = output->wlr_output;
+	struct wlr_box monitor_box = get_monitor_box(wlr_output);
 
-	const enum wl_output_transform transform = wlr_output_transform_invert(output->wlr_output->transform);
+	const enum wl_output_transform transform = wlr_output_transform_invert(wlr_output->transform);
 	float matrix[9];
-	wlr_matrix_project_box(matrix, &monitor_box, transform, 0, output->wlr_output->transform_matrix);
+	wlr_matrix_project_box(matrix, &monitor_box, transform, 0, wlr_output->transform_matrix);
 
 	float gl_matrix[9];
 	wlr_matrix_multiply(gl_matrix, renderer->projection, matrix);
@@ -211,7 +255,7 @@ struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer, struct
 	pixman_region32_t damage;
 	pixman_region32_init(&damage);
 	pixman_region32_copy(&damage, original_damage);
-	wlr_region_transform(&damage, &damage, wlr_output_transform_invert(output->wlr_output->transform),
+	wlr_region_transform(&damage, &damage, transform,
 			monitor_box.width, monitor_box.height);
 	wlr_region_expand(&damage, &damage, get_blur_size());
 
@@ -341,6 +385,7 @@ static void render_surface_iterator(struct sway_output *output,
 	}
 
 	struct wlr_box proj_box = *_box;
+
 	scale_box(&proj_box, wlr_output->scale);
 
 	float matrix[9];
@@ -376,9 +421,10 @@ static void render_surface_iterator(struct sway_output *output,
 		}
 
 		if (has_alpha) {
-			int width, height;
-			wlr_output_transformed_resolution(wlr_output, &width, &height);
-			struct wlr_fbox blur_src_box = { 0, 0, width, height };
+			struct wlr_box monitor_box = get_monitor_box(wlr_output);
+			wlr_box_transform(&monitor_box, &monitor_box,
+					wlr_output_transform_invert(wlr_output->transform), monitor_box.width, monitor_box.height);
+			struct wlr_fbox blur_src_box = wlr_fbox_from_wlr_box(&monitor_box);
 			bool is_floating = container_is_floating(view->container);
 			render_blur(!is_floating, output, output_damage, &blur_src_box, &dst_box, &opaque_region,
 					surface->current.width, surface->current.height, surface->current.scale, deco_data.corner_radius);
@@ -481,7 +527,8 @@ void render_monitor_blur(struct sway_output *output, pixman_region32_t *damage) 
 			wlr_output->transform_matrix, &monitor_box);
 
 	// Render the newly blurred content into the blur_buffer
-	fx_framebuffer_create(&renderer->blur_buffer, monitor_box.width, monitor_box.height, true);
+	fx_framebuffer_create(&renderer->blur_buffer,
+			output->renderer->viewport_width, output->renderer->viewport_height, true);
 	// Clear the damaged region of the blur_buffer
 	float clear_color[] = { 0, 0, 0, 0 };
 	int nrects;
@@ -545,11 +592,25 @@ void render_rounded_rect(struct sway_output *output, pixman_region32_t *output_d
 		goto damage_finish;
 	}
 
+	float matrix[9];
+	wlr_matrix_project_box(matrix, &box, WL_OUTPUT_TRANSFORM_NORMAL, 0,
+			wlr_output->transform_matrix);
+
+	enum wl_output_transform transform = wlr_output_transform_invert(wlr_output->transform);
+
+	// ensure the box is updated as per the output orientation
+	struct wlr_box transformed_box;
+	int width, height;
+	wlr_output_transformed_resolution(wlr_output, &width, &height);
+	wlr_box_transform(&transformed_box, &box, transform, width, height);
+
+	corner_location = get_rotated_corner(corner_location, transform);
+
 	int nrects;
 	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
 	for (int i = 0; i < nrects; ++i) {
 		scissor_output(wlr_output, &rects[i]);
-		fx_render_rounded_rect(renderer, &box, color, wlr_output->transform_matrix,
+		fx_render_rounded_rect(renderer, &transformed_box, color, matrix,
 				corner_radius, corner_location);
 	}
 
@@ -576,11 +637,25 @@ void render_border_corner(struct sway_output *output, pixman_region32_t *output_
 		goto damage_finish;
 	}
 
+	float matrix[9];
+	wlr_matrix_project_box(matrix, &box, WL_OUTPUT_TRANSFORM_NORMAL, 0,
+			wlr_output->transform_matrix);
+
+	enum wl_output_transform transform = wlr_output_transform_invert(wlr_output->transform);
+
+	// ensure the box is updated as per the output orientation
+	struct wlr_box transformed_box;
+	int width, height;
+	wlr_output_transformed_resolution(wlr_output, &width, &height);
+	wlr_box_transform(&transformed_box, &box, transform, width, height);
+
+	corner_location = get_rotated_corner(corner_location, transform);
+
 	int nrects;
 	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
 	for (int i = 0; i < nrects; ++i) {
 		scissor_output(wlr_output, &rects[i]);
-		fx_render_border_corner(renderer, &box, color, wlr_output->transform_matrix,
+		fx_render_border_corner(renderer, &transformed_box, color, matrix,
 				corner_location, corner_radius, border_thickness);
 	}
 
@@ -620,13 +695,24 @@ void render_box_shadow(struct sway_output *output, pixman_region32_t *output_dam
 		goto damage_finish;
 	}
 
+	float matrix[9];
+	wlr_matrix_project_box(matrix, &box, WL_OUTPUT_TRANSFORM_NORMAL, 0,
+			wlr_output->transform_matrix);
+
+	// ensure the box is updated as per the output orientation
+	struct wlr_box transformed_box;
+	int width, height;
+	wlr_output_transformed_resolution(wlr_output, &width, &height);
+	wlr_box_transform(&transformed_box, &box,
+			wlr_output_transform_invert(wlr_output->transform), width, height);
+
 	int nrects;
 	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
 	for (int i = 0; i < nrects; ++i) {
 		scissor_output(wlr_output, &rects[i]);
 
-		fx_render_box_shadow(renderer, &box, color,
-				wlr_output->transform_matrix, corner_radius, blur_sigma);
+		fx_render_box_shadow(renderer, &transformed_box, color, matrix,
+				corner_radius, blur_sigma);
 	}
 
 damage_finish:
@@ -740,8 +826,9 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 				pixman_region32_union_rect(&opaque_region, &opaque_region, 0, 0, 0, 0);
 
 				struct wlr_box monitor_box = get_monitor_box(wlr_output);
-				// TODO: contribute wlroots function to allow creating an fbox from a box?
-				struct wlr_fbox src_box = { monitor_box.x, monitor_box.y, monitor_box.width, monitor_box.height };
+				wlr_box_transform(&monitor_box, &monitor_box,
+						wlr_output_transform_invert(wlr_output->transform), monitor_box.width, monitor_box.height);
+				struct wlr_fbox src_box = wlr_fbox_from_wlr_box(&monitor_box);
 				bool is_floating = container_is_floating(view->container);
 				render_blur(!is_floating, output, damage, &src_box, &dst_box, &opaque_region,
 						saved_buf->width, saved_buf->height, 1, deco_data.corner_radius);
@@ -1757,11 +1844,16 @@ void output_render(struct sway_output *output, struct timespec *when,
 		fullscreen_con = workspace->current.fullscreen;
 	}
 
+
+	struct wlr_box monitor_box = get_monitor_box(wlr_output);
+	wlr_box_transform(&monitor_box, &monitor_box,
+			wlr_output_transform_invert(wlr_output->transform),
+			monitor_box.width, monitor_box.height);
+
+	fx_renderer_begin(renderer, monitor_box.width, monitor_box.height);
+
 	int width, height;
 	wlr_output_transformed_resolution(wlr_output, &width, &height);
-
-	fx_renderer_begin(renderer, width, height);
-
 	if (debug.damage == DAMAGE_RERENDER) {
 		pixman_region32_union_rect(damage, damage, 0, 0, width, height);
 	}

@@ -9,7 +9,7 @@
 #include "sway/desktop/fx_renderer/fx_framebuffer.h"
 #include "sway/desktop/fx_renderer/fx_texture.h"
 
-enum corner_location { ALL, TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT, NONE };
+enum corner_location { TOP_LEFT, TOP_RIGHT, BOTTOM_RIGHT, BOTTOM_LEFT, ALL, NONE };
 
 enum fx_tex_shader_source {
 	SHADER_SOURCE_TEXTURE_RGBA = 1,
@@ -21,6 +21,8 @@ enum fx_rounded_quad_shader_source {
 	SHADER_SOURCE_QUAD_ROUND = 1,
 	SHADER_SOURCE_QUAD_ROUND_TOP_LEFT = 2,
 	SHADER_SOURCE_QUAD_ROUND_TOP_RIGHT = 3,
+	SHADER_SOURCE_QUAD_ROUND_BOTTOM_RIGHT = 4,
+	SHADER_SOURCE_QUAD_ROUND_BOTTOM_LEFT = 5,
 };
 
 struct decoration_data {
@@ -106,6 +108,8 @@ struct fx_renderer {
 		struct rounded_quad_shader rounded_quad;
 		struct rounded_quad_shader rounded_tl_quad;
 		struct rounded_quad_shader rounded_tr_quad;
+		struct rounded_quad_shader rounded_bl_quad;
+		struct rounded_quad_shader rounded_br_quad;
 
 		struct blur_shader blur1;
 		struct blur_shader blur2;
@@ -165,15 +169,16 @@ void fx_render_rect(struct fx_renderer *renderer, const struct wlr_box *box,
 		const float color[static 4], const float projection[static 9]);
 
 void fx_render_rounded_rect(struct fx_renderer *renderer, const struct wlr_box *box,
-		const float color[static 4], const float projection[static 9],
-		int radius, enum corner_location corner_location);
+		const float color[static 4], const float matrix[static 9], int radius,
+		enum corner_location corner_location);
 
 void fx_render_border_corner(struct fx_renderer *renderer, const struct wlr_box *box,
-		const float color[static 4], const float projection[static 9],
+		const float color[static 4], const float matrix[static 9],
 		enum corner_location corner_location, int radius, int border_thickness);
 
 void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *box,
-		const float color[static 4], const float projection[static 9], int radius, float blur_sigma);
+		const float color[static 4], const float matrix[static 9], int radius,
+		float blur_sigma);
 
 void fx_render_blur(struct fx_renderer *renderer, const float matrix[static 9],
 		struct fx_framebuffer **buffer, struct blur_shader *shader, const struct wlr_box *box,
