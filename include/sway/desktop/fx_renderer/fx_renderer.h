@@ -84,8 +84,6 @@ struct fx_renderer {
 
 	int viewport_width, viewport_height;
 
-	GLuint stencil_buffer_id;
-
 	struct fx_framebuffer wlr_buffer; // Just the framebuffer used by wlroots
 	struct fx_framebuffer main_buffer; // The main FB used for rendering
 	struct fx_framebuffer blur_buffer; // Contains the blurred background for tiled windows

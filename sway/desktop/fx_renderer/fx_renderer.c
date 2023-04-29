@@ -34,30 +34,6 @@ static const GLfloat verts[] = {
 	0, 1, // bottom left
 };
 
-static void create_stencil_buffer(GLuint *buffer_id, int width, int height) {
-	if (*buffer_id != (uint32_t) -1) {
-		return;
-	}
-
-	glGenRenderbuffers(1, buffer_id);
-	glBindRenderbuffer(GL_RENDERBUFFER, *buffer_id);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_STENCIL_INDEX8, width, height);
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, *buffer_id);
-	GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-	if (status != GL_FRAMEBUFFER_COMPLETE) {
-		sway_log(SWAY_ERROR, "Stencilbuffer incomplete, couldn't create! (FB status: %i)", status);
-		return;
-	}
-	sway_log(SWAY_DEBUG, "Stencilbuffer created, status %i", status);
-}
-
-static void release_stencil_buffer(GLuint *buffer_id) {
-	if (*buffer_id != (uint32_t)-1 && buffer_id) {
-		glDeleteRenderbuffers(1, buffer_id);
-	}
-	*buffer_id = -1;
-}
-
 static GLuint compile_shader(GLuint type, const GLchar *src) {
 	GLuint shader = glCreateShader(type);
 	glShaderSource(shader, 1, &src, NULL);
@@ -203,11 +179,14 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	}
 
 	renderer->main_buffer.fb = -1;
+	renderer->main_buffer.stencil_buffer = -1;
 
 	renderer->blur_buffer.fb = -1;
+	renderer->blur_buffer.stencil_buffer = -1;
 	renderer->effects_buffer.fb = -1;
+	renderer->effects_buffer.stencil_buffer = -1;
 	renderer->effects_buffer_swapped.fb = -1;
-	renderer->stencil_buffer_id = -1;
+	renderer->effects_buffer_swapped.stencil_buffer = -1;
 
 	renderer->blur_buffer_dirty = true;
 
@@ -380,7 +359,6 @@ void fx_renderer_fini(struct fx_renderer *renderer) {
 	fx_framebuffer_release(&renderer->blur_buffer);
 	fx_framebuffer_release(&renderer->effects_buffer);
 	fx_framebuffer_release(&renderer->effects_buffer_swapped);
-	release_stencil_buffer(&renderer->stencil_buffer_id);
 }
 
 void fx_renderer_begin(struct fx_renderer *renderer, int width, int height) {
@@ -398,10 +376,9 @@ void fx_renderer_begin(struct fx_renderer *renderer, int width, int height) {
 	renderer->wlr_buffer.fb = wlr_fb;
 
 	// Create the framebuffers
-	fx_framebuffer_create(&renderer->main_buffer, width, height, true);
-	create_stencil_buffer(&renderer->stencil_buffer_id, width, height);
-	fx_framebuffer_create(&renderer->effects_buffer, width, height, false);
-	fx_framebuffer_create(&renderer->effects_buffer_swapped, width, height, false);
+	fx_framebuffer_create(&renderer->main_buffer, width, height, true, true);
+	fx_framebuffer_create(&renderer->effects_buffer, width, height, false, false);
+	fx_framebuffer_create(&renderer->effects_buffer_swapped, width, height, false, false);
 
 	// refresh projection matrix
 	matrix_projection(renderer->projection, width, height,
@@ -416,7 +393,6 @@ void fx_renderer_begin(struct fx_renderer *renderer, int width, int height) {
 void fx_renderer_end(struct fx_renderer *renderer) {
 	// Release the main buffer
 	fx_framebuffer_release(&renderer->main_buffer);
-	release_stencil_buffer(&renderer->stencil_buffer_id);
 }
 
 void fx_renderer_clear(const float color[static 4]) {
