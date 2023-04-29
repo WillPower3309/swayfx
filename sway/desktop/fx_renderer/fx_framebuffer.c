@@ -1,12 +1,11 @@
 #include "log.h"
 #include "sway/desktop/fx_renderer/fx_framebuffer.h"
 
-void fx_framebuffer_bind(struct fx_framebuffer *buffer, GLsizei width, GLsizei height) {
+void fx_framebuffer_bind(struct fx_framebuffer *buffer) {
 	glBindFramebuffer(GL_FRAMEBUFFER, buffer->fb);
-	glViewport(0, 0, width, height);
 }
 
-void fx_framebuffer_create(struct wlr_output *output, struct fx_framebuffer *buffer, bool bind) {
+void fx_framebuffer_create(struct fx_framebuffer *buffer, int width, int height, bool bind) {
 	bool firstAlloc = false;
 
 	// Create a new framebuffer
@@ -24,9 +23,6 @@ void fx_framebuffer_create(struct wlr_output *output, struct fx_framebuffer *buf
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	}
-
-	int width, height;
-	wlr_output_transformed_resolution(output, &width, &height);
 
 	if (firstAlloc || buffer->texture.width != width || buffer->texture.height != height) {
 		glBindTexture(GL_TEXTURE_2D, buffer->texture.id);
@@ -51,7 +47,7 @@ void fx_framebuffer_create(struct wlr_output *output, struct fx_framebuffer *buf
 	// Bind the default framebuffer
 	glBindTexture(GL_TEXTURE_2D, 0);
 	if (bind) {
-		fx_framebuffer_bind(buffer, width, height);
+		fx_framebuffer_bind(buffer);
 	}
 }
 

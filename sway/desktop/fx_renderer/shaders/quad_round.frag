@@ -1,6 +1,8 @@
 #define SOURCE_QUAD_ROUND 1
 #define SOURCE_QUAD_ROUND_TOP_LEFT 2
 #define SOURCE_QUAD_ROUND_TOP_RIGHT 3
+#define SOURCE_QUAD_ROUND_BOTTOM_RIGHT 4
+#define SOURCE_QUAD_ROUND_BOTTOM_LEFT 5
 
 #if !defined(SOURCE)
 #error "Missing shader preamble"
@@ -22,6 +24,10 @@ vec2 getCornerDist() {
     return abs(gl_FragCoord.xy - position - size) - size + radius;
 #elif SOURCE == SOURCE_QUAD_ROUND_TOP_RIGHT
     return abs(gl_FragCoord.xy - position - vec2(0, size.y)) - size + radius;
+#elif SOURCE == SOURCE_QUAD_ROUND_BOTTOM_RIGHT
+    return abs(gl_FragCoord.xy - position) - size + radius;
+#elif SOURCE == SOURCE_QUAD_ROUND_BOTTOM_LEFT
+    return abs(gl_FragCoord.xy - position - vec2(size.x, 0)) - size + radius;
 #endif
 }
 

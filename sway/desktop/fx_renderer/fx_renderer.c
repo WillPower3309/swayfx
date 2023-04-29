@@ -15,7 +15,6 @@
 #include "log.h"
 #include "sway/desktop/fx_renderer/fx_renderer.h"
 #include "sway/desktop/fx_renderer/matrix.h"
-#include "sway/output.h"
 #include "sway/server.h"
 
 // shaders
@@ -35,13 +34,10 @@ static const GLfloat verts[] = {
 	0, 1, // bottom left
 };
 
-static void create_stencil_buffer(struct wlr_output* output, GLuint *buffer_id) {
+static void create_stencil_buffer(GLuint *buffer_id, int width, int height) {
 	if (*buffer_id != (uint32_t) -1) {
 		return;
 	}
-
-	int width, height;
-	wlr_output_transformed_resolution(output, &width, &height);
 
 	glGenRenderbuffers(1, buffer_id);
 	glBindRenderbuffer(GL_RENDERBUFFER, *buffer_id);
@@ -205,8 +201,6 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 		sway_log(SWAY_ERROR, "GLES2 RENDERER: Could not make EGL current");
 		return NULL;
 	}
-	// TODO: needed?
-	renderer->egl = egl;
 
 	renderer->main_buffer.fb = -1;
 
@@ -261,6 +255,14 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	}
 	if (!link_rounded_quad_program(renderer, &renderer->shaders.rounded_tr_quad,
 			SHADER_SOURCE_QUAD_ROUND_TOP_RIGHT)) {
+		goto error;
+	}
+	if (!link_rounded_quad_program(renderer, &renderer->shaders.rounded_bl_quad,
+			SHADER_SOURCE_QUAD_ROUND_BOTTOM_LEFT)) {
+		goto error;
+	}
+	if (!link_rounded_quad_program(renderer, &renderer->shaders.rounded_br_quad,
+			SHADER_SOURCE_QUAD_ROUND_BOTTOM_RIGHT)) {
 		goto error;
 	}
 
@@ -337,7 +339,7 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	}
 
 
-	if (!eglMakeCurrent(wlr_egl_get_display(renderer->egl),
+	if (!eglMakeCurrent(wlr_egl_get_display(egl),
 				EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT)) {
 		sway_log(SWAY_ERROR, "GLES2 RENDERER: Could not unset current EGL");
 		goto error;
@@ -351,6 +353,8 @@ error:
 	glDeleteProgram(renderer->shaders.rounded_quad.program);
 	glDeleteProgram(renderer->shaders.rounded_tl_quad.program);
 	glDeleteProgram(renderer->shaders.rounded_tr_quad.program);
+	glDeleteProgram(renderer->shaders.rounded_bl_quad.program);
+	glDeleteProgram(renderer->shaders.rounded_br_quad.program);
 	glDeleteProgram(renderer->shaders.corner.program);
 	glDeleteProgram(renderer->shaders.box_shadow.program);
 	glDeleteProgram(renderer->shaders.blur1.program);
@@ -359,7 +363,7 @@ error:
 	glDeleteProgram(renderer->shaders.tex_rgbx.program);
 	glDeleteProgram(renderer->shaders.tex_ext.program);
 
-	if (!eglMakeCurrent(wlr_egl_get_display(renderer->egl),
+	if (!eglMakeCurrent(wlr_egl_get_display(egl),
 				EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT)) {
 		sway_log(SWAY_ERROR, "GLES2 RENDERER: Could not unset current EGL");
 	}
@@ -379,13 +383,11 @@ void fx_renderer_fini(struct fx_renderer *renderer) {
 	release_stencil_buffer(&renderer->stencil_buffer_id);
 }
 
-void fx_renderer_begin(struct fx_renderer *renderer, struct sway_output *sway_output) {
-	struct wlr_output *output = sway_output->wlr_output;
+void fx_renderer_begin(struct fx_renderer *renderer, int width, int height) {
+	glViewport(0, 0, width, height);
+	renderer->viewport_width = width;
+	renderer->viewport_height = height;
 
-	int width, height;
-	wlr_output_transformed_resolution(output, &width, &height);
-
-	renderer->sway_output = sway_output;
 	// Store the wlr framebuffer
 	GLint wlr_fb = -1;
 	glGetIntegerv(GL_FRAMEBUFFER_BINDING, &wlr_fb);
@@ -395,14 +397,11 @@ void fx_renderer_begin(struct fx_renderer *renderer, struct sway_output *sway_ou
 	}
 	renderer->wlr_buffer.fb = wlr_fb;
 
-	// Create the main framebuffer
-	fx_framebuffer_create(output, &renderer->main_buffer, true);
-	// Create the stencil buffer and attach it to our main_buffer
-	create_stencil_buffer(output, &renderer->stencil_buffer_id);
-
-	// Create a new blur/effects framebuffers
-	fx_framebuffer_create(output, &renderer->effects_buffer, false);
-	fx_framebuffer_create(output, &renderer->effects_buffer_swapped, false);
+	// Create the framebuffers
+	fx_framebuffer_create(&renderer->main_buffer, width, height, true);
+	fx_framebuffer_create(&renderer->effects_buffer, width, height, false);
+	fx_framebuffer_create(&renderer->effects_buffer_swapped, width, height, false);
+	create_stencil_buffer(&renderer->stencil_buffer_id, width, height);
 
 	// refresh projection matrix
 	matrix_projection(renderer->projection, width, height,
@@ -411,7 +410,7 @@ void fx_renderer_begin(struct fx_renderer *renderer, struct sway_output *sway_ou
 	glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
 	// Bind to our main framebuffer
-	fx_framebuffer_bind(&renderer->main_buffer, width, height);
+	fx_framebuffer_bind(&renderer->main_buffer);
 }
 
 void fx_renderer_end(struct fx_renderer *renderer) {
@@ -578,8 +577,8 @@ void fx_render_rect(struct fx_renderer *renderer, const struct wlr_box *box,
 }
 
 void fx_render_rounded_rect(struct fx_renderer *renderer, const struct wlr_box *box,
-		const float color[static 4], const float projection[static 9],
-		int radius, enum corner_location corner_location) {
+		const float color[static 4], const float matrix[static 9], int radius,
+		enum corner_location corner_location) {
 	if (box->width == 0 || box->height == 0) {
 		return;
 	}
@@ -597,13 +596,16 @@ void fx_render_rounded_rect(struct fx_renderer *renderer, const struct wlr_box *
 		case TOP_RIGHT:
 			shader = &renderer->shaders.rounded_tr_quad;
 			break;
+		case BOTTOM_LEFT:
+			shader = &renderer->shaders.rounded_bl_quad;
+			break;
+		case BOTTOM_RIGHT:
+			shader = &renderer->shaders.rounded_br_quad;
+			break;
 		default:
 			sway_log(SWAY_ERROR, "Invalid Corner Location. Aborting render");
 			abort();
 	}
-
-	float matrix[9];
-	wlr_matrix_project_box(matrix, box, WL_OUTPUT_TRANSFORM_NORMAL, 0, projection);
 
 	float gl_matrix[9];
 	wlr_matrix_multiply(gl_matrix, renderer->projection, matrix);
@@ -636,14 +638,12 @@ void fx_render_rounded_rect(struct fx_renderer *renderer, const struct wlr_box *
 }
 
 void fx_render_border_corner(struct fx_renderer *renderer, const struct wlr_box *box,
-		const float color[static 4], const float projection[static 9],
+		const float color[static 4], const float matrix[static 9],
 		enum corner_location corner_location, int radius, int border_thickness) {
 	if (border_thickness == 0 || box->width == 0 || box->height == 0) {
 		return;
 	}
 	assert(box->width > 0 && box->height > 0);
-	float matrix[9];
-	wlr_matrix_project_box(matrix, box, WL_OUTPUT_TRANSFORM_NORMAL, 0, projection);
 
 	float gl_matrix[9];
 	wlr_matrix_multiply(gl_matrix, renderer->projection, matrix);
@@ -686,14 +686,12 @@ void fx_render_border_corner(struct fx_renderer *renderer, const struct wlr_box 
 
 // TODO: alpha input arg?
 void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *box,
-		const float color[static 4], const float projection[static 9],
-		int corner_radius, float blur_sigma) {
+		const float color[static 4], const float matrix [static 9], int corner_radius,
+		float blur_sigma) {
 	if (box->width == 0 || box->height == 0) {
 		return;
 	}
 	assert(box->width > 0 && box->height > 0);
-	float matrix[9];
-	wlr_matrix_project_box(matrix, box, WL_OUTPUT_TRANSFORM_NORMAL, 0, projection);
 
 	float gl_matrix[9];
 	wlr_matrix_multiply(gl_matrix, renderer->projection, matrix);
@@ -722,7 +720,7 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 	// Disable writing to color buffer
 	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 	// Draw the rounded rect as a mask
-	fx_render_rounded_rect(renderer, &inner_box, col, projection, corner_radius, ALL);
+	fx_render_rounded_rect(renderer, &inner_box, col, matrix, corner_radius, ALL);
 	// Close the mask
 	glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
 	glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
@@ -761,9 +759,9 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 	glDisable(GL_STENCIL_TEST);
 }
 
-void fx_render_blur(struct fx_renderer *renderer, struct sway_output *output,
-		const float matrix[static 9], struct fx_framebuffer **buffer,
-		struct blur_shader *shader, const struct wlr_box *box, int blur_radius) {
+void fx_render_blur(struct fx_renderer *renderer, const float matrix[static 9],
+		struct fx_framebuffer **buffer, struct blur_shader *shader,
+		const struct wlr_box *box, int blur_radius) {
 	glDisable(GL_BLEND);
 	glDisable(GL_STENCIL_TEST);
 
@@ -784,12 +782,10 @@ void fx_render_blur(struct fx_renderer *renderer, struct sway_output *output,
 	glUniform1i(shader->tex, 0);
 	glUniform1f(shader->radius, blur_radius);
 
-	int width, height;
-	wlr_output_transformed_resolution(output->wlr_output, &width, &height);
 	if (shader == &renderer->shaders.blur1) {
-		glUniform2f(shader->halfpixel, 0.5f / (width / 2.0f), 0.5f / (height / 2.0f));
+		glUniform2f(shader->halfpixel, 0.5f / (renderer->viewport_width / 2.0f), 0.5f / (renderer->viewport_height / 2.0f));
 	} else {
-		glUniform2f(shader->halfpixel, 0.5f / (width * 2.0f), 0.5f / (height * 2.0f));
+		glUniform2f(shader->halfpixel, 0.5f / (renderer->viewport_width * 2.0f), 0.5f / (renderer->viewport_height * 2.0f));
 	}
 
 	glVertexAttribPointer(shader->pos_attrib, 2, GL_FLOAT, GL_FALSE, 0, verts);
