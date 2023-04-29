@@ -399,9 +399,9 @@ void fx_renderer_begin(struct fx_renderer *renderer, int width, int height) {
 
 	// Create the framebuffers
 	fx_framebuffer_create(&renderer->main_buffer, width, height, true);
+	create_stencil_buffer(&renderer->stencil_buffer_id, width, height);
 	fx_framebuffer_create(&renderer->effects_buffer, width, height, false);
 	fx_framebuffer_create(&renderer->effects_buffer_swapped, width, height, false);
-	create_stencil_buffer(&renderer->stencil_buffer_id, width, height);
 
 	// refresh projection matrix
 	matrix_projection(renderer->projection, width, height,
