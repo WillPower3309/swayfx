@@ -307,7 +307,7 @@ void render_blur(bool optimized, struct sway_output *output,
 		pixman_region32_t *output_damage, const struct wlr_fbox *src_box,
 		const struct wlr_box *dst_box, pixman_region32_t *opaque_region,
 		int surface_width, int surface_height, int32_t surface_scale,
-		int corner_radius) {
+		int corner_radius, bool should_round_top) {
 	struct wlr_output *wlr_output = output->wlr_output;
 	struct fx_renderer *renderer = output->renderer;
 
@@ -364,6 +364,7 @@ void render_blur(bool optimized, struct sway_output *output,
 
 	struct decoration_data deco_data = get_undecorated_decoration_data();
 	deco_data.corner_radius = corner_radius;
+	deco_data.has_titlebar = should_round_top;
 	render_texture(wlr_output, &damage, &buffer->texture, src_box, dst_box, matrix, deco_data);
 
 damage_finish:
@@ -427,7 +428,8 @@ static void render_surface_iterator(struct sway_output *output,
 			struct wlr_fbox blur_src_box = wlr_fbox_from_wlr_box(&monitor_box);
 			bool is_floating = container_is_floating(view->container);
 			render_blur(!is_floating, output, output_damage, &blur_src_box, &dst_box, &opaque_region,
-					surface->current.width, surface->current.height, surface->current.scale, deco_data.corner_radius);
+					surface->current.width, surface->current.height, surface->current.scale,
+					deco_data.corner_radius, deco_data.has_titlebar);
 		}
 
 		pixman_region32_fini(&opaque_region);
@@ -831,7 +833,7 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 				struct wlr_fbox src_box = wlr_fbox_from_wlr_box(&monitor_box);
 				bool is_floating = container_is_floating(view->container);
 				render_blur(!is_floating, output, damage, &src_box, &dst_box, &opaque_region,
-						saved_buf->width, saved_buf->height, 1, deco_data.corner_radius);
+						saved_buf->width, saved_buf->height, 1, deco_data.corner_radius, deco_data.has_titlebar);
 
 				pixman_region32_fini(&opaque_region);
 			}
