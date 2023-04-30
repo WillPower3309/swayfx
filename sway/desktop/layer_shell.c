@@ -6,6 +6,7 @@
 #include <wlr/types/wlr_output.h>
 #include <wlr/types/wlr_subcompositor.h>
 #include "log.h"
+#include "sway/config.h"
 #include "sway/desktop/transaction.h"
 #include "sway/input/cursor.h"
 #include "sway/input/input-manager.h"
@@ -15,6 +16,7 @@
 #include "sway/server.h"
 #include "sway/tree/arrange.h"
 #include "sway/tree/workspace.h"
+#include "wlr-layer-shell-unstable-v1-protocol.h"
 
 static void apply_exclusive(struct wlr_box *usable_area,
 		uint32_t anchor, int32_t exclusive,
@@ -686,7 +688,7 @@ void handle_layer_shell_surface(struct wl_listener *listener, void *data) {
 	layer_surface->data = sway_layer;
 
 	enum zwlr_layer_shell_v1_layer layer = layer_surface->current.layer;
-	if (layer != ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM && layer != ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND) {
+	if (layer != ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND) {
 		for (int i = 0; i < config->layer_effects->length; ++i) {
 			struct layer_effects *effect = config->layer_effects->items[i];
 			if (strcmp(effect->namespace, layer_surface->namespace) == 0) {

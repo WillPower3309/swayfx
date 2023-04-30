@@ -36,13 +36,6 @@ struct decoration_data {
 	bool shadow;
 };
 
-struct fx_render_data {
-	pixman_region32_t *damage;
-	struct wlr_box *clip_box;
-	struct decoration_data deco_data;
-	bool is_toplevel_surface;
-};
-
 struct gles2_tex_shader {
 	GLuint program;
 	GLint proj;

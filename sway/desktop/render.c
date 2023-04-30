@@ -430,7 +430,7 @@ damage_finish:
 static void render_surface_iterator(struct sway_output *output,
 		struct sway_view *view, struct wlr_surface *surface,
 		struct wlr_box *_box, void *_data) {
-	struct fx_render_data *data = _data;
+	struct render_data *data = _data;
 	struct wlr_output *wlr_output = output->wlr_output;
 	pixman_region32_t *output_damage = data->damage;
 
@@ -462,12 +462,9 @@ static void render_surface_iterator(struct sway_output *output,
 	deco_data.corner_radius *= wlr_output->scale;
 
 	// render blur (view->surface == surface excludes blurring subsurfaces)
-	bool is_subsurface = true;
-	bool should_optimize_blur = false;
-	if (data->is_toplevel_surface) {
-		is_subsurface = false;
-		should_optimize_blur = config->blur_xray;
-	} else if (view) {
+	bool is_subsurface = false; // TODO: discussion here, would all cases where view is null be a non subsurface?
+	bool should_optimize_blur = config->blur_xray; // TODO: for layershell bottom layer should be optimized
+	if (view) {
 		is_subsurface = view->surface != surface;
 		should_optimize_blur = !container_is_floating(view->container);
 	}
@@ -534,9 +531,8 @@ static void render_surface_iterator(struct sway_output *output,
 
 static void render_layer_toplevel(struct sway_output *output,
 		pixman_region32_t *damage, struct wl_list *layer_surfaces) {
-	struct fx_render_data data = {
+	struct render_data data = {
 		.damage = damage,
-		.is_toplevel_surface = true,
 		.deco_data = get_undecorated_decoration_data(),
 	};
 	output_layer_for_each_toplevel_surface(output, layer_surfaces,
@@ -545,9 +541,8 @@ static void render_layer_toplevel(struct sway_output *output,
 
 static void render_layer_popups(struct sway_output *output,
 		pixman_region32_t *damage, struct wl_list *layer_surfaces) {
-	struct fx_render_data data = {
+	struct render_data data = {
 		.damage = damage,
-		.is_toplevel_surface = false,
 		.deco_data = get_undecorated_decoration_data(),
 	};
 	output_layer_for_each_popup_surface(output, layer_surfaces,
@@ -557,9 +552,8 @@ static void render_layer_popups(struct sway_output *output,
 #if HAVE_XWAYLAND
 static void render_unmanaged(struct sway_output *output,
 		pixman_region32_t *damage, struct wl_list *unmanaged) {
-	struct fx_render_data data = {
+	struct render_data data = {
 		.damage = damage,
-		.is_toplevel_surface = false,
 		.deco_data = get_undecorated_decoration_data(),
 	};
 	output_unmanaged_for_each_surface(output, unmanaged,
@@ -569,9 +563,8 @@ static void render_unmanaged(struct sway_output *output,
 
 static void render_drag_icons(struct sway_output *output,
 		pixman_region32_t *damage, struct wl_list *drag_icons) {
-	struct fx_render_data data = {
+	struct render_data data = {
 		.damage = damage,
-		.is_toplevel_surface = false,
 		.deco_data = get_undecorated_decoration_data(),
 	};
 	output_drag_icons_for_each_surface(output, drag_icons,
@@ -766,9 +759,8 @@ void premultiply_alpha(float color[4], float opacity) {
 
 static void render_view_toplevels(struct sway_view *view, struct sway_output *output,
 		pixman_region32_t *damage, struct decoration_data deco_data) {
-	struct fx_render_data data = {
+	struct render_data data = {
 		.damage = damage,
-		.is_toplevel_surface = false,
 		.deco_data = deco_data,
 	};
 	// Clip the window to its view size, ignoring CSD
@@ -792,9 +784,8 @@ static void render_view_toplevels(struct sway_view *view, struct sway_output *ou
 
 static void render_view_popups(struct sway_view *view, struct sway_output *output,
 		pixman_region32_t *damage, struct decoration_data deco_data) {
-	struct fx_render_data data = {
+	struct render_data data = {
 		.damage = damage,
-		.is_toplevel_surface = false,
 		.deco_data = deco_data,
 	};
 	output_view_for_each_popup_surface(output, view,
@@ -1992,9 +1983,8 @@ void output_render(struct sway_output *output, struct timespec *when,
 		}
 
 		if (server.session_lock.lock != NULL) {
-			struct fx_render_data data = {
+			struct render_data data = {
 				.damage = damage,
-				.is_toplevel_surface = false,
 				.deco_data = get_undecorated_decoration_data(),
 			};
 

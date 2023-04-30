@@ -199,7 +199,7 @@ void output_layer_for_each_toplevel_surface(struct sway_output *output,
 	wl_list_for_each(layer_surface, layer_surfaces, link) {
 		struct wlr_layer_surface_v1 *wlr_layer_surface_v1 =
 			layer_surface->layer_surface;
-		struct fx_render_data *data = user_data;
+		struct render_data *data = user_data;
 		struct layer_effects *effects = layer_surface->effects;
 		if (effects) {
 			data->deco_data.blur = effects->blur;
