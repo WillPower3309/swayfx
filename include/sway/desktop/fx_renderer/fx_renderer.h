@@ -35,7 +35,70 @@ struct decoration_data {
 	bool blur;
 };
 
-struct gles2_tex_shader {
+struct blur_shader {
+	GLuint program;
+	GLint proj;
+	GLint tex;
+	GLint pos_attrib;
+	GLint tex_attrib;
+	GLint radius;
+	GLint halfpixel;
+};
+
+struct box_shadow_shader {
+	GLuint program;
+	GLint proj;
+	GLint color;
+	GLint pos_attrib;
+	GLint position;
+	GLint size;
+	GLint blur_sigma;
+	GLint corner_radius;
+};
+
+struct corner_shader {
+	GLuint program;
+	GLint proj;
+	GLint color;
+	GLint pos_attrib;
+	GLint is_top_left;
+	GLint is_top_right;
+	GLint is_bottom_left;
+	GLint is_bottom_right;
+	GLint position;
+	GLint radius;
+	GLint half_size;
+	GLint half_thickness;
+};
+
+struct quad_shader {
+	GLuint program;
+	GLint proj;
+	GLint color;
+	GLint pos_attrib;
+};
+
+struct rounded_quad_shader {
+	GLuint program;
+	GLint proj;
+	GLint color;
+	GLint pos_attrib;
+	GLint size;
+	GLint position;
+	GLint radius;
+};
+
+struct stencil_mask_shader {
+	GLuint program;
+	GLint proj;
+	GLint color;
+	GLint pos_attrib;
+	GLint half_size;
+	GLint position;
+	GLint radius;
+};
+
+struct tex_shader {
 	GLuint program;
 	GLint proj;
 	GLint tex;
@@ -49,26 +112,6 @@ struct gles2_tex_shader {
 	GLint dim;
 	GLint dim_color;
 	GLint has_titlebar;
-};
-
-struct rounded_quad_shader {
-	GLuint program;
-	GLint proj;
-	GLint color;
-	GLint pos_attrib;
-	GLint size;
-	GLint position;
-	GLint radius;
-};
-
-struct blur_shader {
-	GLuint program;
-	GLint proj;
-	GLint tex;
-	GLint pos_attrib;
-	GLint tex_attrib;
-	GLint radius;
-	GLint halfpixel;
 };
 
 struct fx_renderer {
@@ -95,64 +138,21 @@ struct fx_renderer {
 		PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES;
 	} procs;
 
-
-	// Shaders
 	struct {
-		struct {
-			GLuint program;
-			GLint proj;
-			GLint color;
-			GLint pos_attrib;
-		} quad;
-
+		struct box_shadow_shader box_shadow;
+		struct blur_shader blur1;
+		struct blur_shader blur2;
+		struct corner_shader corner;
+		struct quad_shader quad;
 		struct rounded_quad_shader rounded_quad;
 		struct rounded_quad_shader rounded_tl_quad;
 		struct rounded_quad_shader rounded_tr_quad;
 		struct rounded_quad_shader rounded_bl_quad;
 		struct rounded_quad_shader rounded_br_quad;
-
-		struct {
-			GLuint program;
-			GLint proj;
-			GLint color;
-			GLint pos_attrib;
-			GLint half_size;
-			GLint position;
-			GLint radius;
-		} stencil_mask;
-
-		struct blur_shader blur1;
-		struct blur_shader blur2;
-
-		struct {
-			GLuint program;
-			GLint proj;
-			GLint color;
-			GLint pos_attrib;
-			GLint is_top_left;
-			GLint is_top_right;
-			GLint is_bottom_left;
-			GLint is_bottom_right;
-			GLint position;
-			GLint radius;
-			GLint half_size;
-			GLint half_thickness;
-		} corner;
-
-		struct {
-			GLuint program;
-			GLint proj;
-			GLint color;
-			GLint pos_attrib;
-			GLint position;
-			GLint size;
-			GLint blur_sigma;
-			GLint corner_radius;
-		} box_shadow;
-
-		struct gles2_tex_shader tex_rgba;
-		struct gles2_tex_shader tex_rgbx;
-		struct gles2_tex_shader tex_ext;
+		struct stencil_mask_shader stencil_mask;
+		struct tex_shader tex_rgba;
+		struct tex_shader tex_rgbx;
+		struct tex_shader tex_ext;
 	} shaders;
 };
 
