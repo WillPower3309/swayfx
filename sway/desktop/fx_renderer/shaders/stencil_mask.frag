@@ -11,7 +11,7 @@ void main() {
     float smoothedAlpha = 1.0 - smoothstep(-1.0, 0.5, dist);
     gl_FragColor = mix(vec4(0.0), vec4(1.0), smoothedAlpha);
 
-    if (gl_FragColor.a == 0.0) {
+    if (gl_FragColor.a < 1.0) {
         discard;
     }
 }
