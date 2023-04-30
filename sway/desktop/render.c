@@ -880,7 +880,10 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		box.width = state->width;
 		box.height = state->height;
 		scale_box(&box, output_scale);
-		int scaled_corner_radius = (con->corner_radius + state->border_thickness) * output_scale;
+		int corner_radius = config->smart_corner_radius &&
+				output->current.active_workspace->current_gaps.top == 0
+				? 0 : con->corner_radius;
+		int scaled_corner_radius = (corner_radius + state->border_thickness) * output_scale;
 		render_box_shadow(output, damage, &box, config->shadow_color, config->shadow_blur_sigma,
 				scaled_corner_radius);
 	}
@@ -1421,9 +1424,6 @@ static void render_containers_linear(struct sway_output *output,
 			}
 
 			bool has_titlebar = state->border == B_NORMAL;
-			int corner_radius = config->smart_corner_radius &&
-					output->current.active_workspace->current_gaps.top == 0
-					? 0 : child->corner_radius;
 
 			struct decoration_data deco_data = {
 				.alpha = child->alpha,
@@ -1432,7 +1432,9 @@ static void render_containers_linear(struct sway_output *output,
 						: config->dim_inactive_colors.unfocused,
 				.dim = child->current.focused || parent->focused ? 0.0f : child->dim,
 				// no corner radius if no gaps (allows smart_gaps to work as expected)
-				.corner_radius = corner_radius,
+				.corner_radius = config->smart_corner_radius &&
+						output->current.active_workspace->current_gaps.top == 0
+						? 0 : child->corner_radius,
 				.saturation = child->saturation,
 				.has_titlebar = has_titlebar,
 				.blur = child->blur_enabled,
@@ -1471,6 +1473,21 @@ static void render_containers_tabbed(struct sway_output *output,
 	struct sway_container *current = parent->active_child;
 	struct border_colors *current_colors = &config->border_colors.unfocused;
 	int tab_width = parent->box.width / parent->children->length;
+
+	struct decoration_data deco_data = {
+		.alpha = current->alpha,
+		.dim_color = view_is_urgent(current->view)
+				? config->dim_inactive_colors.urgent
+				: config->dim_inactive_colors.unfocused,
+		.dim = current->current.focused || parent->focused ? 0.0f : current->dim,
+		// no corner radius if no gaps (allows smart_gaps to work as expected)
+		.corner_radius = config->smart_corner_radius &&
+				output->current.active_workspace->current_gaps.top == 0
+				? 0 : current->corner_radius,
+		.saturation = current->saturation,
+		.has_titlebar = true,
+		.blur = current->blur_enabled,
+	};
 
 	// Render tabs
 	for (int i = 0; i < parent->children->length; ++i) {
@@ -1525,7 +1542,7 @@ static void render_containers_tabbed(struct sway_output *output,
 		}
 
 		render_titlebar(output, damage, child, x, parent->box.y, tab_width, colors,
-			child->alpha, child->corner_radius, corner_location, title_texture, marks_texture);
+			deco_data.alpha, deco_data.corner_radius, corner_location, title_texture, marks_texture);
 
 		if (child == current) {
 			current_colors = colors;
@@ -1534,17 +1551,6 @@ static void render_containers_tabbed(struct sway_output *output,
 
 	// Render surface and left/right/bottom borders
 	if (current->view) {
-		struct decoration_data deco_data = {
-			.alpha = current->alpha,
-			.dim_color = view_is_urgent(current->view)
-					? config->dim_inactive_colors.urgent
-					: config->dim_inactive_colors.unfocused,
-			.dim = current->current.focused || parent->focused ? 0.0f : current->dim,
-			.corner_radius = current->corner_radius,
-			.saturation = current->saturation,
-			.has_titlebar = true,
-			.blur = current->blur_enabled,
-		};
 		render_view(output, damage, current, current_colors, deco_data);
 	} else {
 		render_container(output, damage, current,
@@ -1563,6 +1569,20 @@ static void render_containers_stacked(struct sway_output *output,
 	struct sway_container *current = parent->active_child;
 	struct border_colors *current_colors = &config->border_colors.unfocused;
 	size_t titlebar_height = container_titlebar_height();
+
+	struct decoration_data deco_data = {
+		.alpha = current->alpha,
+		.dim_color = view_is_urgent(current->view)
+				? config->dim_inactive_colors.urgent
+				: config->dim_inactive_colors.unfocused,
+		.dim = current->current.focused || parent->focused ? 0.0f : current->dim,
+		.saturation = current->saturation,
+		.corner_radius = config->smart_corner_radius &&
+				output->current.active_workspace->current_gaps.top == 0
+				? 0 : current->corner_radius,
+		.has_titlebar = true,
+		.blur = current->blur_enabled,
+	};
 
 	// Render titles
 	for (int i = 0; i < parent->children->length; ++i) {
@@ -1598,9 +1618,9 @@ static void render_containers_stacked(struct sway_output *output,
 		}
 
 		int y = parent->box.y + titlebar_height * i;
-		int corner_radius = i != 0 ? 0 : child->corner_radius;
+		int corner_radius = i != 0 ? 0 : deco_data.corner_radius;
 		render_titlebar(output, damage, child, parent->box.x, y, parent->box.width,
-			colors, child->alpha, corner_radius, ALL, title_texture, marks_texture);
+			colors, deco_data.alpha, corner_radius, ALL, title_texture, marks_texture);
 
 		if (child == current) {
 			current_colors = colors;
@@ -1609,17 +1629,6 @@ static void render_containers_stacked(struct sway_output *output,
 
 	// Render surface and left/right/bottom borders
 	if (current->view) {
-		struct decoration_data deco_data = {
-			.alpha = current->alpha,
-			.dim_color = view_is_urgent(current->view)
-					? config->dim_inactive_colors.urgent
-					: config->dim_inactive_colors.unfocused,
-			.dim = current->current.focused || parent->focused ? 0.0f : current->dim,
-			.saturation = current->saturation,
-			.corner_radius = current->corner_radius,
-			.has_titlebar = true,
-			.blur = current->blur_enabled,
-		};
 		render_view(output, damage, current, current_colors, deco_data);
 	} else {
 		render_container(output, damage, current,
