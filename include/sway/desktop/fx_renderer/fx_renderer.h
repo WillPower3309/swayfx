@@ -111,6 +111,16 @@ struct fx_renderer {
 		struct rounded_quad_shader rounded_bl_quad;
 		struct rounded_quad_shader rounded_br_quad;
 
+		struct {
+			GLuint program;
+			GLint proj;
+			GLint color;
+			GLint pos_attrib;
+			GLint half_size;
+			GLint position;
+			GLint radius;
+		} stencil_mask;
+
 		struct blur_shader blur1;
 		struct blur_shader blur2;
 

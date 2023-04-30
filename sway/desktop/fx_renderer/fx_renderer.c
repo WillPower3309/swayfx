@@ -25,6 +25,7 @@
 #include "corner_frag_src.h"
 #include "quad_frag_src.h"
 #include "quad_round_frag_src.h"
+#include "stencil_mask_frag_src.h"
 #include "tex_frag_src.h"
 
 static const GLfloat verts[] = {
@@ -298,6 +299,19 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 	renderer->shaders.box_shadow.blur_sigma = glGetUniformLocation(prog, "blur_sigma");
 	renderer->shaders.box_shadow.corner_radius = glGetUniformLocation(prog, "corner_radius");
 
+	// stencil mask shader
+	prog = link_program(stencil_mask_frag_src);
+	renderer->shaders.stencil_mask.program = prog;
+	if (!renderer->shaders.stencil_mask.program) {
+		goto error;
+	}
+	renderer->shaders.stencil_mask.proj = glGetUniformLocation(prog, "proj");
+	renderer->shaders.stencil_mask.color = glGetUniformLocation(prog, "color");
+	renderer->shaders.stencil_mask.pos_attrib = glGetAttribLocation(prog, "pos");
+	renderer->shaders.stencil_mask.position = glGetUniformLocation(prog, "position");
+	renderer->shaders.stencil_mask.radius = glGetUniformLocation(prog, "radius");
+	renderer->shaders.stencil_mask.half_size = glGetUniformLocation(prog, "half_size");
+
 	// Blur 1
 	prog = link_program(blur1_frag_src);
 	renderer->shaders.blur1.program = prog;
@@ -356,6 +370,7 @@ error:
 	glDeleteProgram(renderer->shaders.rounded_bl_quad.program);
 	glDeleteProgram(renderer->shaders.rounded_br_quad.program);
 	glDeleteProgram(renderer->shaders.corner.program);
+	glDeleteProgram(renderer->shaders.stencil_mask.program);
 	glDeleteProgram(renderer->shaders.box_shadow.program);
 	glDeleteProgram(renderer->shaders.blur1.program);
 	glDeleteProgram(renderer->shaders.blur2.program);
@@ -684,6 +699,43 @@ void fx_render_border_corner(struct fx_renderer *renderer, const struct wlr_box 
 	glDisableVertexAttribArray(renderer->shaders.corner.pos_attrib);
 }
 
+void fx_render_stencil_mask(struct fx_renderer *renderer, const struct wlr_box *box,
+		const float matrix[static 9], int corner_radius) {
+	if (box->width == 0 || box->height == 0) {
+		return;
+	}
+	assert(box->width > 0 && box->height > 0);
+
+	// TODO: just pass gl_matrix?
+	float gl_matrix[9];
+	wlr_matrix_multiply(gl_matrix, renderer->projection, matrix);
+
+	// TODO: investigate why matrix is flipped prior to this cmd
+	// wlr_matrix_multiply(gl_matrix, flip_180, gl_matrix);
+
+	wlr_matrix_transpose(gl_matrix, gl_matrix);
+
+	glEnable(GL_BLEND);
+
+	glUseProgram(renderer->shaders.stencil_mask.program);
+
+	glUniformMatrix3fv(renderer->shaders.stencil_mask.proj, 1, GL_FALSE, gl_matrix);
+
+	glUniform2f(renderer->shaders.stencil_mask.half_size, box->width * 0.5, box->height * 0.5);
+	glUniform2f(renderer->shaders.stencil_mask.position, box->x, box->y);
+	glUniform1f(renderer->shaders.stencil_mask.radius, corner_radius);
+
+	glVertexAttribPointer(renderer->shaders.stencil_mask.pos_attrib, 2, GL_FLOAT, GL_FALSE,
+			0, verts);
+
+	glEnableVertexAttribArray(renderer->shaders.stencil_mask.pos_attrib);
+
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+	glDisableVertexAttribArray(renderer->shaders.stencil_mask.pos_attrib);
+
+}
+
 // TODO: alpha input arg?
 void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *box,
 		const float color[static 4], const float matrix [static 9], int corner_radius,
@@ -702,8 +754,6 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 	wlr_matrix_transpose(gl_matrix, gl_matrix);
 
 	// Init stencil work
-	// NOTE: Alpha needs to be set to 1.0 to be able to discard any "empty" pixels
-	const float col[4] = {0.0, 0.0, 0.0, 1.0};
 	struct wlr_box inner_box;
 	memcpy(&inner_box, box, sizeof(struct wlr_box));
 	inner_box.x += blur_sigma;
@@ -720,7 +770,7 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 	// Disable writing to color buffer
 	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 	// Draw the rounded rect as a mask
-	fx_render_rounded_rect(renderer, &inner_box, col, matrix, corner_radius, ALL);
+	fx_render_stencil_mask(renderer, &inner_box, matrix, corner_radius);
 	// Close the mask
 	glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
 	glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
