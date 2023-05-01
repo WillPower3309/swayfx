@@ -436,14 +436,16 @@ damage_finish:
 static void render_surface_iterator(struct sway_output *output,
 		struct sway_view *view, struct wlr_surface *surface,
 		struct wlr_box *_box, void *_data) {
-	struct render_data *data = _data;
-	struct wlr_output *wlr_output = output->wlr_output;
-	pixman_region32_t *output_damage = data->damage;
-
 	struct wlr_texture *texture = wlr_surface_get_texture(surface);
 	if (!texture) {
 		return;
 	}
+
+	struct render_data *data = _data;
+	struct wlr_output *wlr_output = output->wlr_output;
+	pixman_region32_t *output_damage = data->damage;
+
+	enum wl_output_transform transform = wlr_output_transform_invert(surface->current.transform);
 
 	struct wlr_box dst_box = *_box;
 	scale_box(&dst_box, wlr_output->scale);
@@ -474,8 +476,7 @@ static void render_surface_iterator(struct sway_output *output,
 
 		if (has_alpha) {
 			struct wlr_box monitor_box = get_monitor_box(wlr_output);
-			wlr_box_transform(&monitor_box, &monitor_box,
-					wlr_output_transform_invert(wlr_output->transform), monitor_box.width, monitor_box.height);
+			wlr_box_transform(&monitor_box, &monitor_box, transform, monitor_box.width, monitor_box.height);
 			struct wlr_fbox blur_src_box = wlr_fbox_from_wlr_box(&monitor_box);
 			render_blur(should_optimize_blur, output, output_damage, &blur_src_box, &dst_box, &opaque_region,
 					surface->current.width, surface->current.height, surface->current.scale,
@@ -490,7 +491,6 @@ static void render_surface_iterator(struct sway_output *output,
 	scale_box(&proj_box, wlr_output->scale);
 
 	float matrix[9];
-	enum wl_output_transform transform = wlr_output_transform_invert(surface->current.transform);
 	wlr_matrix_project_box(matrix, &proj_box, transform, 0.0, wlr_output->transform_matrix);
 
 	struct wlr_fbox src_box;
@@ -508,22 +508,22 @@ static void render_surface_iterator(struct sway_output *output,
 		int corner_radius = deco_data.corner_radius;
 		if (view) {
 			struct sway_container *con = view->container;
-			struct sway_container_state *state = &con->current;
-
 			// Only draw shadows on CSD windows if shadows_on_csd is enabled
 			if (con->current.border == B_CSD && !config->shadows_on_csd_enabled) {
 				return;
 			}
 
-			corner_radius = (con->corner_radius + state->border_thickness) * wlr_output->scale;
-
-			// Account for titlebars
-			shadow_box.x = floor(state->x) - output->lx;
-			shadow_box.y = floor(state->y) - output->ly;
-			shadow_box.width = state->width;
-			shadow_box.height = state->height;
+			// Account for titlebars and borders
+			struct sway_container_state state = con->current;
+			corner_radius += state.border_thickness;
+			shadow_box.x = floor(state.x) - output->lx;
+			shadow_box.y = floor(state.y) - output->ly;
+			shadow_box.width = state.width;
+			shadow_box.height = state.height;
 			scale_box(&shadow_box, wlr_output->scale);
 		}
+
+		corner_radius *= wlr_output->scale;
 		render_box_shadow(output, output_damage, &shadow_box, config->shadow_color,
 				config->shadow_blur_sigma, corner_radius);
 	}
