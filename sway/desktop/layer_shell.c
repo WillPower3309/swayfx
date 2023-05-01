@@ -6,7 +6,6 @@
 #include <wlr/types/wlr_output.h>
 #include <wlr/types/wlr_subcompositor.h>
 #include "log.h"
-#include "sway/config.h"
 #include "sway/desktop/transaction.h"
 #include "sway/input/cursor.h"
 #include "sway/input/input-manager.h"
