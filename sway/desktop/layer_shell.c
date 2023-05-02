@@ -692,6 +692,8 @@ void handle_layer_shell_surface(struct wl_listener *listener, void *data) {
 			struct layer_effects *effect = config->layer_effects->items[i];
 			if (strcmp(effect->namespace, layer_surface->namespace) == 0) {
 				sway_layer->effects = effect;
+				// Blur optimization won't work for BOTTOM layered surfaces
+				sway_layer->effects->deco_data.can_blur_xray = layer != ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM;
 				break;
 			}
 		}

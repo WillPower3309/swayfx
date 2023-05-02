@@ -333,7 +333,7 @@ void render_blur(bool optimized, struct sway_output *output,
 	wlr_region_scale(&inverse_opaque, &inverse_opaque, wlr_output->scale);
 
 	struct fx_framebuffer *buffer = &renderer->blur_buffer;
-	if (!buffer->texture.id || (!optimized && !config->blur_xray)) {
+	if (!buffer->texture.id || !optimized) {
 		pixman_region32_translate(&inverse_opaque, dst_box->x, dst_box->y);
 		pixman_region32_intersect(&inverse_opaque, &inverse_opaque, &damage);
 
@@ -451,10 +451,10 @@ static void render_surface_iterator(struct sway_output *output,
 
 	// render blur (view->surface == surface excludes blurring subsurfaces)
 	bool is_subsurface = false; // TODO: discussion here, would all cases where view is null be a non subsurface?
-	bool should_optimize_blur = config->blur_xray; // TODO: for layershell bottom layer should be optimized
+	bool should_optimize_blur = deco_data.can_blur_xray && config->blur_xray;
 	if (view) {
 		is_subsurface = view->surface != surface;
-		should_optimize_blur = !container_is_floating(view->container);
+		should_optimize_blur = !container_is_floating(view->container) || config->blur_xray;
 	}
 	if (deco_data.blur && should_parameters_blur() && !is_subsurface) {
 		pixman_region32_t opaque_region;
@@ -1446,6 +1446,7 @@ static void render_containers_linear(struct sway_output *output,
 				.saturation = child->saturation,
 				.has_titlebar = has_titlebar,
 				.blur = child->blur_enabled,
+				.can_blur_xray = true,
 				.shadow = child->shadow_enabled,
 			};
 			render_view(output, damage, child, colors, deco_data);
@@ -1496,6 +1497,7 @@ static void render_containers_tabbed(struct sway_output *output,
 		.saturation = current->saturation,
 		.has_titlebar = true,
 		.blur = current->blur_enabled,
+		.can_blur_xray = true,
 	};
 
 	// Render tabs
@@ -1591,6 +1593,7 @@ static void render_containers_stacked(struct sway_output *output,
 				? 0 : current->corner_radius,
 		.has_titlebar = true,
 		.blur = current->blur_enabled,
+		.can_blur_xray = true,
 	};
 
 	// Render titles
@@ -1738,6 +1741,7 @@ static void render_floating_container(struct sway_output *soutput,
 			.corner_radius = con->corner_radius,
 			.has_titlebar = has_titlebar,
 			.blur = con->blur_enabled,
+			.can_blur_xray = true,
 			.shadow = con->shadow_enabled,
 		};
 		render_view(soutput, damage, con, colors, deco_data);
@@ -1855,7 +1859,9 @@ static struct workspace_effect_info get_workspace_effect_info(struct sway_output
 				if (layer_effects->deco_data.blur && !lsurface->layer_surface->surface->opaque) {
 					effect_info.container_wants_blur = true;
 					// Check if we should render optimized blur
-					if (renderer->blur_buffer_dirty && config->blur_xray) {
+					if (renderer->blur_buffer_dirty && config->blur_xray
+							&& lsurface->layer != ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND
+							&& lsurface->layer != ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM) {
 						effect_info.should_render_optimized_blur = true;
 					}
 				}
@@ -2079,6 +2085,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 			.saturation = focus->saturation,
 			.has_titlebar = false,
 			.blur = false,
+			.can_blur_xray = false,
 			.shadow = false,
 		};
 		render_view_popups(focus->view, output, damage, deco_data);
