@@ -12,6 +12,7 @@
 #include "../include/config.h"
 #include "gesture.h"
 #include "list.h"
+#include "sway/desktop/fx_renderer/fx_renderer.h"
 #include "swaynag.h"
 #include "tree/container.h"
 #include "sway/input/tablet.h"
@@ -477,9 +478,7 @@ struct blur_parameters {
 
 struct layer_effects {
 	char *namespace;
-	bool blur;
-	bool shadow;
-	bool corner_rounding;
+	struct decoration_data deco_data;
 };
 
 /**

@@ -39,19 +39,6 @@ struct workspace_effect_info {
 	int expanded_size;
 };
 
-struct decoration_data get_undecorated_decoration_data() {
-	return (struct decoration_data) {
-		.alpha = 1.0f,
-		.dim = 0.0f,
-		.dim_color = config->dim_inactive_colors.unfocused,
-		.corner_radius = 0,
-		.saturation = 1.0f,
-		.has_titlebar = false,
-		.blur = false,
-		.shadow = false,
-	};
-}
-
 int get_blur_size() {
 	return pow(2, config->blur_params.num_passes) * config->blur_params.radius;
 }
@@ -1865,14 +1852,14 @@ static struct workspace_effect_info get_workspace_effect_info(struct sway_output
 		wl_list_for_each(lsurface, &sway_output->layers[i], link) {
 			struct layer_effects *layer_effects = lsurface->effects;
 			if (layer_effects) {
-				if (layer_effects->blur && !lsurface->layer_surface->surface->opaque) {
+				if (layer_effects->deco_data.blur && !lsurface->layer_surface->surface->opaque) {
 					effect_info.container_wants_blur = true;
 					// Check if we should render optimized blur
 					if (renderer->blur_buffer_dirty && config->blur_xray) {
 						effect_info.should_render_optimized_blur = true;
 					}
 				}
-				if (layer_effects->shadow) {
+				if (layer_effects->deco_data.shadow) {
 					effect_info.container_wants_shadow = true;
 				}
 			}

@@ -9,6 +9,18 @@
 #include "sway/desktop/fx_renderer/fx_framebuffer.h"
 #include "sway/desktop/fx_renderer/fx_texture.h"
 
+#define get_undecorated_decoration_data() \
+	(struct decoration_data) { \
+		.alpha = 1.0f, \
+		.dim = 0.0f, \
+		.dim_color = config->dim_inactive_colors.unfocused, \
+		.corner_radius = 0, \
+		.saturation = 1.0f, \
+		.has_titlebar = false, \
+		.blur = false, \
+		.shadow = false, \
+	}
+
 enum corner_location { TOP_LEFT, TOP_RIGHT, BOTTOM_RIGHT, BOTTOM_LEFT, ALL, NONE };
 
 enum fx_tex_shader_source {

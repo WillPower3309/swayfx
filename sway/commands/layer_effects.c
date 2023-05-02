@@ -1,7 +1,58 @@
+#include <ctype.h>
+#include "log.h"
+#include "stringop.h"
 #include "sway/commands.h"
 #include "sway/config.h"
 #include "sway/output.h"
 #include "util.h"
+
+struct cmd_results *parse_effects(int argc, char **argv, struct layer_effects *effect) {
+	char matched_delim = ';';
+	char *head = join_args(argv + 1, argc - 1);
+	do {
+		// Trim leading whitespaces
+		for (; isspace(*head); ++head) {}
+		// Split command list
+		char *cmd = argsep(&head, ";,", &matched_delim);
+		for (; isspace(*cmd); ++cmd) {}
+
+		if (strcmp(cmd, "") == 0) {
+			sway_log(SWAY_INFO, "Ignoring empty layer effect.");
+			continue;
+		}
+		sway_log(SWAY_INFO, "Handling layer effect '%s'", cmd);
+
+		int argc;
+		char **argv = split_args(cmd, &argc);
+		// Strip all quotes from each token
+		for (int i = 1; i < argc; ++i) {
+			if (*argv[i] == '\"' || *argv[i] == '\'') {
+				strip_quotes(argv[i]);
+			}
+		}
+		if (strcmp(argv[0], "blur") == 0) {
+			effect->deco_data.blur = cmd_blur_parse_value(argv[1]);
+			continue;
+		} else if (strcmp(argv[0], "shadows") == 0) {
+			effect->deco_data.shadow = cmd_shadows_parse_value(argv[1]);
+			continue;
+		} else if (strcmp(argv[0], "corner_radius") == 0) {
+			int value;
+			if (cmd_corner_radius_parse_value(argv[1], &value)) {
+				effect->deco_data.corner_radius = value;
+				continue;
+			}
+			return cmd_results_new(CMD_INVALID,
+					"Invalid layer_effects corner_radius size! Got \"%s\"",
+					argv[1]);
+		} else {
+			return cmd_results_new(CMD_INVALID,
+					"Invalid layer_effects effect! Got \"%s\"",
+					cmd);
+		}
+	} while(head);
+	return NULL;
+}
 
 struct cmd_results *cmd_layer_effects(int argc, char **argv) {
 	struct cmd_results *error = NULL;
@@ -13,27 +64,21 @@ struct cmd_results *cmd_layer_effects(int argc, char **argv) {
 	size_t len = sizeof(argv[0]);
 	effect->namespace = malloc(len + 1);
 	memcpy(effect->namespace, argv[0], len);
-	effect->blur = false;
-	effect->shadow = false;
-	effect->corner_rounding = false;
+	effect->deco_data = get_undecorated_decoration_data();
 
 	// Parse the commands
-	for (int i = 1; i < argc; i++) {
-		char *arg = argv[i];
-		if (strcmp(arg, "blur") == 0) {
-			effect->blur = true;
-			continue;
-		} else if (strcmp(arg, "shadow") == 0) {
-			effect->shadow = true;
-			continue;
-		} else if (strcmp(arg, "corner_rounding") == 0) {
-			effect->corner_rounding = true;
-			continue;
-		}
-		return cmd_results_new(CMD_INVALID, "Invalid layer_effects effect! Got \"%s\"", arg);
+	if ((error = parse_effects(argc, argv, effect))) {
+		return error;
 	}
 
-	if (!effect->blur && !effect->shadow && !effect->corner_rounding) {
+	// Ignore if nothing has changed
+	// TODO: Add deco_data cmp function?
+	if (!effect->deco_data.blur
+			&& !effect->deco_data.shadow
+			&& effect->deco_data.corner_radius < 1) {
+		sway_log(SWAY_ERROR,
+				"Ignoring layer effect \"%s\". Nothing changed\n",
+				join_args(argv + 1, argc - 1));
 		return cmd_results_new(CMD_SUCCESS, NULL);
 	}
 

@@ -8,6 +8,10 @@
 #include "stringop.h"
 #include "util.h"
 
+bool cmd_shadows_parse_value(char *arg) {
+	return parse_boolean(arg, true);
+}
+
 struct cmd_results *cmd_shadows(int argc, char **argv) {
 	struct cmd_results *error = checkarg(argc, "shadows", EXPECTED_AT_LEAST, 1);
 
@@ -17,7 +21,7 @@ struct cmd_results *cmd_shadows(int argc, char **argv) {
 
 	struct sway_container *con = config->handler_context.container;
 
-	bool result = parse_boolean(argv[0], config->shadow_enabled);
+	bool result = cmd_shadows_parse_value(argv[0]);
 	if (con == NULL) {
 		config->shadow_enabled = result;
 	} else {

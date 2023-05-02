@@ -98,6 +98,13 @@ struct sway_container *container_find_resize_parent(struct sway_container *con,
 		uint32_t edge);
 
 /**
+ * Effect handlers value parsers
+ */
+bool cmd_blur_parse_value(char *arg);
+bool cmd_corner_radius_parse_value(char *arg, int* result);
+bool cmd_shadows_parse_value(char *arg);
+
+/**
  * Handlers shared by exec and exec_always.
  */
 sway_cmd cmd_exec_validate;

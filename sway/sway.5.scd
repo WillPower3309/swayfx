@@ -78,9 +78,13 @@ The following commands may only be used in the configuration file.
 	layers can use these effects.
 
 	Effects:
-	- *blur*
-	- *shadow*
-	- *corner_rounding*
+	- *blur* <enable|disable>
+	- *shadows* <enable|disable>
+	- *corner_radius* <integer>
+
+	Example:
+
+		layer_effects "waybar" blur enable; shadows enable; corner_radius 6
 
 *scratchpad_minimize* enable|disable
 	Adjusts if minimized windows should be moved into the scratchpad.

@@ -32,7 +32,12 @@ Sway is an incredible window manager, and certainly one of the most well establi
     - `blur_passes <integer value 0 - 10>`
     - `blur_radius <integer value 0 - 10>`
 + LayerShell effects: *ONLY ON SWAYFX-GIT, NOT YET RELEASED*
-    - `layer_effects <layer namespace, eg: "waybar"> blur shadow corner_radius`
+    - `layer_effects <layer namespace> <effects>`
+    - Example: `layer_effects "waybar" blur enable; shadows enable; corner_radius 6`
+    - Available Effects:
+        - `blur <enable|disable>`
+        - `shadows <enable|disable>`
+        - `corner_radius <int>`
 + Dim unfocused windows:
     - `default_dim_inactive <float value 0.0 - 1.0>`
     - `for_window [CRITERIA_HERE] dim_inactive <float value 0.0 - 1.0>`
