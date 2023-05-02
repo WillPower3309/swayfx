@@ -387,8 +387,8 @@ void render_box_shadow(struct sway_output *output, pixman_region32_t *output_dam
 
 	struct wlr_box box;
 	memcpy(&box, _box, sizeof(struct wlr_box));
-	box.x -= output->lx * wlr_output->scale + blur_sigma;
-	box.y -= output->ly * wlr_output->scale + blur_sigma;
+	box.x -= blur_sigma;
+	box.y -= blur_sigma;
 	box.width += 2 * blur_sigma;
 	box.height += 2 * blur_sigma;
 
@@ -830,7 +830,8 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 		enum wl_output_transform transform = wlr_output_transform_invert(saved_buf->transform);
 		wlr_matrix_project_box(matrix, &proj_box, transform, 0, wlr_output->transform_matrix);
 
-		struct sway_container_state state = view->container->current;
+		struct sway_container *con = view->container;
+		struct sway_container_state state = con->current;
 		dst_box.x = state.x - output->lx;
 		dst_box.y = state.y - output->ly;
 		dst_box.width = state.width;
@@ -870,6 +871,15 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 		struct fx_texture fx_texture = fx_texture_from_wlr_texture(saved_buf->buffer->texture);
 		render_texture(wlr_output, damage, &fx_texture,
 				&saved_buf->source_box, &dst_box, matrix, deco_data);
+
+		// render shadow
+		if (deco_data.shadow && should_parameters_shadow()
+				// Only draw shadows on CSD windows if shadows_on_csd is enabled
+				&& !(con->current.border == B_CSD && !config->shadows_on_csd_enabled)) {
+			int corner_radius = (con->corner_radius + state.border_thickness) * wlr_output->scale;
+			render_box_shadow(output, damage, &dst_box, config->shadow_color,
+					config->shadow_blur_sigma, corner_radius);
+		}
 	}
 
 	// FIXME: we should set the surface that this saved buffer originates from
