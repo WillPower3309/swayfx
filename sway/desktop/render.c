@@ -447,6 +447,15 @@ static void render_unmanaged(struct fx_render_context *ctx, struct wl_list *unma
 }
 #endif
 
+static void render_input_popups(struct fx_render_context *ctx, struct wl_list *input_popups) {
+	struct render_data data = {
+		.deco_data = get_undecorated_decoration_data(),
+		.ctx = ctx,
+	};
+	output_input_popups_for_each_surface(ctx->output, input_popups,
+		render_surface_iterator, &data);
+}
+
 static void render_drag_icons(struct fx_render_context *ctx, struct wl_list *drag_icons) {
 	struct render_data data = {
 		.deco_data = get_undecorated_decoration_data(),
@@ -1662,6 +1671,9 @@ void output_render(struct fx_render_context *ctx) {
 		goto renderer_end;
 	}
 
+	struct sway_seat *seat = input_manager_current_seat();
+	struct sway_container *focus = seat_get_focused_container(seat);
+
 	if (output_has_opaque_overlay_layer_surface(output)) {
 		goto render_overlay;
 	}
@@ -1797,8 +1809,6 @@ void output_render(struct fx_render_context *ctx) {
 
 	render_seatops(ctx);
 
-	struct sway_seat *seat = input_manager_current_seat();
-	struct sway_container *focus = seat_get_focused_container(seat);
 	if (focus && focus->view) {
 		struct decoration_data deco_data = {
 			.alpha = focus->alpha,
@@ -1821,6 +1831,7 @@ render_overlay:
 		&output->layers[ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY]);
 	render_layer_popups(ctx,
 		&output->layers[ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY]);
+	render_input_popups(ctx, &seat->im_relay.input_popups);
 	render_drag_icons(ctx, &root->drag_icons);
 
 renderer_end:
