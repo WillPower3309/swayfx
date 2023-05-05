@@ -675,8 +675,8 @@ void render_box_shadow(struct sway_output *output, pixman_region32_t *output_dam
 
 	struct wlr_box box;
 	memcpy(&box, _box, sizeof(struct wlr_box));
-	box.x -= output->lx * wlr_output->scale + blur_sigma;
-	box.y -= output->ly * wlr_output->scale + blur_sigma;
+	box.x -= blur_sigma;
+	box.y -= blur_sigma;
 	box.width += 2 * blur_sigma;
 	box.height += 2 * blur_sigma;
 
@@ -875,15 +875,13 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 
 	// render shadow
 	if (con->shadow_enabled && config->shadow_blur_sigma > 0 && config->shadow_color[3] > 0.0) {
-		box.x = floor(state->x);
-		box.y = floor(state->y);
+		box.x = floor(state->x) - output->lx;
+		box.y = floor(state->y) - output->ly;
 		box.width = state->width;
 		box.height = state->height;
 		scale_box(&box, output_scale);
-		int corner_radius = config->smart_corner_radius &&
-				output->current.active_workspace->current_gaps.top == 0
-				? 0 : con->corner_radius;
-		int scaled_corner_radius = (corner_radius + state->border_thickness) * output_scale;
+		int scaled_corner_radius = deco_data.corner_radius == 0 ?
+				0 : (deco_data.corner_radius + state->border_thickness) * output_scale;
 		render_box_shadow(output, damage, &box, config->shadow_color, config->shadow_blur_sigma,
 				scaled_corner_radius);
 	}
