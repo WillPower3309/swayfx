@@ -493,7 +493,7 @@ static void render_surface_iterator(struct sway_output *output,
 		wlr_output);
 
 	// render shadow (view->surface == surface excludes shadow on subsurfaces)
-	if (deco_data.shadow && should_parameters_shadow() && !is_subsurface) {
+	if (deco_data.shadow && should_parameters_shadow() && !is_subsurface && !view) {
 		int corner_radius = deco_data.corner_radius;
 		if (view) {
 			struct sway_container *con = view->container;
@@ -862,15 +862,6 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 		struct fx_texture fx_texture = fx_texture_from_wlr_texture(saved_buf->buffer->texture);
 		render_texture(wlr_output, damage, &fx_texture,
 				&saved_buf->source_box, &dst_box, matrix, deco_data);
-
-		// render shadow
-		if (deco_data.shadow && should_parameters_shadow()
-				// Only draw shadows on CSD windows if shadows_on_csd is enabled
-				&& !(con->current.border == B_CSD && !config->shadows_on_csd_enabled)) {
-			int corner_radius = (con->corner_radius + state.border_thickness) * wlr_output->scale;
-			render_box_shadow(output, damage, &dst_box, config->shadow_color,
-					config->shadow_blur_sigma, corner_radius);
-		}
 	}
 
 	// FIXME: we should set the surface that this saved buffer originates from
@@ -894,12 +885,30 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		render_view_toplevels(view, output, damage, deco_data);
 	}
 
-	if (state->border == B_NONE || state->border == B_CSD) {
+	if (state->border == B_CSD && !config->shadows_on_csd_enabled) {
 		return;
 	}
 
 	float output_scale = output->wlr_output->scale;
 	struct wlr_box box;
+
+	// render shadow
+	if (con->shadow_enabled && config->shadow_blur_sigma > 0 && config->shadow_color[3] > 0.0) {
+		box.x = floor(state->x) - output->lx;
+		box.y = floor(state->y) - output->ly;
+		box.width = state->width;
+		box.height = state->height;
+		scale_box(&box, output_scale);
+		int scaled_corner_radius = deco_data.corner_radius == 0 ?
+				0 : (deco_data.corner_radius + state->border_thickness) * output_scale;
+		render_box_shadow(output, damage, &box, config->shadow_color, config->shadow_blur_sigma,
+				scaled_corner_radius);
+	}
+
+	if (state->border == B_NONE || state->border == B_CSD) {
+		return;
+	}
+
 	float color[4];
 
 	if (state->border_left) {
