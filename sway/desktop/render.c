@@ -1776,21 +1776,18 @@ struct find_effect_iter_data {
 
 static bool find_con_effect_iterator(struct sway_container *con, void* _data) {
 	struct sway_view *view = con->view;
-	struct find_effect_iter_data *data = _data;
-	struct workspace_effect_info *effect_info = data->effect_info;
-
 	if (!view) {
 		return false;
 	}
 
+	struct find_effect_iter_data *data = _data;
+	struct workspace_effect_info *effect_info = data->effect_info;
 	if (con->blur_enabled && !view->surface->opaque) {
 		effect_info->container_wants_blur = true;
 
 		bool is_floating = container_is_floating(con);
 		// Check if we should render optimized blur
-		if (data->blur_buffer_dirty
-				// Only test floating windows when xray is enabled
-				&& (!is_floating || (is_floating && config->blur_xray))) {
+		if (data->blur_buffer_dirty && (!is_floating || config->blur_xray)) {
 			effect_info->should_render_optimized_blur = true;
 		}
 	}
