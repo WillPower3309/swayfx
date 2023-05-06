@@ -450,11 +450,14 @@ static void render_surface_iterator(struct sway_output *output,
 	deco_data.corner_radius *= wlr_output->scale;
 
 	// render blur (view->surface == surface excludes blurring subsurfaces)
-	bool is_subsurface = false; // TODO: discussion here, would all cases where view is null be a non subsurface?
+	bool is_subsurface = false;
 	bool should_optimize_blur = deco_data.can_blur_xray && config->blur_xray;
 	if (view) {
 		is_subsurface = view->surface != surface;
 		should_optimize_blur = !container_is_floating(view->container) || config->blur_xray;
+	}
+	if (data->sway_layer) {
+		is_subsurface = data->sway_layer->layer_surface->surface != surface;
 	}
 	if (deco_data.blur && should_parameters_blur() && !is_subsurface) {
 		pixman_region32_t opaque_region;
@@ -493,26 +496,8 @@ static void render_surface_iterator(struct sway_output *output,
 		wlr_output);
 
 	// render shadow (view->surface == surface excludes shadow on subsurfaces)
-	if (deco_data.shadow && should_parameters_shadow() && !is_subsurface && !view) {
+	if (deco_data.shadow && should_parameters_shadow() && !is_subsurface && data->sway_layer) {
 		int corner_radius = deco_data.corner_radius;
-		if (view) {
-			struct sway_container *con = view->container;
-			struct sway_container_state *state = &con->current;
-
-			// Only draw shadows on CSD windows if shadows_on_csd is enabled
-			if (con->current.border == B_CSD && !config->shadows_on_csd_enabled) {
-				return;
-			}
-
-			corner_radius = (con->corner_radius + state->border_thickness) * wlr_output->scale;
-
-			// Account for titlebars
-			dst_box.x = floor(state->x) - output->lx;
-			dst_box.y = floor(state->y) - output->ly;
-			dst_box.width = state->width;
-			dst_box.height = state->height;
-			scale_box(&dst_box, wlr_output->scale);
-		}
 		render_box_shadow(output, output_damage, &dst_box, config->shadow_color,
 				config->shadow_blur_sigma, corner_radius);
 	}

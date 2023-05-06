@@ -200,6 +200,7 @@ void output_layer_for_each_toplevel_surface(struct sway_output *output,
 		struct wlr_layer_surface_v1 *wlr_layer_surface_v1 =
 			layer_surface->layer_surface;
 		struct render_data *data = user_data;
+		data->sway_layer = layer_surface;
 		if (layer_surface->effects) {
 			data->deco_data = layer_surface->effects->deco_data;
 		}
