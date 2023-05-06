@@ -1850,7 +1850,6 @@ void output_render(struct sway_output *output, struct timespec *when,
 		fullscreen_con = workspace->current.fullscreen;
 	}
 
-
 	struct wlr_box monitor_box = get_monitor_box(wlr_output);
 	wlr_box_transform(&monitor_box, &monitor_box,
 			wlr_output_transform_invert(wlr_output->transform),
@@ -1864,7 +1863,6 @@ void output_render(struct sway_output *output, struct timespec *when,
 		pixman_region32_union_rect(damage, damage, 0, 0, width, height);
 	}
 
-	bool has_blur = false;
 	bool blur_optimize_should_render = false;
 	bool damage_not_empty = pixman_region32_not_empty(damage);
 	pixman_region32_t extended_damage;
@@ -1872,7 +1870,6 @@ void output_render(struct sway_output *output, struct timespec *when,
 	if (!fullscreen_con && !server.session_lock.locked && damage_not_empty) {
 		// Check if there are any windows to blur
 		struct workspace_effect_info effect_info = get_workspace_effect_info(output);
-		has_blur = effect_info.container_wants_blur || config->blur_enabled;
 		if (effect_info.should_render_optimized_blur) {
 			blur_optimize_should_render = true;
 			// Damage the whole output
@@ -1995,8 +1992,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 		render_layer_toplevel(output, damage,
 			&output->layers[ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM]);
 
-		bool blur_enabled = has_blur && should_parameters_blur();
-		if (blur_enabled && blur_optimize_should_render && renderer->blur_buffer_dirty) {
+		if (should_parameters_blur() && blur_optimize_should_render && renderer->blur_buffer_dirty) {
 			render_monitor_blur(output, damage);
 		}
 
