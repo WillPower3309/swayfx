@@ -1803,29 +1803,20 @@ void output_render(struct sway_output *output, struct timespec *when,
 
 	int width, height;
 	wlr_output_transformed_resolution(wlr_output, &width, &height);
+
 	if (debug.damage == DAMAGE_RERENDER) {
 		pixman_region32_union_rect(damage, damage, 0, 0, width, height);
 	}
 
 	bool damage_not_empty = pixman_region32_not_empty(damage);
-	// Check if there are any windows to blur
-	bool blur_optimize_should_render = should_workspace_have_optimized_blur(output);
-	// TODO: can this be put elsewhere? blur_optimize_should_render isn't used until much later
-	// additionally, do we check for non fullscreen con elsewhere?
-	if (!fullscreen_con && !server.session_lock.locked && damage_not_empty) {
-		// Damage the whole output
-		if (blur_optimize_should_render) {
-			pixman_region32_union_rect(damage, damage, 0, 0, width, height);
-		}
-	}
-
-	if (debug.damage == DAMAGE_HIGHLIGHT && damage_not_empty) {
-		fx_renderer_clear((float[]){1, 1, 0, 1});
-	}
 
 	if (!damage_not_empty) {
 		// Output isn't damaged but needs buffer swap
 		goto renderer_end;
+	}
+
+	if (debug.damage == DAMAGE_HIGHLIGHT) {
+		fx_renderer_clear((float[]){1, 1, 0, 1});
 	}
 
 	if (server.session_lock.locked) {
@@ -1915,8 +1906,14 @@ void output_render(struct sway_output *output, struct timespec *when,
 		render_layer_toplevel(output, damage,
 			&output->layers[ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM]);
 
-		if (should_parameters_blur() && blur_optimize_should_render && renderer->blur_buffer_dirty) {
-			render_monitor_blur(output, damage);
+
+		// Check if there are any windows to blur
+		if (should_parameters_blur() && renderer->blur_buffer_dirty) {
+			if (should_workspace_have_optimized_blur(output)) {
+				// Damage the whole output
+				pixman_region32_union_rect(damage, damage, 0, 0, width, height);
+				render_monitor_blur(output, damage);
+			}
 		}
 
 		render_workspace(output, damage, workspace, workspace->current.focused);
@@ -1977,28 +1974,26 @@ renderer_end:
 	render_whole_output(renderer, wlr_output, damage, &renderer->main_buffer.texture);
 	fx_renderer_end(renderer);
 
+	fx_renderer_scissor(NULL);
+
 	// Draw the software cursors
 	wlr_renderer_begin(output->server->wlr_renderer, wlr_output->width, wlr_output->height);
 	wlr_output_render_software_cursors(wlr_output, damage);
 	wlr_renderer_end(output->server->wlr_renderer);
 
-	fx_renderer_scissor(NULL);
-
 	pixman_region32_t frame_damage;
 	pixman_region32_init(&frame_damage);
 
-	// Extend the frame damage by the blur size to properly calc damage for the next buffer swap
 	enum wl_output_transform transform = wlr_output_transform_invert(wlr_output->transform);
-	wlr_region_transform(&frame_damage, damage, transform, width, height);
+	wlr_region_transform(&frame_damage, &output->damage_ring.current,
+		transform, width, height);
 
-	if (debug.damage != DAMAGE_DEFAULT || blur_optimize_should_render) {
+	if (debug.damage != DAMAGE_DEFAULT) {
 		pixman_region32_union_rect(&frame_damage, &frame_damage,
 			0, 0, wlr_output->width, wlr_output->height);
 	}
 
 	wlr_output_set_damage(wlr_output, &frame_damage);
-
-	//pixman_region32_fini(&extended_damage);
 	pixman_region32_fini(&frame_damage);
 
 	if (!wlr_output_commit(wlr_output)) {
