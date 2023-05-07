@@ -1975,23 +1975,19 @@ renderer_end:
 		}
 	}
 	render_whole_output(renderer, wlr_output, damage, &renderer->main_buffer.texture);
-	fx_renderer_scissor(NULL);
 	fx_renderer_end(renderer);
 
 	// Draw the software cursors
 	wlr_renderer_begin(output->server->wlr_renderer, wlr_output->width, wlr_output->height);
 	wlr_output_render_software_cursors(wlr_output, damage);
 	wlr_renderer_end(output->server->wlr_renderer);
+
 	fx_renderer_scissor(NULL);
 
 	pixman_region32_t frame_damage;
 	pixman_region32_init(&frame_damage);
 
-	/*
-	 * Extend the frame damage by the blur size to properly calc damage for the
-	 * next buffer swap. Thanks Emersion for your excellent damage tracking blog-post!
-	 */
-
+	// Extend the frame damage by the blur size to properly calc damage for the next buffer swap
 	enum wl_output_transform transform = wlr_output_transform_invert(wlr_output->transform);
 	wlr_region_transform(&frame_damage, damage, transform, width, height);
 
