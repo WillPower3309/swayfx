@@ -1757,27 +1757,6 @@ static void render_seatops(struct sway_output *output,
 	}
 }
 
-static bool find_con_needing_optimized_blur(struct sway_container *con, void *data) {
-	struct sway_view *view = con->view;
-	if (!view) {
-		return false;
-	}
-	if (con->blur_enabled && !view->surface->opaque && (!container_is_floating(con) || config->blur_xray)) {
-		return true;
-	}
-	return false;
-}
-
-// TODO: move to workspace.c?
-static bool should_workspace_have_optimized_blur(struct sway_output *sway_output) {
-	struct sway_workspace *workspace = sway_output->current.active_workspace;
-	if (!workspace_is_visible(workspace) || !sway_output->renderer->blur_buffer_dirty) {
-		return false;
-	}
-	// Iterate through the workspace containers and check if any require optimized blur
-	return (bool)workspace_find_container(workspace, find_con_needing_optimized_blur, NULL);
-}
-
 void output_render(struct sway_output *output, struct timespec *when,
 		pixman_region32_t *damage) {
 	struct wlr_output *wlr_output = output->wlr_output;
@@ -1905,11 +1884,9 @@ void output_render(struct sway_output *output, struct timespec *when,
 		render_layer_toplevel(output, damage,
 			&output->layers[ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM]);
 
-
-		// Check if there are any windows to blur
+		// check if the background needs to be blurred
 		if (should_parameters_blur() && renderer->blur_buffer_dirty) {
-			if (should_workspace_have_optimized_blur(output)) {
-				// Damage the whole output
+			if (should_workspace_need_optimized_blur(workspace)) {
 				pixman_region32_union_rect(damage, damage, 0, 0, width, height);
 				render_monitor_blur(output, damage);
 			}

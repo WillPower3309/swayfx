@@ -690,6 +690,24 @@ void workspace_detect_urgent(struct sway_workspace *workspace) {
 	}
 }
 
+static bool find_con_needing_optimized_blur(struct sway_container *con, void *data) {
+	struct sway_view *view = con->view;
+	if (!view) {
+		return false;
+	}
+	if (con->blur_enabled && !view->surface->opaque && (!container_is_floating(con) || config->blur_xray)) {
+		return true;
+	}
+	return false;
+}
+
+bool should_workspace_need_optimized_blur(struct sway_workspace *ws) {
+	if (!workspace_is_visible(ws)) {
+		return false;
+	}
+	return (bool)workspace_find_container(ws, find_con_needing_optimized_blur, NULL);
+}
+
 void workspace_for_each_container(struct sway_workspace *ws,
 		void (*f)(struct sway_container *con, void *data), void *data) {
 	// Tiling
