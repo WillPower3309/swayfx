@@ -745,12 +745,17 @@ static void damage_child_views_iterator(struct sway_container *con,
 
 void output_damage_whole_container(struct sway_output *output,
 		struct sway_container *con) {
+	int shadow_sigma = con->shadow_enabled ? config->shadow_blur_sigma : 0;
+	int blur_size = con->blur_enabled ? get_config_blur_size() : 0;
+	// +1 as a margin of error
+	int effect_size = MAX(shadow_sigma, blur_size) + 1;
+
 	// Pad the box by 1px, because the width is a double and might be a fraction
 	struct wlr_box box = {
-		.x = con->current.x - output->lx - 1,
-		.y = con->current.y - output->ly - 1,
-		.width = con->current.width + 2,
-		.height = con->current.height + 2,
+		.x = con->current.x - output->lx - 1 - effect_size,
+		.y = con->current.y - output->ly - 1 - effect_size,
+		.width = con->current.width + 2 + effect_size * 2,
+		.height = con->current.height + 2 + effect_size * 2,
 	};
 	scale_box(&box, output->wlr_output->scale);
 	if (wlr_damage_ring_add_box(&output->damage_ring, &box)) {
@@ -973,7 +978,6 @@ void handle_new_output(struct wl_listener *listener, void *data) {
 
 	transaction_commit_dirty();
 
-	// From sway upstream (fixes damage_ring bounds being INT_MAX)
 	int width, height;
 	wlr_output_transformed_resolution(output->wlr_output, &width, &height);
 	wlr_damage_ring_set_bounds(&output->damage_ring, width, height);

@@ -50,10 +50,6 @@ struct decoration_data get_undecorated_decoration_data() {
 	};
 }
 
-int get_blur_size() {
-	return pow(2, config->blur_params.num_passes) * config->blur_params.radius;
-}
-
 bool should_parameters_blur() {
 	return config->blur_params.radius > 0 && config->blur_params.num_passes > 0;
 }
@@ -250,7 +246,7 @@ struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer, struct
 	pixman_region32_copy(&damage, original_damage);
 	wlr_region_transform(&damage, &damage, transform,
 			monitor_box.width, monitor_box.height);
-	wlr_region_expand(&damage, &damage, get_blur_size());
+	wlr_region_expand(&damage, &damage, get_config_blur_size());
 
 	// Initially blur main_buffer content into the effects_buffers
 	struct fx_framebuffer *current_buffer = &renderer->main_buffer;
@@ -1811,42 +1807,16 @@ void output_render(struct sway_output *output, struct timespec *when,
 		pixman_region32_union_rect(damage, damage, 0, 0, width, height);
 	}
 
-	bool blur_optimize_should_render = false;
 	bool damage_not_empty = pixman_region32_not_empty(damage);
-	pixman_region32_t extended_damage;
-	pixman_region32_init(&extended_damage);
+	// Check if there are any windows to blur
+	bool blur_optimize_should_render = should_workspace_have_optimized_blur(output);
+	// TODO: can this be put elsewhere? blur_optimize_should_render isn't used until much later
+	// additionally, do we check for non fullscreen con elsewhere?
 	if (!fullscreen_con && !server.session_lock.locked && damage_not_empty) {
-		// Check if there are any windows to blur
-		if (should_workspace_have_optimized_blur(output)) {
-			blur_optimize_should_render = true;
-			// Damage the whole output
+		// Damage the whole output
+		if (blur_optimize_should_render) {
 			pixman_region32_union_rect(damage, damage, 0, 0, width, height);
 		}
-
-		// TODO: move me to output.c
-		bool shadow_enabled = config->shadow_enabled;
-		int shadow_sigma = shadow_enabled ? config->shadow_blur_sigma : 0;
-		bool blur_enabled = config->blur_enabled;
-		int blur_size = blur_enabled ? get_blur_size() : 0;
-		// +1 as a margin of error
-		int expanded_size = MAX(shadow_sigma, blur_size) + 1;
-
-		if (expanded_size > 0) {
-			int32_t damage_width = damage->extents.x2 - damage->extents.x1;
-			int32_t damage_height = damage->extents.y2 - damage->extents.y1;
-			// Limit the damage extent to the size of the monitor to prevent overflow
-			if (damage_width > width || damage_height > height) {
-				pixman_region32_intersect_rect(damage, damage, 0, 0, width, height);
-			}
-
-			wlr_region_expand(damage, damage, expanded_size);
-			pixman_region32_copy(&extended_damage, damage);
-			wlr_region_expand(damage, damage, expanded_size);
-		} else {
-			pixman_region32_copy(&extended_damage, damage);
-		}
-	} else {
-		pixman_region32_copy(&extended_damage, damage);
 	}
 
 	if (debug.damage == DAMAGE_HIGHLIGHT && damage_not_empty) {
@@ -1994,16 +1964,17 @@ render_overlay:
 renderer_end:
 	// Draw the contents of our buffer into the wlr buffer
 	fx_framebuffer_bind(&renderer->wlr_buffer);
+
 	float clear_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
-	if (pixman_region32_not_empty(&extended_damage)) {
+	if (pixman_region32_not_empty(damage)) {
 		int nrects;
-		pixman_box32_t *rects = pixman_region32_rectangles(&extended_damage, &nrects);
+		pixman_box32_t *rects = pixman_region32_rectangles(damage, &nrects);
 		for (int i = 0; i < nrects; ++i) {
 			scissor_output(wlr_output, &rects[i]);
 			fx_renderer_clear(clear_color);
 		}
 	}
-	render_whole_output(renderer, wlr_output, &extended_damage, &renderer->main_buffer.texture);
+	render_whole_output(renderer, wlr_output, damage, &renderer->main_buffer.texture);
 	fx_renderer_scissor(NULL);
 	fx_renderer_end(renderer);
 
@@ -2016,12 +1987,13 @@ renderer_end:
 	pixman_region32_t frame_damage;
 	pixman_region32_init(&frame_damage);
 
-	enum wl_output_transform transform = wlr_output_transform_invert(wlr_output->transform);
 	/*
 	 * Extend the frame damage by the blur size to properly calc damage for the
 	 * next buffer swap. Thanks Emersion for your excellent damage tracking blog-post!
 	 */
-	wlr_region_transform(&frame_damage, &extended_damage, transform, width, height);
+
+	enum wl_output_transform transform = wlr_output_transform_invert(wlr_output->transform);
+	wlr_region_transform(&frame_damage, damage, transform, width, height);
 
 	if (debug.damage != DAMAGE_DEFAULT || blur_optimize_should_render) {
 		pixman_region32_union_rect(&frame_damage, &frame_damage,
@@ -2030,7 +2002,7 @@ renderer_end:
 
 	wlr_output_set_damage(wlr_output, &frame_damage);
 
-	pixman_region32_fini(&extended_damage);
+	//pixman_region32_fini(&extended_damage);
 	pixman_region32_fini(&frame_damage);
 
 	if (!wlr_output_commit(wlr_output)) {
