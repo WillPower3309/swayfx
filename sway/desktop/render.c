@@ -246,7 +246,6 @@ struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer, struct
 	pixman_region32_copy(&damage, original_damage);
 	wlr_region_transform(&damage, &damage, transform,
 			monitor_box.width, monitor_box.height);
-	wlr_region_expand(&damage, &damage, get_config_blur_size());
 
 	// Initially blur main_buffer content into the effects_buffers
 	struct fx_framebuffer *current_buffer = &renderer->main_buffer;

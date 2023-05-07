@@ -746,7 +746,8 @@ static void damage_child_views_iterator(struct sway_container *con,
 void output_damage_whole_container(struct sway_output *output,
 		struct sway_container *con) {
 	int shadow_sigma = con->shadow_enabled ? config->shadow_blur_sigma : 0;
-	int blur_size = con->blur_enabled ? get_config_blur_size() : 0;
+	int blur_size = con->blur_enabled ?
+			pow(2, config->blur_params.num_passes) * config->blur_params.radius : 0;
 	// +1 as a margin of error
 	int effect_size = MAX(shadow_sigma, blur_size) + 1;
 
