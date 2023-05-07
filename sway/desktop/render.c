@@ -247,6 +247,9 @@ struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer, struct
 	wlr_region_transform(&damage, &damage, transform,
 			monitor_box.width, monitor_box.height);
 
+	int blur_size = pow(2, config->blur_params.num_passes) * config->blur_params.radius;
+	wlr_region_expand(&damage, &damage, blur_size);
+
 	// Initially blur main_buffer content into the effects_buffers
 	struct fx_framebuffer *current_buffer = &renderer->main_buffer;
 
