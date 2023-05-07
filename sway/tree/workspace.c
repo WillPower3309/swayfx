@@ -690,7 +690,7 @@ void workspace_detect_urgent(struct sway_workspace *workspace) {
 	}
 }
 
-static bool find_con_needing_optimized_blur(struct sway_container *con, void *data) {
+static bool find_optimized_blur_iterator(struct sway_container *con, void *data) {
 	struct sway_view *view = con->view;
 	if (!view) {
 		return false;
@@ -705,7 +705,7 @@ bool should_workspace_need_optimized_blur(struct sway_workspace *ws) {
 	if (!workspace_is_visible(ws)) {
 		return false;
 	}
-	return (bool)workspace_find_container(ws, find_con_needing_optimized_blur, NULL);
+	return (bool)workspace_find_container(ws, find_optimized_blur_iterator, NULL);
 }
 
 void workspace_for_each_container(struct sway_workspace *ws,
