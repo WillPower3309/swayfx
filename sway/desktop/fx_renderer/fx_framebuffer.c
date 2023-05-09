@@ -5,7 +5,13 @@ void fx_framebuffer_bind(struct fx_framebuffer *buffer) {
 	glBindFramebuffer(GL_FRAMEBUFFER, buffer->fb);
 }
 
-void fx_framebuffer_create(struct fx_framebuffer *buffer, int width, int height, bool bind) {
+void fx_framebuffer_init(struct fx_framebuffer *buffer) {
+	buffer->fb = -1;
+	buffer->stencil_buffer = -1;
+}
+
+void fx_framebuffer_create(struct fx_framebuffer *buffer, int width, int height,
+		bool bind, bool create_stencil_buffer) {
 	bool firstAlloc = false;
 
 	// Create a new framebuffer
@@ -44,6 +50,19 @@ void fx_framebuffer_create(struct fx_framebuffer *buffer, int width, int height,
 		sway_log(SWAY_DEBUG, "Framebuffer created, status %i", status);
 	}
 
+	if (create_stencil_buffer && buffer->stencil_buffer == (uint32_t) -1) {
+		glGenRenderbuffers(1, &buffer->stencil_buffer);
+		glBindRenderbuffer(GL_RENDERBUFFER, buffer->stencil_buffer);
+		glRenderbufferStorage(GL_RENDERBUFFER, GL_STENCIL_INDEX8, width, height);
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, buffer->stencil_buffer);
+		GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+		if (status != GL_FRAMEBUFFER_COMPLETE) {
+			sway_log(SWAY_ERROR, "Stencilbuffer incomplete, couldn't create! (FB status: %i)", status);
+			return;
+		}
+		sway_log(SWAY_DEBUG, "Stencilbuffer created, status %i", status);
+	}
+
 	// Bind the default framebuffer
 	glBindTexture(GL_TEXTURE_2D, 0);
 	if (bind) {
@@ -52,11 +71,20 @@ void fx_framebuffer_create(struct fx_framebuffer *buffer, int width, int height,
 }
 
 void fx_framebuffer_release(struct fx_framebuffer *buffer) {
+	// Release the framebuffer
 	if (buffer->fb != (uint32_t) -1 && buffer->fb) {
 		glDeleteFramebuffers(1, &buffer->fb);
 	}
 	buffer->fb= -1;
 
+	// Release the stencil buffer
+	if (buffer->stencil_buffer != (uint32_t)-1 && buffer->stencil_buffer) {
+		glDeleteRenderbuffers(1, &buffer->stencil_buffer);
+	}
+	buffer->stencil_buffer = -1;
+
+
+	// Release the texture
 	if (buffer->texture.id) {
 		glDeleteTextures(1, &buffer->texture.id);
 	}
