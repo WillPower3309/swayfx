@@ -1835,10 +1835,8 @@ void output_render(struct sway_output *output, struct timespec *when,
 		goto renderer_end;
 	}
 
-	bool should_render_blur = false;
 	pixman_region32_t extended_damage;
 	pixman_region32_init(&extended_damage);
-	pixman_region32_copy(&extended_damage, damage);
 
 	if (output_has_opaque_overlay_layer_surface(output)) {
 		goto render_overlay;
@@ -1878,6 +1876,15 @@ void output_render(struct sway_output *output, struct timespec *when,
 		render_unmanaged(output, damage, &root->xwayland_unmanaged);
 #endif
 	} else {
+		bool should_render_blur = should_workspace_have_blur(workspace);
+		if (should_render_blur) {
+			wlr_region_expand(damage, damage, get_blur_size());
+			pixman_region32_copy(&extended_damage, damage);
+			wlr_region_expand(damage, damage, get_blur_size());
+		} else {
+			pixman_region32_copy(&extended_damage, damage);
+		}
+
 		float clear_color[] = {0.25f, 0.25f, 0.25f, 1.0f};
 
 		int nrects;
@@ -1893,16 +1900,9 @@ void output_render(struct sway_output *output, struct timespec *when,
 			&output->layers[ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM]);
 
 		// check if the background needs to be blurred
-		if (should_parameters_blur() && renderer->blur_buffer_dirty) {
-			should_render_blur = should_workspace_have_blur(workspace);
-			if (should_render_blur) {
-				wlr_region_expand(damage, damage, get_blur_size());
-				pixman_region32_copy(&extended_damage, damage);
-				wlr_region_expand(damage, damage, get_blur_size());
-
-				pixman_region32_union_rect(damage, damage, 0, 0, width, height);
-				render_monitor_blur(output, damage);
-			}
+		if (should_parameters_blur() && renderer->blur_buffer_dirty && should_render_blur) {
+			pixman_region32_union_rect(damage, damage, 0, 0, width, height);
+			render_monitor_blur(output, damage);
 		}
 
 		render_workspace(output, damage, workspace, workspace->current.focused);
