@@ -230,7 +230,7 @@ void render_blur_segments(struct fx_renderer *renderer,
 
 // Blurs the main_buffer content and returns the blurred framebuffer
 struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer, struct sway_output *output,
-		pixman_region32_t *original_damage, const float box_matrix[static 9], const struct wlr_box *box) {
+		pixman_region32_t *original_damage, const struct wlr_box *box) {
 	struct wlr_output *wlr_output = output->wlr_output;
 	struct wlr_box monitor_box = get_monitor_box(wlr_output);
 
@@ -244,8 +244,7 @@ struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer, struct
 	pixman_region32_t damage;
 	pixman_region32_init(&damage);
 	pixman_region32_copy(&damage, original_damage);
-	wlr_region_transform(&damage, &damage, transform,
-			monitor_box.width, monitor_box.height);
+	wlr_region_transform(&damage, &damage, transform, monitor_box.width, monitor_box.height);
 
 	int blur_size = pow(2, config->blur_params.num_passes) * config->blur_params.radius;
 	wlr_region_expand(&damage, &damage, blur_size);
@@ -343,8 +342,7 @@ void render_blur(bool optimized, struct sway_output *output,
 		pixman_region32_intersect(&inverse_opaque, &inverse_opaque, &damage);
 
 		// Render the blur into its own buffer
-		buffer = get_main_buffer_blur(renderer, output, &inverse_opaque,
-				wlr_output->transform_matrix, dst_box);
+		buffer = get_main_buffer_blur(renderer, output, &inverse_opaque, dst_box);
 	}
 
 	// Draw the blurred texture
@@ -516,8 +514,7 @@ void render_monitor_blur(struct sway_output *output, pixman_region32_t *damage) 
 	pixman_region32_init_rect(&fake_damage, 0, 0, monitor_box.width, monitor_box.height);
 
 	// Render the blur
-	struct fx_framebuffer *buffer = get_main_buffer_blur(renderer, output, &fake_damage,
-			wlr_output->transform_matrix, &monitor_box);
+	struct fx_framebuffer *buffer = get_main_buffer_blur(renderer, output, &fake_damage, &monitor_box);
 
 	// Render the newly blurred content into the blur_buffer
 	fx_framebuffer_create(&renderer->blur_buffer,
