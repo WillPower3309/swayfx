@@ -1848,21 +1848,20 @@ static struct workspace_effect_info get_workspace_effect_info(struct sway_output
 	for (size_t i = 0; i < len; ++i) {
 		struct sway_layer_surface *lsurface;
 		wl_list_for_each(lsurface, &sway_output->layers[i], link) {
-			struct layer_effects *layer_effects = lsurface->effects;
-			if (layer_effects) {
-				if (layer_effects->deco_data.blur && !lsurface->layer_surface->surface->opaque) {
-					effect_info.container_wants_blur = true;
-					// Check if we should render optimized blur
-					if (renderer->blur_buffer_dirty && config->blur_xray
-							&& lsurface->layer != ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND
-							&& lsurface->layer != ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM) {
-						effect_info.should_render_optimized_blur = true;
-					}
-				}
-				if (layer_effects->deco_data.shadow) {
-					effect_info.container_wants_shadow = true;
+			struct decoration_data deco_data = lsurface->deco_data;
+			if (deco_data.blur && !lsurface->layer_surface->surface->opaque) {
+				effect_info.container_wants_blur = true;
+				// Check if we should render optimized blur
+				if (renderer->blur_buffer_dirty && config->blur_xray
+						&& lsurface->layer != ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND
+						&& lsurface->layer != ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM) {
+					effect_info.should_render_optimized_blur = true;
 				}
 			}
+			if (deco_data.shadow) {
+				effect_info.container_wants_shadow = true;
+			}
+
 			if (effect_info.container_wants_blur
 				&& effect_info.container_wants_shadow
 				&& effect_info.should_render_optimized_blur) {

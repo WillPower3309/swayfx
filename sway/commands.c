@@ -84,6 +84,7 @@ static const struct cmd_handler handlers[] = {
 	{ "gaps", cmd_gaps },
 	{ "hide_edge_borders", cmd_hide_edge_borders },
 	{ "input", cmd_input },
+	{ "layer_effects", cmd_layer_effects },
 	{ "mode", cmd_mode },
 	{ "mouse_warping", cmd_mouse_warping },
 	{ "new_float", cmd_new_float },
@@ -119,7 +120,6 @@ static const struct cmd_handler handlers[] = {
 static const struct cmd_handler config_handlers[] = {
 	{ "default_orientation", cmd_default_orientation },
 	{ "include", cmd_include },
-	{ "layer_effects", cmd_layer_effects },
 	{ "scratchpad_minimize", cmd_scratchpad_minimize },
 	{ "swaybg_command", cmd_swaybg_command },
 	{ "swaynag_command", cmd_swaynag_command },

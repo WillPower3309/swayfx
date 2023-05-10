@@ -29,7 +29,7 @@ struct sway_layer_surface {
 
 	struct wl_list subsurfaces;
 
-	struct layer_effects *effects;
+	struct decoration_data deco_data;
 };
 
 struct sway_layer_popup {

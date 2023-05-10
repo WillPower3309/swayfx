@@ -34,6 +34,7 @@ Sway is an incredible window manager, and certainly one of the most well establi
 + LayerShell effects: *ONLY ON SWAYFX-GIT, NOT YET RELEASED*
     - `layer_effects <layer namespace> <effects>`
     - Example: `layer_effects "waybar" blur enable; shadows enable; corner_radius 6`
+    - SwayIPC Example: `swaymsg "layer_effects 'waybar' 'blur enable; shadows enable; corner_radius 6'"`
     - Available Effects:
         - `blur <enable|disable>`
         - `shadows <enable|disable>`
