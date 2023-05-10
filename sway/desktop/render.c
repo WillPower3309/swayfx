@@ -50,12 +50,12 @@ struct decoration_data get_undecorated_decoration_data() {
 	};
 }
 
-bool should_parameters_blur() {
-	return config->blur_params.radius > 0 && config->blur_params.num_passes > 0;
-}
-
 int get_blur_size() {
 	return pow(2, config->blur_params.num_passes) * config->blur_params.radius;
+}
+
+bool should_parameters_blur() {
+	return config->blur_params.radius > 0 && config->blur_params.num_passes > 0;
 }
 
 // TODO: contribute wlroots function to allow creating an fbox from a box?
