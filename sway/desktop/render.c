@@ -1789,15 +1789,15 @@ void output_render(struct sway_output *output, struct timespec *when,
 		pixman_region32_union_rect(damage, damage, 0, 0, width, height);
 	}
 
-	bool damage_not_empty = pixman_region32_not_empty(damage);
-
-	if (!damage_not_empty) {
+	if (!pixman_region32_not_empty(damage)) {
 		// Output isn't damaged but needs buffer swap
 		goto renderer_end;
 	}
 
 	if (debug.damage == DAMAGE_HIGHLIGHT) {
+		fx_framebuffer_bind(&renderer->wlr_buffer);
 		fx_renderer_clear((float[]){1, 1, 0, 1});
+		fx_framebuffer_bind(&renderer->main_buffer);
 	}
 
 	if (server.session_lock.locked) {
