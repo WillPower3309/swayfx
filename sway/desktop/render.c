@@ -54,6 +54,10 @@ bool should_parameters_blur() {
 	return config->blur_params.radius > 0 && config->blur_params.num_passes > 0;
 }
 
+int get_blur_size() {
+	return pow(2, config->blur_params.num_passes) * config->blur_params.radius;
+}
+
 // TODO: contribute wlroots function to allow creating an fbox from a box?
 struct wlr_fbox wlr_fbox_from_wlr_box(struct wlr_box *box) {
 	return (struct wlr_fbox) {
@@ -246,8 +250,7 @@ struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer, struct
 	pixman_region32_copy(&damage, original_damage);
 	wlr_region_transform(&damage, &damage, transform, monitor_box.width, monitor_box.height);
 
-	int blur_size = pow(2, config->blur_params.num_passes) * config->blur_params.radius;
-	wlr_region_expand(&damage, &damage, blur_size);
+	wlr_region_expand(&damage, &damage, get_blur_size());
 
 	// Initially blur main_buffer content into the effects_buffers
 	struct fx_framebuffer *current_buffer = &renderer->main_buffer;
@@ -1832,6 +1835,11 @@ void output_render(struct sway_output *output, struct timespec *when,
 		goto renderer_end;
 	}
 
+	bool should_render_blur = false;
+	pixman_region32_t extended_damage;
+	pixman_region32_init(&extended_damage);
+	pixman_region32_copy(&extended_damage, damage);
+
 	if (output_has_opaque_overlay_layer_surface(output)) {
 		goto render_overlay;
 	}
@@ -1886,7 +1894,12 @@ void output_render(struct sway_output *output, struct timespec *when,
 
 		// check if the background needs to be blurred
 		if (should_parameters_blur() && renderer->blur_buffer_dirty) {
-			if (should_workspace_need_optimized_blur(workspace)) {
+			should_render_blur = should_workspace_have_blur(workspace);
+			if (should_render_blur) {
+				wlr_region_expand(damage, damage, get_blur_size());
+				pixman_region32_copy(&extended_damage, damage);
+				wlr_region_expand(damage, damage, get_blur_size());
+
 				pixman_region32_union_rect(damage, damage, 0, 0, width, height);
 				render_monitor_blur(output, damage);
 			}
@@ -1939,15 +1952,16 @@ renderer_end:
 	fx_framebuffer_bind(&renderer->wlr_buffer);
 
 	float clear_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
-	if (pixman_region32_not_empty(damage)) {
+	if (pixman_region32_not_empty(&extended_damage)) {
 		int nrects;
-		pixman_box32_t *rects = pixman_region32_rectangles(damage, &nrects);
+		pixman_box32_t *rects = pixman_region32_rectangles(&extended_damage, &nrects);
 		for (int i = 0; i < nrects; ++i) {
 			scissor_output(wlr_output, &rects[i]);
 			fx_renderer_clear(clear_color);
 		}
 	}
-	render_whole_output(renderer, wlr_output, damage, &renderer->main_buffer.texture);
+
+	render_whole_output(renderer, wlr_output, &extended_damage, &renderer->main_buffer.texture);
 	fx_renderer_end(renderer);
 
 	fx_renderer_scissor(NULL);
@@ -1961,8 +1975,8 @@ renderer_end:
 	pixman_region32_init(&frame_damage);
 
 	enum wl_output_transform transform = wlr_output_transform_invert(wlr_output->transform);
-	wlr_region_transform(&frame_damage, &output->damage_ring.current,
-		transform, width, height);
+	wlr_region_transform(&frame_damage, &extended_damage, transform, width, height);
+	pixman_region32_fini(&extended_damage);
 
 	if (debug.damage != DAMAGE_DEFAULT) {
 		pixman_region32_union_rect(&frame_damage, &frame_damage,
