@@ -8,6 +8,10 @@ void fx_framebuffer_bind(struct fx_framebuffer *buffer) {
 void fx_framebuffer_init(struct fx_framebuffer *buffer) {
 	buffer->fb = -1;
 	buffer->stencil_buffer = -1;
+	buffer->texture.id = 0;
+	buffer->texture.target = 0;
+	buffer->texture.width = -1;
+	buffer->texture.height = -1;
 }
 
 void fx_framebuffer_create(struct fx_framebuffer *buffer, int width, int height,
@@ -82,7 +86,6 @@ void fx_framebuffer_release(struct fx_framebuffer *buffer) {
 		glDeleteRenderbuffers(1, &buffer->stencil_buffer);
 	}
 	buffer->stencil_buffer = -1;
-
 
 	// Release the texture
 	if (buffer->texture.id) {
