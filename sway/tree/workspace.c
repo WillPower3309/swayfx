@@ -695,10 +695,7 @@ static bool find_blurred_con_iterator(struct sway_container *con, void *data) {
 	if (!view) {
 		return false;
 	}
-	if (con->blur_enabled && !view->surface->opaque) {
-		return true;
-	}
-	return false;
+	return con->blur_enabled && !view->surface->opaque;
 }
 
 bool should_workspace_have_blur(struct sway_workspace *ws) {
