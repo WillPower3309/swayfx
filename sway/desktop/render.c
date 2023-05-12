@@ -50,13 +50,6 @@ struct decoration_data get_undecorated_decoration_data() {
 	};
 }
 
-int get_blur_size() {
-	return pow(2, config->blur_params.num_passes) * config->blur_params.radius;
-}
-
-bool should_parameters_blur() {
-	return config->blur_params.radius > 0 && config->blur_params.num_passes > 0;
-}
 
 // TODO: contribute wlroots function to allow creating an fbox from a box?
 struct wlr_fbox wlr_fbox_from_wlr_box(struct wlr_box *box) {
@@ -250,7 +243,7 @@ struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer, struct
 	pixman_region32_copy(&damage, original_damage);
 	wlr_region_transform(&damage, &damage, transform, monitor_box.width, monitor_box.height);
 
-	wlr_region_expand(&damage, &damage, get_blur_size());
+	wlr_region_expand(&damage, &damage, config_get_blur_size());
 
 	// Initially blur main_buffer content into the effects_buffers
 	struct fx_framebuffer *current_buffer = &renderer->main_buffer;
@@ -400,7 +393,7 @@ static void render_surface_iterator(struct sway_output *output,
 	deco_data.corner_radius *= wlr_output->scale;
 
 	// render blur (view->surface == surface excludes blurring subsurfaces)
-	if (deco_data.blur && should_parameters_blur() && view->surface == surface) {
+	if (deco_data.blur && config_should_parameters_blur() && view->surface == surface) {
 		pixman_region32_t opaque_region;
 		pixman_region32_init(&opaque_region);
 
@@ -809,7 +802,7 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 		deco_data.corner_radius *= wlr_output->scale;
 
 		// render blur
-		if (deco_data.blur && should_parameters_blur()) {
+		if (deco_data.blur && config_should_parameters_blur()) {
 			struct wlr_gles2_texture_attribs attribs;
 			wlr_gles2_texture_get_attribs(saved_buf->buffer->texture, &attribs);
 
@@ -1876,13 +1869,11 @@ void output_render(struct sway_output *output, struct timespec *when,
 		render_unmanaged(output, damage, &root->xwayland_unmanaged);
 #endif
 	} else {
+		pixman_region32_copy(&extended_damage, damage);
+
 		bool should_render_blur = should_workspace_have_blur(workspace);
 		if (should_render_blur) {
-			wlr_region_expand(damage, damage, get_blur_size());
-			pixman_region32_copy(&extended_damage, damage);
-			wlr_region_expand(damage, damage, get_blur_size());
-		} else {
-			pixman_region32_copy(&extended_damage, damage);
+			wlr_region_expand(damage, damage, config_get_blur_size());
 		}
 
 		float clear_color[] = {0.25f, 0.25f, 0.25f, 1.0f};
@@ -1900,7 +1891,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 			&output->layers[ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM]);
 
 		// check if the background needs to be blurred
-		if (should_parameters_blur() && renderer->blur_buffer_dirty && should_render_blur) {
+		if (config_should_parameters_blur() && renderer->blur_buffer_dirty && should_render_blur) {
 			pixman_region32_union_rect(damage, damage, 0, 0, width, height);
 			render_monitor_blur(output, damage);
 		}

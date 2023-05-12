@@ -761,6 +761,10 @@ void translate_keysyms(struct input_config *input_config);
 
 void binding_add_translated(struct sway_binding *binding, list_t *bindings);
 
+int config_get_blur_size();
+
+bool config_should_parameters_blur();
+
 /* Global config singleton. */
 extern struct sway_config *config;
 
