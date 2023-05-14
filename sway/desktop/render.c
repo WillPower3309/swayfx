@@ -1763,6 +1763,13 @@ void output_render(struct sway_output *output, struct timespec *when,
 		return;
 	}
 
+	/* we need to track extended damage for blur (as it is expanded in output.c),
+	   before we expand it again later in this function
+	 */
+	pixman_region32_t extended_damage;
+	pixman_region32_init(&extended_damage);
+	pixman_region32_copy(&extended_damage, damage);
+
 	struct sway_container *fullscreen_con = root->fullscreen_global;
 	if (!fullscreen_con) {
 		fullscreen_con = workspace->current.fullscreen;
@@ -1828,9 +1835,6 @@ void output_render(struct sway_output *output, struct timespec *when,
 		goto renderer_end;
 	}
 
-	pixman_region32_t extended_damage;
-	pixman_region32_init(&extended_damage);
-
 	if (output_has_opaque_overlay_layer_surface(output)) {
 		goto render_overlay;
 	}
@@ -1869,8 +1873,6 @@ void output_render(struct sway_output *output, struct timespec *when,
 		render_unmanaged(output, damage, &root->xwayland_unmanaged);
 #endif
 	} else {
-		pixman_region32_copy(&extended_damage, damage);
-
 		bool should_render_blur = should_workspace_have_blur(workspace);
 		if (should_render_blur) {
 			wlr_region_expand(damage, damage, config_get_blur_size());
