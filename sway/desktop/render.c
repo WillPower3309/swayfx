@@ -1,4 +1,3 @@
-#include <stdint.h>
 #include <stdio.h>
 #include <assert.h>
 #include <GLES2/gl2.h>
@@ -483,7 +482,7 @@ void render_whole_output(struct fx_renderer *renderer, struct wlr_output *wlr_ou
 	render_texture(wlr_output, output_damage, texture, NULL, &monitor_box, matrix, get_undecorated_decoration_data());
 }
 
-void render_monitor_blur(struct sway_output *output, pixman_region32_t *damage) {
+void render_output_blur(struct sway_output *output, pixman_region32_t *damage) {
 	struct wlr_output *wlr_output = output->wlr_output;
 	struct fx_renderer *renderer = output->renderer;
 
@@ -1885,7 +1884,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 		// check if the background needs to be blurred
 		if (config_should_parameters_blur() && renderer->blur_buffer_dirty && should_render_blur) {
 			pixman_region32_union_rect(damage, damage, 0, 0, output_width, output_height);
-			render_monitor_blur(output, damage);
+			render_output_blur(output, damage);
 		}
 
 		render_workspace(output, damage, workspace, workspace->current.focused);
