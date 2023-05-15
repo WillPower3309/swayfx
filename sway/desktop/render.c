@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <stdio.h>
 #include <assert.h>
 #include <GLES2/gl2.h>
@@ -1782,11 +1783,11 @@ void output_render(struct sway_output *output, struct timespec *when,
 
 	fx_renderer_begin(renderer, monitor_box.width, monitor_box.height);
 
-	int width, height;
-	wlr_output_transformed_resolution(wlr_output, &width, &height);
+	int output_width, output_height;
+	wlr_output_transformed_resolution(wlr_output, &output_width, &output_height);
 
 	if (debug.damage == DAMAGE_RERENDER) {
-		pixman_region32_union_rect(damage, damage, 0, 0, width, height);
+		pixman_region32_union_rect(damage, damage, 0, 0, output_width, output_height);
 	}
 
 	if (!pixman_region32_not_empty(damage)) {
@@ -1875,7 +1876,15 @@ void output_render(struct sway_output *output, struct timespec *when,
 	} else {
 		bool should_render_blur = should_workspace_have_blur(workspace);
 		if (should_render_blur) {
-			wlr_region_expand(damage, damage, config_get_blur_size());
+			// ensure that the damage isn't expanding past the output's size
+			int32_t damage_width = damage->extents.x2 - damage->extents.x1;
+			int32_t damage_height = damage->extents.y2 - damage->extents.y1;
+			if (damage_width > output_width || damage_height > output_height) {
+				pixman_region32_intersect_rect(damage, damage, 0, 0, output_width, output_height);
+				pixman_region32_intersect_rect(&extended_damage, &extended_damage, 0, 0, output_width, output_height);
+			} else {
+				wlr_region_expand(damage, damage, config_get_blur_size());
+			}
 		}
 
 		float clear_color[] = {0.25f, 0.25f, 0.25f, 1.0f};
@@ -1894,7 +1903,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 
 		// check if the background needs to be blurred
 		if (config_should_parameters_blur() && renderer->blur_buffer_dirty && should_render_blur) {
-			pixman_region32_union_rect(damage, damage, 0, 0, width, height);
+			pixman_region32_union_rect(damage, damage, 0, 0, output_width, output_height);
 			render_monitor_blur(output, damage);
 		}
 
@@ -1968,7 +1977,7 @@ renderer_end:
 	pixman_region32_init(&frame_damage);
 
 	enum wl_output_transform transform = wlr_output_transform_invert(wlr_output->transform);
-	wlr_region_transform(&frame_damage, &extended_damage, transform, width, height);
+	wlr_region_transform(&frame_damage, &extended_damage, transform, output_width, output_height);
 	pixman_region32_fini(&extended_damage);
 
 	if (debug.damage != DAMAGE_DEFAULT) {
