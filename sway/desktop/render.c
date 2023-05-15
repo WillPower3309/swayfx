@@ -474,32 +474,13 @@ static void render_drag_icons(struct sway_output *output,
 }
 
 void render_whole_output(struct fx_renderer *renderer, struct wlr_output *wlr_output,
-		pixman_region32_t *original_damage, struct fx_texture *texture) {
+		pixman_region32_t *output_damage, struct fx_texture *texture) {
 	struct wlr_box monitor_box = get_monitor_box(wlr_output);
-
 	enum wl_output_transform transform = wlr_output_transform_invert(wlr_output->transform);
 	float matrix[9];
 	wlr_matrix_project_box(matrix, &monitor_box, transform, 0.0, wlr_output->transform_matrix);
 
-	pixman_region32_t damage;
-	pixman_region32_init(&damage);
-	pixman_region32_union_rect(&damage, &damage, monitor_box.x, monitor_box.y,
-		monitor_box.width, monitor_box.height);
-	pixman_region32_intersect(&damage, &damage, original_damage);
-	bool damaged = pixman_region32_not_empty(&damage);
-	if (!damaged) {
-		goto damage_finish;
-	}
-
-	int nrects;
-	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
-	for (int i = 0; i < nrects; ++i) {
-		scissor_output(wlr_output, &rects[i]);
-		fx_render_texture_with_matrix(renderer, texture, &monitor_box, matrix, get_undecorated_decoration_data());
-	}
-
-damage_finish:
-	pixman_region32_fini(&damage);
+	render_texture(wlr_output, output_damage, texture, NULL, &monitor_box, matrix, get_undecorated_decoration_data());
 }
 
 void render_monitor_blur(struct sway_output *output, pixman_region32_t *damage) {
