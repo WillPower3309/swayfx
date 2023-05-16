@@ -1084,3 +1084,11 @@ void translate_keysyms(struct input_config *input_config) {
 	sway_log(SWAY_DEBUG, "Translated keysyms using config for device '%s'",
 			input_config->identifier);
 }
+
+int config_get_blur_size() {
+	return pow(2, config->blur_params.num_passes) * config->blur_params.radius;
+}
+
+bool config_should_parameters_blur() {
+	return config->blur_params.radius > 0 && config->blur_params.num_passes > 0;
+}
