@@ -13,12 +13,13 @@ struct fx_framebuffer {
 	GLuint stencil_buffer;
 };
 
-void fx_framebuffer_bind(struct fx_framebuffer *buffer);
-
 struct fx_framebuffer fx_framebuffer_create();
 
-void fx_framebuffer_update(struct fx_framebuffer *buffer, int width, int height,
-		bool create_stencil_buffer);
+void fx_framebuffer_bind(struct fx_framebuffer *buffer);
+
+void fx_framebuffer_update(struct fx_framebuffer *buffer, int width, int height);
+
+void fx_framebuffer_add_stencil_buffer(struct fx_framebuffer *buffer, int width, int height);
 
 void fx_framebuffer_release(struct fx_framebuffer *buffer);
 

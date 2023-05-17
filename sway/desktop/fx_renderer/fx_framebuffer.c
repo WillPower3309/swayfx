@@ -1,10 +1,6 @@
 #include "log.h"
 #include "sway/desktop/fx_renderer/fx_framebuffer.h"
 
-void fx_framebuffer_bind(struct fx_framebuffer *buffer) {
-	glBindFramebuffer(GL_FRAMEBUFFER, buffer->fb);
-}
-
 struct fx_framebuffer fx_framebuffer_create() {
 	return (struct fx_framebuffer) {
 		.fb = -1,
@@ -16,8 +12,11 @@ struct fx_framebuffer fx_framebuffer_create() {
 	};
 }
 
-void fx_framebuffer_update(struct fx_framebuffer *buffer, int width, int height,
-		bool create_stencil_buffer) {
+void fx_framebuffer_bind(struct fx_framebuffer *buffer) {
+	glBindFramebuffer(GL_FRAMEBUFFER, buffer->fb);
+}
+
+void fx_framebuffer_update(struct fx_framebuffer *buffer, int width, int height) {
 	bool firstAlloc = false;
 
 	// Create a new framebuffer
@@ -56,21 +55,23 @@ void fx_framebuffer_update(struct fx_framebuffer *buffer, int width, int height,
 		sway_log(SWAY_DEBUG, "Framebuffer created, status %i", status);
 	}
 
-	if (create_stencil_buffer && buffer->stencil_buffer == (uint32_t) -1) {
+	// Bind the default framebuffer
+	glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void fx_framebuffer_add_stencil_buffer(struct fx_framebuffer *buffer, int width, int height) {
+	if (buffer->stencil_buffer == (uint32_t) -1) {
 		glGenRenderbuffers(1, &buffer->stencil_buffer);
 		glBindRenderbuffer(GL_RENDERBUFFER, buffer->stencil_buffer);
 		glRenderbufferStorage(GL_RENDERBUFFER, GL_STENCIL_INDEX8, width, height);
 		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, buffer->stencil_buffer);
 		GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 		if (status != GL_FRAMEBUFFER_COMPLETE) {
-			sway_log(SWAY_ERROR, "Stencilbuffer incomplete, couldn't create! (FB status: %i)", status);
+			sway_log(SWAY_ERROR, "Stencil buffer incomplete, couldn't create! (FB status: %i)", status);
 			return;
 		}
-		sway_log(SWAY_DEBUG, "Stencilbuffer created, status %i", status);
+		sway_log(SWAY_DEBUG, "Stencil buffer created, status %i", status);
 	}
-
-	// Bind the default framebuffer
-	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void fx_framebuffer_release(struct fx_framebuffer *buffer) {

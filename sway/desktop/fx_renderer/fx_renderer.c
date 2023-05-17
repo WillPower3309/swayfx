@@ -13,6 +13,7 @@
 #include <wlr/util/box.h>
 
 #include "log.h"
+#include "sway/desktop/fx_renderer/fx_framebuffer.h"
 #include "sway/desktop/fx_renderer/fx_renderer.h"
 #include "sway/desktop/fx_renderer/matrix.h"
 #include "sway/server.h"
@@ -405,9 +406,12 @@ void fx_renderer_begin(struct fx_renderer *renderer, int width, int height) {
 	renderer->wlr_buffer.fb = wlr_fb;
 
 	// Create the framebuffers
-	fx_framebuffer_update(&renderer->main_buffer, width, height, true);
-	fx_framebuffer_update(&renderer->effects_buffer, width, height, false);
-	fx_framebuffer_update(&renderer->effects_buffer_swapped, width, height, false);
+	fx_framebuffer_update(&renderer->main_buffer, width, height);
+	fx_framebuffer_update(&renderer->effects_buffer, width, height);
+	fx_framebuffer_update(&renderer->effects_buffer_swapped, width, height);
+
+	// Add a stencil buffer to the main buffer & bind the main buffer
+	fx_framebuffer_add_stencil_buffer(&renderer->main_buffer, width, height);
 	fx_framebuffer_bind(&renderer->main_buffer);
 
 	// refresh projection matrix
