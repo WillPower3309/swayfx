@@ -18,7 +18,7 @@ void fx_framebuffer_bind(struct fx_framebuffer *buffer);
 void fx_framebuffer_init(struct fx_framebuffer *buffer);
 
 void fx_framebuffer_create(struct fx_framebuffer *buffer, int width, int height,
-		bool bind, bool create_stencil_buffer);
+		bool create_stencil_buffer);
 
 void fx_framebuffer_release(struct fx_framebuffer *buffer);
 

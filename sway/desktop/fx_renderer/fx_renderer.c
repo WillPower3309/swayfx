@@ -405,9 +405,10 @@ void fx_renderer_begin(struct fx_renderer *renderer, int width, int height) {
 	renderer->wlr_buffer.fb = wlr_fb;
 
 	// Create the framebuffers
-	fx_framebuffer_create(&renderer->main_buffer, width, height, true, true);
-	fx_framebuffer_create(&renderer->effects_buffer, width, height, false, false);
-	fx_framebuffer_create(&renderer->effects_buffer_swapped, width, height, false, false);
+	fx_framebuffer_create(&renderer->main_buffer, width, height, true);
+	fx_framebuffer_create(&renderer->effects_buffer, width, height, false);
+	fx_framebuffer_create(&renderer->effects_buffer_swapped, width, height, false);
+	fx_framebuffer_bind(&renderer->main_buffer);
 
 	// refresh projection matrix
 	matrix_projection(renderer->projection, width, height,
