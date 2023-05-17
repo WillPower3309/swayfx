@@ -1,14 +1,24 @@
 #include "log.h"
 #include "sway/desktop/fx_renderer/fx_framebuffer.h"
 
+struct fx_framebuffer fx_framebuffer_create() {
+	return (struct fx_framebuffer) {
+		.fb = -1,
+		.stencil_buffer = -1,
+		.texture.id = 0,
+		.texture.target = 0,
+		.texture.width = -1,
+		.texture.height = -1,
+	};
+}
+
 void fx_framebuffer_bind(struct fx_framebuffer *buffer) {
 	glBindFramebuffer(GL_FRAMEBUFFER, buffer->fb);
 }
 
-void fx_framebuffer_create(struct fx_framebuffer *buffer, int width, int height, bool bind) {
+void fx_framebuffer_update(struct fx_framebuffer *buffer, int width, int height) {
 	bool firstAlloc = false;
 
-	// Create a new framebuffer
 	if (buffer->fb == (uint32_t) -1) {
 		glGenFramebuffers(1, &buffer->fb);
 		firstAlloc = true;
@@ -44,19 +54,38 @@ void fx_framebuffer_create(struct fx_framebuffer *buffer, int width, int height,
 		sway_log(SWAY_DEBUG, "Framebuffer created, status %i", status);
 	}
 
-	// Bind the default framebuffer
 	glBindTexture(GL_TEXTURE_2D, 0);
-	if (bind) {
-		fx_framebuffer_bind(buffer);
+}
+
+void fx_framebuffer_add_stencil_buffer(struct fx_framebuffer *buffer, int width, int height) {
+	if (buffer->stencil_buffer == (uint32_t) -1) {
+		glGenRenderbuffers(1, &buffer->stencil_buffer);
+		glBindRenderbuffer(GL_RENDERBUFFER, buffer->stencil_buffer);
+		glRenderbufferStorage(GL_RENDERBUFFER, GL_STENCIL_INDEX8, width, height);
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, buffer->stencil_buffer);
+		GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+		if (status != GL_FRAMEBUFFER_COMPLETE) {
+			sway_log(SWAY_ERROR, "Stencil buffer incomplete, couldn't create! (FB status: %i)", status);
+			return;
+		}
+		sway_log(SWAY_DEBUG, "Stencil buffer created, status %i", status);
 	}
 }
 
 void fx_framebuffer_release(struct fx_framebuffer *buffer) {
+	// Release the framebuffer
 	if (buffer->fb != (uint32_t) -1 && buffer->fb) {
 		glDeleteFramebuffers(1, &buffer->fb);
 	}
 	buffer->fb= -1;
 
+	// Release the stencil buffer
+	if (buffer->stencil_buffer != (uint32_t)-1 && buffer->stencil_buffer) {
+		glDeleteRenderbuffers(1, &buffer->stencil_buffer);
+	}
+	buffer->stencil_buffer = -1;
+
+	// Release the texture
 	if (buffer->texture.id) {
 		glDeleteTextures(1, &buffer->texture.id);
 	}
