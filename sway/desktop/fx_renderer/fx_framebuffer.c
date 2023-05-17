@@ -19,7 +19,6 @@ void fx_framebuffer_bind(struct fx_framebuffer *buffer) {
 void fx_framebuffer_update(struct fx_framebuffer *buffer, int width, int height) {
 	bool firstAlloc = false;
 
-	// Create a new framebuffer
 	if (buffer->fb == (uint32_t) -1) {
 		glGenFramebuffers(1, &buffer->fb);
 		firstAlloc = true;
@@ -55,7 +54,6 @@ void fx_framebuffer_update(struct fx_framebuffer *buffer, int width, int height)
 		sway_log(SWAY_DEBUG, "Framebuffer created, status %i", status);
 	}
 
-	// Bind the default framebuffer
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
