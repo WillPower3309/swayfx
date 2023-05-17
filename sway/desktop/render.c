@@ -529,9 +529,10 @@ void render_monitor_blur(struct sway_output *output, pixman_region32_t *damage) 
 			wlr_output->transform_matrix, &monitor_box);
 
 	// Render the newly blurred content into the blur_buffer
-	fx_framebuffer_create(&renderer->blur_buffer,
+	fx_framebuffer_update(&renderer->blur_buffer,
 			output->renderer->viewport_width, output->renderer->viewport_height, false);
 	fx_framebuffer_bind(&renderer->blur_buffer);
+
 	// Clear the damaged region of the blur_buffer
 	float clear_color[] = { 0, 0, 0, 0 };
 	int nrects;

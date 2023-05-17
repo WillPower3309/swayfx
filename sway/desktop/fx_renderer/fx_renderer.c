@@ -264,10 +264,10 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 		return NULL;
 	}
 
-	fx_framebuffer_init(&renderer->main_buffer);
-	fx_framebuffer_init(&renderer->blur_buffer);
-	fx_framebuffer_init(&renderer->effects_buffer);
-	fx_framebuffer_init(&renderer->effects_buffer_swapped);
+	renderer->main_buffer = fx_framebuffer_create();
+	renderer->blur_buffer = fx_framebuffer_create();
+	renderer->effects_buffer = fx_framebuffer_create();
+	renderer->effects_buffer_swapped = fx_framebuffer_create();
 
 	renderer->blur_buffer_dirty = true;
 
@@ -405,9 +405,9 @@ void fx_renderer_begin(struct fx_renderer *renderer, int width, int height) {
 	renderer->wlr_buffer.fb = wlr_fb;
 
 	// Create the framebuffers
-	fx_framebuffer_create(&renderer->main_buffer, width, height, true);
-	fx_framebuffer_create(&renderer->effects_buffer, width, height, false);
-	fx_framebuffer_create(&renderer->effects_buffer_swapped, width, height, false);
+	fx_framebuffer_update(&renderer->main_buffer, width, height, true);
+	fx_framebuffer_update(&renderer->effects_buffer, width, height, false);
+	fx_framebuffer_update(&renderer->effects_buffer_swapped, width, height, false);
 	fx_framebuffer_bind(&renderer->main_buffer);
 
 	// refresh projection matrix

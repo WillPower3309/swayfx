@@ -5,16 +5,18 @@ void fx_framebuffer_bind(struct fx_framebuffer *buffer) {
 	glBindFramebuffer(GL_FRAMEBUFFER, buffer->fb);
 }
 
-void fx_framebuffer_init(struct fx_framebuffer *buffer) {
-	buffer->fb = -1;
-	buffer->stencil_buffer = -1;
-	buffer->texture.id = 0;
-	buffer->texture.target = 0;
-	buffer->texture.width = -1;
-	buffer->texture.height = -1;
+struct fx_framebuffer fx_framebuffer_create() {
+	return (struct fx_framebuffer) {
+		.fb = -1,
+		.stencil_buffer = -1,
+		.texture.id = 0,
+		.texture.target = 0,
+		.texture.width = -1,
+		.texture.height = -1,
+	};
 }
 
-void fx_framebuffer_create(struct fx_framebuffer *buffer, int width, int height,
+void fx_framebuffer_update(struct fx_framebuffer *buffer, int width, int height,
 		bool create_stencil_buffer) {
 	bool firstAlloc = false;
 
