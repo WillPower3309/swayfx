@@ -33,7 +33,6 @@ struct decoration_data {
 	float *dim_color;
 	bool has_titlebar;
 	bool blur;
-	bool can_blur_xray;
 	bool shadow;
 };
 

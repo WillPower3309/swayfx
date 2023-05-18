@@ -24,8 +24,6 @@ static void layer_parse_criteria(struct sway_layer_surface *sway_layer) {
 		return;
 	}
 
-	sway_layer->deco_data.can_blur_xray = layer != ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM;
-
 	list_t *criterias = layer_criterias_for_sway_layer_surface(sway_layer);
 	for (int i = 0; i < criterias->length; i++) {
 		struct layer_criteria *criteria = criterias->items[i];

@@ -45,8 +45,7 @@ struct decoration_data get_undecorated_decoration_data() {
 		.saturation = 1.0f,
 		.has_titlebar = false,
 		.blur = false,
-		.can_blur_xray = false, \
-		.shadow = false, \
+		.shadow = false,
 	};
 }
 
