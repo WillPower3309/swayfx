@@ -5,11 +5,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <strings.h>
+#include <wayland-util.h>
 #include "stringop.h"
 #include "sway/input/input-manager.h"
 #include "sway/input/cursor.h"
 #include "sway/input/seat.h"
 #include "sway/ipc-server.h"
+#include "sway/layers.h"
 #include "sway/output.h"
 #include "sway/tree/arrange.h"
 #include "sway/tree/container.h"
@@ -688,6 +690,40 @@ void workspace_detect_urgent(struct sway_workspace *workspace) {
 		ipc_event_workspace(NULL, workspace, "urgent");
 		output_damage_whole(workspace->output);
 	}
+}
+
+static bool find_blurred_con_iterator(struct sway_container *con, void *data) {
+	struct sway_view *view = con->view;
+	if (!view) {
+		return false;
+	}
+	return con->blur_enabled && !view->surface->opaque;
+}
+
+bool should_workspace_have_blur(struct sway_workspace *ws) {
+	if (!workspace_is_visible(ws)) {
+		return false;
+	}
+
+	if ((bool)workspace_find_container(ws, find_blurred_con_iterator, NULL)) {
+		return true;
+	}
+
+	// Check if any layer-shell surfaces will render effects
+	struct sway_output *sway_output = ws->output;
+	size_t len = sizeof(sway_output->layers) / sizeof(sway_output->layers[0]);
+	for (size_t i = 0; i < len; ++i) {
+		struct sway_layer_surface *lsurface;
+		wl_list_for_each(lsurface, &sway_output->layers[i], link) {
+			if (lsurface->deco_data.blur
+					&& !lsurface->layer_surface->surface->opaque
+					&& lsurface->layer != ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND) {
+				return true;
+			}
+		}
+	}
+
+	return false;
 }
 
 void workspace_for_each_container(struct sway_workspace *ws,

@@ -13,6 +13,7 @@
 #include <wlr/util/box.h>
 
 #include "log.h"
+#include "sway/desktop/fx_renderer/fx_framebuffer.h"
 #include "sway/desktop/fx_renderer/fx_renderer.h"
 #include "sway/desktop/fx_renderer/matrix.h"
 #include "sway/server.h"
@@ -34,6 +35,20 @@ static const GLfloat verts[] = {
 	1, 1, // bottom right
 	0, 1, // bottom left
 };
+
+struct decoration_data get_undecorated_decoration_data() {
+	return (struct decoration_data) {
+		.alpha = 1.0f,
+		.dim = 0.0f,
+		.dim_color = config->dim_inactive_colors.unfocused,
+		.corner_radius = 0,
+		.saturation = 1.0f,
+		.has_titlebar = false,
+		.blur = false,
+		.can_blur_xray = false, \
+		.shadow = false, \
+	};
+}
 
 static GLuint compile_shader(GLuint type, const GLchar *src) {
 	GLuint shader = glCreateShader(type);
@@ -264,15 +279,10 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 		return NULL;
 	}
 
-	renderer->main_buffer.fb = -1;
-	renderer->main_buffer.stencil_buffer = -1;
-
-	renderer->blur_buffer.fb = -1;
-	renderer->blur_buffer.stencil_buffer = -1;
-	renderer->effects_buffer.fb = -1;
-	renderer->effects_buffer.stencil_buffer = -1;
-	renderer->effects_buffer_swapped.fb = -1;
-	renderer->effects_buffer_swapped.stencil_buffer = -1;
+	renderer->main_buffer = fx_framebuffer_create();
+	renderer->blur_buffer = fx_framebuffer_create();
+	renderer->effects_buffer = fx_framebuffer_create();
+	renderer->effects_buffer_swapped = fx_framebuffer_create();
 
 	renderer->blur_buffer_dirty = true;
 
@@ -410,9 +420,13 @@ void fx_renderer_begin(struct fx_renderer *renderer, int width, int height) {
 	renderer->wlr_buffer.fb = wlr_fb;
 
 	// Create the framebuffers
-	fx_framebuffer_create(&renderer->main_buffer, width, height, true, true);
-	fx_framebuffer_create(&renderer->effects_buffer, width, height, false, false);
-	fx_framebuffer_create(&renderer->effects_buffer_swapped, width, height, false, false);
+	fx_framebuffer_update(&renderer->main_buffer, width, height);
+	fx_framebuffer_update(&renderer->effects_buffer, width, height);
+	fx_framebuffer_update(&renderer->effects_buffer_swapped, width, height);
+
+	// Add a stencil buffer to the main buffer & bind the main buffer
+	fx_framebuffer_add_stencil_buffer(&renderer->main_buffer, width, height);
+	fx_framebuffer_bind(&renderer->main_buffer);
 
 	// refresh projection matrix
 	matrix_projection(renderer->projection, width, height,
