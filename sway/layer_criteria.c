@@ -3,6 +3,7 @@
 #include "stringop.h"
 #include "sway/commands.h"
 #include "sway/layer_criteria.h"
+#include "util.h"
 
 void layer_criteria_destroy(struct layer_criteria *criteria) {
 	free(criteria->namespace);
@@ -64,10 +65,10 @@ void layer_criteria_parse(struct sway_layer_surface *sway_layer, struct layer_cr
 			}
 		}
 		if (strcmp(argv[0], "blur") == 0) {
-			sway_layer->deco_data.blur = cmd_blur_parse_value(argv[1]);
+			sway_layer->deco_data.blur = parse_boolean(argv[1], true);
 			continue;
 		} else if (strcmp(argv[0], "shadows") == 0) {
-			sway_layer->deco_data.shadow = cmd_shadows_parse_value(argv[1]);
+			sway_layer->deco_data.shadow = parse_boolean(argv[1], true);
 			continue;
 		} else if (strcmp(argv[0], "corner_radius") == 0) {
 			int value;

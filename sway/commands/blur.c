@@ -3,10 +3,6 @@
 #include "sway/output.h"
 #include "util.h"
 
-bool cmd_blur_parse_value(char *arg) {
-	return parse_boolean(arg, true);
-}
-
 struct cmd_results *cmd_blur(int argc, char **argv) {
 	struct cmd_results *error = checkarg(argc, "blur", EXPECTED_AT_LEAST, 1);
 
@@ -16,7 +12,7 @@ struct cmd_results *cmd_blur(int argc, char **argv) {
 
 	struct sway_container *con = config->handler_context.container;
 
-	bool result = cmd_blur_parse_value(argv[0]);
+	bool result = parse_boolean(argv[0], true);
 	if (con == NULL) {
 		config->blur_enabled = result;
 	} else {
