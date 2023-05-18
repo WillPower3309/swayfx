@@ -411,8 +411,8 @@ void fx_renderer_begin(struct fx_renderer *renderer, int width, int height) {
 	fx_framebuffer_update(&renderer->effects_buffer_swapped, width, height);
 
 	// Add a stencil buffer to the main buffer & bind the main buffer
-	fx_framebuffer_add_stencil_buffer(&renderer->main_buffer, width, height);
 	fx_framebuffer_bind(&renderer->main_buffer);
+	fx_framebuffer_add_stencil_buffer(&renderer->main_buffer, width, height);
 
 	// refresh projection matrix
 	matrix_projection(renderer->projection, width, height,
