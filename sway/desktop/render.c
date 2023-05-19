@@ -441,10 +441,8 @@ static void render_surface_iterator(struct sway_output *output,
 	struct decoration_data deco_data = data->deco_data;
 	deco_data.corner_radius *= wlr_output->scale;
 
-	bool is_subsurface = view ? view->surface != surface : false;
-	bool should_optimize_blur = view ? !container_is_floating(view->container) || config->blur_xray : false;
-
 	// render blur
+	bool is_subsurface = view ? view->surface != surface : false;
 	if (deco_data.blur && config_should_parameters_blur() && !is_subsurface) {
 		pixman_region32_t opaque_region;
 		pixman_region32_init(&opaque_region);
@@ -459,6 +457,7 @@ static void render_surface_iterator(struct sway_output *output,
 		}
 
 		if (has_alpha) {
+			bool should_optimize_blur = view ? !container_is_floating(view->container) || config->blur_xray : false;
 			struct wlr_box monitor_box = get_monitor_box(wlr_output);
 			wlr_box_transform(&monitor_box, &monitor_box,
 					wlr_output_transform_invert(wlr_output->transform), monitor_box.width, monitor_box.height);
