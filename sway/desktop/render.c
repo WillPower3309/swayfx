@@ -484,18 +484,22 @@ static void render_surface_iterator(struct sway_output *output,
 static void render_layer_iterator(struct sway_output *output,
 		struct sway_view *view, struct wlr_surface *surface,
 		struct wlr_box *_box, void *_data) {
+	struct render_data *data = _data;
+	struct decoration_data deco_data = data->deco_data;
+
+	// Ignore effects if this is a subsurface
+	if (wl_list_length(&surface->current.subsurfaces_above) > 0) {
+		deco_data = get_undecorated_decoration_data();
+	}
+
 	// render the layer's surface
 	render_surface_iterator(output, view, surface, _box, _data);
-
-	struct render_data *data = _data;
-	pixman_region32_t *output_damage = data->damage;
-	struct decoration_data deco_data = data->deco_data;
 
 	// render shadow
 	if (deco_data.shadow && config_should_parameters_shadow()) {
 		int corner_radius = deco_data.corner_radius *= output->wlr_output->scale;
 		scale_box(_box, output->wlr_output->scale);
-		render_box_shadow(output, output_damage, _box, config->shadow_color,
+		render_box_shadow(output, data->damage, _box, config->shadow_color,
 				config->shadow_blur_sigma, corner_radius);
 	}
 }
