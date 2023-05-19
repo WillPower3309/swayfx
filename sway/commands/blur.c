@@ -12,7 +12,7 @@ struct cmd_results *cmd_blur(int argc, char **argv) {
 
 	struct sway_container *con = config->handler_context.container;
 
-	bool result = parse_boolean(argv[0], config->blur_enabled);
+	bool result = parse_boolean(argv[0], true);
 	if (con == NULL) {
 		config->blur_enabled = result;
 	} else {

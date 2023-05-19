@@ -787,6 +787,25 @@ The default colors are:
 	Whenever a window that matches _criteria_ appears, run list of commands.
 	See *CRITERIA* for more details.
 
+*layer_effects* <layer-namespace> <effects>
+	Apply effects on specific layer shell surfaces, eg "waybar" or "rofi".
+	At least one effect needs to be provided. The <layer-namespace> can be
+	gotten through *sway-ipc*. Note: Surfaces in the _bottom_ layer cannot
+	use these effects.
+
+	Effects:
+	- *blur* <enable|disable>
+	- *shadows* <enable|disable>
+	- *corner_radius* <integer>
+
+	Example:
+
+		layer_effects "waybar" blur enable; shadows enable; corner_radius 6
+
+	SwayIPC Example:
+
+		swaymsg "layer_effects 'waybar' 'blur enable; shadows enable'"
+
 *gaps* inner|outer|horizontal|vertical|top|right|bottom|left <amount>
 	Sets default _amount_ pixels of _inner_ or _outer_ gap, where the inner
 	affects spacing around each view and outer affects the spacing around each

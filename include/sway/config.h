@@ -500,6 +500,8 @@ struct sway_config {
 	bool titlebar_separator;
 	bool scratchpad_minimize;
 
+	list_t *layer_criteria;
+
 	char *swaynag_command;
 	struct swaynag_instance swaynag_config_errors;
 	list_t *symbols;
@@ -764,6 +766,8 @@ void binding_add_translated(struct sway_binding *binding, list_t *bindings);
 int config_get_blur_size();
 
 bool config_should_parameters_blur();
+
+bool config_should_parameters_shadow();
 
 /* Global config singleton. */
 extern struct sway_config *config;

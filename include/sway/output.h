@@ -13,6 +13,12 @@
 struct sway_server;
 struct sway_container;
 
+struct render_data {
+	pixman_region32_t *damage;
+	struct wlr_box *clip_box;
+	struct decoration_data deco_data;
+};
+
 struct sway_output_state {
 	list_t *workspaces;
 	struct sway_workspace *active_workspace;
