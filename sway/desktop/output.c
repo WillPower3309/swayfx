@@ -201,7 +201,8 @@ void output_layer_for_each_toplevel_surface(struct sway_output *output,
 			layer_surface->layer_surface;
 
 		struct render_data *data = user_data;
-		data->deco_data.blur = layer_surface->has_blur;
+		data->deco_data.blur = layer_surface->layer != ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND ?
+			layer_surface->has_blur : false;
 		data->deco_data.shadow = layer_surface->has_shadow;
 		data->deco_data.corner_radius = layer_surface->corner_radius;
 

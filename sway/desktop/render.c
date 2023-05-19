@@ -23,7 +23,6 @@
 #include "sway/desktop/fx_renderer/fx_renderer.h"
 #include "sway/input/input-manager.h"
 #include "sway/input/seat.h"
-#include "sway/layers.h"
 #include "sway/output.h"
 #include "sway/server.h"
 #include "sway/tree/arrange.h"
@@ -784,8 +783,7 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 		enum wl_output_transform transform = wlr_output_transform_invert(saved_buf->transform);
 		wlr_matrix_project_box(matrix, &proj_box, transform, 0, wlr_output->transform_matrix);
 
-		struct sway_container *con = view->container;
-		struct sway_container_state state = con->current;
+		struct sway_container_state state = view->container->current;
 		dst_box.x = state.x - output->lx;
 		dst_box.y = state.y - output->ly;
 		dst_box.width = state.width;
@@ -814,7 +812,7 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 				wlr_box_transform(&monitor_box, &monitor_box,
 						wlr_output_transform_invert(wlr_output->transform), monitor_box.width, monitor_box.height);
 				struct wlr_fbox src_box = wlr_fbox_from_wlr_box(&monitor_box);
-				bool should_optimize_blur = !container_is_floating(con);
+				bool should_optimize_blur = !container_is_floating(view->container) || config->blur_xray;
 				render_blur(should_optimize_blur, output, damage, &src_box, &dst_box, &opaque_region,
 						saved_buf->width, saved_buf->height, 1, deco_data.corner_radius, deco_data.has_titlebar);
 
