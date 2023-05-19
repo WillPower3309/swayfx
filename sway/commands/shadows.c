@@ -17,7 +17,7 @@ struct cmd_results *cmd_shadows(int argc, char **argv) {
 
 	struct sway_container *con = config->handler_context.container;
 
-	bool result = parse_boolean(argv[0], config->shadow_enabled);
+	bool result = parse_boolean(argv[0], true);
 	if (con == NULL) {
 		config->shadow_enabled = result;
 	} else {

@@ -199,6 +199,13 @@ void output_layer_for_each_toplevel_surface(struct sway_output *output,
 	wl_list_for_each(layer_surface, layer_surfaces, link) {
 		struct wlr_layer_surface_v1 *wlr_layer_surface_v1 =
 			layer_surface->layer_surface;
+
+		struct render_data *data = user_data;
+		data->deco_data.blur = layer_surface->layer != ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND ?
+			layer_surface->has_blur : false;
+		data->deco_data.shadow = layer_surface->has_shadow;
+		data->deco_data.corner_radius = layer_surface->corner_radius;
+
 		output_surface_for_each_surface(output, wlr_layer_surface_v1->surface,
 			layer_surface->geo.x, layer_surface->geo.y, iterator,
 			user_data);

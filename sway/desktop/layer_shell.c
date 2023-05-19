@@ -6,6 +6,7 @@
 #include <wlr/types/wlr_output.h>
 #include <wlr/types/wlr_subcompositor.h>
 #include "log.h"
+#include "sway/layer_criteria.h"
 #include "sway/desktop/transaction.h"
 #include "sway/input/cursor.h"
 #include "sway/input/input-manager.h"
@@ -15,6 +16,21 @@
 #include "sway/server.h"
 #include "sway/tree/arrange.h"
 #include "sway/tree/workspace.h"
+#include "wlr-layer-shell-unstable-v1-protocol.h"
+
+static void layer_parse_criteria(struct sway_layer_surface *sway_layer) {
+	enum zwlr_layer_shell_v1_layer layer = sway_layer->layer;
+	if (layer == ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND) {
+		return;
+	}
+
+	list_t *criterias = layer_criterias_for_sway_layer_surface(sway_layer);
+	for (int i = 0; i < criterias->length; i++) {
+		struct layer_criteria *criteria = criterias->items[i];
+		layer_criteria_parse(sway_layer, criteria);
+	}
+	list_free(criterias);
+}
 
 static void apply_exclusive(struct wlr_box *usable_area,
 		uint32_t anchor, int32_t exclusive,
@@ -306,6 +322,7 @@ static void handle_surface_commit(struct wl_listener *listener, void *data) {
 			wl_list_insert(&output->layers[layer_surface->current.layer],
 				&layer->link);
 			layer->layer = layer_surface->current.layer;
+			layer_parse_criteria(layer);
 		}
 		arrange_layers(output);
 	}
@@ -393,6 +410,7 @@ static void handle_map(struct wl_listener *listener, void *data) {
 	struct wlr_output *wlr_output = sway_layer->layer_surface->output;
 	sway_assert(wlr_output, "wlr_layer_surface_v1 has null output");
 	struct sway_output *output = wlr_output->data;
+	layer_parse_criteria(sway_layer);
 	output_damage_surface(output, sway_layer->geo.x, sway_layer->geo.y,
 		sway_layer->layer_surface->surface, true);
 	wlr_surface_send_enter(sway_layer->layer_surface->surface,
@@ -684,6 +702,10 @@ void handle_layer_shell_surface(struct wl_listener *listener, void *data) {
 
 	sway_layer->layer_surface = layer_surface;
 	layer_surface->data = sway_layer;
+
+	sway_layer->has_blur = false;
+	sway_layer->has_shadow = false;
+	sway_layer->corner_radius = 0;
 
 	struct sway_output *output = layer_surface->output->data;
 	sway_layer->output_destroy.notify = handle_output_destroy;
