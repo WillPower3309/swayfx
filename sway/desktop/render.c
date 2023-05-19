@@ -492,11 +492,10 @@ static void render_layer_iterator(struct sway_output *output,
 	pixman_region32_t *output_damage = data->damage;
 	struct decoration_data deco_data = data->deco_data;
 
-	scale_box(_box, output->wlr_output->scale);
-
 	// render shadow
 	if (deco_data.shadow && config_should_parameters_shadow()) {
 		int corner_radius = deco_data.corner_radius *= output->wlr_output->scale;
+		scale_box(_box, output->wlr_output->scale);
 		render_box_shadow(output, output_damage, _box, config->shadow_color,
 				config->shadow_blur_sigma, corner_radius);
 	}
