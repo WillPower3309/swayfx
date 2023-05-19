@@ -333,7 +333,7 @@ void render_blur(bool optimized, struct sway_output *output,
 	wlr_region_scale(&inverse_opaque, &inverse_opaque, wlr_output->scale);
 
 	struct fx_framebuffer *buffer = &renderer->blur_buffer;
-	if (!buffer->texture.id || (!optimized && !config->blur_xray)) {
+	if (!buffer->texture.id || !optimized) {
 		pixman_region32_translate(&inverse_opaque, dst_box->x, dst_box->y);
 		pixman_region32_intersect(&inverse_opaque, &inverse_opaque, &damage);
 
@@ -392,8 +392,9 @@ static void render_surface_iterator(struct sway_output *output,
 	struct decoration_data deco_data = data->deco_data;
 	deco_data.corner_radius *= wlr_output->scale;
 
-	// render blur (view->surface == surface excludes blurring subsurfaces)
-	if (deco_data.blur && config_should_parameters_blur() && view->surface == surface) {
+	// render blur
+	bool is_subsurface = view ? view->surface != surface : false;
+	if (deco_data.blur && config_should_parameters_blur() && !is_subsurface) {
 		pixman_region32_t opaque_region;
 		pixman_region32_init(&opaque_region);
 
@@ -407,12 +408,12 @@ static void render_surface_iterator(struct sway_output *output,
 		}
 
 		if (has_alpha) {
+			bool should_optimize_blur = view ? !container_is_floating(view->container) || config->blur_xray : false;
 			struct wlr_box monitor_box = get_monitor_box(wlr_output);
 			wlr_box_transform(&monitor_box, &monitor_box,
 					wlr_output_transform_invert(wlr_output->transform), monitor_box.width, monitor_box.height);
 			struct wlr_fbox blur_src_box = wlr_fbox_from_wlr_box(&monitor_box);
-			bool is_floating = container_is_floating(view->container);
-			render_blur(!is_floating, output, output_damage, &blur_src_box, &dst_box, &opaque_region,
+			render_blur(should_optimize_blur, output, output_damage, &blur_src_box, &dst_box, &opaque_region,
 					surface->current.width, surface->current.height, surface->current.scale,
 					deco_data.corner_radius, deco_data.has_titlebar);
 		}
@@ -798,8 +799,8 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 				wlr_box_transform(&monitor_box, &monitor_box,
 						wlr_output_transform_invert(wlr_output->transform), monitor_box.width, monitor_box.height);
 				struct wlr_fbox src_box = wlr_fbox_from_wlr_box(&monitor_box);
-				bool is_floating = container_is_floating(view->container);
-				render_blur(!is_floating, output, damage, &src_box, &dst_box, &opaque_region,
+				bool should_optimize_blur = !container_is_floating(view->container) || config->blur_xray;
+				render_blur(should_optimize_blur, output, damage, &src_box, &dst_box, &opaque_region,
 						saved_buf->width, saved_buf->height, 1, deco_data.corner_radius, deco_data.has_titlebar);
 
 				pixman_region32_fini(&opaque_region);
