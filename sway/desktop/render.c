@@ -45,18 +45,6 @@ struct decoration_data get_undecorated_decoration_data() {
 	};
 }
 
-int get_blur_size() {
-	return pow(2, config->blur_params.num_passes) * config->blur_params.radius;
-}
-
-bool should_parameters_blur() {
-	return config->blur_params.radius > 0 && config->blur_params.num_passes > 0;
-}
-
-bool should_parameters_shadow() {
-	return config->shadow_blur_sigma > 0 && config->shadow_color[3] > 0.0;
-}
-
 // TODO: contribute wlroots function to allow creating an fbox from a box?
 struct wlr_fbox wlr_fbox_from_wlr_box(struct wlr_box *box) {
 	return (struct wlr_fbox) {
@@ -471,7 +459,7 @@ static void render_surface_iterator(struct sway_output *output,
 	*/
 
 	// render blur
-	if (deco_data.blur && should_parameters_blur() && !is_subsurface) {
+	if (deco_data.blur && config_should_parameters_blur() && !is_subsurface) {
 		pixman_region32_t opaque_region;
 		pixman_region32_init(&opaque_region);
 
@@ -523,7 +511,7 @@ static void render_layer_iterator(struct sway_output *output,
 	bool is_subsurface = view ? view->surface != surface : false;
 
 	// render shadow
-	if (deco_data.shadow && should_parameters_shadow() && !is_subsurface) {
+	if (deco_data.shadow && config_should_parameters_shadow() && !is_subsurface) {
 		int corner_radius = deco_data.corner_radius;
 		render_box_shadow(output, output_damage, &dst_box, config->shadow_color,
 				config->shadow_blur_sigma, corner_radius);

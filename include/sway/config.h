@@ -767,6 +767,8 @@ int config_get_blur_size();
 
 bool config_should_parameters_blur();
 
+bool config_should_parameters_shadow();
+
 /* Global config singleton. */
 extern struct sway_config *config;
 

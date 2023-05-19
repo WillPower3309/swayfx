@@ -1101,3 +1101,7 @@ int config_get_blur_size() {
 bool config_should_parameters_blur() {
 	return config->blur_params.radius > 0 && config->blur_params.num_passes > 0;
 }
+
+bool config_should_parameters_shadow() {
+	return config->shadow_blur_sigma > 0 && config->shadow_color[3] > 0.0;
+}
