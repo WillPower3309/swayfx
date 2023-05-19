@@ -715,8 +715,7 @@ bool should_workspace_have_blur(struct sway_workspace *ws) {
 	for (size_t i = 0; i < len; ++i) {
 		struct sway_layer_surface *lsurface;
 		wl_list_for_each(lsurface, &sway_output->layers[i], link) {
-			if (lsurface->deco_data.blur
-					&& !lsurface->layer_surface->surface->opaque
+			if (lsurface->has_blur && !lsurface->layer_surface->surface->opaque
 					&& lsurface->layer != ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND) {
 				return true;
 			}

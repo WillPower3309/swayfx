@@ -32,6 +32,19 @@
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
 
+struct decoration_data get_undecorated_decoration_data() {
+	return (struct decoration_data) {
+		.alpha = 1.0f,
+		.dim = 0.0f,
+		.dim_color = config->dim_inactive_colors.unfocused,
+		.corner_radius = 0,
+		.saturation = 1.0f,
+		.has_titlebar = false,
+		.blur = false,
+		.shadow = false,
+	};
+}
+
 int get_blur_size() {
 	return pow(2, config->blur_params.num_passes) * config->blur_params.radius;
 }
@@ -406,7 +419,6 @@ damage_finish:
 	pixman_region32_fini(&damage);
 }
 
-
 static void render_surface_iterator(struct sway_output *output,
 		struct sway_view *view, struct wlr_surface *surface,
 		struct wlr_box *_box, void *_data) {
@@ -441,13 +453,14 @@ static void render_surface_iterator(struct sway_output *output,
 	struct decoration_data deco_data = data->deco_data;
 	deco_data.corner_radius *= wlr_output->scale;
 
-	// render blur (view->surface == surface excludes blurring subsurfaces)
 	bool is_subsurface = false;
 	bool should_optimize_blur = false;
 	if (view) {
 		is_subsurface = view->surface != surface;
 		should_optimize_blur = !container_is_floating(view->container) || config->blur_xray;
 	}
+	/*
+	TODO
 	if (data->sway_layer) {
 		is_subsurface = data->sway_layer->layer_surface->surface != surface;
 		enum zwlr_layer_shell_v1_layer layer = data->sway_layer->layer;
@@ -455,6 +468,9 @@ static void render_surface_iterator(struct sway_output *output,
 			&& layer != ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM
 			&& layer != ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND;
 	}
+	*/
+
+	// render blur
 	if (deco_data.blur && should_parameters_blur() && !is_subsurface) {
 		pixman_region32_t opaque_region;
 		pixman_region32_init(&opaque_region);
@@ -490,9 +506,24 @@ static void render_surface_iterator(struct sway_output *output,
 
 	wlr_presentation_surface_sampled_on_output(server.presentation, surface,
 		wlr_output);
+}
 
-	// render shadow (view->surface == surface excludes shadow on subsurfaces)
-	if (deco_data.shadow && should_parameters_shadow() && !is_subsurface && data->sway_layer) {
+static void render_layer_iterator(struct sway_output *output,
+		struct sway_view *view, struct wlr_surface *surface,
+		struct wlr_box *_box, void *_data) {
+	// render the layer's surface
+	render_surface_iterator(output, view, surface, _box, _data);
+
+	struct render_data *data = _data;
+	struct wlr_box dst_box = *_box;
+	pixman_region32_t *output_damage = data->damage;
+
+	struct decoration_data deco_data = data->deco_data;
+	// TODO: can layers have subsurfaces?
+	bool is_subsurface = view ? view->surface != surface : false;
+
+	// render shadow
+	if (deco_data.shadow && should_parameters_shadow() && !is_subsurface) {
 		int corner_radius = deco_data.corner_radius;
 		render_box_shadow(output, output_damage, &dst_box, config->shadow_color,
 				config->shadow_blur_sigma, corner_radius);
@@ -506,7 +537,7 @@ static void render_layer_toplevel(struct sway_output *output,
 		.deco_data = get_undecorated_decoration_data(),
 	};
 	output_layer_for_each_toplevel_surface(output, layer_surfaces,
-		render_surface_iterator, &data);
+		render_layer_iterator, &data);
 }
 
 static void render_layer_popups(struct sway_output *output,
@@ -516,7 +547,7 @@ static void render_layer_popups(struct sway_output *output,
 		.deco_data = get_undecorated_decoration_data(),
 	};
 	output_layer_for_each_popup_surface(output, layer_surfaces,
-		render_surface_iterator, &data);
+		render_layer_iterator, &data);
 }
 
 #if HAVE_XWAYLAND
@@ -1467,6 +1498,7 @@ static void render_containers_tabbed(struct sway_output *output,
 		.saturation = current->saturation,
 		.has_titlebar = true,
 		.blur = current->blur_enabled,
+		.shadow = current->shadow_enabled,
 	};
 
 	// Render tabs
@@ -1562,6 +1594,7 @@ static void render_containers_stacked(struct sway_output *output,
 				? 0 : current->corner_radius,
 		.has_titlebar = true,
 		.blur = current->blur_enabled,
+		.shadow = current->shadow_enabled,
 	};
 
 	// Render titles

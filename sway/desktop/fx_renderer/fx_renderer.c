@@ -36,19 +36,6 @@ static const GLfloat verts[] = {
 	0, 1, // bottom left
 };
 
-struct decoration_data get_undecorated_decoration_data() {
-	return (struct decoration_data) {
-		.alpha = 1.0f,
-		.dim = 0.0f,
-		.dim_color = config->dim_inactive_colors.unfocused,
-		.corner_radius = 0,
-		.saturation = 1.0f,
-		.has_titlebar = false,
-		.blur = false,
-		.shadow = false,
-	};
-}
-
 static GLuint compile_shader(GLuint type, const GLchar *src) {
 	GLuint shader = glCreateShader(type);
 	glShaderSource(shader, 1, &src, NULL);

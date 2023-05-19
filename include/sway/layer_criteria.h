@@ -1,5 +1,6 @@
 #include <stdbool.h>
 #include "sway/layers.h"
+#include "sway/config.h"
 
 struct layer_criteria {
 	char *namespace;

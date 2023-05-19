@@ -3,7 +3,6 @@
 #include <stdbool.h>
 #include <wlr/types/wlr_compositor.h>
 #include <wlr/types/wlr_layer_shell_v1.h>
-#include "sway/config.h"
 
 enum layer_parent {
 	LAYER_PARENT_LAYER,
@@ -29,7 +28,9 @@ struct sway_layer_surface {
 
 	struct wl_list subsurfaces;
 
-	struct decoration_data deco_data;
+	bool has_shadow;
+	bool has_blur;
+	int corner_radius;
 };
 
 struct sway_layer_popup {

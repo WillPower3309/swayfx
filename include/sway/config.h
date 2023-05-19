@@ -12,7 +12,6 @@
 #include "../include/config.h"
 #include "gesture.h"
 #include "list.h"
-#include "sway/desktop/fx_renderer/fx_renderer.h"
 #include "swaynag.h"
 #include "tree/container.h"
 #include "sway/input/tablet.h"

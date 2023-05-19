@@ -703,7 +703,9 @@ void handle_layer_shell_surface(struct wl_listener *listener, void *data) {
 	sway_layer->layer_surface = layer_surface;
 	layer_surface->data = sway_layer;
 
-	sway_layer->deco_data = get_undecorated_decoration_data();
+	sway_layer->has_blur = false;
+	sway_layer->has_shadow = false;
+	sway_layer->corner_radius = 0;
 
 	struct sway_output *output = layer_surface->output->data;
 	sway_layer->output_destroy.notify = handle_output_destroy;

@@ -36,8 +36,6 @@ struct decoration_data {
 	bool shadow;
 };
 
-struct decoration_data get_undecorated_decoration_data();
-
 struct blur_shader {
 	GLuint program;
 	GLint proj;

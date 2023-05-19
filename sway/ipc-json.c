@@ -374,14 +374,13 @@ static void ipc_json_describe_enabled_output(struct sway_output *output,
 			json_object_object_add(layer, "extent", extent);
 
 			json_object *effects = json_object_new_array();
-			struct decoration_data deco_data = lsurface->deco_data;
-			if (deco_data.blur) {
+			if (lsurface->has_blur) {
 				json_object_array_add(effects, json_object_new_string("blur"));
 			}
-			if (deco_data.shadow) {
+			if (lsurface->has_shadow) {
 				json_object_array_add(effects, json_object_new_string("shadows"));
 			}
-			if (deco_data.corner_radius > 0) {
+			if (lsurface->corner_radius > 0) {
 				json_object_array_add(effects, json_object_new_string("corner_radius"));
 			}
 			json_object_object_add(layer, "effects", effects);
@@ -1113,9 +1112,9 @@ json_object *ipc_json_describe_input(struct sway_input_device *device) {
 		struct xkb_keymap *keymap = keyboard->keymap;
 		struct xkb_state *state = keyboard->xkb_state;
 
-		json_object_object_add(object, "repeat_delay", 
+		json_object_object_add(object, "repeat_delay",
 			json_object_new_int(keyboard->repeat_info.delay));
-		json_object_object_add(object, "repeat_rate", 
+		json_object_object_add(object, "repeat_rate",
 			json_object_new_int(keyboard->repeat_info.rate));
 
 		json_object *layouts_arr = json_object_new_array();

@@ -65,15 +65,15 @@ void layer_criteria_parse(struct sway_layer_surface *sway_layer, struct layer_cr
 			}
 		}
 		if (strcmp(argv[0], "blur") == 0) {
-			sway_layer->deco_data.blur = parse_boolean(argv[1], true);
+			sway_layer->has_blur = parse_boolean(argv[1], true);
 			continue;
 		} else if (strcmp(argv[0], "shadows") == 0) {
-			sway_layer->deco_data.shadow = parse_boolean(argv[1], true);
+			sway_layer->has_shadow = parse_boolean(argv[1], true);
 			continue;
 		} else if (strcmp(argv[0], "corner_radius") == 0) {
 			int value;
 			if (cmd_corner_radius_parse_value(argv[1], &value)) {
-				sway_layer->deco_data.corner_radius = value;
+				sway_layer->corner_radius = value;
 				continue;
 			}
 			sway_log(SWAY_ERROR,
