@@ -441,22 +441,8 @@ static void render_surface_iterator(struct sway_output *output,
 	struct decoration_data deco_data = data->deco_data;
 	deco_data.corner_radius *= wlr_output->scale;
 
-	bool is_subsurface = false;
-	bool should_optimize_blur = false;
-	if (view) {
-		is_subsurface = view->surface != surface;
-		should_optimize_blur = !container_is_floating(view->container) || config->blur_xray;
-	}
-	/*
-	TODO
-	if (data->sway_layer) {
-		is_subsurface = data->sway_layer->layer_surface->surface != surface;
-		enum zwlr_layer_shell_v1_layer layer = data->sway_layer->layer;
-		should_optimize_blur = config->blur_xray
-			&& layer != ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM
-			&& layer != ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND;
-	}
-	*/
+	bool is_subsurface = view ? view->surface != surface : false;
+	bool should_optimize_blur = view ? !container_is_floating(view->container) || config->blur_xray : false;
 
 	// render blur
 	if (deco_data.blur && config_should_parameters_blur() && !is_subsurface) {
@@ -479,7 +465,7 @@ static void render_surface_iterator(struct sway_output *output,
 			struct wlr_fbox blur_src_box = wlr_fbox_from_wlr_box(&monitor_box);
 			render_blur(should_optimize_blur, output, output_damage, &blur_src_box, &dst_box, &opaque_region,
 					surface->current.width, surface->current.height, surface->current.scale,
-						deco_data.corner_radius, deco_data.has_titlebar);
+					deco_data.corner_radius, deco_data.has_titlebar);
 		}
 
 		pixman_region32_fini(&opaque_region);
@@ -503,6 +489,7 @@ static void render_layer_iterator(struct sway_output *output,
 	render_surface_iterator(output, view, surface, _box, _data);
 
 	struct render_data *data = _data;
+	struct wlr_output *wlr_output = output->wlr_output;
 	struct wlr_box dst_box = *_box;
 	pixman_region32_t *output_damage = data->damage;
 
@@ -512,7 +499,7 @@ static void render_layer_iterator(struct sway_output *output,
 
 	// render shadow
 	if (deco_data.shadow && config_should_parameters_shadow() && !is_subsurface) {
-		int corner_radius = deco_data.corner_radius;
+		int corner_radius = deco_data.corner_radius *= wlr_output->scale;
 		render_box_shadow(output, output_damage, &dst_box, config->shadow_color,
 				config->shadow_blur_sigma, corner_radius);
 	}
