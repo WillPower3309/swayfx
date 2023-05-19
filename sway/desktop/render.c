@@ -1786,6 +1786,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 
 	if (debug.damage == DAMAGE_RERENDER) {
 		pixman_region32_union_rect(damage, damage, 0, 0, output_width, output_height);
+		pixman_region32_copy(&extended_damage, damage);
 	}
 
 	if (!pixman_region32_not_empty(damage)) {
@@ -1872,8 +1873,14 @@ void output_render(struct sway_output *output, struct timespec *when,
 		render_unmanaged(output, damage, &root->xwayland_unmanaged);
 #endif
 	} else {
-		bool should_render_blur = should_workspace_have_blur(workspace);
-		if (should_render_blur) {
+		bool workspace_has_blur = should_workspace_have_blur(workspace);
+		if (workspace_has_blur) {
+			if (config_should_parameters_blur() && renderer->blur_buffer_dirty) {
+				// Needs to be extended before clearing
+				pixman_region32_union_rect(damage, damage, 0, 0, output_width, output_height);
+				pixman_region32_union_rect(&extended_damage, &extended_damage, 0, 0, output_width, output_height);
+			}
+
 			// ensure that the damage isn't expanding past the output's size
 			int32_t damage_width = damage->extents.x2 - damage->extents.x1;
 			int32_t damage_height = damage->extents.y2 - damage->extents.y1;
@@ -1900,8 +1907,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 			&output->layers[ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM]);
 
 		// check if the background needs to be blurred
-		if (config_should_parameters_blur() && renderer->blur_buffer_dirty && should_render_blur) {
-			pixman_region32_union_rect(damage, damage, 0, 0, output_width, output_height);
+		if (config_should_parameters_blur() && renderer->blur_buffer_dirty && workspace_has_blur) {
 			render_output_blur(output, damage);
 		}
 

@@ -696,7 +696,19 @@ static void damage_surface_iterator(struct sway_output *output,
 
 	if (view) {
 		int blur_size = view->container->blur_enabled ? config_get_blur_size() : 0;
-		wlr_region_expand(&damage, &damage, blur_size);
+
+		if (pixman_region32_not_empty(&damage)) {
+			int output_width, output_height;
+			wlr_output_transformed_resolution(output->wlr_output, &output_width, &output_height);
+			int32_t damage_width = damage.extents.x2 - damage.extents.x1;
+			int32_t damage_height = damage.extents.y2 - damage.extents.y1;
+			if (damage_width > output_width || damage_height > output_height) {
+				pixman_region32_intersect_rect(&damage, &damage, 0, 0, output_width, output_height);
+			} else {
+				wlr_region_expand(&damage, &damage, blur_size);
+			}
+		}
+
 		box.x -= blur_size;
 		box.y -= blur_size;
 		box.width += blur_size * 2;
