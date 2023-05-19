@@ -40,6 +40,8 @@ struct decoration_data get_undecorated_decoration_data() {
 		.saturation = 1.0f,
 		.has_titlebar = false,
 		.blur = false,
+		.discard_opaque = false,
+		.discard_transparent = false,
 		.shadow = false,
 	};
 }
@@ -439,6 +441,13 @@ static void render_surface_iterator(struct sway_output *output,
 
 	struct decoration_data deco_data = data->deco_data;
 	deco_data.corner_radius *= wlr_output->scale;
+	deco_data.discard_opaque = false;
+	bool should_discard_transparent = deco_data.discard_transparent;
+	deco_data.discard_transparent = false;
+
+	struct wlr_fbox src_box;
+	wlr_surface_get_buffer_source_box(surface, &src_box);
+	struct fx_texture fx_texture = fx_texture_from_wlr_texture(texture);
 
 	// render blur
 	bool is_subsurface = view ? view->surface != surface : false;
@@ -457,6 +466,18 @@ static void render_surface_iterator(struct sway_output *output,
 
 		if (has_alpha) {
 			bool should_optimize_blur = view ? !container_is_floating(view->container) || config->blur_xray : false;
+
+			// Get a stencil of the window ignoring opaque and transparent regions
+			fx_renderer_stencil_mask_init();
+			struct decoration_data stencil_deco_data;
+			memcpy(&stencil_deco_data, &deco_data, sizeof(struct decoration_data));
+			// Always ignore opaque for blur rendering
+			stencil_deco_data.discard_opaque = true;
+			stencil_deco_data.discard_transparent = should_discard_transparent;
+			render_texture(wlr_output, output_damage, &fx_texture, &src_box,
+					&dst_box, matrix, stencil_deco_data);
+			fx_renderer_stencil_mask_close(true);
+
 			struct wlr_box monitor_box = get_monitor_box(wlr_output);
 			wlr_box_transform(&monitor_box, &monitor_box,
 					wlr_output_transform_invert(wlr_output->transform), monitor_box.width, monitor_box.height);
@@ -464,15 +485,14 @@ static void render_surface_iterator(struct sway_output *output,
 			render_blur(should_optimize_blur, output, output_damage, &blur_src_box, &dst_box, &opaque_region,
 					surface->current.width, surface->current.height, surface->current.scale,
 					deco_data.corner_radius, deco_data.has_titlebar);
+
+			fx_renderer_stencil_mask_fini();
 		}
 
 		pixman_region32_fini(&opaque_region);
 	}
 
 	// Render surface texture
-	struct wlr_fbox src_box;
-	wlr_surface_get_buffer_source_box(surface, &src_box);
-	struct fx_texture fx_texture = fx_texture_from_wlr_texture(texture);
 	render_texture(wlr_output, output_damage, &fx_texture, &src_box, &dst_box,
 		matrix, deco_data);
 
@@ -801,6 +821,11 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 		scale_box(&dst_box, wlr_output->scale);
 
 		deco_data.corner_radius *= wlr_output->scale;
+		deco_data.discard_opaque = false;
+		bool should_discard_transparent = deco_data.discard_transparent;
+		deco_data.discard_transparent = false;
+
+		struct fx_texture fx_texture = fx_texture_from_wlr_texture(saved_buf->buffer->texture);
 
 		// render blur
 		if (deco_data.blur && config_should_parameters_blur()) {
@@ -812,6 +837,17 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 				pixman_region32_init(&opaque_region);
 				pixman_region32_union_rect(&opaque_region, &opaque_region, 0, 0, 0, 0);
 
+				// Get a stencil of the window ignoring opaque and transparent regions
+				fx_renderer_stencil_mask_init();
+				struct decoration_data stencil_deco_data;
+				memcpy(&stencil_deco_data, &deco_data, sizeof(struct decoration_data));
+				// Always ignore opaque for blur rendering
+				stencil_deco_data.discard_opaque = true;
+				stencil_deco_data.discard_transparent = should_discard_transparent;
+				render_texture(wlr_output, damage, &fx_texture, &saved_buf->source_box,
+						&dst_box, matrix, stencil_deco_data);
+				fx_renderer_stencil_mask_close(true);
+
 				struct wlr_box monitor_box = get_monitor_box(wlr_output);
 				wlr_box_transform(&monitor_box, &monitor_box,
 						wlr_output_transform_invert(wlr_output->transform), monitor_box.width, monitor_box.height);
@@ -820,12 +856,13 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 				render_blur(should_optimize_blur, output, damage, &src_box, &dst_box, &opaque_region,
 						saved_buf->width, saved_buf->height, 1, deco_data.corner_radius, deco_data.has_titlebar);
 
+				
+				fx_renderer_stencil_mask_fini();
 				pixman_region32_fini(&opaque_region);
 			}
 		}
 
 		// Render saved surface texture
-		struct fx_texture fx_texture = fx_texture_from_wlr_texture(saved_buf->buffer->texture);
 		render_texture(wlr_output, damage, &fx_texture,
 				&saved_buf->source_box, &dst_box, matrix, deco_data);
 	}
@@ -1421,6 +1458,8 @@ static void render_containers_linear(struct sway_output *output,
 				.saturation = child->saturation,
 				.has_titlebar = has_titlebar,
 				.blur = child->blur_enabled,
+				.discard_opaque = false,
+				.discard_transparent = false,
 				.shadow = child->shadow_enabled,
 			};
 			render_view(output, damage, child, colors, deco_data);
@@ -1471,6 +1510,8 @@ static void render_containers_tabbed(struct sway_output *output,
 		.saturation = current->saturation,
 		.has_titlebar = true,
 		.blur = current->blur_enabled,
+		.discard_opaque = false,
+		.discard_transparent = false,
 		.shadow = current->shadow_enabled,
 	};
 
@@ -1567,6 +1608,8 @@ static void render_containers_stacked(struct sway_output *output,
 				? 0 : current->corner_radius,
 		.has_titlebar = true,
 		.blur = current->blur_enabled,
+		.discard_opaque = false,
+		.discard_transparent = false,
 		.shadow = current->shadow_enabled,
 	};
 
@@ -1715,6 +1758,8 @@ static void render_floating_container(struct sway_output *soutput,
 			.corner_radius = con->corner_radius,
 			.has_titlebar = has_titlebar,
 			.blur = con->blur_enabled,
+			.discard_opaque = false,
+			.discard_transparent = false,
 			.shadow = con->shadow_enabled,
 		};
 		render_view(soutput, damage, con, colors, deco_data);
@@ -1948,6 +1993,8 @@ void output_render(struct sway_output *output, struct timespec *when,
 			.saturation = focus->saturation,
 			.has_titlebar = false,
 			.blur = false,
+			.discard_opaque = false,
+			.discard_transparent = false,
 			.shadow = false,
 		};
 		render_view_popups(focus->view, output, damage, deco_data);

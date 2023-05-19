@@ -67,6 +67,9 @@ void layer_criteria_parse(struct sway_layer_surface *sway_layer, struct layer_cr
 		if (strcmp(argv[0], "blur") == 0) {
 			sway_layer->has_blur = parse_boolean(argv[1], true);
 			continue;
+		} if (strcmp(argv[0], "blur_ignore_transparent") == 0) {
+			sway_layer->blur_ignore_transparent = parse_boolean(argv[1], true);
+			continue;
 		} else if (strcmp(argv[0], "shadows") == 0) {
 			sway_layer->has_shadow = parse_boolean(argv[1], true);
 			continue;

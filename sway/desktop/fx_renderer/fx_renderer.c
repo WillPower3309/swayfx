@@ -220,6 +220,8 @@ static bool link_tex_program(struct tex_shader *shader,
 	shader->radius = glGetUniformLocation(prog, "radius");
 	shader->saturation = glGetUniformLocation(prog, "saturation");
 	shader->has_titlebar = glGetUniformLocation(prog, "has_titlebar");
+	shader->discard_opaque = glGetUniformLocation(prog, "discard_opaque");
+	shader->discard_transparent = glGetUniformLocation(prog, "discard_transparent");
 
 	return true;
 }
@@ -444,6 +446,35 @@ void fx_renderer_scissor(struct wlr_box *box) {
 	}
 }
 
+void fx_renderer_stencil_mask_init() {
+	glClearStencil(0);
+	glClear(GL_STENCIL_BUFFER_BIT);
+	glEnable(GL_STENCIL_TEST);
+
+	glStencilFunc(GL_ALWAYS, 1, 0xFF);
+	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+	// Disable writing to color buffer
+	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+}
+
+void fx_renderer_stencil_mask_close(bool draw_inside_mask) {
+	// Reenable writing to color buffer
+	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+	if (draw_inside_mask) {
+		glStencilFunc(GL_EQUAL, 1, 0xFF);
+		glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+		return;
+	}
+	glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+	glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+}
+
+void fx_renderer_stencil_mask_fini() {
+	glClearStencil(0);
+	glClear(GL_STENCIL_BUFFER_BIT);
+	glDisable(GL_STENCIL_TEST);
+}
+
 bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct fx_texture *fx_texture,
 		const struct wlr_fbox *src_box, const struct wlr_box *dst_box, const float matrix[static 9],
 		struct decoration_data deco_data) {
@@ -505,6 +536,8 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct fx_te
 	glUniform1f(shader->dim, deco_data.dim);
 	glUniform4f(shader->dim_color, dim_color[0], dim_color[1], dim_color[2], dim_color[3]);
 	glUniform1f(shader->has_titlebar, deco_data.has_titlebar);
+	glUniform1f(shader->discard_opaque, deco_data.discard_opaque);
+	glUniform1f(shader->discard_transparent, deco_data.discard_transparent);
 	glUniform1f(shader->saturation, deco_data.saturation);
 	glUniform1f(shader->radius, deco_data.corner_radius);
 
@@ -733,7 +766,6 @@ void fx_render_stencil_mask(struct fx_renderer *renderer, const struct wlr_box *
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
 	glDisableVertexAttribArray(shader.pos_attrib);
-
 }
 
 // TODO: alpha input arg?
@@ -765,17 +797,10 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 	glClearStencil(0);
 	glClear(GL_STENCIL_BUFFER_BIT);
 
-	glStencilFunc(GL_ALWAYS, 1, 0xFF);
-	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
-	// Disable writing to color buffer
-	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+	fx_renderer_stencil_mask_init(&renderer->main_buffer.stencil_buffer);
 	// Draw the rounded rect as a mask
 	fx_render_stencil_mask(renderer, &inner_box, matrix, corner_radius);
-	// Close the mask
-	glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
-	glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-	// Reenable writing to color buffer
-	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+	fx_renderer_stencil_mask_close(false);
 
 	// blending will practically always be needed (unless we have a madman
 	// who uses opaque shadows with zero sigma), so just enable it
@@ -806,14 +831,14 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 
 	glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
-	glClearStencil(0);
-	glClear(GL_STENCIL_BUFFER_BIT);
-	glDisable(GL_STENCIL_TEST);
+	fx_renderer_stencil_mask_fini();
 }
 
 void fx_render_blur(struct fx_renderer *renderer, const float matrix[static 9],
 		struct fx_framebuffer **buffer, struct blur_shader *shader,
 		const struct wlr_box *box, int blur_radius) {
+	GLboolean initial_stencil;
+	glGetBooleanv(GL_STENCIL_TEST, &initial_stencil);
 	glDisable(GL_BLEND);
 	glDisable(GL_STENCIL_TEST);
 
@@ -850,4 +875,8 @@ void fx_render_blur(struct fx_renderer *renderer, const float matrix[static 9],
 
 	glDisableVertexAttribArray(shader->pos_attrib);
 	glDisableVertexAttribArray(shader->tex_attrib);
+
+	if (initial_stencil) {
+		glEnable(GL_STENCIL_TEST);
+	}
 }

@@ -26,8 +26,10 @@ uniform vec4 dim_color;
 uniform vec2 size;
 uniform vec2 position;
 uniform float radius;
-uniform bool has_titlebar;
 uniform float saturation;
+uniform bool has_titlebar;
+uniform bool discard_opaque;
+uniform bool discard_transparent;
 
 const vec3 saturation_weight = vec3(0.2125, 0.7154, 0.0721);
 
@@ -58,5 +60,10 @@ void main() {
             float smooth = smoothstep(-1.0, 0.5, d);
             gl_FragColor = mix(vec4(0), gl_FragColor, smooth);
         }
+    }
+
+    if ((discard_transparent && gl_FragColor.a == 0.0)
+        || (discard_opaque && gl_FragColor.a == 1.0)) {
+        discard;
     }
 }

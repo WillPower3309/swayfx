@@ -37,6 +37,7 @@ Sway is an incredible window manager, and certainly one of the most well establi
     - SwayIPC Example: `swaymsg "layer_effects 'waybar' 'blur enable; shadows enable; corner_radius 6'"`
     - Available Effects:
         - `blur <enable|disable>`
+        - `blur_ignore_transparent <enable|disable>`
         - `shadows <enable|disable>`
         - `corner_radius <int>`
 + Dim unfocused windows:

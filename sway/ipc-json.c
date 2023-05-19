@@ -377,6 +377,10 @@ static void ipc_json_describe_enabled_output(struct sway_output *output,
 			if (lsurface->has_blur) {
 				json_object_array_add(effects, json_object_new_string("blur"));
 			}
+			if (lsurface->blur_ignore_transparent) {
+				json_object_array_add(effects,
+						json_object_new_string("blur_ignore_transparent"));
+			}
 			if (lsurface->has_shadow) {
 				json_object_array_add(effects, json_object_new_string("shadows"));
 			}
