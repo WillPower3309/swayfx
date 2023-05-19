@@ -481,6 +481,7 @@ static void render_surface_iterator(struct sway_output *output,
 		wlr_output);
 }
 
+// view will be NULL every time
 static void render_layer_iterator(struct sway_output *output,
 		struct sway_view *view, struct wlr_surface *surface,
 		struct wlr_box *_box, void *_data) {
@@ -488,18 +489,13 @@ static void render_layer_iterator(struct sway_output *output,
 	render_surface_iterator(output, view, surface, _box, _data);
 
 	struct render_data *data = _data;
-	struct wlr_output *wlr_output = output->wlr_output;
-	struct wlr_box dst_box = *_box;
 	pixman_region32_t *output_damage = data->damage;
-
 	struct decoration_data deco_data = data->deco_data;
-	// TODO: can layers have subsurfaces?
-	bool is_subsurface = view ? view->surface != surface : false;
 
 	// render shadow
-	if (deco_data.shadow && config_should_parameters_shadow() && !is_subsurface) {
-		int corner_radius = deco_data.corner_radius *= wlr_output->scale;
-		render_box_shadow(output, output_damage, &dst_box, config->shadow_color,
+	if (deco_data.shadow && config_should_parameters_shadow()) {
+		int corner_radius = deco_data.corner_radius *= output->wlr_output->scale;
+		render_box_shadow(output, output_damage, _box, config->shadow_color,
 				config->shadow_blur_sigma, corner_radius);
 	}
 }
