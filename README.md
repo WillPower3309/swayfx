@@ -57,6 +57,8 @@ Sway is an incredible window manager, and certainly one of the most well establi
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/swayfx.svg)](https://repology.org/project/swayfx/versions)
 
+[SwayFX is also available on the Fedora copr](https://copr.fedorainfracloud.org/coprs/swayfx/swayfx/)
+
 ### Nix
 
 If you have Nix installed, you can build and run SwayFX easily:
@@ -112,4 +114,3 @@ Here's a quick outline of where most of our changes lie vs the main sway reposit
 + `sway/desktop/fx_renderer.c`: the meat and potatoes of this project, structured as similarly to wlr_renderer as possible
 + `sway/desktop/shaders`: where all of the shaders that fx_renderer uses live
 
-Please join our (for the time being very small) Discord server for development chatter! https://discord.gg/R5hYhC2BFg
