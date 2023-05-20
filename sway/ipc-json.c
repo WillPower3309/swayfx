@@ -343,7 +343,7 @@ static void ipc_json_describe_enabled_output(struct sway_output *output,
 			json_object_object_add(layer, "namespace",
 				json_object_new_string(lsurface->layer_surface->namespace));
 
-			char *layer_name;
+			char *layer_name = NULL;
 			switch (lsurface->layer) {
 				case ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND:
 					layer_name = "background";
