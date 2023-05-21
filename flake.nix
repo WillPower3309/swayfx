@@ -22,8 +22,18 @@
     in
     {
       overlays.default = final: prev: {
-        swayfx-unwrapped = prev.sway-unwrapped.overrideAttrs
-          (old: { src = builtins.path { path = prev.lib.cleanSource ./.; }; });
+        swayfx-unwrapped = prev.sway-unwrapped.overrideAttrs (old: {
+          src = builtins.path { path = prev.lib.cleanSource ./.; };
+          patches =
+            let
+              removePatches = [
+                "LIBINPUT_CONFIG_ACCEL_PROFILE_CUSTOM.patch"
+              ];
+            in
+            builtins.filter
+              (patch: !builtins.elem (patch.name or null) removePatches)
+              (old.patches or [ ]);
+        });
       };
 
       packages = nixpkgs.lib.genAttrs targetSystems (system:
