@@ -337,8 +337,8 @@ static void handle_surface_commit(struct wl_listener *listener, void *data) {
 		int blur_size = layer->has_blur? config_get_blur_size(): 0;
 		int shadow_sigma = layer->has_shadow? config->shadow_blur_sigma: 0;
 		int effect_size = MAX(blur_size, shadow_sigma);
-		old_extent.x -= effect_size;
-		old_extent.y -= effect_size;
+		old_extent.x += output->lx - effect_size;
+		old_extent.y += output->ly - effect_size;
 		old_extent.width += effect_size * 2;
 		old_extent.height += effect_size * 2;
 		output_damage_box(output, &old_extent);
