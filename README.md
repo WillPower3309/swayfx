@@ -26,12 +26,12 @@ Sway is an incredible window manager, and certainly one of the most well establi
     - `shadows_on_csd enable|disable` (**Note**: The shadow might not fit some windows)
     - `shadow_blur_radius <integer value 0 - 100>`
     - `shadow_color <hex color with alpha> ex, #0000007F`
-+ Window blur: *ONLY ON SWAYFX-GIT, NOT YET RELEASED*
++ Window blur:
     - `blur enable|disable`
     - `blur_xray enable|disable`
     - `blur_passes <integer value 0 - 10>`
     - `blur_radius <integer value 0 - 10>`
-+ LayerShell effects: *ONLY ON SWAYFX-GIT, NOT YET RELEASED*
++ LayerShell effects (to blur panels / notifications etc) :
     - `layer_effects <layer namespace> <effects>`
     - Example: `layer_effects "waybar" blur enable; shadows enable; corner_radius 6`
     - SwayIPC Example: `swaymsg "layer_effects 'waybar' 'blur enable; shadows enable; corner_radius 6'"`
