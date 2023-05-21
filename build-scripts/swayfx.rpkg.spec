@@ -4,11 +4,11 @@
 # Change to current Sway base version!
 %global SwayBaseVersion 1.8.1
 # Change to current SwayFX tag!
-%global Tag 0.2
+%global Tag 0.3
 
 Name:			{{{ git_dir_name }}}
 Version:		%{Tag}
-Release:		3%{?dist}
+Release:		1%{?dist}
 Summary:		SwayFX: Sway, but with eye candy!
 License:		MIT
 URL:			https://github.com/WillPower3309/swayfx
