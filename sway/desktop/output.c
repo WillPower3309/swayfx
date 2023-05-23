@@ -521,6 +521,18 @@ static bool scan_out_fullscreen_view(struct sway_output *output,
 	return wlr_output_commit(wlr_output);
 }
 
+static void containers_tick_alpha(list_t *containers, struct sway_output *output) {
+	// TODO: config for alpha_step
+	float alpha_step = 0.01;
+	for (int i = 0; i < containers->length; ++i) {
+		struct sway_container *con = containers->items[i];
+		if (con->current_alpha < con->alpha) {
+			output_damage_whole_container(output, con);
+			con->current_alpha += alpha_step;
+		}
+	}
+}
+
 static int output_repaint_timer_handler(void *data) {
 	struct sway_output *output = data;
 	if (output->wlr_output == NULL) {
@@ -570,6 +582,9 @@ static int output_repaint_timer_handler(void *data) {
 
 	pixman_region32_t damage;
 	pixman_region32_init(&damage);
+
+	containers_tick_alpha(workspace->current.tiling, output);
+
 	wlr_damage_ring_get_buffer_damage(&output->damage_ring, buffer_age, &damage);
 	if (!output->wlr_output->needs_frame &&
 			!pixman_region32_not_empty(&output->damage_ring.current)) {
