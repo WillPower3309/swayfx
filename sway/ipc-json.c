@@ -343,7 +343,7 @@ static void ipc_json_describe_enabled_output(struct sway_output *output,
 			json_object_object_add(layer, "namespace",
 				json_object_new_string(lsurface->layer_surface->namespace));
 
-			char *layer_name;
+			char *layer_name = NULL;
 			switch (lsurface->layer) {
 				case ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND:
 					layer_name = "background";
@@ -968,6 +968,11 @@ static json_object *describe_libinput_device(struct libinput_device *device) {
 		case LIBINPUT_CONFIG_ACCEL_PROFILE_ADAPTIVE:
 			accel_profile = "adaptive";
 			break;
+#if HAVE_LIBINPUT_CONFIG_ACCEL_PROFILE_CUSTOM
+		case LIBINPUT_CONFIG_ACCEL_PROFILE_CUSTOM:
+			accel_profile = "custom";
+			break;
+#endif
 		}
 		json_object_object_add(object, "accel_profile",
 				json_object_new_string(accel_profile));
