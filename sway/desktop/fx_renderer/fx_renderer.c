@@ -797,7 +797,7 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 	glClearStencil(0);
 	glClear(GL_STENCIL_BUFFER_BIT);
 
-	fx_renderer_stencil_mask_init(&renderer->main_buffer.stencil_buffer);
+	fx_renderer_stencil_mask_init();
 	// Draw the rounded rect as a mask
 	fx_render_stencil_mask(renderer, &inner_box, matrix, corner_radius);
 	fx_renderer_stencil_mask_close(false);

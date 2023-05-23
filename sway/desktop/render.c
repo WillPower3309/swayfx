@@ -468,6 +468,7 @@ static void render_surface_iterator(struct sway_output *output,
 			bool should_optimize_blur = view ? !container_is_floating(view->container) || config->blur_xray : false;
 
 			// Get a stencil of the window ignoring opaque and transparent regions
+			fx_renderer_scissor(NULL);
 			fx_renderer_stencil_mask_init();
 			struct decoration_data stencil_deco_data;
 			memcpy(&stencil_deco_data, &deco_data, sizeof(struct decoration_data));
@@ -508,7 +509,7 @@ static void render_layer_iterator(struct sway_output *output,
 	struct decoration_data deco_data = data->deco_data;
 
 	// Ignore effects if this is a subsurface
-	if (wl_list_length(&surface->current.subsurfaces_above) > 0) {
+	if (!wlr_surface_is_layer_surface(surface)) {
 		deco_data = get_undecorated_decoration_data();
 	}
 
@@ -838,6 +839,7 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 				pixman_region32_union_rect(&opaque_region, &opaque_region, 0, 0, 0, 0);
 
 				// Get a stencil of the window ignoring opaque and transparent regions
+				fx_renderer_scissor(NULL);
 				fx_renderer_stencil_mask_init();
 				struct decoration_data stencil_deco_data;
 				memcpy(&stencil_deco_data, &deco_data, sizeof(struct decoration_data));
