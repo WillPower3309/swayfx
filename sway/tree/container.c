@@ -39,8 +39,8 @@ struct sway_container *container_create(struct sway_view *view) {
 	node_init(&c->node, N_CONTAINER, c);
 	c->pending.layout = L_NONE;
 	c->view = view;
-	c->current_alpha = 0.0f;
-	c->alpha = 1.0f;
+	c->alpha = 0.0f;
+	c->target_alpha = 1.0f;
 	c->saturation = 1.0f;
 	c->dim = config->default_dim_inactive;
 	c->shadow_enabled = config->shadow_enabled;
