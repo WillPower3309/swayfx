@@ -19,21 +19,21 @@ Sway is an incredible window manager, and certainly one of the most well establi
 
 ## New Configuration Options
 
-+ Corner radius: `corner_radius <val>`
-+ Smart corner radius: `smart_corner_radius enable|disable`
-+ Window shadows:
-    - `shadows enable|disable`
-    - `shadows_on_csd enable|disable` (**Note**: The shadow might not fit some windows)
-    - `shadow_blur_radius <integer value 0 - 100>`
-    - `shadow_color <hex color with alpha> ex, #0000007F`
 + Window blur:
     - `blur enable|disable`
     - `blur_xray enable|disable`: this will set floating windows to blur based on the background, not the windows below. You probably want to set this to `disable` :)
     - `blur_passes <integer value 0 - 10>`
     - `blur_radius <integer value 0 - 10>`
++ Corner radius: `corner_radius <val>`
++ Window shadows:
+    - `shadows enable|disable`
+    - `shadows_on_csd enable|disable` (**Note**: The shadow might not fit some windows)
+    - `shadow_blur_radius <integer value 0 - 100>`
+    - `shadow_color <hex color with alpha> ex, #0000007F`
 + LayerShell effects (to blur panels / notifications etc) :
     - `layer_effects <layer namespace> <effects>`
     - Example: `layer_effects "waybar" blur enable; shadows enable; corner_radius 6`
+      - Note: If an application uses gtk, its namespace is likely to be "gtk-layer-shell"
     - SwayIPC Example: `swaymsg "layer_effects 'waybar' 'blur enable; shadows enable; corner_radius 6'"`
     - Available Effects:
         - `blur <enable|disable>`
