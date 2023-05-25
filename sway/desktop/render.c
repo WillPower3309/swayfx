@@ -248,18 +248,12 @@ struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer, struct
 	// damage region will be scaled, make a temp
 	pixman_region32_t tempDamage;
 	pixman_region32_init(&tempDamage);
-	// When DOWNscaling, we make the region twice as small because it's the TARGET
-	wlr_region_scale(&tempDamage, &damage, 0.5f);
 
 	int blur_radius = config->blur_params.radius;
 	int blur_passes = config->blur_params.num_passes;
 
-	// First pass
-	render_blur_segments(renderer, gl_matrix, &tempDamage, &current_buffer,
-			&renderer->shaders.blur1, box, blur_radius);
-
 	// Downscale
-	for (int i = 1; i < blur_passes; ++i) {
+	for (int i = 0; i < blur_passes; ++i) {
 		wlr_region_scale(&tempDamage, &damage, 1.0f / (1 << (i + 1)));
 		render_blur_segments(renderer, gl_matrix, &tempDamage, &current_buffer,
 				&renderer->shaders.blur1, box, blur_radius);
