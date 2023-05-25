@@ -1975,7 +1975,6 @@ renderer_end:
 	}
 
 	render_whole_output(renderer, wlr_output, &extended_damage, &renderer->main_buffer.texture);
-	fx_renderer_end(renderer);
 
 	fx_renderer_scissor(NULL);
 
