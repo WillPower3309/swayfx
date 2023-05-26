@@ -378,4 +378,6 @@ bool view_is_transient_for(struct sway_view *child, struct sway_view *ancestor);
 
 void view_assign_ctx(struct sway_view *view, struct launcher_ctx *ctx);
 
+bool gaps_to_edge(struct sway_view *view);
+
 #endif

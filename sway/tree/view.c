@@ -233,7 +233,7 @@ static bool view_is_only_visible(struct sway_view *view) {
 	return true;
 }
 
-static bool gaps_to_edge(struct sway_view *view) {
+bool gaps_to_edge(struct sway_view *view) {
 	struct side_gaps gaps = view->container->pending.workspace->current_gaps;
 	return gaps.top > 0 || gaps.right > 0 || gaps.bottom > 0 || gaps.left > 0;
 }
