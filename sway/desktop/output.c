@@ -525,17 +525,13 @@ static void containers_tick_alpha(list_t *containers, struct sway_output *output
 	// TODO: config for animation_duration
 	float animation_duration = 0.5;
 
-	const long NSEC_IN_SECONDS = 1000000000;
-	float output_refresh_seconds = (float)output->refresh_nsec / NSEC_IN_SECONDS;
-	float num_refreshes_to_animate = animation_duration / output_refresh_seconds;
-
 	float alpha_step;
 	for (int i = 0; i < containers->length; ++i) {
 		struct sway_container *con = containers->items[i];
 		if (con->pending.children) {
 			containers_tick_alpha(con->pending.children, output);
 		} else if (con->alpha < con->target_alpha) {
-			alpha_step = (con->target_alpha) / num_refreshes_to_animate;
+			alpha_step = (con->target_alpha * output->refresh_sec) / animation_duration;
 			// ensure that the alpha does not exceed the target_alpha
 			con->alpha = MIN(con->alpha + alpha_step, con->target_alpha);
 			output_damage_whole_container(output, con);
@@ -642,7 +638,7 @@ static void handle_frame(struct wl_listener *listener, void *user_data) {
 		const long NSEC_IN_SECONDS = 1000000000;
 		struct timespec predicted_refresh = output->last_presentation;
 		predicted_refresh.tv_nsec += output->refresh_nsec % NSEC_IN_SECONDS;
-		predicted_refresh.tv_sec += output->refresh_nsec / NSEC_IN_SECONDS;
+		predicted_refresh.tv_sec += output->refresh_sec;
 		if (predicted_refresh.tv_nsec >= NSEC_IN_SECONDS) {
 			predicted_refresh.tv_sec += 1;
 			predicted_refresh.tv_nsec -= NSEC_IN_SECONDS;
@@ -932,6 +928,9 @@ static void handle_present(struct wl_listener *listener, void *data) {
 
 	output->last_presentation = *output_event->when;
 	output->refresh_nsec = output_event->refresh;
+
+	const long NSEC_IN_SECONDS = 1000000000;
+	output->refresh_sec = (float)output_event->refresh / NSEC_IN_SECONDS;
 }
 
 static unsigned int last_headless_num = 0;
