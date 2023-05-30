@@ -527,14 +527,16 @@ static void containers_tick_alpha(list_t *containers, struct sway_output *output
 
 	const long NSEC_IN_SECONDS = 1000000000;
 	float output_refresh_seconds = (float)output->refresh_nsec / NSEC_IN_SECONDS;
-	float num_refreshes = animation_duration / output_refresh_seconds;
+	float num_refreshes_to_animate = animation_duration / output_refresh_seconds;
 
 	float alpha_step;
 	for (int i = 0; i < containers->length; ++i) {
 		struct sway_container *con = containers->items[i];
-		if (con->alpha < con->target_alpha) {
-			alpha_step = (con->target_alpha) / num_refreshes;
-			// ensure that the current alpha does not exceed the set alpha for the con
+		if (con->pending.children) {
+			containers_tick_alpha(con->pending.children, output);
+		} else if (con->alpha < con->target_alpha) {
+			alpha_step = (con->target_alpha) / num_refreshes_to_animate;
+			// ensure that the alpha does not exceed the target_alpha
 			con->alpha = MIN(con->alpha + alpha_step, con->target_alpha);
 			output_damage_whole_container(output, con);
 		}
@@ -588,10 +590,10 @@ static int output_repaint_timer_handler(void *data) {
 		return 0;
 	}
 
+	containers_tick_alpha(workspace->current.tiling, output);
+
 	pixman_region32_t damage;
 	pixman_region32_init(&damage);
-
-	containers_tick_alpha(workspace->current.tiling, output);
 
 	wlr_damage_ring_get_buffer_damage(&output->damage_ring, buffer_age, &damage);
 	if (!output->wlr_output->needs_frame &&
