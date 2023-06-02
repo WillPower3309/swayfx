@@ -1,14 +1,13 @@
 #include "log.h"
 #include "sway/desktop/fx_renderer/fx_framebuffer.h"
+#include "sway/desktop/fx_renderer/fx_stencilbuffer.h"
+#include "sway/desktop/fx_renderer/fx_texture.h"
 
 struct fx_framebuffer fx_framebuffer_create() {
 	return (struct fx_framebuffer) {
 		.fb = -1,
-		.stencil_buffer = -1,
-		.texture.id = 0,
-		.texture.target = 0,
-		.texture.width = -1,
-		.texture.height = -1,
+		.stencil_buffer = fx_stencilbuffer_create(),
+		.texture = fx_texture_create(),
 	};
 }
 
@@ -17,15 +16,15 @@ void fx_framebuffer_bind(struct fx_framebuffer *buffer) {
 }
 
 void fx_framebuffer_update(struct fx_framebuffer *buffer, int width, int height) {
-	bool firstAlloc = false;
+	bool first_alloc = false;
 
 	if (buffer->fb == (uint32_t) -1) {
 		glGenFramebuffers(1, &buffer->fb);
-		firstAlloc = true;
+		first_alloc = true;
 	}
 
 	if (buffer->texture.id == 0) {
-		firstAlloc = true;
+		first_alloc = true;
 		glGenTextures(1, &buffer->texture.id);
 		glBindTexture(GL_TEXTURE_2D, buffer->texture.id);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -34,7 +33,7 @@ void fx_framebuffer_update(struct fx_framebuffer *buffer, int width, int height)
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	}
 
-	if (firstAlloc || buffer->texture.width != width || buffer->texture.height != height) {
+	if (first_alloc || buffer->texture.width != width || buffer->texture.height != height) {
 		glBindTexture(GL_TEXTURE_2D, buffer->texture.id);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 
@@ -58,11 +57,20 @@ void fx_framebuffer_update(struct fx_framebuffer *buffer, int width, int height)
 }
 
 void fx_framebuffer_add_stencil_buffer(struct fx_framebuffer *buffer, int width, int height) {
-	if (buffer->stencil_buffer == (uint32_t) -1) {
-		glGenRenderbuffers(1, &buffer->stencil_buffer);
-		glBindRenderbuffer(GL_RENDERBUFFER, buffer->stencil_buffer);
+	bool first_alloc = false;
+
+	if (buffer->stencil_buffer.rb == (uint32_t) -1) {
+		glGenRenderbuffers(1, &buffer->stencil_buffer.rb);
+		first_alloc = true;
+	}
+
+	if (first_alloc || buffer->stencil_buffer.width != width || buffer->stencil_buffer.height != height) {
+		glBindRenderbuffer(GL_RENDERBUFFER, buffer->stencil_buffer.rb);
 		glRenderbufferStorage(GL_RENDERBUFFER, GL_STENCIL_INDEX8, width, height);
-		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, buffer->stencil_buffer);
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, buffer->stencil_buffer.rb);
+		buffer->stencil_buffer.width = width;
+		buffer->stencil_buffer.height = height;
+
 		GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 		if (status != GL_FRAMEBUFFER_COMPLETE) {
 			sway_log(SWAY_ERROR, "Stencil buffer incomplete, couldn't create! (FB status: %i)", status);
@@ -77,19 +85,11 @@ void fx_framebuffer_release(struct fx_framebuffer *buffer) {
 	if (buffer->fb != (uint32_t) -1 && buffer->fb) {
 		glDeleteFramebuffers(1, &buffer->fb);
 	}
-	buffer->fb= -1;
+	buffer->fb = -1;
 
 	// Release the stencil buffer
-	if (buffer->stencil_buffer != (uint32_t)-1 && buffer->stencil_buffer) {
-		glDeleteRenderbuffers(1, &buffer->stencil_buffer);
-	}
-	buffer->stencil_buffer = -1;
+	fx_stencilbuffer_release(&buffer->stencil_buffer);
 
 	// Release the texture
-	if (buffer->texture.id) {
-		glDeleteTextures(1, &buffer->texture.id);
-	}
-	buffer->texture.id = 0;
-	buffer->texture.width = -1;
-	buffer->texture.height = -1;
+	fx_texture_release(&buffer->texture);
 }
