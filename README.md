@@ -46,7 +46,7 @@ Sway is an incredible window manager, and certainly one of the most well establi
     - `dim_inactive_colors.urgent <hex color> ex, #900000FF`
 + Application saturation: `for_window [CRITERIA HERE] saturation <set|plus|minus> <val 0.0 <-> 2.0>`
 + Keep/remove separator border between titlebar and content: `titlebar_separator enable|disable`
-+ Treat Scratchpad as minimized: `scratchpad_minimize enable|disable`
++ Treat Scratchpad as minimized: `scratchpad_minimize enable|disable`: **we recommend keeping this setting off, as there are many kinks to iron out here**
 
 ## Roadmap
 
@@ -113,4 +113,3 @@ Here's a quick outline of where most of our changes lie vs the main sway reposit
 + `sway/desktop/render.c`: the file that handles calling `fx_renderer` to render to the screen, handles damage tracking and scaling
 + `sway/desktop/fx_renderer.c`: the meat and potatoes of this project, structured as similarly to wlr_renderer as possible
 + `sway/desktop/shaders`: where all of the shaders that fx_renderer uses live
-
