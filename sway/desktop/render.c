@@ -279,8 +279,7 @@ struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer, struct
 void render_blur(bool optimized, struct sway_output *output,
 		pixman_region32_t *output_damage, const struct wlr_fbox *src_box,
 		const struct wlr_box *dst_box, pixman_region32_t *opaque_region,
-		int surface_width, int surface_height, int32_t surface_scale,
-		int corner_radius, bool should_round_top) {
+		int32_t surface_scale, int corner_radius, bool should_round_top) {
 	struct wlr_output *wlr_output = output->wlr_output;
 	struct fx_renderer *renderer = output->renderer;
 
@@ -311,8 +310,8 @@ void render_blur(bool optimized, struct sway_output *output,
 	pixman_region32_copy(&inverse_opaque, opaque_region);
 	pixman_region32_inverse(&inverse_opaque, &inverse_opaque, &surface_box);
 	pixman_region32_intersect_rect(&inverse_opaque, &inverse_opaque, 0, 0,
-			surface_width * surface_scale,
-			surface_height * surface_scale);
+			dst_box->width * surface_scale,
+			dst_box->height * surface_scale);
 	if (!pixman_region32_not_empty(&inverse_opaque)) {
 		goto damage_finish;
 	}
@@ -456,8 +455,7 @@ static void render_surface_iterator(struct sway_output *output,
 					wlr_output_transform_invert(wlr_output->transform), monitor_box.width, monitor_box.height);
 			struct wlr_fbox blur_src_box = wlr_fbox_from_wlr_box(&monitor_box);
 			render_blur(should_optimize_blur, output, output_damage, &blur_src_box, &dst_box, &opaque_region,
-					surface->current.width, surface->current.height, surface->current.scale,
-					deco_data.corner_radius, deco_data.has_titlebar);
+					surface->current.scale, deco_data.corner_radius, deco_data.has_titlebar);
 		}
 
 		pixman_region32_fini(&opaque_region);
@@ -812,7 +810,7 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 				struct wlr_fbox src_box = wlr_fbox_from_wlr_box(&monitor_box);
 				bool should_optimize_blur = !container_is_floating(view->container) || config->blur_xray;
 				render_blur(should_optimize_blur, output, damage, &src_box, &dst_box, &opaque_region,
-						saved_buf->width, saved_buf->height, 1, deco_data.corner_radius, deco_data.has_titlebar);
+						1, deco_data.corner_radius, deco_data.has_titlebar);
 
 				pixman_region32_fini(&opaque_region);
 			}
