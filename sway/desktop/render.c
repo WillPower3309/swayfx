@@ -282,9 +282,13 @@ void render_blur(bool optimized, struct sway_output *output,
 		int32_t surface_scale, int corner_radius, bool should_round_top) {
 	struct wlr_output *wlr_output = output->wlr_output;
 	struct fx_renderer *renderer = output->renderer;
+	struct wlr_box scaled_dst_box;
+
+	memcpy(&scaled_dst_box, dst_box, sizeof(struct wlr_box));
+	scale_box(&scaled_dst_box, wlr_output->scale);
 
 	// Check if damage is inside of box rect
-	pixman_region32_t damage = create_damage(*dst_box, output_damage);
+	pixman_region32_t damage = create_damage(scaled_dst_box, output_damage);
 
 	pixman_region32_t inverse_opaque;
 	pixman_region32_init(&inverse_opaque);
@@ -300,18 +304,13 @@ void render_blur(bool optimized, struct sway_output *output,
 	pixman_box32_t surface_box = {
 		.x1 = 0,
 		.y1 = 0,
-		.x2 = dst_box->width / wlr_output->scale,
-		.y2 = dst_box->height / wlr_output->scale,
+		.x2 = dst_box->width,
+		.y2 = dst_box->height,
 	};
-
-	wlr_region_scale(&inverse_opaque, &inverse_opaque, wlr_output->scale);
 
 	// Gets the non opaque region
 	pixman_region32_copy(&inverse_opaque, opaque_region);
 	pixman_region32_inverse(&inverse_opaque, &inverse_opaque, &surface_box);
-	pixman_region32_intersect_rect(&inverse_opaque, &inverse_opaque, 0, 0,
-			dst_box->width * surface_scale,
-			dst_box->height * surface_scale);
 	if (!pixman_region32_not_empty(&inverse_opaque)) {
 		goto damage_finish;
 	}
@@ -320,7 +319,7 @@ void render_blur(bool optimized, struct sway_output *output,
 
 	struct fx_framebuffer *buffer = &renderer->blur_buffer;
 	if (!buffer->texture.id || !optimized) {
-		pixman_region32_translate(&inverse_opaque, dst_box->x, dst_box->y);
+		pixman_region32_translate(&inverse_opaque, scaled_dst_box.x, scaled_dst_box.y);
 		pixman_region32_intersect(&inverse_opaque, &inverse_opaque, &damage);
 
 		// Render the blur into its own buffer
@@ -336,7 +335,7 @@ void render_blur(bool optimized, struct sway_output *output,
 	struct decoration_data deco_data = get_undecorated_decoration_data();
 	deco_data.corner_radius = corner_radius;
 	deco_data.has_titlebar = should_round_top;
-	render_texture(wlr_output, &damage, &buffer->texture, src_box, dst_box, matrix, deco_data);
+	render_texture(wlr_output, &damage, &buffer->texture, src_box, &scaled_dst_box, matrix, deco_data);
 
 damage_finish:
 	pixman_region32_fini(&damage);
@@ -428,8 +427,6 @@ static void render_surface_iterator(struct sway_output *output,
 		dst_box.y = fmax(dst_box.y, clip_box->y);
 	}
 
-	scale_box(&dst_box, wlr_output->scale);
-
 	struct decoration_data deco_data = data->deco_data;
 	deco_data.corner_radius *= wlr_output->scale;
 
@@ -464,6 +461,7 @@ static void render_surface_iterator(struct sway_output *output,
 	}
 
 	// Render surface texture
+	scale_box(&dst_box, wlr_output->scale);
 	struct wlr_fbox src_box;
 	wlr_surface_get_buffer_source_box(surface, &src_box);
 	struct fx_texture fx_texture = fx_texture_from_wlr_texture(texture);
@@ -816,7 +814,6 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 				dst_box.height -= state.border_thickness * 2;
 			}
 		}
-		scale_box(&dst_box, wlr_output->scale);
 
 		deco_data.corner_radius *= wlr_output->scale;
 
@@ -843,6 +840,7 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 		}
 
 		// Render saved surface texture
+		scale_box(&dst_box, wlr_output->scale);
 		struct fx_texture fx_texture = fx_texture_from_wlr_texture(saved_buf->buffer->texture);
 		render_texture(wlr_output, damage, &fx_texture,
 				&saved_buf->source_box, &dst_box, matrix, deco_data);
