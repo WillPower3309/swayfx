@@ -279,7 +279,7 @@ struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer, struct
 void render_blur(bool optimized, struct sway_output *output,
 		pixman_region32_t *output_damage, const struct wlr_fbox *src_box,
 		const struct wlr_box *dst_box, pixman_region32_t *opaque_region,
-		int32_t surface_scale, int corner_radius, bool should_round_top) {
+		int corner_radius, bool should_round_top) {
 	struct wlr_output *wlr_output = output->wlr_output;
 	struct fx_renderer *renderer = output->renderer;
 	struct wlr_box scaled_dst_box;
@@ -290,8 +290,8 @@ void render_blur(bool optimized, struct sway_output *output,
 	// Check if damage is inside of box rect
 	pixman_region32_t damage = create_damage(scaled_dst_box, output_damage);
 
-	pixman_region32_t inverse_opaque;
-	pixman_region32_init(&inverse_opaque);
+	pixman_region32_t translucent_region;
+	pixman_region32_init(&translucent_region);
 
 	if (!pixman_region32_not_empty(&damage)) {
 		goto damage_finish;
@@ -302,28 +302,26 @@ void render_blur(bool optimized, struct sway_output *output,
 	*/
 
 	pixman_box32_t surface_box = {
-		.x1 = 0,
-		.y1 = 0,
 		.x2 = dst_box->width,
 		.y2 = dst_box->height,
 	};
 
 	// Gets the non opaque region
-	pixman_region32_copy(&inverse_opaque, opaque_region);
-	pixman_region32_inverse(&inverse_opaque, &inverse_opaque, &surface_box);
-	if (!pixman_region32_not_empty(&inverse_opaque)) {
+	pixman_region32_copy(&translucent_region, opaque_region);
+	pixman_region32_inverse(&translucent_region, &translucent_region, &surface_box);
+	if (!pixman_region32_not_empty(&translucent_region)) {
 		goto damage_finish;
 	}
 
-	wlr_region_scale(&inverse_opaque, &inverse_opaque, wlr_output->scale);
+	wlr_region_scale(&translucent_region, &translucent_region, wlr_output->scale);
 
 	struct fx_framebuffer *buffer = &renderer->blur_buffer;
 	if (!buffer->texture.id || !optimized) {
-		pixman_region32_translate(&inverse_opaque, scaled_dst_box.x, scaled_dst_box.y);
-		pixman_region32_intersect(&inverse_opaque, &inverse_opaque, &damage);
+		pixman_region32_translate(&translucent_region, scaled_dst_box.x, scaled_dst_box.y);
+		pixman_region32_intersect(&translucent_region, &translucent_region, &damage);
 
 		// Render the blur into its own buffer
-		buffer = get_main_buffer_blur(renderer, output, &inverse_opaque, dst_box);
+		buffer = get_main_buffer_blur(renderer, output, &translucent_region, dst_box);
 	}
 
 	// Draw the blurred texture
@@ -339,7 +337,7 @@ void render_blur(bool optimized, struct sway_output *output,
 
 damage_finish:
 	pixman_region32_fini(&damage);
-	pixman_region32_fini(&inverse_opaque);
+	pixman_region32_fini(&translucent_region);
 }
 
 // _box.x and .y are expected to be layout-local
@@ -452,7 +450,7 @@ static void render_surface_iterator(struct sway_output *output,
 					wlr_output_transform_invert(wlr_output->transform), monitor_box.width, monitor_box.height);
 			struct wlr_fbox blur_src_box = wlr_fbox_from_wlr_box(&monitor_box);
 			render_blur(should_optimize_blur, output, output_damage, &blur_src_box, &dst_box, &opaque_region,
-					surface->current.scale, deco_data.corner_radius, deco_data.has_titlebar);
+					deco_data.corner_radius, deco_data.has_titlebar);
 		}
 
 		pixman_region32_fini(&opaque_region);
@@ -807,7 +805,7 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 				struct wlr_fbox src_box = wlr_fbox_from_wlr_box(&monitor_box);
 				bool should_optimize_blur = !container_is_floating(view->container) || config->blur_xray;
 				render_blur(should_optimize_blur, output, damage, &src_box, &dst_box, &opaque_region,
-						1, deco_data.corner_radius, deco_data.has_titlebar);
+						deco_data.corner_radius, deco_data.has_titlebar);
 
 				pixman_region32_fini(&opaque_region);
 			}
