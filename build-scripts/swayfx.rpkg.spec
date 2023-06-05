@@ -4,7 +4,7 @@
 # Change to current Sway base version!
 %global SwayBaseVersion 1.8.1
 # Change to current SwayFX tag!
-%global Tag 0.3
+%global Tag 0.3.1
 
 Name:			{{{ git_dir_name }}}
 Version:		%{Tag}

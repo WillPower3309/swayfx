@@ -440,7 +440,7 @@ static void render_surface_iterator(struct sway_output *output,
 		pixman_region32_init(&opaque_region);
 
 		bool has_alpha = false;
-		if (deco_data.alpha < 1.0) {
+		if (deco_data.alpha < 1.0 || deco_data.dim_color[3] < 1.0) {
 			has_alpha = true;
 			pixman_region32_union_rect(&opaque_region, &opaque_region, 0, 0, 0, 0);
 		} else {
@@ -1452,7 +1452,7 @@ static void render_containers_tabbed(struct sway_output *output,
 
 	struct decoration_data deco_data = {
 		.alpha = current->alpha,
-		.dim_color = view_is_urgent(current->view)
+		.dim_color = current->view && view_is_urgent(current->view)
 				? config->dim_inactive_colors.urgent
 				: config->dim_inactive_colors.unfocused,
 		.dim = current->current.focused || parent->focused ? 0.0f : current->dim,
