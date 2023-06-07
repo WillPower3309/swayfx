@@ -1551,7 +1551,7 @@ static void render_containers_stacked(struct sway_output *output,
 
 	struct decoration_data deco_data = {
 		.alpha = current->alpha,
-		.dim_color = view_is_urgent(current->view)
+		.dim_color = current->view && view_is_urgent(current->view)
 				? config->dim_inactive_colors.urgent
 				: config->dim_inactive_colors.unfocused,
 		.dim = current->current.focused || parent->focused ? 0.0f : current->dim,
