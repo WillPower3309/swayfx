@@ -723,9 +723,18 @@ static void render_view_toplevels(struct sway_view *view, struct sway_output *ou
 	if (state.fullscreen_mode == FULLSCREEN_NONE
 			&& (state.border == B_PIXEL || state.border == B_NORMAL)) {
 		clip_box.x += state.border_thickness;
-		clip_box.y += state.border_thickness;
 		clip_box.width -= state.border_thickness * 2;
-		clip_box.height -= state.border_thickness * 2;
+
+		if (deco_data.has_titlebar) {
+			// Shift the box downward to compensate for the titlebar
+			int titlebar_thickness = container_titlebar_height();
+			clip_box.y += titlebar_thickness;
+			clip_box.height -= state.border_thickness + titlebar_thickness;
+		} else {
+			// Regular border
+			clip_box.y += state.border_thickness;
+			clip_box.height -= state.border_thickness * 2;
+		}
 	}
 	data.clip_box = &clip_box;
 
@@ -788,9 +797,18 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 		dst_box.height = state.height;
 		if (state.border == B_PIXEL || state.border == B_NORMAL) {
 			dst_box.x += state.border_thickness;
-			dst_box.y += state.border_thickness;
 			dst_box.width -= state.border_thickness * 2;
-			dst_box.height -= state.border_thickness * 2;
+
+			if (deco_data.has_titlebar) {
+				// Shift the box downward to compensate for the titlebar
+				int titlebar_thickness = container_titlebar_height();
+				dst_box.y += titlebar_thickness;
+				dst_box.height -= state.border_thickness + titlebar_thickness;
+			} else {
+				// Regular border
+				dst_box.y += state.border_thickness;
+				dst_box.height -= state.border_thickness * 2;
+			}
 		}
 		scale_box(&dst_box, wlr_output->scale);
 
