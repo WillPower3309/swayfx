@@ -522,15 +522,24 @@ static bool scan_out_fullscreen_view(struct sway_output *output,
 }
 
 static void containers_tick_alpha(list_t *containers, struct sway_output *output) {
+	if (config->animation_duration == 0) {
+		return;
+	}
+
 	float alpha_step;
 	for (int i = 0; i < containers->length; ++i) {
 		struct sway_container *con = containers->items[i];
 		if (con->pending.children) {
 			containers_tick_alpha(con->pending.children, output);
-		} else if (con->alpha < con->target_alpha) {
-			alpha_step = (con->target_alpha * output->refresh_sec) / config->animation_duration;
-			// ensure that the alpha does not exceed the target_alpha
-			con->alpha = MIN(con->alpha + alpha_step, con->target_alpha);
+		} else { // should this else be removed?
+			if (con->alpha == con->target_alpha) {
+				continue;
+			} else if (con->alpha < con->target_alpha) { // fade-in animation
+				alpha_step = (con->target_alpha * output->refresh_sec) / config->animation_duration;
+				con->alpha = MIN(con->alpha + alpha_step, con->target_alpha);
+			} else if (con->alpha > con->target_alpha) { // fade-out animation
+				// TODO
+			}
 			output_damage_whole_container(output, con);
 		}
 	}
