@@ -19,7 +19,7 @@ Sway is an incredible window manager, and certainly one of the most well establi
 + **Scratchpad treated as minimize**: Allows docks, or panels with a taskbar, to correctly interpret minimize / unminimize requests ([thanks to LCBCrion](https://github.com/swaywm/sway/issues/6457))
 + **nixify the repo**: Allows nixos users to easily contribute to and test this project
 
-<span style="display: flex; justify-content: space-between;">
+<span>
     <img src="https://repology.org/badge/vertical-allrepos/swayfx.svg" height="282"/>
     <img src="assets/swayfx_mascot.png" width="500"/>
 </span>
