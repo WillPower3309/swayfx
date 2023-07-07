@@ -720,8 +720,14 @@ static void render_view_toplevels(struct sway_view *view, struct sway_output *ou
 	clip_box.y = state.y - output->ly;
 	clip_box.width = state.width;
 	clip_box.height = state.height;
+
+	bool smart = config->hide_edge_borders_smart == ESMART_ON ||
+		(config->hide_edge_borders_smart == ESMART_NO_GAPS &&
+		!gaps_to_edge(view));
+
 	if (state.fullscreen_mode == FULLSCREEN_NONE
-			&& (state.border == B_PIXEL || state.border == B_NORMAL)) {
+			&& (state.border == B_PIXEL || state.border == B_NORMAL)
+			&& !smart) {
 		clip_box.x += state.border_thickness;
 		clip_box.width -= state.border_thickness * 2;
 
