@@ -16,7 +16,7 @@ Sway is an incredible window manager, and certainly one of the most well establi
 
 <p align="center">
     <a href="https://repology.org/project/swayfx/versions"><img src="https://repology.org/badge/vertical-allrepos/swayfx.svg" height="282"/></a>
-    <a href="https://twitter.com/pkdesuwu/status/1664517033017368576"><img src="assets/swayfx_screenshot.jpg" width="500"/></a>
+    <img src="assets/swayfx_screenshot.jpg" width="500"/>
 </p>
 
 [SwayFX is also available on the Fedora copr](https://copr.fedorainfracloud.org/coprs/swayfx/swayfx/)
@@ -122,7 +122,7 @@ Here's a quick outline of where most of our changes lie vs the main sway reposit
 The SwayFX team would like to first and foremost thank the maintainers and contributors of the Sway window manager. We are but a humble group of Sway enthusiasts who wanted to expand upon your creation.
 
 We would also like to thank the talented artists in our community for contibuting the visual assets that give this project charm:
-+ pkdesuwu and honchokomodo for creating the swayfx mascot: https://twitter.com/pkdesuwu/status/1664517033017368576
++ pkdesuwu and honchokomodo for creating the swayfx mascot, please check out the original [post](https://twitter.com/pkdesuwu/status/1664517033017368576) on twitter
 + spooky_skeleton for the swayfx logo, and basil.cafe for making some fine adjustments to it
 
 Lastly, we would like to thank you, the community, for enjoying and using window manager that we have spent so much time maintaining.
