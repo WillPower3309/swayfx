@@ -165,8 +165,6 @@ void fx_renderer_fini(struct fx_renderer *renderer);
 
 void fx_renderer_begin(struct fx_renderer *renderer, int width, int height);
 
-void fx_renderer_end(struct fx_renderer *renderer);
-
 void fx_renderer_clear(const float color[static 4]);
 
 void fx_renderer_scissor(struct wlr_box *box);

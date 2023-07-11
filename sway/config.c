@@ -359,7 +359,7 @@ static void config_defaults(struct sway_config *config) {
 	config->blur_params.radius = 5;
 
 	config->titlebar_separator = true;
-	config->scratchpad_minimize = true;
+	config->scratchpad_minimize = false;
 
 	if (!(config->layer_criteria = create_list())) goto cleanup;
 

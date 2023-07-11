@@ -250,18 +250,12 @@ struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer, struct
 	// damage region will be scaled, make a temp
 	pixman_region32_t tempDamage;
 	pixman_region32_init(&tempDamage);
-	// When DOWNscaling, we make the region twice as small because it's the TARGET
-	wlr_region_scale(&tempDamage, &damage, 0.5f);
 
 	int blur_radius = config->blur_params.radius;
 	int blur_passes = config->blur_params.num_passes;
 
-	// First pass
-	render_blur_segments(renderer, gl_matrix, &tempDamage, &current_buffer,
-			&renderer->shaders.blur1, box, blur_radius);
-
 	// Downscale
-	for (int i = 1; i < blur_passes; ++i) {
+	for (int i = 0; i < blur_passes; ++i) {
 		wlr_region_scale(&tempDamage, &damage, 1.0f / (1 << (i + 1)));
 		render_blur_segments(renderer, gl_matrix, &tempDamage, &current_buffer,
 				&renderer->shaders.blur1, box, blur_radius);
@@ -456,7 +450,7 @@ static void render_surface_iterator(struct sway_output *output,
 		pixman_region32_init(&opaque_region);
 
 		bool has_alpha = false;
-		if (deco_data.alpha < 1.0) {
+		if (deco_data.alpha < 1.0 || deco_data.dim_color[3] < 1.0) {
 			has_alpha = true;
 			pixman_region32_union_rect(&opaque_region, &opaque_region, 0, 0, 0, 0);
 		} else {
@@ -747,12 +741,27 @@ static void render_view_toplevels(struct sway_view *view, struct sway_output *ou
 	clip_box.y = state.y - output->ly;
 	clip_box.width = state.width;
 	clip_box.height = state.height;
+
+	bool smart = config->hide_edge_borders_smart == ESMART_ON ||
+		(config->hide_edge_borders_smart == ESMART_NO_GAPS &&
+		!gaps_to_edge(view));
+
 	if (state.fullscreen_mode == FULLSCREEN_NONE
-			&& (state.border == B_PIXEL || state.border == B_NORMAL)) {
+			&& (state.border == B_PIXEL || state.border == B_NORMAL)
+			&& !smart) {
 		clip_box.x += state.border_thickness;
-		clip_box.y += state.border_thickness;
 		clip_box.width -= state.border_thickness * 2;
-		clip_box.height -= state.border_thickness * 2;
+
+		if (deco_data.has_titlebar) {
+			// Shift the box downward to compensate for the titlebar
+			int titlebar_thickness = container_titlebar_height();
+			clip_box.y += titlebar_thickness;
+			clip_box.height -= state.border_thickness + titlebar_thickness;
+		} else {
+			// Regular border
+			clip_box.y += state.border_thickness;
+			clip_box.height -= state.border_thickness * 2;
+		}
 	}
 	data.clip_box = &clip_box;
 
@@ -815,9 +824,18 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 		dst_box.height = state.height;
 		if (state.border == B_PIXEL || state.border == B_NORMAL) {
 			dst_box.x += state.border_thickness;
-			dst_box.y += state.border_thickness;
 			dst_box.width -= state.border_thickness * 2;
-			dst_box.height -= state.border_thickness * 2;
+
+			if (deco_data.has_titlebar) {
+				// Shift the box downward to compensate for the titlebar
+				int titlebar_thickness = container_titlebar_height();
+				dst_box.y += titlebar_thickness;
+				dst_box.height -= state.border_thickness + titlebar_thickness;
+			} else {
+				// Regular border
+				dst_box.y += state.border_thickness;
+				dst_box.height -= state.border_thickness * 2;
+			}
 		}
 		scale_box(&dst_box, wlr_output->scale);
 
@@ -1501,7 +1519,7 @@ static void render_containers_tabbed(struct sway_output *output,
 
 	struct decoration_data deco_data = {
 		.alpha = current->alpha,
-		.dim_color = view_is_urgent(current->view)
+		.dim_color = current->view && view_is_urgent(current->view)
 				? config->dim_inactive_colors.urgent
 				: config->dim_inactive_colors.unfocused,
 		.dim = current->current.focused || parent->focused ? 0.0f : current->dim,
@@ -1600,7 +1618,7 @@ static void render_containers_stacked(struct sway_output *output,
 
 	struct decoration_data deco_data = {
 		.alpha = current->alpha,
-		.dim_color = view_is_urgent(current->view)
+		.dim_color = current->view && view_is_urgent(current->view)
 				? config->dim_inactive_colors.urgent
 				: config->dim_inactive_colors.unfocused,
 		.dim = current->current.focused || parent->focused ? 0.0f : current->dim,
@@ -2024,7 +2042,6 @@ renderer_end:
 	}
 
 	render_whole_output(renderer, wlr_output, &extended_damage, &renderer->main_buffer.texture);
-	fx_renderer_end(renderer);
 
 	fx_renderer_scissor(NULL);
 

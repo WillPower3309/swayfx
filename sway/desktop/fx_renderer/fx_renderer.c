@@ -426,11 +426,6 @@ void fx_renderer_begin(struct fx_renderer *renderer, int width, int height) {
 	fx_framebuffer_bind(&renderer->main_buffer);
 }
 
-void fx_renderer_end(struct fx_renderer *renderer) {
-	// Release the main buffer
-	fx_framebuffer_release(&renderer->main_buffer);
-}
-
 void fx_renderer_clear(const float color[static 4]) {
 	glClearColor(color[0], color[1], color[2], color[3]);
 	glClearStencil(0);
