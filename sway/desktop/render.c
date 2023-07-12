@@ -281,7 +281,7 @@ void render_blur(bool optimized, struct sway_output *output,
 		pixman_region32_t *output_damage, const struct wlr_fbox *src_box,
 		const struct wlr_box *dst_box, pixman_region32_t *opaque_region,
 		int surface_width, int surface_height, int32_t surface_scale,
-		int corner_radius, bool should_round_top) {
+		int corner_radius, bool should_round_top, bool should_stencil) {
 	struct wlr_output *wlr_output = output->wlr_output;
 	struct fx_renderer *renderer = output->renderer;
 
@@ -335,10 +335,18 @@ void render_blur(bool optimized, struct sway_output *output,
 	float matrix[9];
 	wlr_matrix_project_box(matrix, &monitor_box, transform, 0.0, wlr_output->transform_matrix);
 
+	if (should_stencil) {
+		fx_renderer_stencil_enable();
+	}
+
 	struct decoration_data deco_data = get_undecorated_decoration_data();
 	deco_data.corner_radius = corner_radius;
 	deco_data.has_titlebar = should_round_top;
 	render_texture(wlr_output, &damage, &buffer->texture, src_box, dst_box, matrix, deco_data);
+
+	if (should_stencil) {
+		fx_renderer_stencil_disable();
+	}
 
 damage_finish:
 	pixman_region32_fini(&damage);
@@ -480,7 +488,7 @@ static void render_surface_iterator(struct sway_output *output,
 			struct wlr_fbox blur_src_box = wlr_fbox_from_wlr_box(&monitor_box);
 			render_blur(should_optimize_blur, output, output_damage, &blur_src_box, &dst_box, &opaque_region,
 					surface->current.width, surface->current.height, surface->current.scale,
-					deco_data.corner_radius, deco_data.has_titlebar);
+					deco_data.corner_radius, deco_data.has_titlebar, should_discard_transparent);
 
 			if (should_discard_transparent) {
 				fx_renderer_stencil_mask_fini();
@@ -879,9 +887,9 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 				struct wlr_fbox src_box = wlr_fbox_from_wlr_box(&monitor_box);
 				bool should_optimize_blur = !container_is_floating(view->container) || config->blur_xray;
 				render_blur(should_optimize_blur, output, damage, &src_box, &dst_box, &opaque_region,
-						saved_buf->width, saved_buf->height, 1, deco_data.corner_radius, deco_data.has_titlebar);
+						saved_buf->width, saved_buf->height, 1, deco_data.corner_radius, deco_data.has_titlebar,
+						should_discard_transparent);
 
-				
 				if (should_discard_transparent) {
 					fx_renderer_stencil_mask_fini();
 				}

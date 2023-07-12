@@ -469,6 +469,14 @@ void fx_renderer_stencil_mask_fini() {
 	glDisable(GL_STENCIL_TEST);
 }
 
+void fx_renderer_stencil_enable() {
+	glEnable(GL_STENCIL_TEST);
+}
+
+void fx_renderer_stencil_disable() {
+	glDisable(GL_STENCIL_TEST);
+}
+
 bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct fx_texture *fx_texture,
 		const struct wlr_fbox *src_box, const struct wlr_box *dst_box, const float matrix[static 9],
 		struct decoration_data deco_data) {
@@ -826,8 +834,6 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 void fx_render_blur(struct fx_renderer *renderer, const float matrix[static 9],
 		struct fx_framebuffer **buffer, struct blur_shader *shader,
 		const struct wlr_box *box, int blur_radius) {
-	GLboolean initial_stencil;
-	glGetBooleanv(GL_STENCIL_TEST, &initial_stencil);
 	glDisable(GL_BLEND);
 	glDisable(GL_STENCIL_TEST);
 
@@ -865,7 +871,4 @@ void fx_render_blur(struct fx_renderer *renderer, const float matrix[static 9],
 	glDisableVertexAttribArray(shader->pos_attrib);
 	glDisableVertexAttribArray(shader->tex_attrib);
 
-	if (initial_stencil) {
-		glEnable(GL_STENCIL_TEST);
-	}
 }
