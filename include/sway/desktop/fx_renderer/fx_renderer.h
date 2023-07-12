@@ -32,7 +32,6 @@ struct decoration_data {
 	float dim;
 	float *dim_color;
 	bool has_titlebar;
-	bool discard_opaque;
 	bool discard_transparent;
 	bool blur;
 	bool shadow;
@@ -115,7 +114,6 @@ struct tex_shader {
 	GLint dim;
 	GLint dim_color;
 	GLint has_titlebar;
-	GLint discard_opaque;
 	GLint discard_transparent;
 };
 

@@ -220,7 +220,6 @@ static bool link_tex_program(struct tex_shader *shader,
 	shader->radius = glGetUniformLocation(prog, "radius");
 	shader->saturation = glGetUniformLocation(prog, "saturation");
 	shader->has_titlebar = glGetUniformLocation(prog, "has_titlebar");
-	shader->discard_opaque = glGetUniformLocation(prog, "discard_opaque");
 	shader->discard_transparent = glGetUniformLocation(prog, "discard_transparent");
 
 	return true;
@@ -531,7 +530,6 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct fx_te
 	glUniform1f(shader->dim, deco_data.dim);
 	glUniform4f(shader->dim_color, dim_color[0], dim_color[1], dim_color[2], dim_color[3]);
 	glUniform1f(shader->has_titlebar, deco_data.has_titlebar);
-	glUniform1f(shader->discard_opaque, deco_data.discard_opaque);
 	glUniform1f(shader->discard_transparent, deco_data.discard_transparent);
 	glUniform1f(shader->saturation, deco_data.saturation);
 	glUniform1f(shader->radius, deco_data.corner_radius);

@@ -40,7 +40,6 @@ struct decoration_data get_undecorated_decoration_data() {
 		.saturation = 1.0f,
 		.has_titlebar = false,
 		.blur = false,
-		.discard_opaque = false,
 		.discard_transparent = false,
 		.shadow = false,
 	};
@@ -435,7 +434,6 @@ static void render_surface_iterator(struct sway_output *output,
 
 	struct decoration_data deco_data = data->deco_data;
 	deco_data.corner_radius *= wlr_output->scale;
-	deco_data.discard_opaque = false;
 	bool should_discard_transparent = deco_data.discard_transparent;
 	deco_data.discard_transparent = false;
 
@@ -467,7 +465,6 @@ static void render_surface_iterator(struct sway_output *output,
 			struct decoration_data stencil_deco_data;
 			memcpy(&stencil_deco_data, &deco_data, sizeof(struct decoration_data));
 			// Always ignore opaque for blur rendering
-			stencil_deco_data.discard_opaque = true;
 			stencil_deco_data.discard_transparent = should_discard_transparent;
 			render_texture(wlr_output, output_damage, &fx_texture, &src_box,
 					&dst_box, matrix, stencil_deco_data);
@@ -840,7 +837,6 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 		scale_box(&dst_box, wlr_output->scale);
 
 		deco_data.corner_radius *= wlr_output->scale;
-		deco_data.discard_opaque = false;
 		bool should_discard_transparent = deco_data.discard_transparent;
 		deco_data.discard_transparent = false;
 
@@ -862,7 +858,6 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 				struct decoration_data stencil_deco_data;
 				memcpy(&stencil_deco_data, &deco_data, sizeof(struct decoration_data));
 				// Always ignore opaque for blur rendering
-				stencil_deco_data.discard_opaque = true;
 				stencil_deco_data.discard_transparent = should_discard_transparent;
 				render_texture(wlr_output, damage, &fx_texture, &saved_buf->source_box,
 						&dst_box, matrix, stencil_deco_data);
@@ -1478,7 +1473,6 @@ static void render_containers_linear(struct sway_output *output,
 				.saturation = child->saturation,
 				.has_titlebar = has_titlebar,
 				.blur = child->blur_enabled,
-				.discard_opaque = false,
 				.discard_transparent = false,
 				.shadow = child->shadow_enabled,
 			};
@@ -1530,7 +1524,6 @@ static void render_containers_tabbed(struct sway_output *output,
 		.saturation = current->saturation,
 		.has_titlebar = true,
 		.blur = current->blur_enabled,
-		.discard_opaque = false,
 		.discard_transparent = false,
 		.shadow = current->shadow_enabled,
 	};
@@ -1628,7 +1621,6 @@ static void render_containers_stacked(struct sway_output *output,
 				? 0 : current->corner_radius,
 		.has_titlebar = true,
 		.blur = current->blur_enabled,
-		.discard_opaque = false,
 		.discard_transparent = false,
 		.shadow = current->shadow_enabled,
 	};
@@ -1778,7 +1770,6 @@ static void render_floating_container(struct sway_output *soutput,
 			.corner_radius = con->corner_radius,
 			.has_titlebar = has_titlebar,
 			.blur = con->blur_enabled,
-			.discard_opaque = false,
 			.discard_transparent = false,
 			.shadow = con->shadow_enabled,
 		};
@@ -2013,7 +2004,6 @@ void output_render(struct sway_output *output, struct timespec *when,
 			.saturation = focus->saturation,
 			.has_titlebar = false,
 			.blur = false,
-			.discard_opaque = false,
 			.discard_transparent = false,
 			.shadow = false,
 		};

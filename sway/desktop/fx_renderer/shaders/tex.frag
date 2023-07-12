@@ -28,7 +28,6 @@ uniform vec2 position;
 uniform float radius;
 uniform float saturation;
 uniform bool has_titlebar;
-uniform bool discard_opaque;
 uniform bool discard_transparent;
 
 const vec3 saturation_weight = vec3(0.2125, 0.7154, 0.0721);
@@ -62,8 +61,7 @@ void main() {
         }
     }
 
-    if ((discard_transparent && gl_FragColor.a == 0.0)
-        || (discard_opaque && gl_FragColor.a == 1.0)) {
+    if (discard_transparent && gl_FragColor.a == 0.0) {
         discard;
     }
 }
