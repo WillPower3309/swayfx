@@ -459,16 +459,20 @@ static void render_surface_iterator(struct sway_output *output,
 		if (has_alpha) {
 			bool should_optimize_blur = view ? !container_is_floating(view->container) || config->blur_xray : false;
 
-			// Get a stencil of the window ignoring opaque and transparent regions
-			fx_renderer_scissor(NULL);
-			fx_renderer_stencil_mask_init();
-			struct decoration_data stencil_deco_data;
-			memcpy(&stencil_deco_data, &deco_data, sizeof(struct decoration_data));
-			// Always ignore opaque for blur rendering
-			stencil_deco_data.discard_transparent = should_discard_transparent;
-			render_texture(wlr_output, output_damage, &fx_texture, &src_box,
-					&dst_box, matrix, stencil_deco_data);
-			fx_renderer_stencil_mask_close(true);
+			// Get a stencil of the window ignoring transparent regions
+			if (should_discard_transparent) {
+				fx_renderer_scissor(NULL);
+				fx_renderer_stencil_mask_init();
+
+				struct decoration_data stencil_deco_data;
+				memcpy(&stencil_deco_data, &deco_data, sizeof(struct decoration_data));
+				stencil_deco_data.discard_transparent = true;
+
+				render_texture(wlr_output, output_damage, &fx_texture, &src_box,
+						&dst_box, matrix, stencil_deco_data);
+
+				fx_renderer_stencil_mask_close(true);
+			}
 
 			struct wlr_box monitor_box = get_monitor_box(wlr_output);
 			wlr_box_transform(&monitor_box, &monitor_box,
@@ -478,7 +482,9 @@ static void render_surface_iterator(struct sway_output *output,
 					surface->current.width, surface->current.height, surface->current.scale,
 					deco_data.corner_radius, deco_data.has_titlebar);
 
-			fx_renderer_stencil_mask_fini();
+			if (should_discard_transparent) {
+				fx_renderer_stencil_mask_fini();
+			}
 		}
 
 		pixman_region32_fini(&opaque_region);
@@ -852,16 +858,20 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 				pixman_region32_init(&opaque_region);
 				pixman_region32_union_rect(&opaque_region, &opaque_region, 0, 0, 0, 0);
 
-				// Get a stencil of the window ignoring opaque and transparent regions
-				fx_renderer_scissor(NULL);
-				fx_renderer_stencil_mask_init();
-				struct decoration_data stencil_deco_data;
-				memcpy(&stencil_deco_data, &deco_data, sizeof(struct decoration_data));
-				// Always ignore opaque for blur rendering
-				stencil_deco_data.discard_transparent = should_discard_transparent;
-				render_texture(wlr_output, damage, &fx_texture, &saved_buf->source_box,
-						&dst_box, matrix, stencil_deco_data);
-				fx_renderer_stencil_mask_close(true);
+				// Get a stencil of the window ignoring transparent regions
+				if (should_discard_transparent) {
+					fx_renderer_scissor(NULL);
+					fx_renderer_stencil_mask_init();
+
+					struct decoration_data stencil_deco_data;
+					memcpy(&stencil_deco_data, &deco_data, sizeof(struct decoration_data));
+					stencil_deco_data.discard_transparent = true;
+
+					render_texture(wlr_output, damage, &fx_texture, &saved_buf->source_box,
+							&dst_box, matrix, stencil_deco_data);
+
+					fx_renderer_stencil_mask_close(true);
+				}
 
 				struct wlr_box monitor_box = get_monitor_box(wlr_output);
 				wlr_box_transform(&monitor_box, &monitor_box,
@@ -872,7 +882,9 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 						saved_buf->width, saved_buf->height, 1, deco_data.corner_radius, deco_data.has_titlebar);
 
 				
-				fx_renderer_stencil_mask_fini();
+				if (should_discard_transparent) {
+					fx_renderer_stencil_mask_fini();
+				}
 				pixman_region32_fini(&opaque_region);
 			}
 		}
