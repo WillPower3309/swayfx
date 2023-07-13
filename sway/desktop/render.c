@@ -1399,6 +1399,10 @@ static void render_containers_linear(struct sway_output *output,
 	for (int i = 0; i < parent->children->length; ++i) {
 		struct sway_container *child = parent->children->items[i];
 
+		if (container_is_scratchpad_hidden(child)) {
+			continue;
+		}
+
 		if (child->view) {
 			struct sway_view *view = child->view;
 			struct border_colors *colors;
