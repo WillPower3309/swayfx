@@ -126,7 +126,7 @@ The SwayFX team would like to first and foremost thank the maintainers and contr
 
 We would also like to thank the talented artists in our community for contibuting the visual assets that give this project charm:
 + pkdesuwu and honchokomodo for creating the swayfx mascot: https://twitter.com/pkdesuwu/status/1664517033017368576
-+ spooky_skeleton for the swayfx logo, and basil.cafe for making some fine adjustments to it
++ spooky_skeleton for the swayfx logo, and [Basil](https://basil.cafe) for making some fine adjustments to it
 
 Lastly, we would like to thank you, the community, for enjoying and using window manager that we have spent so much time maintaining.
 
