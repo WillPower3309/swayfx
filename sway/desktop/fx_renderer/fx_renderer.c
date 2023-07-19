@@ -419,9 +419,6 @@ void fx_renderer_begin(struct fx_renderer *renderer, int width, int height) {
 		WL_OUTPUT_TRANSFORM_FLIPPED_180);
 
 	glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-
-	// Bind to our main framebuffer
-	fx_framebuffer_bind(&renderer->main_buffer);
 }
 
 void fx_renderer_clear(const float color[static 4]) {
