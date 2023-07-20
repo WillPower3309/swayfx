@@ -122,6 +122,7 @@ struct sway_container {
 	// TODO: move alpha to state?
 	float alpha;
 	float target_alpha;
+	float max_alpha;
 
 	int corner_radius;
 

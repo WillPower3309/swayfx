@@ -527,19 +527,17 @@ static void containers_tick_alpha(list_t *containers, struct sway_output *output
 	}
 
 	float alpha_step;
+	struct sway_container *con = NULL;
 	for (int i = 0; i < containers->length; ++i) {
-		struct sway_container *con = containers->items[i];
+		con = containers->items[i];
 		if (con->pending.children) {
 			containers_tick_alpha(con->pending.children, output);
 		} else { // should this else be removed?
 			if (con->alpha == con->target_alpha) {
 				continue;
-			} else if (con->alpha < con->target_alpha) { // fade-in animation
-				alpha_step = (con->target_alpha * output->refresh_sec) / config->animation_duration;
-				con->alpha = MIN(con->alpha + alpha_step, con->target_alpha);
-			} else if (con->alpha > con->target_alpha) { // fade-out animation
-				// TODO
 			}
+			alpha_step = (con->max_alpha * output->refresh_sec) / config->animation_duration;
+			con->alpha = con->alpha < con->target_alpha ? MIN(con->alpha + alpha_step, con->target_alpha) : MAX(con->alpha - alpha_step, con->target_alpha);
 			output_damage_whole_container(output, con);
 		}
 	}
