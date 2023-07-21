@@ -176,10 +176,6 @@ void fx_renderer_stencil_mask_close(bool draw_inside_mask);
 // Finish stenciling and clear the buffer
 void fx_renderer_stencil_mask_fini();
 
-void fx_renderer_stencil_enable();
-
-void fx_renderer_stencil_disable();
-
 bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct fx_texture *fx_texture,
 		const struct wlr_fbox *src_box, const struct wlr_box *dst_box, const float matrix[static 9],
 		struct decoration_data deco_data);

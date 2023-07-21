@@ -469,14 +469,6 @@ void fx_renderer_stencil_mask_fini() {
 	glDisable(GL_STENCIL_TEST);
 }
 
-void fx_renderer_stencil_enable() {
-	glEnable(GL_STENCIL_TEST);
-}
-
-void fx_renderer_stencil_disable() {
-	glDisable(GL_STENCIL_TEST);
-}
-
 bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct fx_texture *fx_texture,
 		const struct wlr_fbox *src_box, const struct wlr_box *dst_box, const float matrix[static 9],
 		struct decoration_data deco_data) {
