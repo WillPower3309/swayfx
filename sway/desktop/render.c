@@ -310,9 +310,7 @@ void render_blur(bool optimized, struct sway_output *output, pixman_region32_t *
 	struct decoration_data deco_data = get_undecorated_decoration_data();
 	deco_data.corner_radius = corner_radius;
 	deco_data.has_titlebar = should_round_top;
-	// TODO: contribute wlroots function to allow creating an fbox from a box?
-	const struct wlr_fbox src_box = { monitor_box.x, monitor_box.y, monitor_box.width, monitor_box.height };
-	render_texture(wlr_output, &damage, &buffer->texture, &src_box, dst_box, matrix, deco_data);
+	render_texture(wlr_output, &damage, &buffer->texture, NULL, dst_box, matrix, deco_data);
 
 damage_finish:
 	pixman_region32_fini(&damage);
