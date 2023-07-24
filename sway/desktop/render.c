@@ -44,16 +44,6 @@ struct decoration_data get_undecorated_decoration_data() {
 	};
 }
 
-// TODO: contribute wlroots function to allow creating an fbox from a box?
-struct wlr_fbox wlr_fbox_from_wlr_box(struct wlr_box *box) {
-	return (struct wlr_fbox) {
-		.x = box->x,
-		.y = box->y,
-		.width = box->width,
-		.height = box->height,
-	};
-}
-
 // TODO: Remove this ugly abomination with a complete border rework...
 enum corner_location get_rotated_corner(enum corner_location corner_location,
 		enum wl_output_transform transform) {
@@ -320,7 +310,8 @@ void render_blur(bool optimized, struct sway_output *output, pixman_region32_t *
 	struct decoration_data deco_data = get_undecorated_decoration_data();
 	deco_data.corner_radius = corner_radius;
 	deco_data.has_titlebar = should_round_top;
-	const struct wlr_fbox src_box = wlr_fbox_from_wlr_box(&monitor_box);
+	// TODO: contribute wlroots function to allow creating an fbox from a box?
+	const struct wlr_fbox src_box = { monitor_box.x, monitor_box.y, monitor_box.width, monitor_box.height };
 	render_texture(wlr_output, &damage, &buffer->texture, &src_box, dst_box, matrix, deco_data);
 
 damage_finish:
