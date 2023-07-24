@@ -421,6 +421,11 @@ void fx_renderer_begin(struct fx_renderer *renderer, int width, int height) {
 	glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 }
 
+void fx_renderer_end(struct fx_renderer *renderer) {
+	// Draw the contents of our buffer into the wlr buffer
+	fx_framebuffer_bind(&renderer->wlr_buffer);
+}
+
 void fx_renderer_clear(const float color[static 4]) {
 	glClearColor(color[0], color[1], color[2], color[3]);
 	glClearStencil(0);

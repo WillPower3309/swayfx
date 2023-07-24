@@ -276,10 +276,9 @@ struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer, struct
 	return current_buffer;
 }
 
-void render_blur(bool optimized, struct sway_output *output,
-		pixman_region32_t *output_damage, const struct wlr_fbox *src_box,
-		const struct wlr_box *dst_box, pixman_region32_t *opaque_region,
-		int corner_radius, bool should_round_top) {
+void render_blur(bool optimized, struct sway_output *output, pixman_region32_t *output_damage,
+		const struct wlr_box *dst_box, pixman_region32_t *opaque_region, int corner_radius,
+		bool should_round_top) {
 	struct wlr_output *wlr_output = output->wlr_output;
 	struct fx_renderer *renderer = output->renderer;
 
@@ -321,7 +320,8 @@ void render_blur(bool optimized, struct sway_output *output,
 	struct decoration_data deco_data = get_undecorated_decoration_data();
 	deco_data.corner_radius = corner_radius;
 	deco_data.has_titlebar = should_round_top;
-	render_texture(wlr_output, &damage, &buffer->texture, src_box, dst_box, matrix, deco_data);
+	const struct wlr_fbox src_box = wlr_fbox_from_wlr_box(&monitor_box);
+	render_texture(wlr_output, &damage, &buffer->texture, &src_box, dst_box, matrix, deco_data);
 
 damage_finish:
 	pixman_region32_fini(&damage);
@@ -433,14 +433,9 @@ static void render_surface_iterator(struct sway_output *output,
 		}
 
 		if (has_alpha) {
-			bool should_optimize_blur = view ?
-				!container_is_floating_or_child(view->container) || config->blur_xray
-				: false;
-			struct wlr_box monitor_box = get_monitor_box(wlr_output);
-			wlr_box_transform(&monitor_box, &monitor_box,
-					wlr_output_transform_invert(wlr_output->transform), monitor_box.width, monitor_box.height);
-			struct wlr_fbox blur_src_box = wlr_fbox_from_wlr_box(&monitor_box);
-			render_blur(should_optimize_blur, output, output_damage, &blur_src_box, &dst_box, &opaque_region,
+			bool should_optimize_blur = view ? !container_is_floating_or_child(view->container) ||
+				config->blur_xray : false;
+			render_blur(should_optimize_blur, output, output_damage, &dst_box, &opaque_region,
 					deco_data.corner_radius, deco_data.has_titlebar);
 		}
 
@@ -814,12 +809,8 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 				pixman_region32_init(&opaque_region);
 				pixman_region32_union_rect(&opaque_region, &opaque_region, 0, 0, 0, 0);
 
-				struct wlr_box monitor_box = get_monitor_box(wlr_output);
-				wlr_box_transform(&monitor_box, &monitor_box,
-						wlr_output_transform_invert(wlr_output->transform), monitor_box.width, monitor_box.height);
-				struct wlr_fbox src_box = wlr_fbox_from_wlr_box(&monitor_box);
 				bool should_optimize_blur = !container_is_floating_or_child(view->container) || config->blur_xray;
-				render_blur(should_optimize_blur, output, damage, &src_box, &dst_box, &opaque_region,
+				render_blur(should_optimize_blur, output, damage, &dst_box, &opaque_region,
 						deco_data.corner_radius, deco_data.has_titlebar);
 
 				pixman_region32_fini(&opaque_region);
@@ -1967,8 +1958,7 @@ render_overlay:
 	render_drag_icons(output, damage, &root->drag_icons);
 
 renderer_end:
-	// Draw the contents of our buffer into the wlr buffer
-	fx_framebuffer_bind(&renderer->wlr_buffer);
+	fx_renderer_end(output->renderer);
 
 	float clear_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
 	if (pixman_region32_not_empty(&extended_damage)) {
