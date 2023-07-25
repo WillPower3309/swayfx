@@ -209,7 +209,7 @@ struct fx_framebuffer *render_main_buffer_blur(struct sway_output *output,
 	int blur_radius = config->blur_params.radius;
 	int blur_passes = config->blur_params.num_passes;
 
-	fx_render_main_buffer_blur(renderer, gl_matrix, &damage, dst_box, current_buffer, blur_radius, blur_passes);
+	fx_render_main_buffer_blur(renderer, gl_matrix, &damage, dst_box, &current_buffer, blur_radius, blur_passes);
 
 	pixman_region32_fini(&damage);
 

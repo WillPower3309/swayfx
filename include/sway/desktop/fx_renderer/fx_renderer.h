@@ -189,6 +189,5 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 		const float color[static 4], const float matrix[static 9], int radius,
 		float blur_sigma);
 
-void fx_render_main_buffer_blur(struct fx_renderer *renderer, const float gl_matrix[static 9], pixman_region32_t *damage, const struct wlr_box *dst_box, struct fx_framebuffer *current_buffer, int blur_radius, int blur_passes);
-
+void fx_render_main_buffer_blur(struct fx_renderer *renderer, const float gl_matrix[static 9], pixman_region32_t *damage, const struct wlr_box *dst_box, struct fx_framebuffer **current_buffer, int blur_radius, int blur_passes);
 #endif
