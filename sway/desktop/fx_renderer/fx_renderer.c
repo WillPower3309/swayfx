@@ -808,9 +808,8 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 	glDisable(GL_STENCIL_TEST);
 }
 
-void fx_render_blur(struct fx_renderer *renderer, const float matrix[static 9],
-		struct fx_framebuffer **buffer, struct blur_shader *shader,
-		const struct wlr_box *box, int blur_radius) {
+void fx_render_blur_pass(struct fx_renderer *renderer, const float matrix[static 9],
+		struct blur_shader *shader, const struct wlr_box *box, int blur_radius, struct fx_framebuffer **buffer) {
 	glDisable(GL_BLEND);
 	glDisable(GL_STENCIL_TEST);
 
@@ -847,4 +846,32 @@ void fx_render_blur(struct fx_renderer *renderer, const float matrix[static 9],
 
 	glDisableVertexAttribArray(shader->pos_attrib);
 	glDisableVertexAttribArray(shader->tex_attrib);
+}
+
+void fx_render_blur_segments(struct fx_renderer *renderer,
+		const float matrix[static 9], pixman_region32_t *damage,
+		struct fx_framebuffer **buffer, struct blur_shader* shader,
+		const struct wlr_box *box, int blur_radius) {
+	if (*buffer == &renderer->effects_buffer) {
+		fx_framebuffer_bind(&renderer->effects_buffer_swapped);
+	} else {
+		fx_framebuffer_bind(&renderer->effects_buffer);
+	}
+
+	if (pixman_region32_not_empty(damage)) {
+		int nrects;
+		pixman_box32_t *rects = pixman_region32_rectangles(damage, &nrects);
+		for (int i = 0; i < nrects; ++i) {
+			const pixman_box32_t box = rects[i];
+			struct wlr_box new_box = { box.x1, box.y1, box.x2 - box.x1, box.y2 - box.y1 };
+			fx_renderer_scissor(&new_box);
+			fx_render_blur_pass(renderer, matrix, shader, &new_box, blur_radius, buffer);
+		}
+	}
+
+	if (*buffer != &renderer->effects_buffer) {
+		*buffer = &renderer->effects_buffer;
+	} else {
+		*buffer = &renderer->effects_buffer_swapped;
+	}
 }

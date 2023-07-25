@@ -189,8 +189,9 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 		const float color[static 4], const float matrix[static 9], int radius,
 		float blur_sigma);
 
-void fx_render_blur(struct fx_renderer *renderer, const float matrix[static 9],
-		struct fx_framebuffer **buffer, struct blur_shader *shader, const struct wlr_box *box,
-		int blur_radius);
+void fx_render_blur_segments(struct fx_renderer *renderer,
+		const float matrix[static 9], pixman_region32_t* damage,
+		struct fx_framebuffer **buffer, struct blur_shader* shader,
+		const struct wlr_box *box, int blur_radius);
 
 #endif
