@@ -11,6 +11,7 @@
 #include <wlr/render/gles2.h>
 #include <wlr/types/wlr_matrix.h>
 #include <wlr/util/box.h>
+#include <wlr/util/region.h>
 
 #include "log.h"
 #include "sway/desktop/fx_renderer/fx_framebuffer.h"
@@ -874,4 +875,27 @@ void fx_render_blur_segments(struct fx_renderer *renderer,
 	} else {
 		*buffer = &renderer->effects_buffer_swapped;
 	}
+}
+
+void fx_render_main_buffer_blur(struct fx_renderer *renderer, const float gl_matrix[static 9], pixman_region32_t *damage, const struct wlr_box *dst_box, struct fx_framebuffer *current_buffer, int blur_radius, int blur_passes) {
+	// damage region will be scaled, make a temp
+	pixman_region32_t tempDamage;
+	pixman_region32_init(&tempDamage);
+
+	// Downscale
+	for (int i = 0; i < blur_passes; ++i) {
+		wlr_region_scale(&tempDamage, damage, 1.0f / (1 << (i + 1)));
+		fx_render_blur_segments(renderer, gl_matrix, &tempDamage, &current_buffer,
+				&renderer->shaders.blur1, dst_box, blur_radius);
+	}
+
+	// Upscale
+	for (int i = blur_passes - 1; i >= 0; --i) {
+		// when upsampling we make the region twice as big
+		wlr_region_scale(&tempDamage, damage, 1.0f / (1 << i));
+		fx_render_blur_segments(renderer, gl_matrix, &tempDamage, &current_buffer,
+				&renderer->shaders.blur2, dst_box, blur_radius);
+	}
+
+	pixman_region32_fini(&tempDamage);
 }

@@ -206,29 +206,11 @@ struct fx_framebuffer *render_main_buffer_blur(struct sway_output *output,
 	fx_framebuffer_bind(&renderer->effects_buffer);
 	glBindTexture(renderer->main_buffer.texture.target, renderer->main_buffer.texture.id);
 
-	// damage region will be scaled, make a temp
-	pixman_region32_t tempDamage;
-	pixman_region32_init(&tempDamage);
-
 	int blur_radius = config->blur_params.radius;
 	int blur_passes = config->blur_params.num_passes;
 
-	// Downscale
-	for (int i = 0; i < blur_passes; ++i) {
-		wlr_region_scale(&tempDamage, &damage, 1.0f / (1 << (i + 1)));
-		fx_render_blur_segments(renderer, gl_matrix, &tempDamage, &current_buffer,
-				&renderer->shaders.blur1, dst_box, blur_radius);
-	}
+	fx_render_main_buffer_blur(renderer, gl_matrix, &damage, dst_box, current_buffer, blur_radius, blur_passes);
 
-	// Upscale
-	for (int i = blur_passes - 1; i >= 0; --i) {
-		// when upsampling we make the region twice as big
-		wlr_region_scale(&tempDamage, &damage, 1.0f / (1 << i));
-		fx_render_blur_segments(renderer, gl_matrix, &tempDamage, &current_buffer,
-				&renderer->shaders.blur2, dst_box, blur_radius);
-	}
-
-	pixman_region32_fini(&tempDamage);
 	pixman_region32_fini(&damage);
 
 	// Bind back to the default buffer
