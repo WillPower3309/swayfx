@@ -809,11 +809,8 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 	glDisable(GL_STENCIL_TEST);
 }
 
-void fx_render_blur_pass(struct fx_renderer *renderer, const float matrix[static 9],
+void fx_render_blur_pass(struct fx_renderer *renderer, const float gl_matrix[static 9],
 		struct blur_shader *shader, const struct wlr_box *box, int blur_radius, struct fx_framebuffer **buffer) {
-	glDisable(GL_BLEND);
-	glDisable(GL_STENCIL_TEST);
-
 	glActiveTexture(GL_TEXTURE0);
 
 	glBindTexture((*buffer)->texture.target, (*buffer)->texture.id);
@@ -824,8 +821,6 @@ void fx_render_blur_pass(struct fx_renderer *renderer, const float matrix[static
 
 	// OpenGL ES 2 requires the glUniformMatrix3fv transpose parameter to be set
 	// to GL_FALSE
-	float gl_matrix[9];
-	wlr_matrix_transpose(gl_matrix, matrix);
 	glUniformMatrix3fv(shader->proj, 1, GL_FALSE, gl_matrix);
 
 	glUniform1i(shader->tex, 0);
@@ -849,7 +844,7 @@ void fx_render_blur_pass(struct fx_renderer *renderer, const float matrix[static
 	glDisableVertexAttribArray(shader->tex_attrib);
 }
 
-void fx_render_blur_segments(struct fx_renderer *renderer, const float matrix[static 9],
+void fx_render_blur_segments(struct fx_renderer *renderer, const float gl_matrix[static 9],
 		pixman_region32_t *damage, struct fx_framebuffer **buffer, struct blur_shader* shader,
 		const struct wlr_box *box, int blur_radius) {
 	if (*buffer == &renderer->effects_buffer) {
@@ -865,7 +860,7 @@ void fx_render_blur_segments(struct fx_renderer *renderer, const float matrix[st
 			const pixman_box32_t box = rects[i];
 			struct wlr_box new_box = { box.x1, box.y1, box.x2 - box.x1, box.y2 - box.y1 };
 			fx_renderer_scissor(&new_box);
-			fx_render_blur_pass(renderer, matrix, shader, &new_box, blur_radius, buffer);
+			fx_render_blur_pass(renderer, gl_matrix, shader, &new_box, blur_radius, buffer);
 		}
 	}
 
@@ -876,34 +871,44 @@ void fx_render_blur_segments(struct fx_renderer *renderer, const float matrix[st
 	}
 }
 
-void fx_render_main_buffer_blur(struct fx_renderer *renderer, const float gl_matrix[static 9],
-		pixman_region32_t *damage, const struct wlr_box *dst_box,
-		struct fx_framebuffer **current_buffer, int blur_radius, int blur_passes) {
+struct fx_framebuffer *fx_render_main_buffer_blur(struct fx_renderer *renderer, const float matrix[static 9],
+		pixman_region32_t *damage, const struct wlr_box *dst_box, int blur_radius, int blur_passes) {
+	glDisable(GL_BLEND);
+	glDisable(GL_STENCIL_TEST);
+
+	struct fx_framebuffer *current_buffer = &renderer->main_buffer;
+
 	// Bind to blur framebuffer
 	fx_framebuffer_bind(&renderer->effects_buffer);
 	glBindTexture(renderer->main_buffer.texture.target, renderer->main_buffer.texture.id);
 
+	float gl_matrix[9];
+	wlr_matrix_multiply(gl_matrix, renderer->projection, matrix);
+	wlr_matrix_transpose(gl_matrix, gl_matrix);
+
 	// damage region will be scaled, make a temp
-	pixman_region32_t tempDamage;
-	pixman_region32_init(&tempDamage);
+	pixman_region32_t temp_damage;
+	pixman_region32_init(&temp_damage);
 
 	// Downscale
 	for (int i = 0; i < blur_passes; ++i) {
-		wlr_region_scale(&tempDamage, damage, 1.0f / (1 << (i + 1)));
-		fx_render_blur_segments(renderer, gl_matrix, &tempDamage, current_buffer,
+		wlr_region_scale(&temp_damage, damage, 1.0f / (1 << (i + 1)));
+		fx_render_blur_segments(renderer, gl_matrix, &temp_damage, &current_buffer,
 				&renderer->shaders.blur1, dst_box, blur_radius);
 	}
 
 	// Upscale
 	for (int i = blur_passes - 1; i >= 0; --i) {
 		// when upsampling we make the region twice as big
-		wlr_region_scale(&tempDamage, damage, 1.0f / (1 << i));
-		fx_render_blur_segments(renderer, gl_matrix, &tempDamage, current_buffer,
+		wlr_region_scale(&temp_damage, damage, 1.0f / (1 << i));
+		fx_render_blur_segments(renderer, gl_matrix, &temp_damage, &current_buffer,
 				&renderer->shaders.blur2, dst_box, blur_radius);
 	}
 
-	pixman_region32_fini(&tempDamage);
+	pixman_region32_fini(&temp_damage);
 
 	// Bind back to the default buffer
 	fx_framebuffer_bind(&renderer->main_buffer);
+
+	return current_buffer;
 }

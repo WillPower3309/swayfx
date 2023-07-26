@@ -189,22 +189,14 @@ struct fx_framebuffer *render_main_buffer_blur(struct sway_output *output,
 	float matrix[9];
 	wlr_matrix_project_box(matrix, &monitor_box, transform, 0, wlr_output->transform_matrix);
 
-	float gl_matrix[9];
-	wlr_matrix_multiply(gl_matrix, renderer->projection, matrix);
-
 	pixman_region32_t damage;
 	pixman_region32_init(&damage);
 	pixman_region32_copy(&damage, original_damage);
 	wlr_region_transform(&damage, &damage, transform, monitor_box.width, monitor_box.height);
-
 	wlr_region_expand(&damage, &damage, config_get_blur_size());
 
-	// Initially blur main_buffer content into the effects_buffers
-	struct fx_framebuffer *current_buffer = &renderer->main_buffer;
-
-	int blur_radius = config->blur_params.radius;
-	int blur_passes = config->blur_params.num_passes;
-	fx_render_main_buffer_blur(renderer, gl_matrix, &damage, dst_box, &current_buffer, blur_radius, blur_passes);
+	struct fx_framebuffer *current_buffer = fx_render_main_buffer_blur(renderer, matrix, &damage,
+			dst_box, config->blur_params.radius, config->blur_params.num_passes);
 
 	pixman_region32_fini(&damage);
 
