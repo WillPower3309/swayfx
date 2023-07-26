@@ -202,19 +202,11 @@ struct fx_framebuffer *render_main_buffer_blur(struct sway_output *output,
 	// Initially blur main_buffer content into the effects_buffers
 	struct fx_framebuffer *current_buffer = &renderer->main_buffer;
 
-	// Bind to blur framebuffer
-	fx_framebuffer_bind(&renderer->effects_buffer);
-	glBindTexture(renderer->main_buffer.texture.target, renderer->main_buffer.texture.id);
-
 	int blur_radius = config->blur_params.radius;
 	int blur_passes = config->blur_params.num_passes;
-
 	fx_render_main_buffer_blur(renderer, gl_matrix, &damage, dst_box, &current_buffer, blur_radius, blur_passes);
 
 	pixman_region32_fini(&damage);
-
-	// Bind back to the default buffer
-	fx_framebuffer_bind(&renderer->main_buffer);
 
 	return current_buffer;
 }

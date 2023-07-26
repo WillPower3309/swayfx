@@ -849,9 +849,8 @@ void fx_render_blur_pass(struct fx_renderer *renderer, const float matrix[static
 	glDisableVertexAttribArray(shader->tex_attrib);
 }
 
-void fx_render_blur_segments(struct fx_renderer *renderer,
-		const float matrix[static 9], pixman_region32_t *damage,
-		struct fx_framebuffer **buffer, struct blur_shader* shader,
+void fx_render_blur_segments(struct fx_renderer *renderer, const float matrix[static 9],
+		pixman_region32_t *damage, struct fx_framebuffer **buffer, struct blur_shader* shader,
 		const struct wlr_box *box, int blur_radius) {
 	if (*buffer == &renderer->effects_buffer) {
 		fx_framebuffer_bind(&renderer->effects_buffer_swapped);
@@ -877,7 +876,13 @@ void fx_render_blur_segments(struct fx_renderer *renderer,
 	}
 }
 
-void fx_render_main_buffer_blur(struct fx_renderer *renderer, const float gl_matrix[static 9], pixman_region32_t *damage, const struct wlr_box *dst_box, struct fx_framebuffer **current_buffer, int blur_radius, int blur_passes) {
+void fx_render_main_buffer_blur(struct fx_renderer *renderer, const float gl_matrix[static 9],
+		pixman_region32_t *damage, const struct wlr_box *dst_box,
+		struct fx_framebuffer **current_buffer, int blur_radius, int blur_passes) {
+	// Bind to blur framebuffer
+	fx_framebuffer_bind(&renderer->effects_buffer);
+	glBindTexture(renderer->main_buffer.texture.target, renderer->main_buffer.texture.id);
+
 	// damage region will be scaled, make a temp
 	pixman_region32_t tempDamage;
 	pixman_region32_init(&tempDamage);
@@ -898,4 +903,7 @@ void fx_render_main_buffer_blur(struct fx_renderer *renderer, const float gl_mat
 	}
 
 	pixman_region32_fini(&tempDamage);
+
+	// Bind back to the default buffer
+	fx_framebuffer_bind(&renderer->main_buffer);
 }
