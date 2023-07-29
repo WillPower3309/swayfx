@@ -450,7 +450,9 @@ static void render_surface_iterator(struct sway_output *output,
 		}
 
 		if (has_alpha) {
-			bool should_optimize_blur = view ? !container_is_floating(view->container) || config->blur_xray : false;
+			bool should_optimize_blur = view ?
+				!container_is_floating_or_child(view->container) || config->blur_xray
+				: false;
 			struct wlr_box monitor_box = get_monitor_box(wlr_output);
 			wlr_box_transform(&monitor_box, &monitor_box,
 					wlr_output_transform_invert(wlr_output->transform), monitor_box.width, monitor_box.height);
@@ -834,7 +836,7 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 				wlr_box_transform(&monitor_box, &monitor_box,
 						wlr_output_transform_invert(wlr_output->transform), monitor_box.width, monitor_box.height);
 				struct wlr_fbox src_box = wlr_fbox_from_wlr_box(&monitor_box);
-				bool should_optimize_blur = !container_is_floating(view->container) || config->blur_xray;
+				bool should_optimize_blur = !container_is_floating_or_child(view->container) || config->blur_xray;
 				render_blur(should_optimize_blur, output, damage, &src_box, &dst_box, &opaque_region,
 						saved_buf->width, saved_buf->height, 1, deco_data.corner_radius, deco_data.has_titlebar);
 
