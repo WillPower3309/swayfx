@@ -359,7 +359,9 @@ static void render_surface_iterator(struct sway_output *output,
 		}
 
 		if (has_alpha) {
-			bool should_optimize_blur = view ? !container_is_floating(view->container) || config->blur_xray : false;
+			bool should_optimize_blur = view ?
+				!container_is_floating_or_child(view->container) || config->blur_xray
+				: false;
 			render_blur(should_optimize_blur, output, output_damage, &dst_box, &opaque_region,
 					deco_data.corner_radius, deco_data.has_titlebar);
 		}
@@ -734,7 +736,7 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 				pixman_region32_init(&opaque_region);
 				pixman_region32_union_rect(&opaque_region, &opaque_region, 0, 0, 0, 0);
 
-				bool should_optimize_blur = !container_is_floating(view->container) || config->blur_xray;
+				bool should_optimize_blur = !container_is_floating_or_child(view->container) || config->blur_xray;
 				render_blur(should_optimize_blur, output, damage, &dst_box, &opaque_region,
 						deco_data.corner_radius, deco_data.has_titlebar);
 
