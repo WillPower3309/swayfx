@@ -1946,19 +1946,7 @@ render_overlay:
 
 renderer_end:
 	fx_renderer_end(output->renderer);
-
-	float clear_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
-	if (pixman_region32_not_empty(&original_damage)) {
-		int nrects;
-		pixman_box32_t *rects = pixman_region32_rectangles(&original_damage, &nrects);
-		for (int i = 0; i < nrects; ++i) {
-			scissor_output(wlr_output, &rects[i]);
-			fx_renderer_clear(clear_color);
-		}
-	}
-
 	render_whole_output(renderer, wlr_output, &original_damage, &renderer->main_buffer.texture);
-
 	fx_renderer_scissor(NULL);
 
 	// Draw the software cursors
