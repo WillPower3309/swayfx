@@ -1755,9 +1755,9 @@ void output_render(struct sway_output *output, struct timespec *when,
 	/* we need to track extended damage for blur (as it is expanded in output.c),
 	   before we expand it again later in this function
 	 */
-	pixman_region32_t extended_damage;
-	pixman_region32_init(&extended_damage);
-	pixman_region32_copy(&extended_damage, damage);
+	pixman_region32_t original_damage;
+	pixman_region32_init(&original_damage);
+	pixman_region32_copy(&original_damage, damage);
 
 	struct sway_container *fullscreen_con = root->fullscreen_global;
 	if (!fullscreen_con) {
@@ -1776,7 +1776,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 
 	if (debug.damage == DAMAGE_RERENDER) {
 		pixman_region32_union_rect(damage, damage, 0, 0, output_width, output_height);
-		pixman_region32_copy(&extended_damage, damage);
+		pixman_region32_copy(&original_damage, damage);
 	}
 
 	if (!pixman_region32_not_empty(damage)) {
@@ -1868,7 +1868,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 			if (config_should_parameters_blur() && renderer->blur_buffer_dirty) {
 				// Needs to be extended before clearing
 				pixman_region32_union_rect(damage, damage, 0, 0, output_width, output_height);
-				pixman_region32_union_rect(&extended_damage, &extended_damage, 0, 0, output_width, output_height);
+				pixman_region32_union_rect(&original_damage, &original_damage, 0, 0, output_width, output_height);
 			}
 
 			// ensure that the damage isn't expanding past the output's size
@@ -1876,7 +1876,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 			int32_t damage_height = damage->extents.y2 - damage->extents.y1;
 			if (damage_width > output_width || damage_height > output_height) {
 				pixman_region32_intersect_rect(damage, damage, 0, 0, output_width, output_height);
-				pixman_region32_intersect_rect(&extended_damage, &extended_damage, 0, 0, output_width, output_height);
+				pixman_region32_intersect_rect(&original_damage, &original_damage, 0, 0, output_width, output_height);
 			} else {
 				wlr_region_expand(damage, damage, config_get_blur_size());
 			}
@@ -1948,16 +1948,16 @@ renderer_end:
 	fx_renderer_end(output->renderer);
 
 	float clear_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
-	if (pixman_region32_not_empty(&extended_damage)) {
+	if (pixman_region32_not_empty(&original_damage)) {
 		int nrects;
-		pixman_box32_t *rects = pixman_region32_rectangles(&extended_damage, &nrects);
+		pixman_box32_t *rects = pixman_region32_rectangles(&original_damage, &nrects);
 		for (int i = 0; i < nrects; ++i) {
 			scissor_output(wlr_output, &rects[i]);
 			fx_renderer_clear(clear_color);
 		}
 	}
 
-	render_whole_output(renderer, wlr_output, &extended_damage, &renderer->main_buffer.texture);
+	render_whole_output(renderer, wlr_output, &original_damage, &renderer->main_buffer.texture);
 
 	fx_renderer_scissor(NULL);
 
@@ -1970,8 +1970,8 @@ renderer_end:
 	pixman_region32_init(&frame_damage);
 
 	enum wl_output_transform transform = wlr_output_transform_invert(wlr_output->transform);
-	wlr_region_transform(&frame_damage, &extended_damage, transform, output_width, output_height);
-	pixman_region32_fini(&extended_damage);
+	wlr_region_transform(&frame_damage, &original_damage, transform, output_width, output_height);
+	pixman_region32_fini(&original_damage);
 
 	if (debug.damage != DAMAGE_DEFAULT) {
 		pixman_region32_union_rect(&frame_damage, &frame_damage,
