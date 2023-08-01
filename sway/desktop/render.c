@@ -290,8 +290,6 @@ void render_blur(bool optimized, struct sway_output *output, pixman_region32_t *
 		goto damage_finish;
 	}
 
-	wlr_region_scale(&translucent_region, &translucent_region, wlr_output->scale);
-
 	struct fx_framebuffer *buffer = &renderer->blur_buffer;
 	if (!buffer->texture.id || !optimized) {
 		pixman_region32_translate(&translucent_region, dst_box->x, dst_box->y);
