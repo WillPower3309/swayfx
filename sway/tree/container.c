@@ -30,6 +30,32 @@
 #include "log.h"
 #include "stringop.h"
 
+// TODO determine return val
+// TODO no longer need output->refresh sec?
+// TODO signal instead of timer?
+// TODO better timing
+static int animation_timer(void *data) {
+	struct sway_container *con = data;
+	unsigned int fastest_output_refresh_ns = 0;
+	for (int i = 0; i < con->outputs->length; ++i) {
+		struct sway_output *output = root->outputs->items[i];
+		fastest_output_refresh_ns = MAX(fastest_output_refresh_ns, output->refresh_nsec);
+
+		float alpha_step = config->animation_duration ?
+			(con->max_alpha * output->refresh_sec) / config->animation_duration : con->max_alpha;
+		con->alpha = con->alpha < con->target_alpha ? MIN(con->alpha + alpha_step, con->target_alpha)
+				: MAX(con->alpha - alpha_step, con->target_alpha);
+	}
+	if (con->alpha != con->target_alpha) {
+		wl_event_source_timer_update(con->animation_present_timer, fastest_output_refresh_ns / 1000000);
+	} else {
+		wl_event_source_remove(con->animation_present_timer);
+	}
+	container_damage_whole(con);
+
+	return 1;
+}
+
 struct sway_container *container_create(struct sway_view *view) {
 	struct sway_container *c = calloc(1, sizeof(struct sway_container));
 	if (!c) {
@@ -56,6 +82,13 @@ struct sway_container *container_create(struct sway_view *view) {
 	c->outputs = create_list();
 
 	wl_signal_init(&c->events.destroy);
+
+	c->animation_present_timer = wl_event_loop_add_timer(server.wl_event_loop,
+			animation_timer, c);
+	// TODO: pass 0 instead of animation_duration_msec?
+	int animation_duration_msec = (int)(config->animation_duration * 1000);
+	wl_event_source_timer_update(c->animation_present_timer, animation_duration_msec);
+
 	wl_signal_emit_mutable(&root->events.new_node, &c->node);
 
 	return c;
@@ -87,6 +120,10 @@ void container_destroy(struct sway_container *con) {
 	wlr_texture_destroy(con->marks_unfocused);
 	wlr_texture_destroy(con->marks_urgent);
 	wlr_texture_destroy(con->marks_focused_tab_title);
+
+	if (con->animation_present_timer) {
+		wl_event_source_remove(con->animation_present_timer);
+	}
 
 	if (con->view && con->view->container == con) {
 		con->view->container = NULL;
