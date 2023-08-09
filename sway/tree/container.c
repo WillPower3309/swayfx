@@ -40,16 +40,14 @@ static int animation_timer(void *data) {
 	for (int i = 0; i < con->outputs->length; ++i) {
 		struct sway_output *output = root->outputs->items[i];
 		fastest_output_refresh_ns = MAX(fastest_output_refresh_ns, output->refresh_nsec);
-
 		float alpha_step = config->animation_duration ?
 			(con->max_alpha * output->refresh_sec) / config->animation_duration : con->max_alpha;
+
 		con->alpha = con->alpha < con->target_alpha ? MIN(con->alpha + alpha_step, con->target_alpha)
 				: MAX(con->alpha - alpha_step, con->target_alpha);
 	}
 	if (con->alpha != con->target_alpha) {
 		wl_event_source_timer_update(con->animation_present_timer, fastest_output_refresh_ns / 1000000);
-	} else {
-		wl_event_source_remove(con->animation_present_timer);
 	}
 	container_damage_whole(con);
 
@@ -121,9 +119,7 @@ void container_destroy(struct sway_container *con) {
 	wlr_texture_destroy(con->marks_urgent);
 	wlr_texture_destroy(con->marks_focused_tab_title);
 
-	if (con->animation_present_timer) {
-		wl_event_source_remove(con->animation_present_timer);
-	}
+	wl_event_source_remove(con->animation_present_timer);
 
 	if (con->view && con->view->container == con) {
 		con->view->container = NULL;
