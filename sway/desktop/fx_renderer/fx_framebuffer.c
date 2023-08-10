@@ -67,17 +67,11 @@ void fx_framebuffer_add_stencil_buffer(struct fx_framebuffer *buffer, int width,
 	if (first_alloc || buffer->stencil_buffer.width != width || buffer->stencil_buffer.height != height) {
 		glBindRenderbuffer(GL_RENDERBUFFER, buffer->stencil_buffer.rb);
 		glRenderbufferStorage(GL_RENDERBUFFER, GL_STENCIL_INDEX8, width, height);
-		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, buffer->stencil_buffer.rb);
 		buffer->stencil_buffer.width = width;
 		buffer->stencil_buffer.height = height;
-
-		GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-		if (status != GL_FRAMEBUFFER_COMPLETE) {
-			sway_log(SWAY_ERROR, "Stencil buffer incomplete, couldn't create! (FB status: %i)", status);
-			return;
-		}
-		sway_log(SWAY_DEBUG, "Stencil buffer created, status %i", status);
 	}
+
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, buffer->stencil_buffer.rb);
 }
 
 void fx_framebuffer_release(struct fx_framebuffer *buffer) {

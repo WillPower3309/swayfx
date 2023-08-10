@@ -479,7 +479,7 @@ void render_output_blur(struct sway_output *output, pixman_region32_t *damage) {
 		fx_renderer_clear(clear_color);
 	}
 	render_whole_output(renderer, wlr_output, &fake_damage, &buffer->texture);
-	fx_framebuffer_bind(&renderer->main_buffer);
+	fx_framebuffer_bind(&renderer->wlr_buffer);
 
 	pixman_region32_fini(&fake_damage);
 
@@ -1690,13 +1690,6 @@ void output_render(struct sway_output *output, struct timespec *when,
 		return;
 	}
 
-	/* we need to track extended damage for blur (as it is expanded in output.c),
-	   before we expand it again later in this function
-	 */
-	pixman_region32_t original_damage;
-	pixman_region32_init(&original_damage);
-	pixman_region32_copy(&original_damage, damage);
-
 	struct sway_container *fullscreen_con = root->fullscreen_global;
 	if (!fullscreen_con) {
 		fullscreen_con = workspace->current.fullscreen;
@@ -1714,7 +1707,6 @@ void output_render(struct sway_output *output, struct timespec *when,
 
 	if (debug.damage == DAMAGE_RERENDER) {
 		pixman_region32_union_rect(damage, damage, 0, 0, output_width, output_height);
-		pixman_region32_copy(&original_damage, damage);
 	}
 
 	if (!pixman_region32_not_empty(damage)) {
@@ -1723,9 +1715,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 	}
 
 	if (debug.damage == DAMAGE_HIGHLIGHT) {
-		fx_framebuffer_bind(&renderer->wlr_buffer);
 		fx_renderer_clear((float[]){1, 1, 0, 1});
-		fx_framebuffer_bind(&renderer->main_buffer);
 	}
 
 	if (server.session_lock.locked) {
@@ -1802,21 +1792,66 @@ void output_render(struct sway_output *output, struct timespec *when,
 #endif
 	} else {
 		bool workspace_has_blur = should_workspace_have_blur(workspace);
-		if (workspace_has_blur) {
-			if (config_should_parameters_blur() && renderer->blur_buffer_dirty) {
+		if (workspace_has_blur && config_should_parameters_blur()) {
+			// Skip all of the blur artifact prevention if we're damaging the
+			// whole viewport
+			if (renderer->blur_buffer_dirty) {
 				// Needs to be extended before clearing
-				pixman_region32_union_rect(damage, damage, 0, 0, output_width, output_height);
-				pixman_region32_union_rect(&original_damage, &original_damage, 0, 0, output_width, output_height);
-			}
-
-			// ensure that the damage isn't expanding past the output's size
-			int32_t damage_width = damage->extents.x2 - damage->extents.x1;
-			int32_t damage_height = damage->extents.y2 - damage->extents.y1;
-			if (damage_width > output_width || damage_height > output_height) {
-				pixman_region32_intersect_rect(damage, damage, 0, 0, output_width, output_height);
-				pixman_region32_intersect_rect(&original_damage, &original_damage, 0, 0, output_width, output_height);
+				pixman_region32_union_rect(damage, damage,
+						0, 0, output_width, output_height);
 			} else {
-				wlr_region_expand(damage, damage, config_get_blur_size());
+				// To remove blur edge artifacts we need to copy the surrounding
+				// content where the blur would display artifacts and draw it
+				// above the artifacts, i.e resetting the affected areas to look
+				// like they did in the previous frame (these areas haven't changed
+				// so we don't have to worry about that).
+
+				// ensure that the damage isn't expanding past the output's size
+				int32_t damage_width = damage->extents.x2 - damage->extents.x1;
+				int32_t damage_height = damage->extents.y2 - damage->extents.y1;
+				if (damage_width > output_width || damage_height > output_height) {
+					pixman_region32_intersect_rect(damage, damage,
+							0, 0, output_width, output_height);
+				} else {
+					// Expand the original damage to compensate for surrounding
+					// blurred views to avoid sharp edges between damage regions
+					wlr_region_expand(damage, damage, config_get_blur_size());
+				}
+
+				pixman_region32_t blur_region;
+				pixman_region32_init(&blur_region);
+				pixman_region32_t extended_damage;
+				pixman_region32_init(&extended_damage);
+
+				// Gather the whole region where blur is drawn (all surfaces on
+				// the focused workspace)
+				workspace_get_blur_region(workspace, &blur_region);
+
+				pixman_region32_intersect(&extended_damage, damage, &blur_region);
+				// Expand the region to compensate for blur artifacts
+				wlr_region_expand(&extended_damage, &extended_damage, config_get_blur_size());
+				// Limit to the monitors viewport
+				pixman_region32_intersect_rect(&extended_damage, &extended_damage,
+						0, 0, output_width, output_height);
+
+				// Make sure that we ONLY capture the padding pixels around the
+				// blur (around the expanded region) where the artifacts will
+				// be drawn
+				pixman_region32_subtract(&renderer->blur_padding_region,
+						&extended_damage, damage);
+				// Combine into the surface damage (we need to redraw the padding
+				// area as well)
+				pixman_region32_union(damage, damage, &extended_damage);
+
+				// Capture the padding pixels before blur for later use
+				fx_framebuffer_bind(&renderer->blur_saved_pixels_buffer);
+				// TODO: Investigate blitting instead
+				render_whole_output(renderer, wlr_output,
+						&renderer->blur_padding_region, &renderer->wlr_buffer.texture);
+				fx_framebuffer_bind(&renderer->wlr_buffer);
+
+				pixman_region32_fini(&blur_region);
+				pixman_region32_fini(&extended_damage);
 			}
 		}
 
@@ -1883,8 +1918,15 @@ render_overlay:
 	render_drag_icons(output, damage, &root->drag_icons);
 
 renderer_end:
+	// Not needed if we damaged the whole viewport
+	if (!renderer->blur_buffer_dirty) {
+		// Render the saved pixels over the blur artifacts
+		// TODO: Investigate blitting instead
+		render_whole_output(renderer, wlr_output, &renderer->blur_padding_region,
+				&renderer->blur_saved_pixels_buffer.texture);
+	}
+
 	fx_renderer_end(output->renderer);
-	render_whole_output(renderer, wlr_output, &original_damage, &renderer->main_buffer.texture);
 	fx_renderer_scissor(NULL);
 
 	// Draw the software cursors
@@ -1896,8 +1938,7 @@ renderer_end:
 	pixman_region32_init(&frame_damage);
 
 	enum wl_output_transform transform = wlr_output_transform_invert(wlr_output->transform);
-	wlr_region_transform(&frame_damage, &original_damage, transform, output_width, output_height);
-	pixman_region32_fini(&original_damage);
+	wlr_region_transform(&frame_damage, damage, transform, output_width, output_height);
 
 	if (debug.damage != DAMAGE_DEFAULT) {
 		pixman_region32_union_rect(&frame_damage, &frame_damage,

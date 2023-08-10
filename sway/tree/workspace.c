@@ -725,6 +725,54 @@ bool should_workspace_have_blur(struct sway_workspace *ws) {
 	return false;
 }
 
+struct blur_region_data {
+	struct sway_workspace *ws;
+	pixman_region32_t *blur_region;
+};
+
+static void find_blurred_region_iterator(struct sway_container *con, void *data) {
+	struct sway_view *view = con->view;
+	if (!view) {
+		return;
+	}
+
+	struct blur_region_data *region_data = data;
+	struct sway_workspace *ws = region_data->ws;
+	pixman_region32_t *blur_region = region_data->blur_region;
+
+	if (con->blur_enabled && !view->surface->opaque) {
+		pixman_region32_union_rect(blur_region, blur_region,
+				floor(con->current.x) - ws->output->lx,
+				floor(con->current.y) - ws->output->ly,
+				con->current.width, con->current.height);
+	}
+}
+
+void workspace_get_blur_region(struct sway_workspace *ws, pixman_region32_t *blur_region) {
+	if (!workspace_is_visible(ws)) {
+		return;
+	}
+
+	// Each toplevel
+	struct blur_region_data data = { ws, blur_region };
+	workspace_for_each_container(ws, find_blurred_region_iterator, &data);
+
+	// Each Layer
+	struct sway_output *sway_output = ws->output;
+	size_t len = sizeof(sway_output->layers) / sizeof(sway_output->layers[0]);
+	for (size_t i = 0; i < len; ++i) {
+		struct sway_layer_surface *lsurface;
+		wl_list_for_each(lsurface, &sway_output->layers[i], link) {
+			if (lsurface->has_blur && !lsurface->layer_surface->surface->opaque
+					&& lsurface->layer != ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND) {
+				struct wlr_box *geo = &lsurface->geo;
+				pixman_region32_union_rect(blur_region, blur_region,
+						geo->x, geo->y, geo->width, geo->height);
+			}
+		}
+	}
+}
+
 void workspace_for_each_container(struct sway_workspace *ws,
 		void (*f)(struct sway_container *con, void *data), void *data) {
 	// Tiling
