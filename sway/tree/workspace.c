@@ -692,39 +692,6 @@ void workspace_detect_urgent(struct sway_workspace *workspace) {
 	}
 }
 
-static bool find_blurred_con_iterator(struct sway_container *con, void *data) {
-	struct sway_view *view = con->view;
-	if (!view) {
-		return false;
-	}
-	return con->blur_enabled && !view->surface->opaque;
-}
-
-bool should_workspace_have_blur(struct sway_workspace *ws) {
-	if (!workspace_is_visible(ws)) {
-		return false;
-	}
-
-	if ((bool)workspace_find_container(ws, find_blurred_con_iterator, NULL)) {
-		return true;
-	}
-
-	// Check if any layer-shell surfaces will render effects
-	struct sway_output *sway_output = ws->output;
-	size_t len = sizeof(sway_output->layers) / sizeof(sway_output->layers[0]);
-	for (size_t i = 0; i < len; ++i) {
-		struct sway_layer_surface *lsurface;
-		wl_list_for_each(lsurface, &sway_output->layers[i], link) {
-			if (lsurface->has_blur && !lsurface->layer_surface->surface->opaque
-					&& lsurface->layer != ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND) {
-				return true;
-			}
-		}
-	}
-
-	return false;
-}
-
 struct blur_region_data {
 	struct sway_workspace *ws;
 	pixman_region32_t *blur_region;
@@ -748,9 +715,9 @@ static void find_blurred_region_iterator(struct sway_container *con, void *data)
 	}
 }
 
-void workspace_get_blur_region(struct sway_workspace *ws, pixman_region32_t *blur_region) {
-	if (!workspace_is_visible(ws)) {
-		return;
+bool workspace_get_blur_info(struct sway_workspace *ws, pixman_region32_t *blur_region) {
+	if (!workspace_is_visible(ws) || !config_should_parameters_blur()) {
+		return false;
 	}
 
 	// Each toplevel
@@ -771,6 +738,8 @@ void workspace_get_blur_region(struct sway_workspace *ws, pixman_region32_t *blu
 			}
 		}
 	}
+
+	return pixman_region32_not_empty(blur_region);
 }
 
 void workspace_for_each_container(struct sway_workspace *ws,

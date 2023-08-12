@@ -1791,8 +1791,13 @@ void output_render(struct sway_output *output, struct timespec *when,
 		render_unmanaged(output, damage, &root->xwayland_unmanaged);
 #endif
 	} else {
-		bool workspace_has_blur = should_workspace_have_blur(workspace);
-		if (workspace_has_blur && config_should_parameters_blur()) {
+		// Gather the whole region where blur is drawn (all surfaces on
+		// the focused workspace)
+		pixman_region32_t blur_region;
+		pixman_region32_init(&blur_region);
+		bool workspace_has_blur = workspace_get_blur_info(workspace, &blur_region);
+		// Expend the damage to compensate for blur
+		if (workspace_has_blur) {
 			// Skip all of the blur artifact prevention if we're damaging the
 			// whole viewport
 			if (renderer->blur_buffer_dirty) {
@@ -1818,15 +1823,8 @@ void output_render(struct sway_output *output, struct timespec *when,
 					wlr_region_expand(damage, damage, config_get_blur_size());
 				}
 
-				pixman_region32_t blur_region;
-				pixman_region32_init(&blur_region);
 				pixman_region32_t extended_damage;
 				pixman_region32_init(&extended_damage);
-
-				// Gather the whole region where blur is drawn (all surfaces on
-				// the focused workspace)
-				workspace_get_blur_region(workspace, &blur_region);
-
 				pixman_region32_intersect(&extended_damage, damage, &blur_region);
 				// Expand the region to compensate for blur artifacts
 				wlr_region_expand(&extended_damage, &extended_damage, config_get_blur_size());
@@ -1842,6 +1840,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 				// Combine into the surface damage (we need to redraw the padding
 				// area as well)
 				pixman_region32_union(damage, damage, &extended_damage);
+				pixman_region32_fini(&extended_damage);
 
 				// Capture the padding pixels before blur for later use
 				fx_framebuffer_bind(&renderer->blur_saved_pixels_buffer);
@@ -1849,11 +1848,9 @@ void output_render(struct sway_output *output, struct timespec *when,
 				render_whole_output(renderer, wlr_output,
 						&renderer->blur_padding_region, &renderer->wlr_buffer.texture);
 				fx_framebuffer_bind(&renderer->wlr_buffer);
-
-				pixman_region32_fini(&blur_region);
-				pixman_region32_fini(&extended_damage);
 			}
 		}
+		pixman_region32_fini(&blur_region);
 
 		float clear_color[] = {0.25f, 0.25f, 0.25f, 1.0f};
 
@@ -1870,7 +1867,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 			&output->layers[ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM]);
 
 		// check if the background needs to be blurred
-		if (config_should_parameters_blur() && renderer->blur_buffer_dirty && workspace_has_blur) {
+		if (workspace_has_blur && renderer->blur_buffer_dirty) {
 			render_output_blur(output, damage);
 		}
 
