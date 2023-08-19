@@ -428,9 +428,8 @@ void view_set_tiled(struct sway_view *view, bool tiled) {
 }
 
 void view_close(struct sway_view *view) {
-	if (view->impl->close) {
-		view->impl->close(view);
-	}
+	view->container->target_alpha = 0;
+	wl_event_source_timer_update(view->container->animation_present_timer, 1);
 }
 
 void view_close_popups(struct sway_view *view) {
