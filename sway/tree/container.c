@@ -32,16 +32,16 @@
 
 // TODO signal instead of timer?
 // TODO determine return val
-// TODO no longer need output->refresh sec?
+// TODO no longer need output->refresh_sec?
 // TODO better timing
 static int animation_timer(void *data) {
 	struct sway_container *con = data;
-	unsigned int fastest_output_refresh_ns = 0;
+	float fastest_output_refresh_s = 0;
 	bool is_closing = con->alpha > con->target_alpha;
 
 	for (int i = 0; i < con->outputs->length; ++i) {
 		struct sway_output *output = root->outputs->items[i];
-		fastest_output_refresh_ns = MAX(fastest_output_refresh_ns, output->refresh_nsec);
+		fastest_output_refresh_s = MAX(fastest_output_refresh_s, output->refresh_sec);
 		float alpha_step = config->animation_duration ?
 			(con->max_alpha * output->refresh_sec) / config->animation_duration : con->max_alpha;
 		con->alpha = is_closing ? MAX(con->alpha - alpha_step, con->target_alpha) :
@@ -49,7 +49,7 @@ static int animation_timer(void *data) {
 	}
 
 	if (con->alpha != con->target_alpha) {
-		wl_event_source_timer_update(con->animation_present_timer, fastest_output_refresh_ns / 1000000);
+		wl_event_source_timer_update(con->animation_present_timer, fastest_output_refresh_s * 1000);
 	} else if (is_closing && con->view->impl->close) {
 		con->view->impl->close(con->view);
 	}
@@ -87,8 +87,8 @@ struct sway_container *container_create(struct sway_view *view) {
 
 	c->animation_present_timer = wl_event_loop_add_timer(server.wl_event_loop,
 			animation_timer, c);
-	// TODO: pass 0 instead of animation_duration_msec?
-	wl_event_source_timer_update(c->animation_present_timer, 1000);
+	// TODO: WON'T SPAWN IF LESS THAN 50, get optimal time (or use a signal?)
+	wl_event_source_timer_update(c->animation_present_timer, 50);
 
 	wl_signal_emit_mutable(&root->events.new_node, &c->node);
 
