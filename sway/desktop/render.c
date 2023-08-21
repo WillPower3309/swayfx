@@ -72,6 +72,16 @@ enum corner_location get_rotated_corner(enum corner_location corner_location,
 	return corner_location;
 }
 
+// TODO: don't need pointer
+float get_animation_completion_percentage(struct sway_container *con) {
+	if (con->alpha < con->target_alpha) {
+		return con->alpha / con->target_alpha;
+	} else if (con->alpha > con->target_alpha) {
+		return con->alpha / con->max_alpha;
+	}
+	return 1;
+}
+
 /**
  * Apply scale to a width or height.
  *
@@ -884,7 +894,11 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		scale_box(&box, output_scale);
 		int scaled_corner_radius = deco_data.corner_radius == 0 ?
 				0 : (deco_data.corner_radius + state->border_thickness) * output_scale;
-		render_box_shadow(output, damage, &box, config->shadow_color, config->shadow_blur_sigma,
+		float shadow_color[4];
+		memcpy(&shadow_color, config->shadow_color, sizeof(float) * 4);
+		shadow_color[3] *= get_animation_completion_percentage(con);
+
+		render_box_shadow(output, damage, &box, shadow_color, config->shadow_blur_sigma,
 				scaled_corner_radius);
 	}
 
