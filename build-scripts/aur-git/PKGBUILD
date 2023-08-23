@@ -59,7 +59,6 @@ pkgver() {
 
 build() {
 	arch-meson \
-		-Dsd-bus-provider=libsystemd \
 		-Dwerror=false \
 		"$_pkgname" build
 	meson compile -C build
