@@ -74,12 +74,10 @@ enum corner_location get_rotated_corner(enum corner_location corner_location,
 
 // TODO: don't need pointer
 float get_animation_completion_percentage(struct sway_container *con) {
-	if (con->alpha < con->target_alpha) {
-		return con->alpha / con->target_alpha;
-	} else if (con->alpha > con->target_alpha) {
-		return con->alpha / con->max_alpha;
+	if (con->alpha == 1.0f) {
+		return 1.0f;
 	}
-	return 1;
+	return con->alpha < con->target_alpha ? con->alpha / con->target_alpha : con->alpha / con->max_alpha;
 }
 
 /**
