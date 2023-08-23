@@ -286,7 +286,7 @@ struct blur_stencil_data {
 void render_blur(bool optimized, struct sway_output *output,
 		pixman_region32_t *output_damage, const struct wlr_box *dst_box,
 		pixman_region32_t *opaque_region, struct decoration_data *deco_data,
-		struct blur_stencil_data *stencil_data) {
+		struct blur_stencil_data *stencil_data, float opacity) {
 	struct wlr_output *wlr_output = output->wlr_output;
 	struct fx_renderer *renderer = output->renderer;
 
@@ -337,6 +337,7 @@ void render_blur(bool optimized, struct sway_output *output,
 	struct decoration_data blur_deco_data = get_undecorated_decoration_data();
 	blur_deco_data.corner_radius = deco_data->corner_radius;
 	blur_deco_data.has_titlebar = deco_data->has_titlebar;
+	blur_deco_data.alpha = opacity;
 	render_texture(wlr_output, &damage, &buffer->texture, NULL, dst_box, matrix, blur_deco_data);
 
 	// Finish stenciling
@@ -463,8 +464,9 @@ static void render_surface_iterator(struct sway_output *output,
 					wlr_output_transform_invert(wlr_output->transform), monitor_box.width, monitor_box.height);
 			struct blur_stencil_data stencil_data = { &fx_texture, &src_box, matrix };
 			bool should_optimize_blur = view ? !container_is_floating(view->container) || config->blur_xray : false;
+			float blur_opacity = view ? get_animation_completion_percentage(view->container) : 1.0f;
 			render_blur(should_optimize_blur, output, output_damage, &dst_box,
-					&opaque_region, &deco_data, &stencil_data);
+						&opaque_region, &deco_data, &stencil_data, blur_opacity);
 		}
 
 		pixman_region32_fini(&opaque_region);
@@ -844,7 +846,7 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 				struct blur_stencil_data stencil_data = { &fx_texture, &saved_buf->source_box, matrix };
 				bool should_optimize_blur = !container_is_floating(view->container) || config->blur_xray;
 				render_blur(should_optimize_blur, output, damage, &dst_box, &opaque_region,
-						&deco_data, &stencil_data);
+							&deco_data, &stencil_data, get_animation_completion_percentage(view->container)); // TODO: should opacity just always be 1.0f?
 
 				pixman_region32_fini(&opaque_region);
 			}
