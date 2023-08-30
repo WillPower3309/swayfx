@@ -16,7 +16,7 @@ jobs:
           fetch-depth: 0
 
       - name: Publish AUR Stable package
-        uses: ulises-jeremias/github-actions-aur-publish@v1
+        uses: KSXGitHub/github-actions-deploy-aur@v2.7.0
         with:
           pkgname: swayfx
           pkgbuild: ./build-scripts/aur/PKGBUILD
@@ -28,7 +28,7 @@ jobs:
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
           commit_message: Update AUR package
           ssh_keyscan_types: rsa,dsa,ecdsa,ed25519
-          update_pkgver: false
+          updpkgsums: true
 
   aur-publish-git:
     runs-on: ubuntu-latest
@@ -39,7 +39,7 @@ jobs:
           fetch-depth: 0
 
       - name: Publish AUR -git package
-        uses: ulises-jeremias/github-actions-aur-publish@v1
+        uses: KSXGitHub/github-actions-deploy-aur@v2.7.0
         with:
           pkgname: swayfx-git
           pkgbuild: ./build-scripts/aur-git/PKGBUILD
@@ -51,4 +51,4 @@ jobs:
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
           commit_message: Update AUR package
           ssh_keyscan_types: rsa,dsa,ecdsa,ed25519
-          update_pkgver: false
+          updpkgsums: true
