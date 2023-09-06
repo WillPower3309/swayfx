@@ -15,6 +15,8 @@
 #include "log.h"
 #include "sway/desktop/fx_renderer/fx_framebuffer.h"
 #include "sway/desktop/fx_renderer/fx_renderer.h"
+#include "sway/desktop/fx_renderer/fx_stencilbuffer.h"
+#include "sway/desktop/fx_renderer/fx_texture.h"
 #include "sway/desktop/fx_renderer/matrix.h"
 #include "sway/server.h"
 
@@ -251,11 +253,13 @@ static void load_gl_proc(void *proc_ptr, const char *name) {
 	*(void **)proc_ptr = proc;
 }
 
-struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
+struct fx_renderer *fx_renderer_create(struct wlr_egl *egl, struct wlr_output *wlr_output) {
 	struct fx_renderer *renderer = calloc(1, sizeof(struct fx_renderer));
 	if (renderer == NULL) {
 		return NULL;
 	}
+
+	renderer->wlr_output = wlr_output;
 
 	// TODO: wlr_egl_make_current or eglMakeCurrent?
 	// TODO: assert instead of conditional statement?
@@ -265,8 +269,9 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl) {
 		return NULL;
 	}
 
-	renderer->main_buffer = fx_framebuffer_create();
+	renderer->wlr_buffer = fx_framebuffer_create();
 	renderer->blur_buffer = fx_framebuffer_create();
+	renderer->blur_saved_pixels_buffer = fx_framebuffer_create();
 	renderer->effects_buffer = fx_framebuffer_create();
 	renderer->effects_buffer_swapped = fx_framebuffer_create();
 
@@ -385,8 +390,8 @@ error:
 }
 
 void fx_renderer_fini(struct fx_renderer *renderer) {
-	fx_framebuffer_release(&renderer->main_buffer);
 	fx_framebuffer_release(&renderer->blur_buffer);
+	fx_framebuffer_release(&renderer->blur_saved_pixels_buffer);
 	fx_framebuffer_release(&renderer->effects_buffer);
 	fx_framebuffer_release(&renderer->effects_buffer_swapped);
 }
@@ -396,32 +401,36 @@ void fx_renderer_begin(struct fx_renderer *renderer, int width, int height) {
 	renderer->viewport_width = width;
 	renderer->viewport_height = height;
 
-	// Store the wlr framebuffer
-	GLint wlr_fb = -1;
-	glGetIntegerv(GL_FRAMEBUFFER_BINDING, &wlr_fb);
-	if (wlr_fb < 0) {
-		sway_log(SWAY_ERROR, "Failed to get wlr framebuffer!");
-		abort();
-	}
-	renderer->wlr_buffer.fb = wlr_fb;
+	// Store the wlr FBO
+	renderer->wlr_buffer.fb =
+		wlr_gles2_renderer_get_current_fbo(renderer->wlr_output->renderer);
+	// Get the fx_texture
+	struct wlr_texture *wlr_texture = wlr_texture_from_buffer(
+			renderer->wlr_output->renderer, renderer->wlr_output->back_buffer);
+	renderer->wlr_buffer.texture = fx_texture_from_wlr_texture(wlr_texture);
+	wlr_texture_destroy(wlr_texture);
+	// Add the stencil to the wlr fbo
+	fx_framebuffer_add_stencil_buffer(&renderer->wlr_buffer, width, height);
 
 	// Create the framebuffers
-	fx_framebuffer_update(&renderer->main_buffer, width, height);
+	fx_framebuffer_update(&renderer->blur_saved_pixels_buffer, width, height);
 	fx_framebuffer_update(&renderer->effects_buffer, width, height);
 	fx_framebuffer_update(&renderer->effects_buffer_swapped, width, height);
 
 	// Add a stencil buffer to the main buffer & bind the main buffer
-	fx_framebuffer_bind(&renderer->main_buffer);
-	fx_framebuffer_add_stencil_buffer(&renderer->main_buffer, width, height);
+	fx_framebuffer_bind(&renderer->wlr_buffer);
+
+	pixman_region32_init(&renderer->blur_padding_region);
 
 	// refresh projection matrix
 	matrix_projection(renderer->projection, width, height,
 		WL_OUTPUT_TRANSFORM_FLIPPED_180);
 
 	glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+}
 
-	// Bind to our main framebuffer
-	fx_framebuffer_bind(&renderer->main_buffer);
+void fx_renderer_end(struct fx_renderer *renderer) {
+	pixman_region32_fini(&renderer->blur_padding_region);
 }
 
 void fx_renderer_clear(const float color[static 4]) {
