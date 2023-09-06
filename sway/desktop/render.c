@@ -1854,25 +1854,19 @@ void output_render(struct sway_output *output, struct timespec *when,
 		render_unmanaged(output, damage, &root->xwayland_unmanaged);
 #endif
 	} else {
-		// Gather the whole region where blur is drawn (all surfaces on
-		// the focused workspace)
 		pixman_region32_t blur_region;
 		pixman_region32_init(&blur_region);
 		bool workspace_has_blur = workspace_get_blur_info(workspace, &blur_region);
-		// Expend the damage to compensate for blur
+		// Expand the damage to compensate for blur
 		if (workspace_has_blur) {
-			// Skip all of the blur artifact prevention if we're damaging the
-			// whole viewport
+			// Skip the blur artifact prevention if damaging the whole viewport
 			if (renderer->blur_buffer_dirty) {
 				// Needs to be extended before clearing
 				pixman_region32_union_rect(damage, damage,
 						0, 0, output_width, output_height);
 			} else {
-				// To remove blur edge artifacts we need to copy the surrounding
-				// content where the blur would display artifacts and draw it
-				// above the artifacts, i.e resetting the affected areas to look
-				// like they did in the previous frame (these areas haven't changed
-				// so we don't have to worry about that).
+				// copy the surrounding content where the blur would display artifacts
+				// and draw it above the artifacts
 
 				// ensure that the damage isn't expanding past the output's size
 				int32_t damage_width = damage->extents.x2 - damage->extents.x1;
@@ -1895,8 +1889,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 				pixman_region32_intersect_rect(&extended_damage, &extended_damage,
 						0, 0, output_width, output_height);
 
-				// Make sure that we ONLY capture the padding pixels around the
-				// blur (around the expanded region) where the artifacts will be drawn
+				// capture the padding pixels around the blur where artifacts will be drawn
 				pixman_region32_subtract(&renderer->blur_padding_region,
 						&extended_damage, damage);
 				// Combine into the surface damage (we need to redraw the padding area as well)
