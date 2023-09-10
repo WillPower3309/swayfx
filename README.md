@@ -1,14 +1,9 @@
-<div align = center>
+<p align="center">
+    <img src="assets/swayfx_logo.svg" width="256" alt="swayfx logo">
+</p>
 
-![swayfx logo](assets/swayfx_logo.svg)
+---
 
-<hr>
-
-https://discord.gg/qsSx397rkh
-
-</div>
-
-![swayfx screenshot](assets/swayfx_screenshot.jpg)
 Sway is an incredible window manager, and certainly one of the most well established wayland window managers. However, it is restricted to only include the functionality that existed in i3. This fork ditches the simple wlr_renderer, and replaces it with our fx_renderer, capable of rendering with fancy GLES2 effects. This, along with a couple of minor changes, expands sway's featureset to include the following:
 
 + **Blur**
@@ -19,12 +14,14 @@ Sway is an incredible window manager, and certainly one of the most well establi
 + **Scratchpad treated as minimize**: Allows docks, or panels with a taskbar, to correctly interpret minimize / unminimize requests ([thanks to LCBCrion](https://github.com/swaywm/sway/issues/6457))
 + **nixify the repo**: Allows nixos users to easily contribute to and test this project
 
-<span>
-    <img src="https://repology.org/badge/vertical-allrepos/swayfx.svg" height="282"/>
-    <img src="assets/swayfx_mascot.png" width="500"/>
-</span>
+<p align="center">
+    <a href="https://repology.org/project/swayfx/versions"><img src="https://repology.org/badge/vertical-allrepos/swayfx.svg" height="282"/></a>
+    <img src="assets/swayfx_screenshot.jpg" width="500"/>
+</p>
 
 [SwayFX is also available on the Fedora copr](https://copr.fedorainfracloud.org/coprs/swayfx/swayfx/)
+
+[Join our Discord](https://discord.gg/qsSx397rkh)
 
 ## New Configuration Options
 
@@ -127,7 +124,7 @@ The SwayFX team would like to first and foremost thank the maintainers and contr
 
 We would also like to thank the talented artists in our community for contibuting the visual assets that give this project charm:
 + pkdesuwu and honchokomodo for creating the swayfx mascot: https://twitter.com/pkdesuwu/status/1664517033017368576
-+ spooky_skeleton for the swayfx logo, and basil.cafe for making some fine adjustments to it
++ spooky_skeleton for the swayfx logo, and [Basil](https://basil.cafe) for making some fine adjustments to it
 
 Lastly, we would like to thank you, the community, for enjoying and using window manager that we have spent so much time maintaining.
 

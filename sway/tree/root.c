@@ -58,12 +58,16 @@ void root_destroy(struct sway_root *root) {
 /* Set minimized state from scratchpad container `show` state */
 static void root_scratchpad_set_minimize(struct sway_container *con, bool minimize) {
 	if (con->view) {
-		struct wlr_foreign_toplevel_handle_v1 *foreign_toplevel = con->view->foreign_toplevel;
-
+#if HAVE_XWAYLAND
 		if (wlr_surface_is_xwayland_surface(con->view->surface)) {
-			struct wlr_xwayland_surface *xsurface = wlr_xwayland_surface_from_wlr_surface(con->view->surface);
+			struct wlr_xwayland_surface *xsurface
+				= wlr_xwayland_surface_from_wlr_surface(con->view->surface);
 			wlr_xwayland_surface_set_minimized(xsurface, minimize);
-		} else if (foreign_toplevel) {
+			return;
+		}
+#endif
+		struct wlr_foreign_toplevel_handle_v1 *foreign_toplevel = NULL;
+		if ((foreign_toplevel = con->view->foreign_toplevel)) {
 			wlr_foreign_toplevel_handle_v1_set_minimized(foreign_toplevel, minimize);
 		}
 	}

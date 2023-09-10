@@ -54,7 +54,6 @@ install=sway.install
 
 build() {
 	arch-meson \
-		-Dsd-bus-provider=libsystemd \
 		-Dwerror=false \
 		"${_pkgname}-${pkgver}" build
 	meson compile -C build

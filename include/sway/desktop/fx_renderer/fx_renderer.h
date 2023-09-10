@@ -122,12 +122,22 @@ struct fx_renderer {
 
 	int viewport_width, viewport_height;
 
-	struct fx_framebuffer wlr_buffer; // Just the framebuffer used by wlroots
-	struct fx_framebuffer main_buffer; // The main FB used for rendering
-	struct fx_framebuffer blur_buffer; // Contains the blurred background for tiled windows
+	struct wlr_output *wlr_output;
+
+	// The framebuffer used by wlroots
+	struct fx_framebuffer wlr_buffer;
+	// Contains the blurred background for tiled windows
+	struct fx_framebuffer blur_buffer;
+	// Contains the original pixels to draw over the areas where artifact are visible
+	struct fx_framebuffer blur_saved_pixels_buffer;
 	// Blur swaps between the two effects buffers everytime it scales the image
-	struct fx_framebuffer effects_buffer; // Buffer used for effects
-	struct fx_framebuffer effects_buffer_swapped; // Swap buffer used for effects
+	// Buffer used for effects
+	struct fx_framebuffer effects_buffer;
+	// Swap buffer used for effects
+	struct fx_framebuffer effects_buffer_swapped;
+
+	// The region where there's blur
+	pixman_region32_t blur_padding_region;
 
 	bool blur_buffer_dirty;
 
@@ -157,11 +167,13 @@ struct fx_renderer {
 	} shaders;
 };
 
-struct fx_renderer *fx_renderer_create(struct wlr_egl *egl);
+struct fx_renderer *fx_renderer_create(struct wlr_egl *egl, struct wlr_output *output);
 
 void fx_renderer_fini(struct fx_renderer *renderer);
 
 void fx_renderer_begin(struct fx_renderer *renderer, int width, int height);
+
+void fx_renderer_end(struct fx_renderer *renderer);
 
 void fx_renderer_clear(const float color[static 4]);
 

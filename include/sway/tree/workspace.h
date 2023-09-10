@@ -92,7 +92,8 @@ struct sway_output *workspace_output_get_highest_available(
 
 void workspace_detect_urgent(struct sway_workspace *workspace);
 
-bool should_workspace_have_blur(struct sway_workspace *ws);
+bool workspace_get_blur_info(struct sway_workspace *ws,
+		pixman_region32_t *blur_region);
 
 void workspace_for_each_container(struct sway_workspace *ws,
 		void (*f)(struct sway_container *con, void *data), void *data);

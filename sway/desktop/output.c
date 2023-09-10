@@ -698,36 +698,6 @@ static void damage_surface_iterator(struct sway_output *output,
 	}
 	pixman_region32_translate(&damage, box.x, box.y);
 
-	// Extend view/layer damage size
-	int effect_size = 0;
-	if (view && view->container->blur_enabled) {
-		// Don't check for shadow, gets extended in `output_damage_whole_container`
-		effect_size = config_get_blur_size();
-	} else if (wlr_surface_is_layer_surface(surface)) {
-		struct wlr_layer_surface_v1 *layer = wlr_layer_surface_v1_from_wlr_surface(surface);
-		struct sway_layer_surface *sway_layer = layer_from_wlr_layer_surface_v1(layer);
-		int blur_size = sway_layer->has_blur? config_get_blur_size(): 0;
-		int shadow_sigma = sway_layer->has_shadow? config->shadow_blur_sigma: 0;
-		effect_size = MAX(blur_size, shadow_sigma);
-	}
-	if (effect_size > 0) {
-		if (pixman_region32_not_empty(&damage)) {
-			int output_width, output_height;
-			wlr_output_transformed_resolution(output->wlr_output, &output_width, &output_height);
-			int32_t damage_width = damage.extents.x2 - damage.extents.x1;
-			int32_t damage_height = damage.extents.y2 - damage.extents.y1;
-			if (damage_width > output_width || damage_height > output_height) {
-				pixman_region32_intersect_rect(&damage, &damage, 0, 0, output_width, output_height);
-			} else {
-				wlr_region_expand(&damage, &damage, effect_size);
-			}
-		}
-		box.x -= effect_size;
-		box.y -= effect_size;
-		box.width += effect_size * 2;
-		box.height += effect_size * 2;
-	}
-
 	if (wlr_damage_ring_add(&output->damage_ring, &damage)) {
 		wlr_output_schedule_frame(output->wlr_output);
 	}
@@ -984,7 +954,7 @@ void handle_new_output(struct wl_listener *listener, void *data) {
 
 	// Init FX Renderer
 	struct wlr_egl *egl = wlr_gles2_renderer_get_egl(server->wlr_renderer);
-	output->renderer = fx_renderer_create(egl);
+	output->renderer = fx_renderer_create(egl, wlr_output);
 	if (!output->renderer) {
 		sway_log(SWAY_ERROR, "Failed to create fx_renderer");
 		abort();
