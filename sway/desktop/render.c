@@ -267,7 +267,7 @@ struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer, struct
 	return current_buffer;
 }
 
-struct blur_stencil_data{
+struct blur_stencil_data {
 	struct fx_texture *stencil_texture;
 	const struct wlr_fbox *stencil_src_box;
 	float *stencil_matrix;
