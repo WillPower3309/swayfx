@@ -795,6 +795,7 @@ The default colors are:
 
 	Effects:
 	- *blur* <enable|disable>
+	- *blur_ignore_transparent* <enable|disable>
 	- *shadows* <enable|disable>
 	- *corner_radius* <integer>
 

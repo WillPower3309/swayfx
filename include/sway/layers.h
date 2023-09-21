@@ -30,6 +30,7 @@ struct sway_layer_surface {
 
 	bool has_shadow;
 	bool has_blur;
+	bool blur_ignore_transparent;
 	int corner_radius;
 };
 

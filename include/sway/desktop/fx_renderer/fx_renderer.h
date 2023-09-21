@@ -32,6 +32,7 @@ struct decoration_data {
 	float dim;
 	float *dim_color;
 	bool has_titlebar;
+	bool discard_transparent;
 	bool blur;
 	bool shadow;
 };
@@ -113,6 +114,7 @@ struct tex_shader {
 	GLint dim;
 	GLint dim_color;
 	GLint has_titlebar;
+	GLint discard_transparent;
 };
 
 struct fx_renderer {
@@ -176,6 +178,15 @@ void fx_renderer_end(struct fx_renderer *renderer);
 void fx_renderer_clear(const float color[static 4]);
 
 void fx_renderer_scissor(struct wlr_box *box);
+
+// Initialize the stenciling work
+void fx_renderer_stencil_mask_init();
+
+// Close the mask
+void fx_renderer_stencil_mask_close(bool draw_inside_mask);
+
+// Finish stenciling and clear the buffer
+void fx_renderer_stencil_mask_fini();
 
 bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct fx_texture *fx_texture,
 		const struct wlr_fbox *src_box, const struct wlr_box *dst_box, const float matrix[static 9],

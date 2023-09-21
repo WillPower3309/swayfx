@@ -711,6 +711,7 @@ void handle_layer_shell_surface(struct wl_listener *listener, void *data) {
 	layer_surface->data = sway_layer;
 
 	sway_layer->has_blur = false;
+	sway_layer->blur_ignore_transparent = false;
 	sway_layer->has_shadow = false;
 	sway_layer->corner_radius = 0;
 

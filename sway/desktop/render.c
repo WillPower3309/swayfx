@@ -40,6 +40,7 @@ struct decoration_data get_undecorated_decoration_data() {
 		.saturation = 1.0f,
 		.has_titlebar = false,
 		.blur = false,
+		.discard_transparent = false,
 		.shadow = false,
 	};
 }
@@ -266,9 +267,16 @@ struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer, struct
 	return current_buffer;
 }
 
-void render_blur(bool optimized, struct sway_output *output, pixman_region32_t *output_damage,
-		const struct wlr_box *dst_box, pixman_region32_t *opaque_region, int corner_radius,
-		bool should_round_top) {
+struct blur_stencil_data {
+	struct fx_texture *stencil_texture;
+	const struct wlr_fbox *stencil_src_box;
+	float *stencil_matrix;
+};
+
+void render_blur(bool optimized, struct sway_output *output,
+		pixman_region32_t *output_damage, const struct wlr_box *dst_box,
+		pixman_region32_t *opaque_region, struct decoration_data *deco_data,
+		struct blur_stencil_data *stencil_data) {
 	struct wlr_output *wlr_output = output->wlr_output;
 	struct fx_renderer *renderer = output->renderer;
 
@@ -299,16 +307,32 @@ void render_blur(bool optimized, struct sway_output *output, pixman_region32_t *
 		buffer = get_main_buffer_blur(renderer, output, &translucent_region, dst_box);
 	}
 
+	// Get a stencil of the window ignoring transparent regions
+	if (deco_data->discard_transparent) {
+		fx_renderer_scissor(NULL);
+		fx_renderer_stencil_mask_init();
+
+		render_texture(wlr_output, output_damage, stencil_data->stencil_texture, stencil_data->stencil_src_box,
+				dst_box, stencil_data->stencil_matrix, *deco_data);
+
+		fx_renderer_stencil_mask_close(true);
+	}
+
 	// Draw the blurred texture
 	struct wlr_box monitor_box = get_monitor_box(wlr_output);
 	enum wl_output_transform transform = wlr_output_transform_invert(wlr_output->transform);
 	float matrix[9];
 	wlr_matrix_project_box(matrix, &monitor_box, transform, 0.0, wlr_output->transform_matrix);
 
-	struct decoration_data deco_data = get_undecorated_decoration_data();
-	deco_data.corner_radius = corner_radius;
-	deco_data.has_titlebar = should_round_top;
-	render_texture(wlr_output, &damage, &buffer->texture, NULL, dst_box, matrix, deco_data);
+	struct decoration_data blur_deco_data = get_undecorated_decoration_data();
+	blur_deco_data.corner_radius = deco_data->corner_radius;
+	blur_deco_data.has_titlebar = deco_data->has_titlebar;
+	render_texture(wlr_output, &damage, &buffer->texture, NULL, dst_box, matrix, blur_deco_data);
+
+	// Finish stenciling
+	if (deco_data->discard_transparent) {
+		fx_renderer_stencil_mask_fini();
+	}
 
 damage_finish:
 	pixman_region32_fini(&damage);
@@ -404,6 +428,10 @@ static void render_surface_iterator(struct sway_output *output,
 	struct decoration_data deco_data = data->deco_data;
 	deco_data.corner_radius *= wlr_output->scale;
 
+	struct wlr_fbox src_box;
+	wlr_surface_get_buffer_source_box(surface, &src_box);
+	struct fx_texture fx_texture = fx_texture_from_wlr_texture(texture);
+
 	// render blur
 	bool is_subsurface = view ? view->surface != surface : false;
 	if (deco_data.blur && config_should_parameters_blur() && !is_subsurface) {
@@ -420,19 +448,21 @@ static void render_surface_iterator(struct sway_output *output,
 		}
 
 		if (has_alpha) {
-			bool should_optimize_blur = view ? !container_is_floating_or_child(view->container) ||
-				config->blur_xray : false;
-			render_blur(should_optimize_blur, output, output_damage, &dst_box, &opaque_region,
-					deco_data.corner_radius, deco_data.has_titlebar);
+			struct wlr_box monitor_box = get_monitor_box(wlr_output);
+			wlr_box_transform(&monitor_box, &monitor_box,
+					wlr_output_transform_invert(wlr_output->transform), monitor_box.width, monitor_box.height);
+			struct blur_stencil_data stencil_data = { &fx_texture, &src_box, matrix };
+			bool should_optimize_blur = view ? !container_is_floating(view->container) || config->blur_xray : false;
+			render_blur(should_optimize_blur, output, output_damage, &dst_box,
+					&opaque_region, &deco_data, &stencil_data);
 		}
 
 		pixman_region32_fini(&opaque_region);
 	}
 
+	deco_data.discard_transparent = false;
+
 	// Render surface texture
-	struct wlr_fbox src_box;
-	wlr_surface_get_buffer_source_box(surface, &src_box);
-	struct fx_texture fx_texture = fx_texture_from_wlr_texture(texture);
 	render_texture(wlr_output, output_damage, &fx_texture, &src_box, &dst_box,
 		matrix, deco_data);
 
@@ -448,7 +478,7 @@ static void render_layer_iterator(struct sway_output *output,
 	struct decoration_data deco_data = data->deco_data;
 
 	// Ignore effects if this is a subsurface
-	if (wl_list_length(&surface->current.subsurfaces_above) > 0) {
+	if (!wlr_surface_is_layer_surface(surface)) {
 		deco_data = get_undecorated_decoration_data();
 	}
 
@@ -786,6 +816,8 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 
 		deco_data.corner_radius *= wlr_output->scale;
 
+		struct fx_texture fx_texture = fx_texture_from_wlr_texture(saved_buf->buffer->texture);
+
 		// render blur
 		if (deco_data.blur && config_should_parameters_blur()) {
 			struct wlr_gles2_texture_attribs attribs;
@@ -796,16 +828,21 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 				pixman_region32_init(&opaque_region);
 				pixman_region32_union_rect(&opaque_region, &opaque_region, 0, 0, 0, 0);
 
-				bool should_optimize_blur = !container_is_floating_or_child(view->container) || config->blur_xray;
+				struct wlr_box monitor_box = get_monitor_box(wlr_output);
+				wlr_box_transform(&monitor_box, &monitor_box,
+						wlr_output_transform_invert(wlr_output->transform), monitor_box.width, monitor_box.height);
+				struct blur_stencil_data stencil_data = { &fx_texture, &saved_buf->source_box, matrix };
+				bool should_optimize_blur = !container_is_floating(view->container) || config->blur_xray;
 				render_blur(should_optimize_blur, output, damage, &dst_box, &opaque_region,
-						deco_data.corner_radius, deco_data.has_titlebar);
+						&deco_data, &stencil_data);
 
 				pixman_region32_fini(&opaque_region);
 			}
 		}
 
+		deco_data.discard_transparent = false;
+
 		// Render saved surface texture
-		struct fx_texture fx_texture = fx_texture_from_wlr_texture(saved_buf->buffer->texture);
 		render_texture(wlr_output, damage, &fx_texture,
 				&saved_buf->source_box, &dst_box, matrix, deco_data);
 	}
@@ -1405,6 +1442,7 @@ static void render_containers_linear(struct sway_output *output,
 				.saturation = child->saturation,
 				.has_titlebar = has_titlebar,
 				.blur = child->blur_enabled,
+				.discard_transparent = false,
 				.shadow = child->shadow_enabled,
 			};
 			render_view(output, damage, child, colors, deco_data);
@@ -1455,6 +1493,7 @@ static void render_containers_tabbed(struct sway_output *output,
 		.saturation = current->saturation,
 		.has_titlebar = true,
 		.blur = current->blur_enabled,
+		.discard_transparent = false,
 		.shadow = current->shadow_enabled,
 	};
 
@@ -1551,6 +1590,7 @@ static void render_containers_stacked(struct sway_output *output,
 				? 0 : current->corner_radius,
 		.has_titlebar = true,
 		.blur = current->blur_enabled,
+		.discard_transparent = false,
 		.shadow = current->shadow_enabled,
 	};
 
@@ -1699,6 +1739,7 @@ static void render_floating_container(struct sway_output *soutput,
 			.corner_radius = con->corner_radius,
 			.has_titlebar = has_titlebar,
 			.blur = con->blur_enabled,
+			.discard_transparent = false,
 			.shadow = con->shadow_enabled,
 		};
 		render_view(soutput, damage, con, colors, deco_data);
@@ -1956,6 +1997,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 			.saturation = focus->saturation,
 			.has_titlebar = false,
 			.blur = false,
+			.discard_transparent = false,
 			.shadow = false,
 		};
 		render_view_popups(focus->view, output, damage, deco_data);
