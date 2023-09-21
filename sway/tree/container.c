@@ -30,6 +30,34 @@
 #include "log.h"
 #include "stringop.h"
 
+// TODO signal instead of timer?
+// TODO determine return val
+// TODO no longer need output->refresh_sec?
+// TODO better timing
+static int animation_timer(void *data) {
+	struct sway_container *con = data;
+	float fastest_output_refresh_s = 0;
+	bool is_closing = con->alpha > con->target_alpha;
+
+	for (int i = 0; i < con->outputs->length; ++i) {
+		struct sway_output *output = root->outputs->items[i];
+		fastest_output_refresh_s = MAX(fastest_output_refresh_s, output->refresh_sec);
+		float alpha_step = config->animation_duration ?
+			(con->max_alpha * output->refresh_sec) / config->animation_duration : con->max_alpha;
+		con->alpha = is_closing ? MAX(con->alpha - alpha_step, con->target_alpha) :
+			MIN(con->alpha + alpha_step, con->target_alpha);
+	}
+
+	if (con->alpha != con->target_alpha) {
+		wl_event_source_timer_update(con->animation_present_timer, fastest_output_refresh_s * 1000);
+	} else if (is_closing && con->view->impl->close) {
+		con->view->impl->close(con->view);
+	}
+
+	container_damage_whole(con);
+	return 1;
+}
+
 struct sway_container *container_create(struct sway_view *view) {
 	struct sway_container *c = calloc(1, sizeof(struct sway_container));
 	if (!c) {
@@ -39,7 +67,9 @@ struct sway_container *container_create(struct sway_view *view) {
 	node_init(&c->node, N_CONTAINER, c);
 	c->pending.layout = L_NONE;
 	c->view = view;
-	c->alpha = 1.0f;
+	c->alpha = 0.0f;
+	c->target_alpha = 1.0f;
+	c->max_alpha = 1.0f;
 	c->saturation = 1.0f;
 	c->dim = config->default_dim_inactive;
 	c->shadow_enabled = config->shadow_enabled;
@@ -54,6 +84,12 @@ struct sway_container *container_create(struct sway_view *view) {
 	c->outputs = create_list();
 
 	wl_signal_init(&c->events.destroy);
+
+	c->animation_present_timer = wl_event_loop_add_timer(server.wl_event_loop,
+			animation_timer, c);
+	// TODO: WON'T SPAWN IF LESS THAN 50, get optimal time (or use a signal?)
+	wl_event_source_timer_update(c->animation_present_timer, 50);
+
 	wl_signal_emit_mutable(&root->events.new_node, &c->node);
 
 	return c;
@@ -85,6 +121,8 @@ void container_destroy(struct sway_container *con) {
 	wlr_texture_destroy(con->marks_unfocused);
 	wlr_texture_destroy(con->marks_urgent);
 	wlr_texture_destroy(con->marks_focused_tab_title);
+
+	wl_event_source_remove(con->animation_present_timer);
 
 	if (con->view && con->view->container == con) {
 		con->view->container = NULL;

@@ -119,10 +119,15 @@ struct sway_container {
 
 	float saturation;
 
+	// TODO: move alpha to state?
 	float alpha;
+	float target_alpha;
+	float max_alpha;
+
+	struct wl_event_source *animation_present_timer;
 
 	int corner_radius;
-	
+
 	float dim;
 
 	struct wlr_texture *title_focused;

@@ -570,6 +570,7 @@ static int output_repaint_timer_handler(void *data) {
 
 	pixman_region32_t damage;
 	pixman_region32_init(&damage);
+
 	wlr_damage_ring_get_buffer_damage(&output->damage_ring, buffer_age, &damage);
 	if (!output->wlr_output->needs_frame &&
 			!pixman_region32_not_empty(&output->damage_ring.current)) {
@@ -617,7 +618,7 @@ static void handle_frame(struct wl_listener *listener, void *user_data) {
 		const long NSEC_IN_SECONDS = 1000000000;
 		struct timespec predicted_refresh = output->last_presentation;
 		predicted_refresh.tv_nsec += output->refresh_nsec % NSEC_IN_SECONDS;
-		predicted_refresh.tv_sec += output->refresh_nsec / NSEC_IN_SECONDS;
+		predicted_refresh.tv_sec += output->refresh_sec;
 		if (predicted_refresh.tv_nsec >= NSEC_IN_SECONDS) {
 			predicted_refresh.tv_sec += 1;
 			predicted_refresh.tv_nsec -= NSEC_IN_SECONDS;
@@ -907,6 +908,9 @@ static void handle_present(struct wl_listener *listener, void *data) {
 
 	output->last_presentation = *output_event->when;
 	output->refresh_nsec = output_event->refresh;
+
+	const long NSEC_IN_SECONDS = 1000000000;
+	output->refresh_sec = (float)output_event->refresh / NSEC_IN_SECONDS;
 }
 
 static unsigned int last_headless_num = 0;
