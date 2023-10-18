@@ -492,6 +492,7 @@ struct sway_config {
 	bool shadows_on_csd_enabled;
 	int shadow_blur_sigma;
 	float shadow_color[4];
+	float shadow_inactive_color[4];
 
 	bool blur_enabled;
 	bool blur_xray;

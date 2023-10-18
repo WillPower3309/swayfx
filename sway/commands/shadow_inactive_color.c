@@ -6,20 +6,18 @@
 #include "sway/tree/container.h"
 #include "util.h"
 
-struct cmd_results *cmd_shadow_color(int argc, char **argv) {
+struct cmd_results *cmd_shadow_inactive_color(int argc, char **argv) {
 	struct cmd_results *error = NULL;
-	if ((error = checkarg(argc, "shadow_color", EXPECTED_AT_LEAST, 1))) {
+	if ((error = checkarg(argc, "shadow_inactive_color", EXPECTED_AT_LEAST, 1))) {
 		return error;
 	}
 
 	uint32_t color;
 	if (!parse_color(argv[0], &color)) {
 		return cmd_results_new(CMD_INVALID, "Invalid %s color %s",
-				"shadow_color", argv[0]);
+				"shadow_inactive_color", argv[0]);
 	}
-	if (!memcmp(config->shadow_color, config->shadow_inactive_color, sizeof(config->shadow_color)))
-		color_to_rgba(config->shadow_inactive_color, color);
-	color_to_rgba(config->shadow_color, color);
+	color_to_rgba(config->shadow_inactive_color, color);
 
 	arrange_root();
 

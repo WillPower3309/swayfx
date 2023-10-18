@@ -686,6 +686,9 @@ The default colors are:
 *shadow_color* <hex color with alpha>
 	The shadow color. Default color: #0000007F
 
+*shadow_inactive_color* <hex color with alpha>
+	The shadow color for inactive windows. Default value: *shadow_color*
+
 *blur* enable|disable
 	Sets whether blur should be drawn. Can also be set per window with
 	*for_window*.
