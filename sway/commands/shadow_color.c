@@ -17,8 +17,9 @@ struct cmd_results *cmd_shadow_color(int argc, char **argv) {
 		return cmd_results_new(CMD_INVALID, "Invalid %s color %s",
 				"shadow_color", argv[0]);
 	}
-	if (!memcmp(config->shadow_color, config->shadow_inactive_color, sizeof(config->shadow_color)))
+	if (memcmp(config->shadow_color, config->shadow_inactive_color, sizeof(config->shadow_color)) == 0) {
 		color_to_rgba(config->shadow_inactive_color, color);
+	}
 	color_to_rgba(config->shadow_color, color);
 
 	arrange_root();
