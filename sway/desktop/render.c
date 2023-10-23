@@ -884,7 +884,9 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		scale_box(&box, output_scale);
 		int scaled_corner_radius = deco_data.corner_radius == 0 ?
 				0 : (deco_data.corner_radius + state->border_thickness) * output_scale;
-		render_box_shadow(output, damage, &box, config->shadow_color, config->shadow_blur_sigma,
+		float* shadow_color = view_is_urgent(view) || state->focused ?
+				config->shadow_color : config->shadow_inactive_color;
+		render_box_shadow(output, damage, &box, shadow_color, config->shadow_blur_sigma,
 				scaled_corner_radius);
 	}
 

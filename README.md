@@ -36,6 +36,7 @@ Sway is an incredible window manager, and certainly one of the most well establi
     - `shadows_on_csd enable|disable` (**Note**: The shadow might not fit some windows)
     - `shadow_blur_radius <integer value 0 - 100>`
     - `shadow_color <hex color with alpha> ex, #0000007F`
+    - `shadow_inactive_color <hex color with alpha> ex, #0000007F`
 + LayerShell effects (to blur panels / notifications etc):
     - `layer_effects <layer namespace> <effects>`
     - The current layer namespaces can be shown with `swaymsg -r -t get_outputs | jq '.[0].layer_shell_surfaces | .[] | .namespace'`
