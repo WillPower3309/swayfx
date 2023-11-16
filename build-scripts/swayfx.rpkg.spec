@@ -8,12 +8,13 @@
 
 Name:			{{{ git_dir_name }}}
 Version:		%{Tag}
-Release:		1%{?dist}
+Release:		2%{?dist}
 Summary:		SwayFX: Sway, but with eye candy!
 License:		MIT
 URL:			https://github.com/WillPower3309/swayfx
 VCS:			{{{ git_dir_vcs }}}
 Source:			{{{ git_dir_pack }}}
+Source101:		sway-portals.conf
 
 BuildRequires:	gcc-c++
 BuildRequires:	gnupg2
@@ -113,6 +114,9 @@ sed -i "s|^output \* bg .*|output * bg /usr/share/backgrounds/default.png fill|"
 # Create directory for extra config snippets
 install -d -m755 -pv %{buildroot}%{_sysconfdir}/sway/config.d
 
+# Install portals.conf for xdg-desktop-portal
+install -D -m644 -pv %{SOURCE101} %{buildroot}%{_datadir}/xdg-desktop-portal/sway-portals.conf
+
 # install python scripts from contrib
 install -D -m644 -pv -t %{buildroot}%{_datadir}/sway/contrib contrib/*.py
 
@@ -135,15 +139,11 @@ install -D -m755 -pv contrib/grimshot %{buildroot}%{_bindir}/grimshot
 %{_bindir}/swaynag
 %{_datadir}/sway
 %{_datadir}/wayland-sessions/sway.desktop
-%dir %{_datadir}/zsh
-%dir %{_datadir}/zsh/site-functions
-%{_datadir}/zsh/site-functions/_sway*
-%dir %{_datadir}/bash-completion
-%dir %{_datadir}/bash-completion/completions
-%{_datadir}/bash-completion/completions/sway*
-%dir %{_datadir}/fish
-%dir %{_datadir}/fish/vendor_completions.d
-%{_datadir}/fish/vendor_completions.d/sway*
+%dir %{_datadir}/xdg-desktop-portal
+%{_datadir}/xdg-desktop-portal/sway-portals.conf
+%{bash_completions_dir}/sway*
+%{fish_completions_dir}/sway*.fish
+%{zsh_completions_dir}/_sway*
 
 %files wallpapers
 %license assets/LICENSE
