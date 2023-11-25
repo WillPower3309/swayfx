@@ -1,7 +1,7 @@
 # Maintainer: Erik Reider <erik.reider@protonmail.com>
 _pkgname=swayfx
 pkgname="$_pkgname-git"
-pkgver=r6930.94ebb45e
+pkgver=r7023.9cd02fc4
 pkgrel=1
 license=("MIT")
 pkgdesc="SwayFX: Sway, but with eye candy!"
@@ -60,6 +60,7 @@ build() {
 	export PKG_CONFIG_PATH='/usr/lib/wlroots0.16/pkgconfig'
 	arch-meson \
 		-Dwerror=false \
+		-Dsd-bus-provider=libsystemd \
 		"$_pkgname" build
 	meson compile -C build
 }
