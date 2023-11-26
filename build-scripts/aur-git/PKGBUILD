@@ -2,7 +2,7 @@
 _pkgname=swayfx
 pkgname="$_pkgname-git"
 pkgver=r7023.9cd02fc4
-pkgrel=1
+pkgrel=3
 license=("MIT")
 pkgdesc="SwayFX: Sway, but with eye candy!"
 makedepends=(
