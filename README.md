@@ -116,8 +116,8 @@ SwayFX would love to receive any new features that you're willing to build! Gene
 Here's a quick outline of where most of our changes lie vs the main sway repository:
 
 + `sway/desktop/render.c`: the file that handles calling `fx_renderer` to render to the screen, handles damage tracking and scaling
-+ `sway/desktop/fx_renderer.c`: the meat and potatoes of this project, structured as similarly to wlr_renderer as possible
-+ `sway/desktop/shaders`: where all of the shaders that fx_renderer uses live
++ `sway/desktop/fx_renderer/fx_renderer.c`: the meat and potatoes of this project, structured as similarly to wlr_renderer as possible
++ `sway/desktop/fx_renderer/shaders`: where all of the shaders that fx_renderer uses live
 
 ## Acknowledgements
 
