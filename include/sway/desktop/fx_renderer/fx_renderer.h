@@ -5,9 +5,11 @@
 #include <GLES2/gl2ext.h>
 #include <stdbool.h>
 #include <wlr/render/egl.h>
-
-#include "sway/desktop/fx_renderer/fx_framebuffer.h"
-#include "sway/desktop/fx_renderer/fx_texture.h"
+#include <wlr/render/gles2.h>
+#include <wlr/render/wlr_texture.h>
+#include <wlr/util/addon.h>
+#include <wlr/util/box.h>
+#include "sway/desktop/fx_renderer/fx_stencilbuffer.h"
 
 enum corner_location { TOP_LEFT, TOP_RIGHT, BOTTOM_RIGHT, BOTTOM_LEFT, ALL, NONE };
 
@@ -117,12 +119,59 @@ struct tex_shader {
 	GLint discard_transparent;
 };
 
+struct fx_framebuffer {
+	bool initialized;
+
+	GLuint fbo;
+	GLuint rbo;
+
+	struct wlr_buffer *wlr_buffer;
+	struct fx_renderer *renderer;
+	struct wl_list link; // fx_renderer.buffers
+	struct wlr_addon addon;
+
+	EGLImageKHR image;
+};
+
+struct fx_texture {
+	struct wlr_texture wlr_texture;
+	struct fx_renderer *fx_renderer;
+	struct wl_list link; // fx_renderer.textures
+
+	// Basically:
+	//   GL_TEXTURE_2D == mutable
+	//   GL_TEXTURE_EXTERNAL_OES == immutable
+	GLuint target;
+	GLuint tex;
+
+	EGLImageKHR image;
+
+	bool has_alpha;
+
+	// Only affects target == GL_TEXTURE_2D
+	uint32_t drm_format; // used to interpret upload data
+	// If imported from a wlr_buffer
+	struct wlr_buffer *buffer;
+	struct wlr_addon buffer_addon;
+};
+
 struct fx_renderer {
 	float projection[9];
 
 	int viewport_width, viewport_height;
 
 	struct wlr_output *wlr_output;
+
+	struct wlr_egl *egl;
+
+	struct fx_stencilbuffer stencil_buffer;
+
+	struct wl_list textures; // fx_texture.link
+	struct wl_list buffers; // fx_framebuffer.link
+
+	// The FBO and texture used by wlroots
+	GLuint wlr_main_buffer_fbo;
+	struct wlr_gles2_texture_attribs wlr_main_texture_attribs;
 
 	// The framebuffer used by wlroots
 	struct fx_framebuffer wlr_buffer;
@@ -143,10 +192,12 @@ struct fx_renderer {
 
 	struct {
 		bool OES_egl_image_external;
+		bool OES_egl_image;
 	} exts;
 
 	struct {
 		PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES;
+		PFNGLEGLIMAGETARGETRENDERBUFFERSTORAGEOESPROC glEGLImageTargetRenderbufferStorageOES;
 	} procs;
 
 	struct {
@@ -167,6 +218,43 @@ struct fx_renderer {
 	} shaders;
 };
 
+///
+/// fx_framebuffer
+///
+
+struct fx_framebuffer fx_framebuffer_create(void);
+
+void fx_framebuffer_bind(struct fx_framebuffer *buffer);
+
+void fx_framebuffer_bind_wlr_fbo(struct fx_renderer *renderer);
+
+void fx_framebuffer_update(struct fx_renderer *fx_renderer, struct fx_framebuffer *fx_buffer,
+		int width, int height);
+
+void fx_framebuffer_add_stencil_buffer(struct fx_framebuffer *buffer, int width, int height);
+
+void fx_framebuffer_release(struct fx_framebuffer *buffer);
+
+///
+/// fx_texture
+///
+
+struct fx_texture *fx_get_texture(struct wlr_texture *wlr_texture);
+
+struct fx_texture *fx_texture_from_buffer(struct fx_renderer *fx_renderer,
+	struct wlr_buffer *buffer);
+
+void fx_texture_destroy(struct fx_texture *texture);
+
+bool wlr_texture_is_fx(struct wlr_texture *wlr_texture);
+
+void wlr_gles2_texture_get_fx_attribs(struct fx_texture *texture,
+		struct wlr_gles2_texture_attribs *attribs);
+
+///
+/// fx_renderer
+///
+
 struct fx_renderer *fx_renderer_create(struct wlr_egl *egl, struct wlr_output *output);
 
 void fx_renderer_fini(struct fx_renderer *renderer);
@@ -179,6 +267,9 @@ void fx_renderer_clear(const float color[static 4]);
 
 void fx_renderer_scissor(struct wlr_box *box);
 
+void fx_renderer_get_texture_attribs(struct wlr_texture *texture,
+		struct wlr_gles2_texture_attribs *attribs);
+
 // Initialize the stenciling work
 void fx_renderer_stencil_mask_init();
 
@@ -188,11 +279,11 @@ void fx_renderer_stencil_mask_close(bool draw_inside_mask);
 // Finish stenciling and clear the buffer
 void fx_renderer_stencil_mask_fini();
 
-bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct fx_texture *fx_texture,
+bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct wlr_texture *wlr_texture,
 		const struct wlr_fbox *src_box, const struct wlr_box *dst_box, const float matrix[static 9],
 		struct decoration_data deco_data);
 
-bool fx_render_texture_with_matrix(struct fx_renderer *renderer, struct fx_texture *fx_texture,
+bool fx_render_texture_with_matrix(struct fx_renderer *renderer, struct wlr_texture *wlr_texture,
 		const struct wlr_box *dst_box, const float matrix[static 9], struct decoration_data deco_data);
 
 void fx_render_rect(struct fx_renderer *renderer, const struct wlr_box *box,
@@ -211,7 +302,7 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 		float blur_sigma);
 
 void fx_render_blur(struct fx_renderer *renderer, const float matrix[static 9],
-		struct fx_framebuffer **buffer, struct blur_shader *shader, const struct wlr_box *box,
-		int blur_radius);
+		struct wlr_gles2_texture_attribs *texture, struct blur_shader *shader,
+		const struct wlr_box *box, int blur_radius);
 
 #endif

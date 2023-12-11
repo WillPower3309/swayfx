@@ -1,89 +1,142 @@
-#include "log.h"
-#include "sway/desktop/fx_renderer/fx_framebuffer.h"
-#include "sway/desktop/fx_renderer/fx_stencilbuffer.h"
-#include "sway/desktop/fx_renderer/fx_texture.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <wlr/interfaces/wlr_buffer.h>
+#include <wlr/render/interface.h>
+#include <wlr/render/allocator.h>
+#include <wlr/render/swapchain.h>
 
-struct fx_framebuffer fx_framebuffer_create() {
+#include "log.h"
+#include "render/egl.h"
+#include "render/gles2.h"
+#include "sway/desktop/fx_renderer/fx_renderer.h"
+
+static void handle_buffer_destroy(struct wlr_addon *addon) {
+	struct fx_framebuffer *buffer =
+		wl_container_of(addon, buffer, addon);
+	fx_framebuffer_release(buffer);
+}
+
+static const struct wlr_addon_interface buffer_addon_impl = {
+	.name = "fx_framebuffer",
+	.destroy = handle_buffer_destroy,
+};
+
+
+struct fx_framebuffer fx_framebuffer_create(void) {
 	return (struct fx_framebuffer) {
-		.fb = -1,
-		.stencil_buffer = fx_stencilbuffer_create(),
-		.texture = fx_texture_create(),
+		.initialized = false,
+		.fbo = -1,
+		.rbo = -1,
+		.wlr_buffer = NULL,
+		.image = NULL,
 	};
 }
 
-void fx_framebuffer_bind(struct fx_framebuffer *buffer) {
-	glBindFramebuffer(GL_FRAMEBUFFER, buffer->fb);
+void fx_framebuffer_bind(struct fx_framebuffer *fx_buffer) {
+	glBindFramebuffer(GL_FRAMEBUFFER, fx_buffer->fbo);
 }
 
-void fx_framebuffer_update(struct fx_framebuffer *buffer, int width, int height) {
+void fx_framebuffer_bind_wlr_fbo(struct fx_renderer *renderer) {
+	glBindFramebuffer(GL_FRAMEBUFFER, renderer->wlr_main_buffer_fbo);
+}
+
+void fx_framebuffer_update(struct fx_renderer *fx_renderer, struct fx_framebuffer *fx_buffer,
+		int width, int height) {
+	struct wlr_output *output = fx_renderer->wlr_output;
+
+	fx_buffer->renderer = fx_renderer;
+
 	bool first_alloc = false;
 
-	if (buffer->fb == (uint32_t) -1) {
-		glGenFramebuffers(1, &buffer->fb);
+	if (!fx_buffer->wlr_buffer ||
+			fx_buffer->wlr_buffer->width != width ||
+			fx_buffer->wlr_buffer->height != height) {
+		wlr_buffer_drop(fx_buffer->wlr_buffer);
+		fx_buffer->wlr_buffer = wlr_allocator_create_buffer(output->allocator,
+				width, height, output->swapchain->format);
 		first_alloc = true;
 	}
 
-	if (buffer->texture.id == 0) {
+	if (fx_buffer->fbo == (uint32_t) -1 || first_alloc) {
+		glGenFramebuffers(1, &fx_buffer->fbo);
 		first_alloc = true;
-		glGenTextures(1, &buffer->texture.id);
-		glBindTexture(GL_TEXTURE_2D, buffer->texture.id);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	}
 
-	if (first_alloc || buffer->texture.width != width || buffer->texture.height != height) {
-		glBindTexture(GL_TEXTURE_2D, buffer->texture.id);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-
-		glBindFramebuffer(GL_FRAMEBUFFER, buffer->fb);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-				buffer->texture.id, 0);
-		buffer->texture.target = GL_TEXTURE_2D;
-		buffer->texture.has_alpha = false;
-		buffer->texture.width = width;
-		buffer->texture.height = height;
-
-		GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-		if (status != GL_FRAMEBUFFER_COMPLETE) {
-			sway_log(SWAY_ERROR, "Framebuffer incomplete, couldn't create! (FB status: %i)", status);
-			return;
+	if (fx_buffer->rbo == (uint32_t) -1 || first_alloc) {
+		struct wlr_dmabuf_attributes dmabuf = {0};
+		if (!wlr_buffer_get_dmabuf(fx_buffer->wlr_buffer, &dmabuf)) {
+			goto error_buffer;
 		}
-		sway_log(SWAY_DEBUG, "Framebuffer created, status %i", status);
+
+		bool external_only;
+		fx_buffer->image = wlr_egl_create_image_from_dmabuf(fx_renderer->egl,
+			&dmabuf, &external_only);
+		if (fx_buffer->image == EGL_NO_IMAGE_KHR) {
+			goto error_buffer;
+		}
+
+		glGenRenderbuffers(1, &fx_buffer->rbo);
+		glBindRenderbuffer(GL_RENDERBUFFER, fx_buffer->rbo);
+		fx_renderer->procs.glEGLImageTargetRenderbufferStorageOES(GL_RENDERBUFFER,
+			fx_buffer->image);
+		glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+		glBindFramebuffer(GL_FRAMEBUFFER, fx_buffer->fbo);
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+			GL_RENDERBUFFER, fx_buffer->rbo);
+		GLenum fb_status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+		if (fb_status != GL_FRAMEBUFFER_COMPLETE) {
+			wlr_log(WLR_ERROR, "Failed to create FBO");
+			goto error_image;
+		}
 	}
 
-	glBindTexture(GL_TEXTURE_2D, 0);
+	if (!fx_buffer->initialized) {
+		fx_buffer->initialized = true;
+
+		wlr_addon_init(&fx_buffer->addon, &fx_buffer->wlr_buffer->addons, fx_renderer,
+			&buffer_addon_impl);
+
+		wl_list_insert(&fx_renderer->buffers, &fx_buffer->link);
+	}
+
+	if (first_alloc) {
+		wlr_log(WLR_DEBUG, "Created GL FBO for buffer %dx%d",
+			fx_buffer->wlr_buffer->width, fx_buffer->wlr_buffer->height);
+	}
+
+	return;
+error_image:
+	wlr_egl_destroy_image(fx_renderer->egl, fx_buffer->image);
+error_buffer:
+	wlr_log(WLR_ERROR, "Could not create FX buffer! Aborting...");
+	abort();
 }
 
-void fx_framebuffer_add_stencil_buffer(struct fx_framebuffer *buffer, int width, int height) {
-	bool first_alloc = false;
-
-	if (buffer->stencil_buffer.rb == (uint32_t) -1) {
-		glGenRenderbuffers(1, &buffer->stencil_buffer.rb);
-		first_alloc = true;
-	}
-
-	if (first_alloc || buffer->stencil_buffer.width != width || buffer->stencil_buffer.height != height) {
-		glBindRenderbuffer(GL_RENDERBUFFER, buffer->stencil_buffer.rb);
-		glRenderbufferStorage(GL_RENDERBUFFER, GL_STENCIL_INDEX8, width, height);
-		buffer->stencil_buffer.width = width;
-		buffer->stencil_buffer.height = height;
-	}
-
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, buffer->stencil_buffer.rb);
-}
-
-void fx_framebuffer_release(struct fx_framebuffer *buffer) {
+void fx_framebuffer_release(struct fx_framebuffer *fx_buffer) {
 	// Release the framebuffer
-	if (buffer->fb != (uint32_t) -1 && buffer->fb) {
-		glDeleteFramebuffers(1, &buffer->fb);
+	struct wlr_egl_context prev_ctx;
+	if (fx_buffer->initialized) {
+		wl_list_remove(&fx_buffer->link);
+		wlr_addon_finish(&fx_buffer->addon);
+
+		wlr_egl_save_context(&prev_ctx);
+		wlr_egl_make_current(fx_buffer->renderer->egl);
 	}
-	buffer->fb = -1;
 
-	// Release the stencil buffer
-	fx_stencilbuffer_release(&buffer->stencil_buffer);
+	glDeleteFramebuffers(1, &fx_buffer->fbo);
+	fx_buffer->fbo = -1;
+	glDeleteRenderbuffers(1, &fx_buffer->rbo);
+	fx_buffer->rbo = -1;
 
-	// Release the texture
-	fx_texture_release(&buffer->texture);
+
+	if (fx_buffer->initialized) {
+		wlr_egl_destroy_image(fx_buffer->renderer->egl, fx_buffer->image);
+
+		wlr_egl_restore_context(&prev_ctx);
+	}
+
+	fx_buffer->initialized = false;
 }

@@ -13,10 +13,8 @@
 #include <wlr/util/box.h>
 
 #include "log.h"
-#include "sway/desktop/fx_renderer/fx_framebuffer.h"
 #include "sway/desktop/fx_renderer/fx_renderer.h"
 #include "sway/desktop/fx_renderer/fx_stencilbuffer.h"
-#include "sway/desktop/fx_renderer/fx_texture.h"
 #include "sway/desktop/fx_renderer/matrix.h"
 #include "sway/server.h"
 
@@ -260,7 +258,11 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl, struct wlr_output *w
 		return NULL;
 	}
 
+	wl_list_init(&renderer->buffers);
+	wl_list_init(&renderer->textures);
+
 	renderer->wlr_output = wlr_output;
+	renderer->egl = egl;
 
 	// TODO: wlr_egl_make_current or eglMakeCurrent?
 	// TODO: assert instead of conditional statement?
@@ -270,7 +272,11 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl, struct wlr_output *w
 		return NULL;
 	}
 
-	renderer->wlr_buffer = fx_framebuffer_create();
+	// Create the stencil buffer
+	renderer->stencil_buffer = fx_stencilbuffer_create();
+
+	// Create the FBOs
+	renderer->wlr_main_buffer_fbo = -1;
 	renderer->blur_buffer = fx_framebuffer_create();
 	renderer->blur_saved_pixels_buffer = fx_framebuffer_create();
 	renderer->effects_buffer = fx_framebuffer_create();
@@ -296,6 +302,12 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl, struct wlr_output *w
 		renderer->exts.OES_egl_image_external = true;
 		load_gl_proc(&renderer->procs.glEGLImageTargetTexture2DOES,
 			"glEGLImageTargetTexture2DOES");
+	}
+
+	if (check_gl_ext(exts_str, "GL_OES_EGL_image")) {
+		renderer->exts.OES_egl_image = true;
+		load_gl_proc(&renderer->procs.glEGLImageTargetRenderbufferStorageOES,
+			"glEGLImageTargetRenderbufferStorageOES");
 	}
 
 	// blur shaders
@@ -395,6 +407,20 @@ void fx_renderer_fini(struct fx_renderer *renderer) {
 	fx_framebuffer_release(&renderer->blur_saved_pixels_buffer);
 	fx_framebuffer_release(&renderer->effects_buffer);
 	fx_framebuffer_release(&renderer->effects_buffer_swapped);
+
+	struct fx_framebuffer *fx_buffer, *fx_buffer_tmp;
+	wl_list_for_each_safe(fx_buffer, fx_buffer_tmp, &renderer->buffers, link) {
+		fx_framebuffer_release(fx_buffer);
+	}
+
+	struct fx_texture *tex, *tex_tmp;
+	wl_list_for_each_safe(tex, tex_tmp, &renderer->textures, link) {
+		fx_texture_destroy(tex);
+	}
+
+	fx_stencilbuffer_release(&renderer->stencil_buffer);
+
+	free(renderer);
 }
 
 void fx_renderer_begin(struct fx_renderer *renderer, int width, int height) {
@@ -403,23 +429,23 @@ void fx_renderer_begin(struct fx_renderer *renderer, int width, int height) {
 	renderer->viewport_height = height;
 
 	// Store the wlr FBO
-	renderer->wlr_buffer.fb =
+	renderer->wlr_main_buffer_fbo =
 		wlr_gles2_renderer_get_current_fbo(renderer->wlr_output->renderer);
 	// Get the fx_texture
 	struct wlr_texture *wlr_texture = wlr_texture_from_buffer(
 			renderer->wlr_output->renderer, renderer->wlr_output->back_buffer);
-	renderer->wlr_buffer.texture = fx_texture_from_wlr_texture(wlr_texture);
+	wlr_gles2_texture_get_attribs(wlr_texture, &renderer->wlr_main_texture_attribs);
 	wlr_texture_destroy(wlr_texture);
 	// Add the stencil to the wlr fbo
-	fx_framebuffer_add_stencil_buffer(&renderer->wlr_buffer, width, height);
+	fx_stencilbuffer_init(&renderer->stencil_buffer, width, height);
 
-	// Create the framebuffers
-	fx_framebuffer_update(&renderer->blur_saved_pixels_buffer, width, height);
-	fx_framebuffer_update(&renderer->effects_buffer, width, height);
-	fx_framebuffer_update(&renderer->effects_buffer_swapped, width, height);
+	// Create the additional FBOs
+	fx_framebuffer_update(renderer, &renderer->blur_saved_pixels_buffer, width, height);
+	fx_framebuffer_update(renderer, &renderer->effects_buffer, width, height);
+	fx_framebuffer_update(renderer, &renderer->effects_buffer_swapped, width, height);
 
-	// Add a stencil buffer to the main buffer & bind the main buffer
-	fx_framebuffer_bind(&renderer->wlr_buffer);
+	// Finally bind the main wlr FBO
+	fx_framebuffer_bind_wlr_fbo(renderer);
 
 	pixman_region32_init(&renderer->blur_padding_region);
 
@@ -446,6 +472,16 @@ void fx_renderer_scissor(struct wlr_box *box) {
 		glEnable(GL_SCISSOR_TEST);
 	} else {
 		glDisable(GL_SCISSOR_TEST);
+	}
+}
+
+void fx_renderer_get_texture_attribs(struct wlr_texture *texture,
+		struct wlr_gles2_texture_attribs *attribs) {
+	if (wlr_texture_is_gles2(texture)) {
+		wlr_gles2_texture_get_attribs(texture, attribs);
+	} else if (wlr_texture_is_fx(texture)) {
+		struct fx_texture *fx_texture = fx_get_texture(texture);
+		wlr_gles2_texture_get_fx_attribs(fx_texture, attribs);
 	}
 }
 
@@ -478,15 +514,22 @@ void fx_renderer_stencil_mask_fini() {
 	glDisable(GL_STENCIL_TEST);
 }
 
-bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct fx_texture *fx_texture,
+bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct wlr_texture *wlr_texture,
 		const struct wlr_fbox *src_box, const struct wlr_box *dst_box, const float matrix[static 9],
 		struct decoration_data deco_data) {
 
+	struct wlr_gles2_texture_attribs *texture_attrs = malloc(sizeof(struct wlr_gles2_texture_attribs));
+	fx_renderer_get_texture_attribs(wlr_texture, texture_attrs);
+	if (!texture_attrs) {
+		sway_log(SWAY_ERROR, "Texture not GLES2 or FX. Aborting...");
+		abort();
+	}
+
 	struct tex_shader *shader = NULL;
 
-	switch (fx_texture->target) {
+	switch (texture_attrs->target) {
 	case GL_TEXTURE_2D:
-		if (fx_texture->has_alpha) {
+		if (texture_attrs->has_alpha) {
 			shader = &renderer->shaders.tex_rgba;
 		} else {
 			shader = &renderer->shaders.tex_rgbx;
@@ -514,7 +557,7 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct fx_te
 	wlr_matrix_transpose(gl_matrix, gl_matrix);
 
 	// if there's no opacity or rounded corners we don't need to blend
-	if (!fx_texture->has_alpha && deco_data.alpha == 1.0 && !deco_data.corner_radius) {
+	if (!texture_attrs->has_alpha && deco_data.alpha == 1.0 && !deco_data.corner_radius) {
 		glDisable(GL_BLEND);
 	} else {
 		glEnable(GL_BLEND);
@@ -523,9 +566,9 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct fx_te
 	glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(fx_texture->target, fx_texture->id);
+	glBindTexture(texture_attrs->target, texture_attrs->tex);
 
-	glTexParameteri(fx_texture->target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(texture_attrs->target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
 	glUseProgram(shader->program);
 
@@ -543,10 +586,10 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct fx_te
 	glUniform1f(shader->saturation, deco_data.saturation);
 	glUniform1f(shader->radius, deco_data.corner_radius);
 
-	const GLfloat x1 = src_box->x / fx_texture->width;
-	const GLfloat y1 = src_box->y / fx_texture->height;
-	const GLfloat x2 = (src_box->x + src_box->width) / fx_texture->width;
-	const GLfloat y2 = (src_box->y + src_box->height) / fx_texture->height;
+	const GLfloat x1 = src_box->x / wlr_texture->width;
+	const GLfloat y1 = src_box->y / wlr_texture->height;
+	const GLfloat x2 = (src_box->x + src_box->width) / wlr_texture->width;
+	const GLfloat y2 = (src_box->y + src_box->height) / wlr_texture->height;
 	const GLfloat texcoord[] = {
 		x2, y1, // top right
 		x1, y1, // top left
@@ -565,12 +608,12 @@ bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct fx_te
 	glDisableVertexAttribArray(shader->pos_attrib);
 	glDisableVertexAttribArray(shader->tex_attrib);
 
-	glBindTexture(fx_texture->target, 0);
+	glBindTexture(texture_attrs->target, 0);
 
 	return true;
 }
 
-bool fx_render_texture_with_matrix(struct fx_renderer *renderer, struct fx_texture *texture,
+bool fx_render_texture_with_matrix(struct fx_renderer *renderer, struct wlr_texture *texture,
 		const struct wlr_box *dst_box, const float matrix[static 9],
 		struct decoration_data deco_data) {
 	struct wlr_fbox src_box = {
@@ -771,8 +814,9 @@ void fx_render_stencil_mask(struct fx_renderer *renderer, const struct wlr_box *
 }
 
 // TODO: alpha input arg?
-void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *box,
-		const float color[static 4], const float matrix[static 9], int corner_radius,
+void fx_render_box_shadow(struct fx_renderer *renderer,
+		const struct wlr_box *box, const float color[static 4],
+		const float matrix[static 9], int corner_radius,
 		float blur_sigma) {
 	if (box->width == 0 || box->height == 0) {
 		return;
@@ -833,16 +877,16 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 }
 
 void fx_render_blur(struct fx_renderer *renderer, const float matrix[static 9],
-		struct fx_framebuffer **buffer, struct blur_shader *shader,
+		struct wlr_gles2_texture_attribs *texture, struct blur_shader *shader,
 		const struct wlr_box *box, int blur_radius) {
 	glDisable(GL_BLEND);
 	glDisable(GL_STENCIL_TEST);
 
 	glActiveTexture(GL_TEXTURE0);
 
-	glBindTexture((*buffer)->texture.target, (*buffer)->texture.id);
+	glBindTexture(texture->target, texture->tex);
 
-	glTexParameteri((*buffer)->texture.target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(texture->target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
 	glUseProgram(shader->program);
 
