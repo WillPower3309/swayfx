@@ -481,6 +481,12 @@ void fx_renderer_stencil_mask_fini() {
 bool fx_render_subtexture_with_matrix(struct fx_renderer *renderer, struct fx_texture *fx_texture,
 		const struct wlr_fbox *src_box, const struct wlr_box *dst_box, const float matrix[static 9],
 		struct decoration_data deco_data) {
+	// Fixes corner radii not being "round" when the radii is larger than
+	// the height/width
+	int min_size = MIN(dst_box->height, dst_box->width) * 0.5;
+	if (deco_data.corner_radius > min_size) {
+		deco_data.corner_radius = min_size;
+	}
 
 	struct tex_shader *shader = NULL;
 
@@ -630,6 +636,13 @@ void fx_render_rounded_rect(struct fx_renderer *renderer, const struct wlr_box *
 	}
 	assert(box->width > 0 && box->height > 0);
 
+	// Fixes corner radii not being "round" when the radii is larger than
+	// the height/width
+	int min_size = MIN(box->height, box->width) * 0.5;
+	if (radius > min_size) {
+		radius = min_size;
+	}
+
 	struct rounded_quad_shader *shader = NULL;
 
 	switch (corner_location) {
@@ -691,6 +704,13 @@ void fx_render_border_corner(struct fx_renderer *renderer, const struct wlr_box 
 	}
 	assert(box->width > 0 && box->height > 0);
 
+	// Fixes corner radii not being "round" when the radii is larger than
+	// the height/width
+	int min_size = MIN(box->height, box->width) * 0.5;
+	if (radius > min_size) {
+		radius = min_size;
+	}
+
 	float gl_matrix[9];
 	wlr_matrix_multiply(gl_matrix, renderer->projection, matrix);
 
@@ -739,6 +759,13 @@ void fx_render_stencil_mask(struct fx_renderer *renderer, const struct wlr_box *
 	}
 	assert(box->width > 0 && box->height > 0);
 
+	// Fixes corner radii not being "round" when the radii is larger than
+	// the height/width
+	int min_size = MIN(box->height, box->width) * 0.5;
+	if (corner_radius > min_size) {
+		corner_radius = min_size;
+	}
+
 	// TODO: just pass gl_matrix?
 	float gl_matrix[9];
 	wlr_matrix_multiply(gl_matrix, renderer->projection, matrix);
@@ -778,6 +805,13 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 		return;
 	}
 	assert(box->width > 0 && box->height > 0);
+
+	// Fixes corner radii not being "round" when the radii is larger than
+	// the height/width
+	int min_size = MIN(box->height, box->width) * 0.5;
+	if (corner_radius > min_size) {
+		corner_radius = min_size;
+	}
 
 	float gl_matrix[9];
 	wlr_matrix_multiply(gl_matrix, renderer->projection, matrix);
