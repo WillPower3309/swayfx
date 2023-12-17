@@ -467,8 +467,12 @@ static void render_surface_iterator(struct sway_output *output,
 			struct wlr_box monitor_box = get_monitor_box(wlr_output);
 			wlr_box_transform(&monitor_box, &monitor_box,
 					wlr_output_transform_invert(wlr_output->transform), monitor_box.width, monitor_box.height);
-			struct blur_stencil_data stencil_data = { texture, &src_box, matrix };
-			bool should_optimize_blur = view ? !container_is_floating(view->container) || config->blur_xray : false;
+			struct blur_stencil_data stencil_data = {
+				texture,
+				&src_box,
+				matrix,
+			};
+			bool should_optimize_blur = view ? !container_is_floating_or_child(view->container) || config->blur_xray : false;
 			render_blur(should_optimize_blur, output, output_damage, &dst_box,
 					&opaque_region, &deco_data, &stencil_data);
 		}
@@ -846,8 +850,12 @@ static void render_saved_view(struct sway_view *view, struct sway_output *output
 				struct wlr_box monitor_box = get_monitor_box(wlr_output);
 				wlr_box_transform(&monitor_box, &monitor_box,
 						wlr_output_transform_invert(wlr_output->transform), monitor_box.width, monitor_box.height);
-				struct blur_stencil_data stencil_data = { saved_buf->buffer->texture, &saved_buf->source_box, matrix };
-				bool should_optimize_blur = !container_is_floating(view->container) || config->blur_xray;
+				struct blur_stencil_data stencil_data = {
+					saved_buf->buffer->texture,
+					&saved_buf->source_box,
+					matrix,
+				};
+				bool should_optimize_blur = !container_is_floating_or_child(view->container) || config->blur_xray;
 				render_blur(should_optimize_blur, output, damage, &dst_box, &opaque_region,
 						&deco_data, &stencil_data);
 
