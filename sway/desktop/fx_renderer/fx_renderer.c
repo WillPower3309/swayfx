@@ -7,8 +7,10 @@
 #include <GLES2/gl2.h>
 #include <stdlib.h>
 #include <wlr/backend.h>
+#include <wlr/render/drm_format_set.h>
 #include <wlr/render/egl.h>
 #include <wlr/render/gles2.h>
+#include <wlr/render/interface.h>
 #include <wlr/types/wlr_matrix.h>
 #include <wlr/util/box.h>
 
@@ -263,6 +265,17 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl, struct wlr_output *w
 
 	renderer->wlr_output = wlr_output;
 	renderer->egl = egl;
+
+	// Get DRM format
+	const struct wlr_drm_format_set *display_formats =
+		wlr_output_get_primary_formats(wlr_output, wlr_output->allocator->buffer_caps);
+	if (!(renderer->drm_format =
+				wlr_drm_format_set_get(display_formats, wlr_output->render_format))) {
+		sway_log(SWAY_ERROR,
+				"FX RENDERER: Could not get drm format: %u",
+				wlr_output->render_format);
+		return NULL;
+	}
 
 	// TODO: wlr_egl_make_current or eglMakeCurrent?
 	// TODO: assert instead of conditional statement?

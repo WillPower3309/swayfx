@@ -173,8 +173,8 @@ struct fx_renderer {
 	GLuint wlr_main_buffer_fbo;
 	struct wlr_gles2_texture_attribs wlr_main_texture_attribs;
 
-	// The framebuffer used by wlroots
-	struct fx_framebuffer wlr_buffer;
+	const struct wlr_drm_format *drm_format;
+
 	// Contains the blurred background for tiled windows
 	struct fx_framebuffer blur_buffer;
 	// Contains the original pixels to draw over the areas where artifact are visible
