@@ -96,6 +96,7 @@ static const struct cmd_handler handlers[] = {
 	{ "set", cmd_set },
 	{ "shadow_blur_radius", cmd_shadow_blur_radius },
 	{ "shadow_color", cmd_shadow_color },
+	{ "shadow_offset", cmd_shadow_offset },
 	{ "shadow_inactive_color", cmd_shadow_inactive_color },
 	{ "shadows", cmd_shadows },
 	{ "shadows_on_csd", cmd_shadows_on_csd },
