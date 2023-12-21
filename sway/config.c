@@ -360,6 +360,7 @@ static void config_defaults(struct sway_config *config) {
 	config->blur_xray = false;
 	config->blur_params.num_passes = 2;
 	config->blur_params.radius = 5;
+	config->blur_params.noise = 0.02;
 
 	config->titlebar_separator = true;
 	config->scratchpad_minimize = false;

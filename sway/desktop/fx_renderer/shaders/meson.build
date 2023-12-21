@@ -3,6 +3,7 @@ embed = find_program('./embed.sh', native: true)
 shaders = [
     'blur1.frag',
     'blur2.frag',
+    'blur3.frag',
     'box_shadow.frag',
     'common.vert',
     'corner.frag',

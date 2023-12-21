@@ -56,6 +56,7 @@ sway_sources = files(
 	'commands/blur_passes.c',
 	'commands/blur_radius.c',
 	'commands/blur_xray.c',
+	'commands/blur_noise.c',
 	'commands/border.c',
 	'commands/client.c',
 	'commands/corner_radius.c',

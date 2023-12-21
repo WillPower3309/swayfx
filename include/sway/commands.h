@@ -115,6 +115,7 @@ sway_cmd cmd_bindgesture;
 sway_cmd cmd_bindswitch;
 sway_cmd cmd_bindsym;
 sway_cmd cmd_blur;
+sway_cmd cmd_blur_noise;
 sway_cmd cmd_blur_passes;
 sway_cmd cmd_blur_radius;
 sway_cmd cmd_blur_xray;

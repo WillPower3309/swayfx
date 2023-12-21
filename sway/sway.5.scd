@@ -707,6 +707,10 @@ The default colors are:
 	Adjusts the blur radius of windows between 0 (disabled) and 10
 	while 5 is the default value.
 
+*blur_noise* <value>
+	Adjusts the amount of noise applied to the blur between 0 and 1 
+	while 0.02 is the default value.
+
 *default_border* normal|none|pixel [<n>]
 	Set default border style for new tiled windows.
 

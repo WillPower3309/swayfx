@@ -184,7 +184,7 @@ damage_finish:
 void render_blur_segments(struct fx_renderer *renderer,
 		const float matrix[static 9], pixman_region32_t* damage,
 		struct fx_framebuffer **buffer, struct blur_shader* shader,
-		const struct wlr_box *box, int blur_radius) {
+		const struct wlr_box *box, int blur_radius, float blur_noise) {
 	if (*buffer == &renderer->effects_buffer) {
 		fx_framebuffer_bind(&renderer->effects_buffer_swapped);
 	} else {
@@ -198,7 +198,7 @@ void render_blur_segments(struct fx_renderer *renderer,
 			const pixman_box32_t box = rects[i];
 			struct wlr_box new_box = { box.x1, box.y1, box.x2 - box.x1, box.y2 - box.y1 };
 			fx_renderer_scissor(&new_box);
-			fx_render_blur(renderer, matrix, buffer, shader, &new_box, blur_radius);
+			fx_render_blur(renderer, matrix, buffer, shader, &new_box, blur_radius, blur_noise);
 		}
 	}
 
@@ -242,12 +242,13 @@ struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer, struct
 
 	int blur_radius = config->blur_params.radius;
 	int blur_passes = config->blur_params.num_passes;
+	float blur_noise = config->blur_params.noise;
 
 	// Downscale
 	for (int i = 0; i < blur_passes; ++i) {
 		wlr_region_scale(&tempDamage, &damage, 1.0f / (1 << (i + 1)));
 		render_blur_segments(renderer, gl_matrix, &tempDamage, &current_buffer,
-				&renderer->shaders.blur1, box, blur_radius);
+				&renderer->shaders.blur1, box, blur_radius, blur_noise);
 	}
 
 	// Upscale
@@ -255,8 +256,11 @@ struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer, struct
 		// when upsampling we make the region twice as big
 		wlr_region_scale(&tempDamage, &damage, 1.0f / (1 << i));
 		render_blur_segments(renderer, gl_matrix, &tempDamage, &current_buffer,
-				&renderer->shaders.blur2, box, blur_radius);
+				&renderer->shaders.blur2, box, blur_radius, blur_noise);
 	}
+
+	render_blur_segments(renderer, gl_matrix, &tempDamage, &current_buffer,
+				&renderer->shaders.blur3, box, blur_radius, blur_noise);
 
 	pixman_region32_fini(&tempDamage);
 	pixman_region32_fini(&damage);
