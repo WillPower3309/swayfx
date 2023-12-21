@@ -373,7 +373,8 @@ int main(int argc, char **argv) {
 	// prevent ipc from crashing sway
 	signal(SIGPIPE, SIG_IGN);
 
-	sway_log(SWAY_INFO, "Starting swayfx version " SWAY_VERSION " (based on sway version " SWAY_ORIGINAL_VERSION ")");
+	sway_log(SWAY_INFO, "Starting swayfx version " SWAY_VERSION
+			" (based on sway version " SWAY_ORIGINAL_VERSION ")");
 
 	root = root_create();
 
