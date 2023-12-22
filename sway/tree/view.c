@@ -428,8 +428,9 @@ void view_set_tiled(struct sway_view *view, bool tiled) {
 }
 
 void view_close(struct sway_view *view) {
-	view->container->target_alpha = 0;
-	wl_event_source_timer_update(view->container->animation_present_timer, 1);
+	if (view->impl->close) {
+		view->impl->close(view);
+	}
 }
 
 void view_close_popups(struct sway_view *view) {
@@ -906,6 +907,13 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 }
 
 void view_unmap(struct sway_view *view) {
+	printf("unmap view\n");
+	// take a snapshot for fade-out animation
+	struct sway_workspace *ws = view->container->pending.workspace;
+	if (ws) {
+		fx_create_view_snapshot(ws->output->renderer, view);
+	}
+
 	wl_signal_emit_mutable(&view->events.unmap, view);
 
 	wl_list_remove(&view->surface_new_subsurface.link);
@@ -921,7 +929,6 @@ void view_unmap(struct sway_view *view) {
 	}
 
 	struct sway_container *parent = view->container->pending.parent;
-	struct sway_workspace *ws = view->container->pending.workspace;
 	container_begin_destroy(view->container);
 	if (parent) {
 		container_reap_empty(parent);

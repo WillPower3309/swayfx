@@ -328,6 +328,7 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 	bool fullscreen, struct wlr_output *fullscreen_output, bool decoration);
 
 void view_unmap(struct sway_view *view);
+void view_unmap_finish(struct sway_view *view);
 
 void view_update_size(struct sway_view *view);
 void view_center_surface(struct sway_view *view);

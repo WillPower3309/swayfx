@@ -1398,9 +1398,6 @@ struct parent_data {
 	struct sway_container *active_child;
 };
 
-static void render_container(struct sway_output *output,
-	pixman_region32_t *damage, struct sway_container *con, bool parent_focused);
-
 /**
  * Render a container's children using a L_HORIZ or L_VERT layout.
  *
@@ -1685,7 +1682,7 @@ static void render_containers(struct sway_output *output,
 	}
 }
 
-static void render_container(struct sway_output *output,
+void render_container(struct sway_output *output,
 		pixman_region32_t *damage, struct sway_container *con, bool focused) {
 	struct parent_data data = {
 		.layout = con->current.layout,

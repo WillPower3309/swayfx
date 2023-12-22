@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <wlr/types/wlr_compositor.h>
 #include "list.h"
+#include "sway/desktop/fx_renderer/fx_framebuffer.h"
 #include "sway/tree/node.h"
 
 struct sway_view;
@@ -124,6 +125,7 @@ struct sway_container {
 	float target_alpha;
 	float max_alpha;
 
+	struct fx_framebuffer close_animation_fb;
 	struct wl_event_source *animation_present_timer;
 
 	int corner_radius;

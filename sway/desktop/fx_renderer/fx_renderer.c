@@ -19,6 +19,7 @@
 #include "sway/desktop/fx_renderer/fx_texture.h"
 #include "sway/desktop/fx_renderer/matrix.h"
 #include "sway/server.h"
+#include "sway/output.h"
 
 // shaders
 #include "blur1_frag_src.h"
@@ -29,6 +30,8 @@
 #include "quad_frag_src.h"
 #include "quad_round_frag_src.h"
 #include "stencil_mask_frag_src.h"
+#include "sway/tree/node.h"
+#include "sway/tree/workspace.h"
 #include "tex_frag_src.h"
 
 static const GLfloat verts[] = {
@@ -269,6 +272,7 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl, struct wlr_output *w
 		sway_log(SWAY_ERROR, "GLES2 RENDERER: Could not make EGL current");
 		return NULL;
 	}
+	renderer->wlr_egl = egl;
 
 	renderer->wlr_buffer = fx_framebuffer_create();
 	renderer->blur_buffer = fx_framebuffer_create();
@@ -871,5 +875,36 @@ void fx_render_blur(struct fx_renderer *renderer, const float matrix[static 9],
 
 	glDisableVertexAttribArray(shader->pos_attrib);
 	glDisableVertexAttribArray(shader->tex_attrib);
+}
 
+void fx_create_view_snapshot(struct fx_renderer *renderer, struct sway_view *view) {
+	assert(view);
+
+	// TODO: move to function? used in creation too
+	if (!eglMakeCurrent(wlr_egl_get_display(renderer->wlr_egl), EGL_NO_SURFACE, EGL_NO_SURFACE,
+			wlr_egl_get_context(renderer->wlr_egl))) {
+		sway_log(SWAY_ERROR, "GLES2 RENDERER: Could not make EGL current");
+		return;
+	}
+
+	struct sway_container *con = view->container;
+	struct sway_output *output = con->pending.workspace->output;
+
+	//fx_framebuffer_update(&con->close_animation_fb, output->width, output->height);
+	//fx_framebuffer_bind(&con->close_animation_fb);
+
+	// damage whole output to ensure full container is rendered
+	// (temporary, render_container will only render container area)
+	struct wlr_box box = { 0, 0, output->width, output->height };
+	scale_box(&box, output->wlr_output->scale);
+	pixman_region32_t damage;
+	pixman_region32_init(&damage);
+	pixman_region32_union_rect(&damage, &damage, box.x, box.y, box.width, box.height);
+
+	// TODO: add check to see if container is fading out in render_container
+	// TODO: render without blur?
+	render_container(output, &damage, con, con->current.focused);
+
+	// rebind the main fb
+	//fx_framebuffer_bind(&renderer->wlr_buffer);
 }

@@ -51,7 +51,6 @@ static int animation_timer(void *data) {
 	if (con->alpha != con->target_alpha) {
 		wl_event_source_timer_update(con->animation_present_timer, fastest_output_refresh_s * 1000);
 	} else if (is_closing && con->view->impl->close) {
-		con->view->impl->close(con->view);
 	}
 
 	container_damage_whole(con);
@@ -75,6 +74,7 @@ struct sway_container *container_create(struct sway_view *view) {
 	c->shadow_enabled = config->shadow_enabled;
 	c->blur_enabled = config->blur_enabled;
 	c->corner_radius = config->corner_radius;
+	c->close_animation_fb = fx_framebuffer_create();
 
 	if (!view) {
 		c->pending.children = create_list();
@@ -96,6 +96,7 @@ struct sway_container *container_create(struct sway_view *view) {
 }
 
 void container_destroy(struct sway_container *con) {
+	printf("destroying container\n");
 	if (!sway_assert(con->node.destroying,
 				"Tried to free container which wasn't marked as destroying")) {
 		return;
@@ -135,6 +136,7 @@ void container_destroy(struct sway_container *con) {
 }
 
 void container_begin_destroy(struct sway_container *con) {
+	printf("beginning container destroy\n");
 	if (con->view) {
 		ipc_event_window(con, "close");
 	}

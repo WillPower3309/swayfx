@@ -8,6 +8,7 @@
 
 #include "sway/desktop/fx_renderer/fx_framebuffer.h"
 #include "sway/desktop/fx_renderer/fx_texture.h"
+#include "sway/tree/view.h"
 
 enum corner_location { TOP_LEFT, TOP_RIGHT, BOTTOM_RIGHT, BOTTOM_LEFT, ALL, NONE };
 
@@ -124,6 +125,8 @@ struct fx_renderer {
 
 	struct wlr_output *wlr_output;
 
+	struct wlr_egl *wlr_egl;
+
 	// The framebuffer used by wlroots
 	struct fx_framebuffer wlr_buffer;
 	// Contains the blurred background for tiled windows
@@ -213,5 +216,7 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 void fx_render_blur(struct fx_renderer *renderer, const float matrix[static 9],
 		struct fx_framebuffer **buffer, struct blur_shader *shader, const struct wlr_box *box,
 		int blur_radius);
+
+void fx_create_view_snapshot(struct fx_renderer *renderer, struct sway_view *view);
 
 #endif
