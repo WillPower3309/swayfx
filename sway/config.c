@@ -351,6 +351,8 @@ static void config_defaults(struct sway_config *config) {
 	config->shadow_enabled = false;
 	config->shadows_on_csd_enabled = false;
 	config->shadow_blur_sigma = 20.0f;
+	config->shadow_offset_x = 0.0f;
+	config->shadow_offset_y = 0.0f;
 	color_to_rgba(config->shadow_color, 0x0000007F);
 	color_to_rgba(config->shadow_inactive_color, 0x0000007F);
 

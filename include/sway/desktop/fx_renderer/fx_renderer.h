@@ -207,8 +207,8 @@ void fx_render_border_corner(struct fx_renderer *renderer, const struct wlr_box 
 		enum corner_location corner_location, int radius, int border_thickness);
 
 void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *box,
-		const float color[static 4], const float matrix[static 9], int radius,
-		float blur_sigma);
+		const struct wlr_box *inner_box, const float color[static 4],
+		const float matrix[static 9], int corner_radius, float blur_sigma);
 
 void fx_render_blur(struct fx_renderer *renderer, const float matrix[static 9],
 		struct fx_framebuffer **buffer, struct blur_shader *shader, const struct wlr_box *box,

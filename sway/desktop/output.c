@@ -758,8 +758,8 @@ void output_damage_whole_container(struct sway_output *output,
 
 	// Pad the box by 1px, because the width is a double and might be a fraction
 	struct wlr_box box = {
-		.x = con->current.x - output->lx - 1 - shadow_sigma,
-		.y = con->current.y - output->ly - 1 - shadow_sigma,
+		.x = con->current.x - output->lx - 1 - shadow_sigma + config->shadow_offset_x,
+		.y = con->current.y - output->ly - 1 - shadow_sigma + config->shadow_offset_y,
 		.width = con->current.width + 2 + shadow_sigma * 2,
 		.height = con->current.height + 2 + shadow_sigma * 2,
 	};

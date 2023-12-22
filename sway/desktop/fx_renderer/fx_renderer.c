@@ -799,8 +799,8 @@ void fx_render_stencil_mask(struct fx_renderer *renderer, const struct wlr_box *
 
 // TODO: alpha input arg?
 void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *box,
-		const float color[static 4], const float matrix[static 9], int corner_radius,
-		float blur_sigma) {
+		const struct wlr_box *inner_box, const float color[static 4], 
+		const float matrix[static 9], int corner_radius, float blur_sigma) {
 	if (box->width == 0 || box->height == 0) {
 		return;
 	}
@@ -821,17 +821,9 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 
 	wlr_matrix_transpose(gl_matrix, gl_matrix);
 
-	// Init stencil work
-	struct wlr_box inner_box;
-	memcpy(&inner_box, box, sizeof(struct wlr_box));
-	inner_box.x += blur_sigma;
-	inner_box.y += blur_sigma;
-	inner_box.width -= blur_sigma * 2;
-	inner_box.height -= blur_sigma * 2;
-
 	fx_renderer_stencil_mask_init();
 	// Draw the rounded rect as a mask
-	fx_render_stencil_mask(renderer, &inner_box, matrix, corner_radius);
+	fx_render_stencil_mask(renderer, inner_box, matrix, corner_radius);
 	fx_renderer_stencil_mask_close(false);
 
 	// blending will practically always be needed (unless we have a madman

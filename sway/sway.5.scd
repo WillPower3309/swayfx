@@ -689,6 +689,9 @@ The default colors are:
 *shadow_inactive_color* <hex color with alpha>
 	The shadow color for inactive windows. Default value: *shadow_color*
 
+*shadow_offset* <x offset> <y offset>
+	Offset all box shadows by the given value.
+
 *blur* enable|disable
 	Sets whether blur should be drawn. Can also be set per window with
 	*for_window*.
