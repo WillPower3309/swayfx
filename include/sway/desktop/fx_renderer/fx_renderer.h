@@ -45,6 +45,9 @@ struct blur_shader {
 	GLint tex_attrib;
 	GLint radius;
 	GLfloat noise;
+	GLfloat brightness;
+	GLfloat contrast;
+	GLfloat saturation;
 	GLint halfpixel;
 };
 
@@ -214,6 +217,7 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 
 void fx_render_blur(struct fx_renderer *renderer, const float matrix[static 9],
 		struct fx_framebuffer **buffer, struct blur_shader *shader, const struct wlr_box *box,
-		int blur_radius, float blur_noise);
+		int blur_radius, float blur_noise, float blur_brightness, float blur_contrast, 
+		float blur_saturation);
 
 #endif
