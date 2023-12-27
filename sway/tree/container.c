@@ -50,7 +50,11 @@ static int animation_timer(void *data) {
 
 	if (con->alpha != con->target_alpha) {
 		wl_event_source_timer_update(con->animation_present_timer, fastest_output_refresh_s * 1000);
-	} else if (is_closing && con->view->impl->close) {
+	} else if (is_closing) { // equal to target and closing
+		printf("done animation; clean up view\n");
+		con->is_fading_out = false;
+		view_container_cleanup(con->view);
+		return 1;
 	}
 
 	container_damage_whole(con);
@@ -74,6 +78,7 @@ struct sway_container *container_create(struct sway_view *view) {
 	c->shadow_enabled = config->shadow_enabled;
 	c->blur_enabled = config->blur_enabled;
 	c->corner_radius = config->corner_radius;
+	c->is_fading_out = false;
 	c->close_animation_fb = fx_framebuffer_create();
 
 	if (!view) {
@@ -125,10 +130,13 @@ void container_destroy(struct sway_container *con) {
 
 	wl_event_source_remove(con->animation_present_timer);
 
+	printf("alive 0\n");
 	if (con->view && con->view->container == con) {
 		con->view->container = NULL;
 		if (con->view->destroying) {
+			printf("alive\n");
 			view_destroy(con->view);
+			printf("alive 2\n");
 		}
 	}
 
@@ -136,8 +144,9 @@ void container_destroy(struct sway_container *con) {
 }
 
 void container_begin_destroy(struct sway_container *con) {
-	printf("beginning container destroy\n");
-	if (con->view) {
+	printf("container begin destroy\n");
+	// TODO; better way of deleting view
+	if (con->view && !con->is_fading_out) {
 		ipc_event_window(con, "close");
 	}
 	// The workspace must have the fullscreen pointer cleared so that the
@@ -149,6 +158,8 @@ void container_begin_destroy(struct sway_container *con) {
 		container_fullscreen_disable(con);
 	}
 
+	// TODO: problem here
+	printf("about to emit signal\n");
 	wl_signal_emit_mutable(&con->node.events.destroy, &con->node);
 
 	container_end_mouse_operation(con);

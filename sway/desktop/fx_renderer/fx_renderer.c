@@ -30,6 +30,7 @@
 #include "quad_frag_src.h"
 #include "quad_round_frag_src.h"
 #include "stencil_mask_frag_src.h"
+#include "sway/tree/container.h"
 #include "sway/tree/node.h"
 #include "sway/tree/workspace.h"
 #include "tex_frag_src.h"
@@ -877,8 +878,31 @@ void fx_render_blur(struct fx_renderer *renderer, const float matrix[static 9],
 	glDisableVertexAttribArray(shader->tex_attrib);
 }
 
-void fx_create_view_snapshot(struct fx_renderer *renderer, struct sway_view *view) {
-	assert(view);
+void fx_render_container_snapshot(struct fx_renderer *renderer, struct sway_container *con) {
+	// TODO: move create_deco_data
+	// TODO: render without blur?
+	struct decoration_data deco_data = {
+		.alpha = 1.0f,
+		.dim = 0.0f,
+		.dim_color = config->dim_inactive_colors.unfocused,
+		.corner_radius = 0,
+		.saturation = 1.0f,
+		.has_titlebar = false,
+		.blur = false,
+		.discard_transparent = false,
+		.shadow = false,
+	};
+	struct sway_output *output = con->pending.workspace->output;
+	struct wlr_box dst_box = { 0, 0, output->width, output->height };
+	enum wl_output_transform transform = wlr_output_transform_invert(output->wlr_output->transform);
+	float matrix[9];
+	wlr_matrix_project_box(matrix, &dst_box, transform, 0.0, output->wlr_output->transform_matrix);
+
+	fx_render_texture_with_matrix(renderer, &con->close_animation_fb.texture, &dst_box, matrix, deco_data);
+}
+
+void fx_create_container_snapshot(struct fx_renderer *renderer, struct sway_container *con) {
+	assert(con);
 
 	// TODO: move to function? used in creation too
 	if (!eglMakeCurrent(wlr_egl_get_display(renderer->wlr_egl), EGL_NO_SURFACE, EGL_NO_SURFACE,
@@ -887,11 +911,10 @@ void fx_create_view_snapshot(struct fx_renderer *renderer, struct sway_view *vie
 		return;
 	}
 
-	struct sway_container *con = view->container;
 	struct sway_output *output = con->pending.workspace->output;
 
-	//fx_framebuffer_update(&con->close_animation_fb, output->width, output->height);
-	//fx_framebuffer_bind(&con->close_animation_fb);
+	fx_framebuffer_update(&con->close_animation_fb, output->width, output->height);
+	fx_framebuffer_bind(&con->close_animation_fb);
 
 	// damage whole output to ensure full container is rendered
 	// (temporary, render_container will only render container area)
@@ -901,10 +924,10 @@ void fx_create_view_snapshot(struct fx_renderer *renderer, struct sway_view *vie
 	pixman_region32_init(&damage);
 	pixman_region32_union_rect(&damage, &damage, box.x, box.y, box.width, box.height);
 
-	// TODO: add check to see if container is fading out in render_container
-	// TODO: render without blur?
-	render_container(output, &damage, con, con->current.focused);
+	// render container instead?
+	fx_render_container_snapshot(renderer, con);
 
 	// rebind the main fb
-	//fx_framebuffer_bind(&renderer->wlr_buffer);
+	fx_framebuffer_bind(&renderer->wlr_buffer);
+	printf("snapshot created\n");
 }

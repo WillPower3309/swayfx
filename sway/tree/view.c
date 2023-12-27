@@ -428,9 +428,8 @@ void view_set_tiled(struct sway_view *view, bool tiled) {
 }
 
 void view_close(struct sway_view *view) {
-	if (view->impl->close) {
-		view->impl->close(view);
-	}
+	view->container->target_alpha = 0;
+	wl_event_source_timer_update(view->container->animation_present_timer, 1);
 }
 
 void view_close_popups(struct sway_view *view) {
@@ -906,16 +905,7 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 	}
 }
 
-void view_unmap(struct sway_view *view) {
-	printf("unmap view\n");
-	// take a snapshot for fade-out animation
-	struct sway_workspace *ws = view->container->pending.workspace;
-	if (ws) {
-		fx_create_view_snapshot(ws->output->renderer, view);
-	}
-
-	wl_signal_emit_mutable(&view->events.unmap, view);
-
+void view_container_cleanup(struct sway_view *view) {
 	wl_list_remove(&view->surface_new_subsurface.link);
 
 	if (view->urgent_timer) {
@@ -929,6 +919,7 @@ void view_unmap(struct sway_view *view) {
 	}
 
 	struct sway_container *parent = view->container->pending.parent;
+	struct sway_workspace *ws = view->container->pending.workspace;
 	container_begin_destroy(view->container);
 	if (parent) {
 		container_reap_empty(parent);
@@ -959,6 +950,20 @@ void view_unmap(struct sway_view *view) {
 
 	transaction_commit_dirty();
 	view->surface = NULL;
+}
+
+void view_unmap(struct sway_view *view) {
+	wl_signal_emit_mutable(&view->events.unmap, view);
+	struct sway_workspace *ws = view->container->pending.workspace;
+	if (ws && config->animation_duration > 0) {
+		printf("starting fade out animation");
+		view->container->is_fading_out = true;
+		fx_render_container_snapshot(ws->output->renderer, view->container);
+		view->container->target_alpha = 0;
+		wl_event_source_timer_update(view->container->animation_present_timer, 50);
+	} else {
+		view_container_cleanup(view);
+	}
 }
 
 void view_update_size(struct sway_view *view) {

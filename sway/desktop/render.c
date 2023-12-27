@@ -1684,6 +1684,11 @@ static void render_containers(struct sway_output *output,
 
 void render_container(struct sway_output *output,
 		pixman_region32_t *damage, struct sway_container *con, bool focused) {
+	if (con->is_fading_out) {
+		fx_render_container_snapshot(output->renderer, con);
+		return;
+	}
+
 	struct parent_data data = {
 		.layout = con->current.layout,
 		.box = {

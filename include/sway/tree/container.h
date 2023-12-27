@@ -125,6 +125,7 @@ struct sway_container {
 	float target_alpha;
 	float max_alpha;
 
+	bool is_fading_out;
 	struct fx_framebuffer close_animation_fb;
 	struct wl_event_source *animation_present_timer;
 

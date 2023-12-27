@@ -217,6 +217,8 @@ void fx_render_blur(struct fx_renderer *renderer, const float matrix[static 9],
 		struct fx_framebuffer **buffer, struct blur_shader *shader, const struct wlr_box *box,
 		int blur_radius);
 
-void fx_create_view_snapshot(struct fx_renderer *renderer, struct sway_view *view);
+void fx_create_container_snapshot(struct fx_renderer *renderer, struct sway_container *con);
+
+void fx_render_container_snapshot(struct fx_renderer *renderer, struct sway_container *con);
 
 #endif

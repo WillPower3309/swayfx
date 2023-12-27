@@ -328,7 +328,6 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 	bool fullscreen, struct wlr_output *fullscreen_output, bool decoration);
 
 void view_unmap(struct sway_view *view);
-void view_unmap_finish(struct sway_view *view);
 
 void view_update_size(struct sway_view *view);
 void view_center_surface(struct sway_view *view);
@@ -380,5 +379,8 @@ bool view_is_transient_for(struct sway_view *child, struct sway_view *ancestor);
 void view_assign_ctx(struct sway_view *view, struct launcher_ctx *ctx);
 
 bool gaps_to_edge(struct sway_view *view);
+
+
+void view_container_cleanup(struct sway_view *view);
 
 #endif
