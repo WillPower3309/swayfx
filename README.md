@@ -31,6 +31,9 @@ Sway is an incredible window manager, and certainly one of the most well establi
     - `blur_passes <integer value 0 - 10>`
     - `blur_radius <integer value 0 - 10>`
     - `blur_noise <float value 0 - 1>`
+    - `blur_brightness <float value 0 - 2>`
+    - `blur_contrast <float value 0 - 2>`
+    - `blur_saturation <float value 0 - 2>`
 + Corner radius: `corner_radius <val>`
 + Window shadows:
     - `shadows enable|disable`
