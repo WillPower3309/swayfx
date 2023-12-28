@@ -1098,7 +1098,7 @@ void translate_keysyms(struct input_config *input_config) {
 }
 
 int config_get_blur_size() {
-	return pow(2, config->blur_params.num_passes) * config->blur_params.radius;
+	return pow(2, config->blur_params.num_passes + 1) * config->blur_params.radius;
 }
 
 bool config_should_parameters_blur() {

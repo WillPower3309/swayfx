@@ -708,10 +708,15 @@ static void find_blurred_region_iterator(struct sway_container *con, void *data)
 	pixman_region32_t *blur_region = region_data->blur_region;
 
 	if (con->blur_enabled && !view->surface->opaque) {
+		struct wlr_box region = {
+			.x = floor(con->current.x) - ws->output->lx,
+			.y = floor(con->current.y) - ws->output->ly,
+			.width = con->current.width,
+			.height = con->current.height,
+		};
+		scale_box(&region, ws->output->wlr_output->scale);
 		pixman_region32_union_rect(blur_region, blur_region,
-				floor(con->current.x) - ws->output->lx,
-				floor(con->current.y) - ws->output->ly,
-				con->current.width, con->current.height);
+				region.x, region.y, region.width, region.height);
 	}
 }
 
@@ -732,9 +737,10 @@ bool workspace_get_blur_info(struct sway_workspace *ws, pixman_region32_t *blur_
 		wl_list_for_each(lsurface, &sway_output->layers[i], link) {
 			if (lsurface->has_blur && !lsurface->layer_surface->surface->opaque
 					&& lsurface->layer != ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND) {
-				struct wlr_box *geo = &lsurface->geo;
+				struct wlr_box geo = lsurface->geo;
+				scale_box(&geo, sway_output->wlr_output->scale);
 				pixman_region32_union_rect(blur_region, blur_region,
-						geo->x, geo->y, geo->width, geo->height);
+						geo.x, geo.y, geo.width, geo.height);
 			}
 		}
 	}
