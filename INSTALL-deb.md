@@ -8,14 +8,13 @@ sudo apt install meson wayland-protocols wayland libpcre2-dev libjson-c-dev libp
 ```
 
 ### Next setup the build enviroment
-**NOTE**: At the time of writing this is the latest version of wlroots and swayfx.
 ```bash
 mkdir ~/build
 cd ~/build # Or whatever you have named it
 # Downloading Wlroots
-wget https://gitlab.freedesktop.org/wlroots/wlroots/-/archive/0.17.1/wlroots-0.17.1.tar.gz
-tar -xf wlroots-0.17.1.tar.gz
-rm wlroots-0.17.1.tar.gz
+wget https://gitlab.freedesktop.org/wlroots/wlroots/-/archive/0.16.2/wlroots-0.16.2.tar.gz
+tar -xf wlroots-0.16.2.tar.gz
+rm wlroots-0.16.2.tar.gz
 
 # Downloaing Swayfx
 wget https://github.com/WillPower3309/swayfx/archive/refs/tags/0.3.2.tar.gz
@@ -26,13 +25,13 @@ swayfx and wlroots should now be located in the `build` directory.
 ```
 .
 ├── swayfx-0.3.2
-├── wlroots-0.17.1
+├── wlroots-0.16.2
 ```
 ___
 ### Compiling
 You MUST compile wlroots first.
 ```bash
-cd wlroots-0.17.1
+cd wlroots-0.16.2
 meson setup build/
 ninja -C build/
 ```
