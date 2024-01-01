@@ -889,11 +889,12 @@ void fx_render_blur(struct fx_renderer *renderer, const float matrix[static 9],
 	glUniformMatrix3fv(shader->proj, 1, GL_FALSE, gl_matrix);
 
 	glUniform1i(shader->tex, 0);
-	glUniform1f(shader->radius, blur_radius);
 
 	if (shader == &renderer->shaders.blur1) {
+		glUniform1f(shader->radius, blur_radius);
 		glUniform2f(shader->halfpixel, 0.5f / (renderer->viewport_width / 2.0f), 0.5f / (renderer->viewport_height / 2.0f));
 	} else if (shader == &renderer->shaders.blur2) {
+		glUniform1f(shader->radius, blur_radius);
 		glUniform2f(shader->halfpixel, 0.5f / (renderer->viewport_width * 2.0f), 0.5f / (renderer->viewport_height * 2.0f));
 	} else {
 		glUniform1f(shader->noise, blur_noise);
