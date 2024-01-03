@@ -23,7 +23,7 @@
 // shaders
 #include "blur1_frag_src.h"
 #include "blur2_frag_src.h"
-#include "blur3_frag_src.h"
+#include "blur_effects_frag_src.h"
 #include "box_shadow_frag_src.h"
 #include "common_vert_src.h"
 #include "corner_frag_src.h"
@@ -103,13 +103,28 @@ static bool link_blur_program(struct blur_shader *shader, const char *shader_pro
 	shader->pos_attrib = glGetAttribLocation(prog, "pos");
 	shader->tex_attrib = glGetAttribLocation(prog, "texcoord");
 	shader->radius = glGetUniformLocation(prog, "radius");
+	shader->halfpixel = glGetUniformLocation(prog, "halfpixel");
+
+	return true;
+}
+
+static bool link_blur_effects_program(struct effects_shader *shader, const char *shader_program) {
+	GLuint prog;
+	shader->program = prog = link_program(shader_program);
+	if (!shader->program) {
+		return false;
+	}
+	shader->proj = glGetUniformLocation(prog, "proj");
+	shader->tex = glGetUniformLocation(prog, "tex");
+	shader->pos_attrib = glGetAttribLocation(prog, "pos");
+	shader->tex_attrib = glGetAttribLocation(prog, "texcoord");
 	shader->noise = glGetUniformLocation(prog, "noise");
 	shader->brightness = glGetUniformLocation(prog, "brightness");
 	shader->contrast = glGetUniformLocation(prog, "contrast");
 	shader->saturation = glGetUniformLocation(prog, "saturation");
-	shader->halfpixel = glGetUniformLocation(prog, "halfpixel");
 
 	return true;
+
 }
 
 static bool link_box_shadow_program(struct box_shadow_shader *shader) {
@@ -310,7 +325,8 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl, struct wlr_output *w
 	if (!link_blur_program(&renderer->shaders.blur2, blur2_frag_src)) {
 		goto error;
 	}
-	if (!link_blur_program(&renderer->shaders.blur3, blur3_frag_src)) {
+	// effects shader
+	if (!link_blur_effects_program(&renderer->shaders.blur_effects, blur_effects_frag_src)) {
 		goto error;
 	}
 	// box shadow shader
@@ -373,7 +389,7 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl, struct wlr_output *w
 error:
 	glDeleteProgram(renderer->shaders.blur1.program);
 	glDeleteProgram(renderer->shaders.blur2.program);
-	glDeleteProgram(renderer->shaders.blur3.program);
+	glDeleteProgram(renderer->shaders.blur_effects.program);
 	glDeleteProgram(renderer->shaders.box_shadow.program);
 	glDeleteProgram(renderer->shaders.corner.program);
 	glDeleteProgram(renderer->shaders.quad.program);
@@ -869,8 +885,7 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 
 void fx_render_blur(struct fx_renderer *renderer, const float matrix[static 9],
 		struct fx_framebuffer **buffer, struct blur_shader *shader,
-		const struct wlr_box *box, int blur_radius, float blur_noise,
-		float blur_brightness, float blur_contrast, float blur_saturation) {
+		const struct wlr_box *box, int blur_radius) {
 	glDisable(GL_BLEND);
 	glDisable(GL_STENCIL_TEST);
 
@@ -889,18 +904,12 @@ void fx_render_blur(struct fx_renderer *renderer, const float matrix[static 9],
 	glUniformMatrix3fv(shader->proj, 1, GL_FALSE, gl_matrix);
 
 	glUniform1i(shader->tex, 0);
+	glUniform1f(shader->radius, blur_radius);
 
 	if (shader == &renderer->shaders.blur1) {
-		glUniform1f(shader->radius, blur_radius);
 		glUniform2f(shader->halfpixel, 0.5f / (renderer->viewport_width / 2.0f), 0.5f / (renderer->viewport_height / 2.0f));
-	} else if (shader == &renderer->shaders.blur2) {
-		glUniform1f(shader->radius, blur_radius);
-		glUniform2f(shader->halfpixel, 0.5f / (renderer->viewport_width * 2.0f), 0.5f / (renderer->viewport_height * 2.0f));
 	} else {
-		glUniform1f(shader->noise, blur_noise);
-		glUniform1f(shader->brightness, blur_brightness);
-		glUniform1f(shader->contrast, blur_contrast);
-		glUniform1f(shader->saturation, blur_saturation);
+		glUniform2f(shader->halfpixel, 0.5f / (renderer->viewport_width * 2.0f), 0.5f / (renderer->viewport_height * 2.0f));
 	}
 
 	glVertexAttribPointer(shader->pos_attrib, 2, GL_FLOAT, GL_FALSE, 0, verts);
@@ -914,4 +923,40 @@ void fx_render_blur(struct fx_renderer *renderer, const float matrix[static 9],
 	glDisableVertexAttribArray(shader->pos_attrib);
 	glDisableVertexAttribArray(shader->tex_attrib);
 
+}
+
+void fx_render_blur_effects(struct fx_renderer *renderer, const float matrix[static 9],
+		struct fx_framebuffer **buffer, float blur_noise, float blur_brightness,
+		float blur_contrast, float blur_saturation) {
+	struct effects_shader shader = renderer->shaders.blur_effects;
+
+	glEnable(GL_BLEND);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture((*buffer)->texture.target, (*buffer)->texture.id);
+	glTexParameteri((*buffer)->texture.target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+	glUseProgram(shader.program);
+
+	// OpenGL ES 2 requires the glUniformMatrix3fv transpose parameter to be set
+	// to GL_FALSE
+	float gl_matrix[9];
+	wlr_matrix_transpose(gl_matrix, matrix);
+	glUniformMatrix3fv(shader.proj, 1, GL_FALSE, gl_matrix);
+
+	glUniform1i(shader.tex, 0);
+	glUniform1f(shader.noise, blur_noise);
+	glUniform1f(shader.brightness, blur_brightness);
+	glUniform1f(shader.contrast, blur_contrast);
+	glUniform1f(shader.saturation, blur_saturation);
+
+	glVertexAttribPointer(shader.pos_attrib, 2, GL_FLOAT, GL_FALSE, 0, verts);
+	glVertexAttribPointer(shader.tex_attrib, 2, GL_FLOAT, GL_FALSE, 0, verts);
+
+	glEnableVertexAttribArray(shader.pos_attrib);
+	glEnableVertexAttribArray(shader.tex_attrib);
+
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+	glDisableVertexAttribArray(shader.pos_attrib);
+	glDisableVertexAttribArray(shader.tex_attrib);
 }

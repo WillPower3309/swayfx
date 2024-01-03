@@ -1,11 +1,11 @@
-precision         mediump float;
-varying vec2      v_texcoord;
+precision mediump float;
+varying vec2 v_texcoord;
 uniform sampler2D tex;
 
-uniform float     noise;
-uniform float     brightness;
-uniform float     contrast;
-uniform float     saturation;
+uniform float noise;
+uniform float brightness;
+uniform float contrast;
+uniform float saturation;
 
 mat4 brightnessMatrix() {
     float b = brightness - 1.0;

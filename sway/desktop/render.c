@@ -184,8 +184,7 @@ damage_finish:
 void render_blur_segments(struct fx_renderer *renderer,
 		const float matrix[static 9], pixman_region32_t* damage,
 		struct fx_framebuffer **buffer, struct blur_shader* shader,
-		const struct wlr_box *box, int blur_radius, float blur_noise, 
-		float blur_brightness, float blur_contrast, float blur_saturation) {
+		const struct wlr_box *box, int blur_radius) {
 	if (*buffer == &renderer->effects_buffer) {
 		fx_framebuffer_bind(&renderer->effects_buffer_swapped);
 	} else {
@@ -199,8 +198,7 @@ void render_blur_segments(struct fx_renderer *renderer,
 			const pixman_box32_t box = rects[i];
 			struct wlr_box new_box = { box.x1, box.y1, box.x2 - box.x1, box.y2 - box.y1 };
 			fx_renderer_scissor(&new_box);
-			fx_render_blur(renderer, matrix, buffer, shader, &new_box, 
-					blur_radius, blur_noise, blur_brightness, blur_contrast, blur_saturation);
+			fx_render_blur(renderer, matrix, buffer, shader, &new_box, blur_radius);
 		}
 	}
 
@@ -244,17 +242,12 @@ struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer, struct
 
 	int blur_radius = config->blur_params.radius;
 	int blur_passes = config->blur_params.num_passes;
-	float blur_noise = config->blur_params.noise;
-	float blur_brightness = config->blur_params.brightness;
-	float blur_contrast = config->blur_params.contrast;
-	float blur_saturation = config->blur_params.saturation;
 
 	// Downscale
 	for (int i = 0; i < blur_passes; ++i) {
 		wlr_region_scale(&tempDamage, &damage, 1.0f / (1 << (i + 1)));
 		render_blur_segments(renderer, gl_matrix, &tempDamage, &current_buffer,
-				&renderer->shaders.blur1, box, blur_radius, blur_noise, blur_brightness,
-				blur_contrast, blur_saturation);
+				&renderer->shaders.blur1, box, blur_radius);
 	}
 
 	// Upscale
@@ -262,14 +255,25 @@ struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer, struct
 		// when upsampling we make the region twice as big
 		wlr_region_scale(&tempDamage, &damage, 1.0f / (1 << i));
 		render_blur_segments(renderer, gl_matrix, &tempDamage, &current_buffer,
-				&renderer->shaders.blur2, box, blur_radius, blur_noise, blur_brightness,
-				blur_contrast, blur_saturation);
+				&renderer->shaders.blur2, box, blur_radius);
 	}
 
-	// Noise, brightness, contrast, and saturation
-	render_blur_segments(renderer, gl_matrix, &damage, &current_buffer,
-				&renderer->shaders.blur3, box, blur_radius, blur_noise, blur_brightness,
-				blur_contrast, blur_saturation);
+	float blur_noise = config->blur_params.noise;
+	float blur_brightness = config->blur_params.brightness;
+	float blur_contrast = config->blur_params.contrast;
+	float blur_saturation = config->blur_params.saturation;
+
+	if (pixman_region32_not_empty(&damage)) {
+		int nrects;
+		pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
+		for (int i = 0; i < nrects; ++i) {
+			const pixman_box32_t box = rects[i];
+			struct wlr_box new_box = { box.x1, box.y1, box.x2 - box.x1, box.y2 - box.y1 };
+			fx_renderer_scissor(&new_box);
+			fx_render_blur_effects(renderer, gl_matrix, &current_buffer, blur_noise,
+				blur_brightness, blur_contrast, blur_saturation);
+		}
+	}
 
 	pixman_region32_fini(&tempDamage);
 	pixman_region32_fini(&damage);

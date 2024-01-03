@@ -44,11 +44,19 @@ struct blur_shader {
 	GLint pos_attrib;
 	GLint tex_attrib;
 	GLint radius;
+	GLint halfpixel;
+};
+
+struct effects_shader {
+	GLuint program;
+	GLint proj;
+	GLint tex;
+	GLint pos_attrib;
+	GLint tex_attrib;
 	GLfloat noise;
 	GLfloat brightness;
 	GLfloat contrast;
 	GLfloat saturation;
-	GLint halfpixel;
 };
 
 struct box_shadow_shader {
@@ -157,7 +165,7 @@ struct fx_renderer {
 		struct box_shadow_shader box_shadow;
 		struct blur_shader blur1;
 		struct blur_shader blur2;
-		struct blur_shader blur3;
+		struct effects_shader blur_effects;
 		struct corner_shader corner;
 		struct quad_shader quad;
 		struct rounded_quad_shader rounded_quad;
@@ -216,8 +224,11 @@ void fx_render_box_shadow(struct fx_renderer *renderer, const struct wlr_box *bo
 		const float matrix[static 9], int corner_radius, float blur_sigma);
 
 void fx_render_blur(struct fx_renderer *renderer, const float matrix[static 9],
-		struct fx_framebuffer **buffer, struct blur_shader *shader, const struct wlr_box *box,
-		int blur_radius, float blur_noise, float blur_brightness, float blur_contrast, 
-		float blur_saturation);
+		struct fx_framebuffer **buffer, struct blur_shader *shader,
+		const struct wlr_box *box, int blur_radius);
+
+void fx_render_blur_effects(struct fx_renderer *renderer, const float matrix[static 9],
+		struct fx_framebuffer **buffer, float blur_noise, float blur_brightness,
+		float blur_contrast, float blur_saturation);
 
 #endif
