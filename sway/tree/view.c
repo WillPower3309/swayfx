@@ -428,8 +428,9 @@ void view_set_tiled(struct sway_view *view, bool tiled) {
 }
 
 void view_close(struct sway_view *view) {
-	view->container->target_alpha = 0;
-	wl_event_source_timer_update(view->container->animation_present_timer, 1);
+	if (view->impl->close) {
+		view->impl->close(view);
+	}
 }
 
 void view_close_popups(struct sway_view *view) {
@@ -956,7 +957,7 @@ void view_unmap(struct sway_view *view) {
 	wl_signal_emit_mutable(&view->events.unmap, view);
 	struct sway_workspace *ws = view->container->pending.workspace;
 	if (ws && config->animation_duration > 0) {
-		printf("starting fade out animation");
+		printf("starting fade out animation\n");
 		view->container->is_fading_out = true;
 		fx_render_container_snapshot(ws->output->renderer, view->container);
 		view->container->target_alpha = 0;
