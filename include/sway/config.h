@@ -473,6 +473,10 @@ enum xwayland_mode {
 struct blur_parameters {
 	int num_passes;
 	int radius;
+	float noise;
+	float brightness;
+	float contrast;
+	float saturation;
 };
 
 /**

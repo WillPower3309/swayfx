@@ -258,6 +258,23 @@ struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer, struct
 				&renderer->shaders.blur2, box, blur_radius);
 	}
 
+	float blur_noise = config->blur_params.noise;
+	float blur_brightness = config->blur_params.brightness;
+	float blur_contrast = config->blur_params.contrast;
+	float blur_saturation = config->blur_params.saturation;
+
+	if (pixman_region32_not_empty(&damage)) {
+		int nrects;
+		pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
+		for (int i = 0; i < nrects; ++i) {
+			const pixman_box32_t box = rects[i];
+			struct wlr_box new_box = { box.x1, box.y1, box.x2 - box.x1, box.y2 - box.y1 };
+			fx_renderer_scissor(&new_box);
+			fx_render_blur_effects(renderer, gl_matrix, &current_buffer, blur_noise,
+				blur_brightness, blur_contrast, blur_saturation);
+		}
+	}
+
 	pixman_region32_fini(&tempDamage);
 	pixman_region32_fini(&damage);
 
