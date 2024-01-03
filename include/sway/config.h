@@ -773,6 +773,8 @@ int config_get_blur_size();
 
 bool config_should_parameters_blur();
 
+bool config_should_parameters_blur_effects();
+
 bool config_should_parameters_shadow();
 
 /* Global config singleton. */

@@ -1109,6 +1109,13 @@ bool config_should_parameters_blur() {
 	return config->blur_params.radius > 0 && config->blur_params.num_passes > 0;
 }
 
+bool config_should_parameters_blur_effects() {
+	return config->blur_params.brightness != 1.0f
+		|| config->blur_params.saturation != 1.0f
+		|| config->blur_params.contrast != 1.0f
+		|| config->blur_params.noise > 0.0f;
+}
+
 bool config_should_parameters_shadow() {
 	return config->shadow_blur_sigma > 0 && config->shadow_color[3] > 0.0;
 }
