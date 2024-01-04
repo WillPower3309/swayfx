@@ -930,9 +930,6 @@ void fx_render_blur_effects(struct fx_renderer *renderer, const float matrix[sta
 		float blur_contrast, float blur_saturation) {
 	struct effects_shader shader = renderer->shaders.blur_effects;
 
-	glDisable(GL_BLEND);
-	glDisable(GL_STENCIL_TEST);
-
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture((*buffer)->texture.target, (*buffer)->texture.id);
 	glTexParameteri((*buffer)->texture.target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
