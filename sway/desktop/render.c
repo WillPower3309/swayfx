@@ -263,7 +263,13 @@ struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer, struct
 	float blur_contrast = config->blur_params.contrast;
 	float blur_saturation = config->blur_params.saturation;
 
-	if (pixman_region32_not_empty(&damage)) {
+	// Render additional blur effects like saturation, noise, contrast, etc...
+	if (config_should_parameters_blur_effects() && pixman_region32_not_empty(&damage)) {
+		if (current_buffer == &renderer->effects_buffer) {
+			fx_framebuffer_bind(&renderer->effects_buffer_swapped);
+		} else {
+			fx_framebuffer_bind(&renderer->effects_buffer);
+		}
 		int nrects;
 		pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
 		for (int i = 0; i < nrects; ++i) {
@@ -272,6 +278,11 @@ struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer, struct
 			fx_renderer_scissor(&new_box);
 			fx_render_blur_effects(renderer, gl_matrix, &current_buffer, blur_noise,
 				blur_brightness, blur_contrast, blur_saturation);
+		}
+		if (current_buffer != &renderer->effects_buffer) {
+			current_buffer = &renderer->effects_buffer;
+		} else {
+			current_buffer = &renderer->effects_buffer_swapped;
 		}
 	}
 
