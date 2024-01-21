@@ -154,6 +154,19 @@ static struct cmd_results *cmd_bind_or_unbind_gesture(int argc, char **argv, boo
 		return gesture_binding_remove(binding, argv[0]);
 	}
 	binding->command = join_args(argv + 1, argc - 1);
+	// Make sure that the gesture command is valid
+	switch (binding->gesture.type) {
+		case GESTURE_TYPE_WORKSPACE_SWIPE:
+			if (gesture_workspace_swipe_command_parse(binding->command) == 0) {
+				free(binding);
+				return cmd_results_new(CMD_FAILURE,
+						"Invalid %s command (%s). Either normal or invert",
+						bindtype, errmsg);
+			}
+			break;
+		default:
+			break;
+	}
 	return gesture_binding_add(binding, argv[0], warn);
 }
 

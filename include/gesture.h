@@ -12,10 +12,13 @@ enum gesture_type {
 	GESTURE_TYPE_HOLD,
 	GESTURE_TYPE_PINCH,
 	GESTURE_TYPE_SWIPE,
+	GESTURE_TYPE_WORKSPACE_SWIPE,
 };
 
 // Turns single type enum value to constant string representation.
 const char *gesture_type_string(enum gesture_type direction);
+
+int gesture_workspace_swipe_command_parse(char *cmd);
 
 // Value to use to accept any finger count
 extern const uint8_t GESTURE_FINGERS_ANY;

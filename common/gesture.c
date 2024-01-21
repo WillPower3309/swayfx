@@ -50,6 +50,8 @@ char *gesture_parse(const char *input, struct gesture *output) {
 		output->type = GESTURE_TYPE_PINCH;
 	} else if (strcmp(split->items[0], "swipe") == 0) {
 		output->type = GESTURE_TYPE_SWIPE;
+	} else if (strcmp(split->items[0], "workspace_swipe") == 0) {
+		output->type = GESTURE_TYPE_WORKSPACE_SWIPE;
 	} else {
 		return strformat("expected hold|pinch|swipe, got %s",
 				split->items[0]);
@@ -117,9 +119,20 @@ const char *gesture_type_string(enum gesture_type type) {
 		return "pinch";
 	case GESTURE_TYPE_SWIPE:
 		return "swipe";
+	case GESTURE_TYPE_WORKSPACE_SWIPE:
+		return "workspace_swipe";
 	}
 
 	return NULL;
+}
+
+int gesture_workspace_swipe_command_parse(char *cmd) {
+	if (strcmp(cmd, "normal") == 0) {
+		return -1;
+	} else if (strcmp(cmd, "invert") == 0) {
+		return 1;
+	}
+	return 0;
 }
 
 const char *gesture_direction_string(enum gesture_direction direction) {
@@ -314,6 +327,7 @@ struct gesture *gesture_tracker_end(struct gesture_tracker *tracker) {
 		}
 		__attribute__ ((fallthrough));
 	// Gestures with dx and dy
+	case GESTURE_TYPE_WORKSPACE_SWIPE:
 	case GESTURE_TYPE_SWIPE:
 		if (fabs(tracker->dx) > fabs(tracker->dy)) {
 			if (tracker->dx > 0) {

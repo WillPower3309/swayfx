@@ -31,6 +31,7 @@
 #include "sway/tree/root.h"
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
+#include "util.h"
 
 struct sway_output *output_by_name_or_id(const char *name_or_id) {
 	for (int i = 0; i < root->outputs->length; ++i) {
@@ -1102,4 +1103,96 @@ void handle_output_power_manager_set_mode(struct wl_listener *listener,
 	}
 	oc = store_output_config(oc);
 	apply_output_config(oc, output);
+}
+
+static void workspace_scroll_mark_dirty() {
+	// Damage all outputs
+	struct sway_output *soutput;
+	wl_list_for_each(soutput, &root->all_outputs, link) {
+		output_damage_whole(soutput);
+	}
+	transaction_commit_dirty();
+}
+
+void update_workspace_scroll_percent(int dx, int invert) {
+	struct sway_seat *seat = input_manager_get_default_seat();
+	struct sway_workspace *focused_ws = seat_get_focused_workspace(seat);
+	struct sway_output *output = focused_ws->output;
+
+	int visible_index = list_find(output->workspaces, focused_ws);
+	if (visible_index == -1) {
+		return;
+	}
+
+	dx *= invert;
+
+	// TODO: Make the speed factor configurable?? Works well on my trackpad...
+	// Maybe also take in account the width of the actual trackpad??
+	const int SPEED_FACTOR = 500;
+	float percent = 0;
+	if (dx < 0) {
+		percent = (float) dx / SPEED_FACTOR;
+	} else if (dx > 0) {
+		percent = (float) dx / SPEED_FACTOR;
+	} else {
+		return;
+	}
+
+	// Limit the percent depending on if the workspace is the first/last or in
+	// the middle somewhere.
+	int min = -1, max = 1;
+	if (visible_index + 1 >= output->workspaces->length) {
+		max = 0;
+	}
+	if (visible_index == 0) {
+		min = 0;
+	}
+	output->workspace_scroll_percent = MIN(max, MAX(min, percent));
+
+	workspace_scroll_mark_dirty();
+}
+
+void snap_workspace_scroll_percent(int dx, int invert) {
+	struct sway_seat *seat = input_manager_get_default_seat();
+	struct sway_workspace *focused_ws = seat_get_focused_workspace(seat);
+	struct sway_output *output = focused_ws->output;
+
+	// TODO: Make the threshold configurable??
+	const float THRESHOLD = 0.35;
+	if (ABS(output->workspace_scroll_percent) <= THRESHOLD) {
+		goto reset;
+	}
+
+	dx *= invert;
+
+	int dir = 0;
+	if (dx < 0) {
+		dir = -1;
+	} else if (dx > 0) {
+		dir = 1;
+	} else {
+		goto reset;
+	}
+
+	int visible_index = list_find(output->workspaces, focused_ws);
+
+	size_t ws_index = wrap(visible_index + dir, output->workspaces->length);
+	struct sway_workspace *new_ws = output->workspaces->items[ws_index];
+	sway_log(SWAY_DEBUG, "Switched to workspace: %s\n", new_ws->name);
+	workspace_switch(new_ws);
+	seat_consider_warp_to_focus(seat);
+
+reset:
+	// Reset the state
+	reset_workspace_scroll_percent();
+}
+
+void reset_workspace_scroll_percent() {
+	struct sway_seat *seat = input_manager_get_default_seat();
+	struct sway_workspace *focused_ws = seat_get_focused_workspace(seat);
+	struct sway_output *output = focused_ws->output;
+
+	output->workspace_scroll_percent = 0;
+
+	workspace_scroll_mark_dirty();
 }

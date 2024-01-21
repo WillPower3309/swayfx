@@ -1011,6 +1011,9 @@ static void handle_swipe_begin(struct sway_seat *seat,
 	if (gesture_binding_check(bindings, GESTURE_TYPE_SWIPE, event->fingers, device)) {
 		struct seatop_default_event *seatop = seat->seatop_data;
 		gesture_tracker_begin(&seatop->gestures, GESTURE_TYPE_SWIPE, event->fingers);
+	} else if (gesture_binding_check(bindings, GESTURE_TYPE_WORKSPACE_SWIPE, event->fingers, device)) {
+		struct seatop_default_event *seatop = seat->seatop_data;
+		gesture_tracker_begin(&seatop->gestures, GESTURE_TYPE_WORKSPACE_SWIPE, event->fingers);
 	} else {
 		// ... otherwise forward to client
 		struct sway_cursor *cursor = seat->cursor;
@@ -1028,6 +1031,41 @@ static void handle_swipe_update(struct sway_seat *seat,
 	if (gesture_tracker_check(&seatop->gestures, GESTURE_TYPE_SWIPE)) {
 		gesture_tracker_update(&seatop->gestures,
 			event->dx, event->dy, NAN, NAN);
+	} else if (gesture_tracker_check(&seatop->gestures, GESTURE_TYPE_WORKSPACE_SWIPE)) {
+		gesture_tracker_update(&seatop->gestures,
+			event->dx, event->dy, NAN, NAN);
+
+		struct gesture_tracker *tracker = &seatop->gestures;
+
+		struct sway_input_device *device =
+			event->pointer ? event->pointer->base.data : NULL;
+		// Determine name of input that received gesture
+		char *input = device
+			? input_device_get_identifier(device->wlr_device)
+			: strdup("*");
+
+		struct gesture gesture = {
+			.fingers = tracker->fingers,
+			.type = tracker->type,
+		};
+		if (fabs(tracker->dx) > fabs(tracker->dy)) {
+			if (tracker->dx > 0) {
+				gesture.directions |= GESTURE_DIRECTION_RIGHT;
+			} else {
+				gesture.directions |= GESTURE_DIRECTION_LEFT;
+			}
+		} else {
+			if (tracker->dy > 0) {
+				gesture.directions |= GESTURE_DIRECTION_DOWN;
+			} else {
+				gesture.directions |= GESTURE_DIRECTION_UP;
+			}
+		}
+
+		struct sway_gesture_binding *current = gesture_binding_match(config->current_mode->gesture_bindings, &gesture, input);
+
+		int invert = gesture_workspace_swipe_command_parse(current->command);
+		update_workspace_scroll_percent(seatop->gestures.dx, invert);
 	} else {
 		// ... otherwise forward to client
 		struct sway_cursor *cursor = seat->cursor;
@@ -1041,13 +1079,21 @@ static void handle_swipe_end(struct sway_seat *seat,
 		struct wlr_pointer_swipe_end_event *event) {
 	// Ensure gesture is being tracked and was not cancelled
 	struct seatop_default_event *seatop = seat->seatop_data;
-	if (!gesture_tracker_check(&seatop->gestures, GESTURE_TYPE_SWIPE)) {
+	if (!gesture_tracker_check(&seatop->gestures, GESTURE_TYPE_SWIPE) &&
+			!gesture_tracker_check(&seatop->gestures, GESTURE_TYPE_WORKSPACE_SWIPE)) {
 		struct sway_cursor *cursor = seat->cursor;
 		wlr_pointer_gestures_v1_send_swipe_end(cursor->pointer_gestures,
 			cursor->seat->wlr_seat, event->time_msec, event->cancelled);
 		return;
 	}
 	if (event->cancelled) {
+		switch (seatop->gestures.type) {
+		case GESTURE_TYPE_WORKSPACE_SWIPE:
+			reset_workspace_scroll_percent();
+			break;
+		default:
+			break;
+		}
 		gesture_tracker_cancel(&seatop->gestures);
 		return;
 	}
@@ -1059,7 +1105,15 @@ static void handle_swipe_end(struct sway_seat *seat,
 		&seatop->gestures, device);
 
 	if (binding) {
-		gesture_binding_execute(seat, binding);
+		switch (binding->gesture.type) {
+		case GESTURE_TYPE_WORKSPACE_SWIPE:;
+			int invert = gesture_workspace_swipe_command_parse(binding->command);
+			snap_workspace_scroll_percent(seatop->gestures.dx, invert);
+			break;
+		default:
+			gesture_binding_execute(seat, binding);
+			break;
+		}
 	}
 }
 
