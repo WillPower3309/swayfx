@@ -73,10 +73,17 @@ enum corner_location get_rotated_corner(enum corner_location corner_location,
 	return corner_location;
 }
 
+static struct wlr_box get_monitor_box(struct wlr_output *output) {
+	int width, height;
+	wlr_output_transformed_resolution(output, &width, &height);
+	struct wlr_box monitor_box = { 0, 0, width, height };
+	return monitor_box;
+}
+
 // Adjust the box position when switching the workspace
 static void adjust_box_to_workspace_offset(struct wlr_box *box,
 		struct decoration_data *deco_data, struct sway_workspace *ws) {
-	int ws_width = ws->current.width;
+	int ws_width = ws->current.width + ws->current_gaps.left + ws->current_gaps.right;
 	float scroll_percent = ws->output->workspace_scroll_percent;
 	box->x -= ws_width * scroll_percent;
 	if (!deco_data->on_focused_workspace) {
@@ -94,16 +101,21 @@ static void adjust_damage_to_workspace_bounds(pixman_region32_t *damage,
 		struct decoration_data *deco_data, struct sway_workspace *ws) {
 	float scroll_percent = ws->output->workspace_scroll_percent;
 
-	int x = round(-ws->current.width * scroll_percent);
+	int ws_width = ws->current.width + ws->current_gaps.left + ws->current_gaps.right;
+	int x = round(-ws_width * scroll_percent);
 	if (!deco_data->on_focused_workspace) {
 		if (scroll_percent > 0) {
-			x += ws->current.width;
+			x += ws_width;
 		} else if (scroll_percent < 0) {
-			x -= ws->current.width;
+			x -= ws_width;
 		}
 	}
 
-	pixman_region32_translate(damage, x, 0);
+	struct wlr_box monitor_box = get_monitor_box(ws->output->wlr_output);
+	pixman_region32_intersect_rect(damage, damage,
+			monitor_box.x, monitor_box.y,
+			monitor_box.width, monitor_box.height);
+	pixman_region32_translate(damage, x * ws->output->wlr_output->scale, 0);
 }
 
 /**
@@ -168,13 +180,6 @@ pixman_region32_t create_damage(const struct wlr_box damage_box, pixman_region32
 		damage_box.width, damage_box.height);
 	pixman_region32_intersect(&damage, &damage, output_damage);
 	return damage;
-}
-
-struct wlr_box get_monitor_box(struct wlr_output *output) {
-	int width, height;
-	wlr_output_transformed_resolution(output, &width, &height);
-	struct wlr_box monitor_box = { 0, 0, width, height };
-	return monitor_box;
 }
 
 static void render_texture(struct wlr_output *wlr_output,
