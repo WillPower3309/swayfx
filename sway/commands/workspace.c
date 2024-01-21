@@ -6,10 +6,12 @@
 #include "sway/commands.h"
 #include "sway/config.h"
 #include "sway/input/seat.h"
+#include "sway/output.h"
 #include "sway/tree/workspace.h"
 #include "list.h"
 #include "log.h"
 #include "stringop.h"
+#include "util.h"
 
 static struct workspace_config *workspace_config_find_or_create(char *ws_name) {
 	struct workspace_config *wsc = workspace_find_config(ws_name);
@@ -237,5 +239,66 @@ struct cmd_results *cmd_workspace(int argc, char **argv) {
 		workspace_switch(ws);
 		seat_consider_warp_to_focus(seat);
 	}
+	return cmd_results_new(CMD_SUCCESS, NULL);
+}
+
+// TODO: Replace with actual touchpad gesture implementation instead of command
+struct cmd_results *cmd_workspace_offset(int argc, char **argv) {
+	struct cmd_results *error = NULL;
+	if ((error = checkarg(argc, "workspace_offset", EXPECTED_EQUAL_TO, 1))) {
+		return error;
+	}
+
+	struct sway_seat *seat = input_manager_get_default_seat();
+	struct sway_workspace *focused_ws = seat_get_focused_workspace(seat);
+	struct sway_output *output = focused_ws->output;
+
+	int visible_index = list_find(output->workspaces, focused_ws);
+	if (visible_index == -1) {
+		return cmd_results_new(CMD_FAILURE, "Active workspace not found");
+	}
+
+	char *err;
+	int dir = strtol(argv[0], &err, 10);
+	float offset = 0;
+	if (dir == 1) {
+		offset = 0.01;
+	} else if (dir == -1) {
+		offset = -0.01;
+	} else {
+		return cmd_results_new(CMD_FAILURE, "Not a valid direction");
+	}
+
+	// Limit the percent depending on if the workspace is the first/last or in
+	// the middle somewhere.
+	int min = -1, max = 1;
+	if (visible_index + 1 >= output->workspaces->length) {
+		max = 0;
+	}
+	if (visible_index == 0) {
+		min = 0;
+	}
+	output->workspace_scroll_percent = MIN(max, MAX(min, output->workspace_scroll_percent + offset));
+
+	// Damage all outputs
+	struct sway_output *soutput;
+	wl_list_for_each(soutput, &root->all_outputs, link) {
+		output_damage_whole(soutput);
+	}
+
+	// Switch to the new workspace when the swipe has reached the new workspace
+	if (output->workspace_scroll_percent > -1 &&
+			output->workspace_scroll_percent < 1) {
+		return cmd_results_new(CMD_SUCCESS, NULL);
+	}
+	size_t ws_index = wrap(visible_index + dir, output->workspaces->length);
+	struct sway_workspace *new_ws = output->workspaces->items[ws_index];
+	printf("Switched to workspace: %s\n", new_ws->name);
+	workspace_switch(new_ws);
+	seat_consider_warp_to_focus(seat);
+
+	// Reset the state
+	output->workspace_scroll_percent = 0;
+
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }

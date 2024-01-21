@@ -541,7 +541,8 @@ static int output_repaint_timer_handler(void *data) {
 
 	if (fullscreen_con && fullscreen_con->view && !debug.noscanout
 			// Only output to monitor without compositing when saturation is changed
-			&& fullscreen_con->saturation == 1.0f) {
+			&& fullscreen_con->saturation == 1.0f &&
+			output->workspace_scroll_percent == 0.0f) {
 		// Try to scan-out the fullscreen view
 		static bool last_scanned_out = false;
 		bool scanned_out =
@@ -988,6 +989,8 @@ void handle_new_output(struct wl_listener *listener, void *data) {
 	wlr_output_transformed_resolution(output->wlr_output, &width, &height);
 	wlr_damage_ring_set_bounds(&output->damage_ring, width, height);
 	update_output_manager_config(server);
+
+	output->workspace_scroll_percent = 0.0f;
 }
 
 void handle_output_layout_change(struct wl_listener *listener,

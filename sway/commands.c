@@ -120,6 +120,7 @@ static const struct cmd_handler handlers[] = {
 	{ "unbindsym", cmd_unbindsym },
 	{ "workspace", cmd_workspace },
 	{ "workspace_auto_back_and_forth", cmd_ws_auto_back_and_forth },
+	{ "workspace_offset", cmd_workspace_offset },
 };
 
 /* Config-time only commands. Keep alphabetized */

@@ -35,6 +35,8 @@ struct decoration_data {
 	bool discard_transparent;
 	bool blur;
 	bool shadow;
+	// Indicates whether the target is on the focused workspace or not.
+	bool on_focused_workspace;
 };
 
 struct blur_shader {

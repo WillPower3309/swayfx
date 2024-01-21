@@ -58,6 +58,8 @@ struct sway_output {
 	struct wl_listener frame;
 	struct wl_listener needs_frame;
 
+	float workspace_scroll_percent;
+
 	struct {
 		struct wl_signal disable;
 	} events;
