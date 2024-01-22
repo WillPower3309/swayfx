@@ -96,6 +96,10 @@ char *gesture_parse(const char *input, struct gesture *output) {
 					output->directions |= GESTURE_DIRECTION_CLOCKWISE;
 				} else if (strcmp(item, "counterclockwise") == 0) {
 					output->directions |= GESTURE_DIRECTION_COUNTERCLOCKWISE;
+				} else if (strcmp(item, "horizontal") == 0) {
+					output->directions |= GESTURE_DIRECTION_HORIZONTAL;
+				} else if (strcmp(item, "vertical") == 0) {
+					output->directions |= GESTURE_DIRECTION_VERTICAL;
 				} else {
 					return strformat("expected direction, got %s", item);
 				}
@@ -129,7 +133,7 @@ const char *gesture_type_string(enum gesture_type type) {
 int gesture_workspace_swipe_command_parse(char *cmd) {
 	if (strcmp(cmd, "normal") == 0) {
 		return -1;
-	} else if (strcmp(cmd, "invert") == 0) {
+	} else if (strcmp(cmd, "inverted") == 0) {
 		return 1;
 	}
 	return 0;
@@ -155,6 +159,10 @@ const char *gesture_direction_string(enum gesture_direction direction) {
 		return "clockwise";
 	case GESTURE_DIRECTION_COUNTERCLOCKWISE:
 		return "counterclockwise";
+	case GESTURE_DIRECTION_HORIZONTAL:
+		return "horizontal";
+	case GESTURE_DIRECTION_VERTICAL:
+		return "vertical";
 	}
 
 	return NULL;
@@ -328,6 +336,12 @@ struct gesture *gesture_tracker_end(struct gesture_tracker *tracker) {
 		__attribute__ ((fallthrough));
 	// Gestures with dx and dy
 	case GESTURE_TYPE_WORKSPACE_SWIPE:
+		if (fabs(tracker->dx) > fabs(tracker->dy)) {
+			result->directions |= GESTURE_DIRECTION_HORIZONTAL;
+		} else {
+			result->directions |= GESTURE_DIRECTION_VERTICAL;
+		}
+		__attribute__ ((fallthrough));
 	case GESTURE_TYPE_SWIPE:
 		if (fabs(tracker->dx) > fabs(tracker->dy)) {
 			if (tracker->dx > 0) {

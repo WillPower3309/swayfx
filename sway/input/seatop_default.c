@@ -1036,7 +1036,6 @@ static void handle_swipe_update(struct sway_seat *seat,
 			event->dx, event->dy, NAN, NAN);
 
 		struct gesture_tracker *tracker = &seatop->gestures;
-
 		struct sway_input_device *device =
 			event->pointer ? event->pointer->base.data : NULL;
 		// Determine name of input that received gesture
@@ -1047,25 +1046,24 @@ static void handle_swipe_update(struct sway_seat *seat,
 		struct gesture gesture = {
 			.fingers = tracker->fingers,
 			.type = tracker->type,
+			.directions = fabs(tracker->dx) > fabs(tracker->dy)
+				? GESTURE_DIRECTION_HORIZONTAL : GESTURE_DIRECTION_VERTICAL,
 		};
-		if (fabs(tracker->dx) > fabs(tracker->dy)) {
-			if (tracker->dx > 0) {
-				gesture.directions |= GESTURE_DIRECTION_RIGHT;
-			} else {
-				gesture.directions |= GESTURE_DIRECTION_LEFT;
-			}
-		} else {
-			if (tracker->dy > 0) {
-				gesture.directions |= GESTURE_DIRECTION_DOWN;
-			} else {
-				gesture.directions |= GESTURE_DIRECTION_UP;
+
+		struct sway_gesture_binding *binding = gesture_binding_match(
+				config->current_mode->gesture_bindings, &gesture, input);
+		if (binding) {
+			int invert = gesture_workspace_swipe_command_parse(binding->command);
+			if ((binding->gesture.directions & GESTURE_DIRECTION_VERTICAL) ==
+					GESTURE_DIRECTION_VERTICAL) {
+				update_workspace_scroll_percent(seat, tracker->dy, invert,
+						SWIPE_GESTURE_DIRECTION_VERTICAL);
+			} else if ((binding->gesture.directions & GESTURE_DIRECTION_HORIZONTAL) ==
+					GESTURE_DIRECTION_HORIZONTAL) {
+				update_workspace_scroll_percent(seat, tracker->dx, invert,
+						SWIPE_GESTURE_DIRECTION_HORIZONTAL);
 			}
 		}
-
-		struct sway_gesture_binding *current = gesture_binding_match(config->current_mode->gesture_bindings, &gesture, input);
-
-		int invert = gesture_workspace_swipe_command_parse(current->command);
-		update_workspace_scroll_percent(seat, seatop->gestures.dx, invert);
 	} else {
 		// ... otherwise forward to client
 		struct sway_cursor *cursor = seat->cursor;

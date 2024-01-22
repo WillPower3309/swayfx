@@ -13,6 +13,12 @@
 struct sway_server;
 struct sway_container;
 
+enum swipe_gesture_direction {
+	SWIPE_GESTURE_DIRECTION_NONE,
+	SWIPE_GESTURE_DIRECTION_HORIZONTAL,
+	SWIPE_GESTURE_DIRECTION_VERTICAL,
+};
+
 struct render_data {
 	pixman_region32_t *damage;
 	struct wlr_box *clip_box;
@@ -58,7 +64,10 @@ struct sway_output {
 	struct wl_listener frame;
 	struct wl_listener needs_frame;
 
-	float workspace_scroll_percent;
+	struct {
+		float percent;
+		enum swipe_gesture_direction direction;
+	} workspace_scroll;
 
 	struct {
 		struct wl_signal disable;
@@ -202,7 +211,8 @@ void handle_output_manager_test(struct wl_listener *listener, void *data);
 void handle_output_power_manager_set_mode(struct wl_listener *listener,
 	void *data);
 
-void update_workspace_scroll_percent(struct sway_seat *seat, int dx, int invert);
+void update_workspace_scroll_percent(struct sway_seat *seat, int gesture_percent,
+		int invert, enum swipe_gesture_direction direction);
 
 void snap_workspace_scroll_percent(struct sway_seat *seat);
 

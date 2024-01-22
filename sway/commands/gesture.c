@@ -160,7 +160,7 @@ static struct cmd_results *cmd_bind_or_unbind_gesture(int argc, char **argv, boo
 			if (gesture_workspace_swipe_command_parse(binding->command) == 0) {
 				free(binding);
 				return cmd_results_new(CMD_FAILURE,
-						"Invalid %s command (%s). Either normal or invert",
+						"Invalid %s command (%s). Either normal or inverted",
 						bindtype, errmsg);
 			}
 			break;

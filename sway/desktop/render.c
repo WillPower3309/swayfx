@@ -83,14 +83,29 @@ static struct wlr_box get_monitor_box(struct wlr_output *output) {
 // Adjust the box position when switching the workspace
 static void adjust_box_to_workspace_offset(struct wlr_box *box,
 		struct decoration_data *deco_data, struct sway_workspace *ws) {
-	int ws_width = ws->current.width + ws->current_gaps.left + ws->current_gaps.right;
-	float scroll_percent = ws->output->workspace_scroll_percent;
-	box->x -= ws_width * scroll_percent;
+	float scroll_percent = ws->output->workspace_scroll.percent;
+
+	int ws_dimen;
+	int *box_coord;
+	switch (ws->output->workspace_scroll.direction) {
+	case SWIPE_GESTURE_DIRECTION_NONE:
+		return;
+	case SWIPE_GESTURE_DIRECTION_HORIZONTAL:
+		ws_dimen = ws->current.width + ws->current_gaps.left + ws->current_gaps.right;
+		box_coord = &box->x;
+		break;
+	case SWIPE_GESTURE_DIRECTION_VERTICAL:
+		ws_dimen = ws->current.height + ws->current_gaps.top + ws->current_gaps.bottom;
+		box_coord = &box->y;
+		break;
+	}
+
+	*box_coord -= ws_dimen * scroll_percent;
 	if (!deco_data->on_focused_workspace) {
 		if (scroll_percent > 0) {
-			box->x += ws_width;
+			*box_coord += ws_dimen;
 		} else if (scroll_percent < 0) {
-			box->x -= ws_width;
+			*box_coord -= ws_dimen;
 		}
 	}
 }
@@ -99,15 +114,31 @@ static void adjust_box_to_workspace_offset(struct wlr_box *box,
 // Fixes containers being rendered across workspaces while switching.
 static void adjust_damage_to_workspace_bounds(pixman_region32_t *damage,
 		struct decoration_data *deco_data, struct sway_workspace *ws) {
-	float scroll_percent = ws->output->workspace_scroll_percent;
+	float scale = ws->output->wlr_output->scale;
+	float scroll_percent = ws->output->workspace_scroll.percent;
+	int x = 0, y = 0;
 
-	int ws_width = ws->current.width + ws->current_gaps.left + ws->current_gaps.right;
-	int x = round(-ws_width * scroll_percent);
+	int ws_dimen;
+	int *coord;
+	switch (ws->output->workspace_scroll.direction) {
+	case SWIPE_GESTURE_DIRECTION_NONE:
+		return;
+	case SWIPE_GESTURE_DIRECTION_HORIZONTAL:
+		ws_dimen = ws->current.width + ws->current_gaps.left + ws->current_gaps.right;
+		coord = &x;
+		break;
+	case SWIPE_GESTURE_DIRECTION_VERTICAL:
+		ws_dimen = ws->current.height + ws->current_gaps.top + ws->current_gaps.bottom;
+		coord = &y;
+		break;
+	}
+
+	*coord = round(-ws_dimen * scroll_percent);
 	if (!deco_data->on_focused_workspace) {
 		if (scroll_percent > 0) {
-			x += ws_width;
+			*coord += ws_dimen;
 		} else if (scroll_percent < 0) {
-			x -= ws_width;
+			*coord -= ws_dimen;
 		}
 	}
 
@@ -115,7 +146,7 @@ static void adjust_damage_to_workspace_bounds(pixman_region32_t *damage,
 	pixman_region32_intersect_rect(damage, damage,
 			monitor_box.x, monitor_box.y,
 			monitor_box.width, monitor_box.height);
-	pixman_region32_translate(damage, x * ws->output->wlr_output->scale, 0);
+	pixman_region32_translate(damage, x * scale, y * scale);
 }
 
 /**
@@ -1837,10 +1868,10 @@ static void render_workspace(struct sway_output *output,
 		struct sway_workspace *other_ws) {
 	struct sway_workspace *workspaces[2] = { ws, NULL };
 
-	if (output->workspace_scroll_percent < 0) {
+	if (output->workspace_scroll.percent < 0) {
 		workspaces[0] = other_ws;
 		workspaces[1] = ws;
-	} else if (output->workspace_scroll_percent > 0) {
+	} else if (output->workspace_scroll.percent > 0) {
 		workspaces[1] = other_ws;
 	}
 
@@ -1924,7 +1955,7 @@ static void render_floating(struct sway_output *soutput,
 		struct sway_output *output = root->outputs->items[i];
 
 		// Don't render floating windows across outputs when switching workspaces
-		if (output->workspace_scroll_percent != 0 && output != soutput) {
+		if (output->workspace_scroll.percent != 0 && output != soutput) {
 			continue;
 		}
 
@@ -1932,7 +1963,7 @@ static void render_floating(struct sway_output *soutput,
 		for (int j = 0; j < output->current.workspaces->length; ++j) {
 			struct sway_workspace *ws = output->current.workspaces->items[j];
 
-			float scroll_percent = soutput->workspace_scroll_percent;
+			float scroll_percent = soutput->workspace_scroll.percent;
 
 			// Only render visible workspace when not scrolling
 			if (!workspace_is_visible(ws) && scroll_percent == 0) {
@@ -2026,7 +2057,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 
 	// Get the sibling workspaces
 	struct sway_workspace *other_ws = NULL;
-	if (output->workspace_scroll_percent < 0) {
+	if (output->workspace_scroll.percent < 0) {
 		other_ws = workspace_output_prev_wrap(workspace, false);
 	} else {
 		other_ws = workspace_output_next_wrap(workspace, false);
@@ -2053,7 +2084,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 	int output_width, output_height;
 	wlr_output_transformed_resolution(wlr_output, &output_width, &output_height);
 
-	if (debug.damage == DAMAGE_RERENDER || output->workspace_scroll_percent != 0) {
+	if (debug.damage == DAMAGE_RERENDER || output->workspace_scroll.percent != 0) {
 		pixman_region32_union_rect(damage, damage, 0, 0, output_width, output_height);
 	}
 
@@ -2105,7 +2136,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 		goto render_overlay;
 	}
 
-	if (fullscreen_con && output->workspace_scroll_percent == 0) {
+	if (fullscreen_con && output->workspace_scroll.percent == 0) {
 		// Only draw fullscreen con if not transitioning between workspaces
 		render_fullscreen_con(damage, output, fullscreen_con, workspace, true);
 	} else {
@@ -2198,10 +2229,10 @@ void output_render(struct sway_output *output, struct timespec *when,
 		// Render the fullscreen containers on top
 		if (has_fullscreen) {
 			struct sway_workspace *workspaces[2] = { workspace, NULL };
-			if (output->workspace_scroll_percent < 0) {
+			if (output->workspace_scroll.percent < 0) {
 				workspaces[0] = other_ws;
 				workspaces[1] = workspace;
-			} else if (output->workspace_scroll_percent > 0) {
+			} else if (output->workspace_scroll.percent > 0) {
 				workspaces[1] = other_ws;
 			}
 			for (int i = 0; i < 2; i++) {

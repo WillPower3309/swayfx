@@ -543,7 +543,7 @@ static int output_repaint_timer_handler(void *data) {
 	if (fullscreen_con && fullscreen_con->view && !debug.noscanout
 			// Only output to monitor without compositing when saturation is changed
 			&& fullscreen_con->saturation == 1.0f &&
-			output->workspace_scroll_percent == 0.0f) {
+			output->workspace_scroll.percent == 0.0f) {
 		// Try to scan-out the fullscreen view
 		static bool last_scanned_out = false;
 		bool scanned_out =
@@ -991,7 +991,8 @@ void handle_new_output(struct wl_listener *listener, void *data) {
 	wlr_damage_ring_set_bounds(&output->damage_ring, width, height);
 	update_output_manager_config(server);
 
-	output->workspace_scroll_percent = 0.0f;
+	output->workspace_scroll.percent = 0.0f;
+	output->workspace_scroll.direction = SWIPE_GESTURE_DIRECTION_NONE;
 }
 
 void handle_output_layout_change(struct wl_listener *listener,
@@ -1105,7 +1106,8 @@ void handle_output_power_manager_set_mode(struct wl_listener *listener,
 	apply_output_config(oc, output);
 }
 
-void update_workspace_scroll_percent(struct sway_seat *seat, int dx, int invert) {
+void update_workspace_scroll_percent(struct sway_seat *seat, int gesture_percent,
+		int invert, enum swipe_gesture_direction direction) {
 	struct sway_workspace *focused_ws = seat_get_focused_workspace(seat);
 	struct sway_output *output = focused_ws->output;
 
@@ -1114,16 +1116,16 @@ void update_workspace_scroll_percent(struct sway_seat *seat, int dx, int invert)
 		return;
 	}
 
-	dx *= invert;
+	gesture_percent *= invert;
 
 	// TODO: Make the speed factor configurable?? Works well on my trackpad...
 	// Maybe also take in account the width of the actual trackpad??
 	const int SPEED_FACTOR = 500;
 	float percent = 0;
-	if (dx < 0) {
-		percent = (float) dx / SPEED_FACTOR;
-	} else if (dx > 0) {
-		percent = (float) dx / SPEED_FACTOR;
+	if (gesture_percent < 0) {
+		percent = (float) gesture_percent / SPEED_FACTOR;
+	} else if (gesture_percent > 0) {
+		percent = (float) gesture_percent / SPEED_FACTOR;
 	} else {
 		return;
 	}
@@ -1148,7 +1150,8 @@ void update_workspace_scroll_percent(struct sway_seat *seat, int dx, int invert)
 		// NOTE: Can be adjusted in the future to wrap around workspaces
 		min = -spring_limit;
 	}
-	output->workspace_scroll_percent = MIN(max, MAX(min, percent));
+	output->workspace_scroll.percent = MIN(max, MAX(min, percent));
+	output->workspace_scroll.direction = direction;
 
 	output_damage_whole(output);
 	transaction_commit_dirty();
@@ -1160,14 +1163,14 @@ void snap_workspace_scroll_percent(struct sway_seat *seat) {
 
 	// TODO: Make the threshold configurable??
 	const float THRESHOLD = 0.35;
-	if (fabs(output->workspace_scroll_percent) <= THRESHOLD) {
+	if (fabs(output->workspace_scroll.percent) <= THRESHOLD) {
 		goto reset_state;
 	}
 
 	int dir = 0;
-	if (output->workspace_scroll_percent < 0) {
+	if (output->workspace_scroll.percent < 0) {
 		dir = -1;
-	} else if (output->workspace_scroll_percent > 0) {
+	} else if (output->workspace_scroll.percent > 0) {
 		dir = 1;
 	} else {
 		// Skip setting workspace if the percentage is zero
@@ -1184,7 +1187,8 @@ void snap_workspace_scroll_percent(struct sway_seat *seat) {
 
 reset_state:
 	// Reset the state
-	output->workspace_scroll_percent = 0;
+	output->workspace_scroll.percent = 0;
+	output->workspace_scroll.direction = SWIPE_GESTURE_DIRECTION_NONE;
 
 	output_damage_whole(output);
 	transaction_commit_dirty();

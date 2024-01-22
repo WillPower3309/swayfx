@@ -39,6 +39,9 @@ enum gesture_direction {
 	// Directions based on rotation
 	GESTURE_DIRECTION_CLOCKWISE = 1 << 6,
 	GESTURE_DIRECTION_COUNTERCLOCKWISE = 1 << 7,
+	// Directions for workspace swipe
+	GESTURE_DIRECTION_HORIZONTAL = 1 << 8,
+	GESTURE_DIRECTION_VERTICAL = 1 << 9,
 };
 
 // Turns single direction enum value to constant string representation.
