@@ -1105,12 +1105,8 @@ void handle_output_power_manager_set_mode(struct wl_listener *listener,
 	apply_output_config(oc, output);
 }
 
-static void workspace_scroll_mark_dirty() {
-	// Damage all outputs
-	struct sway_output *soutput;
-	wl_list_for_each(soutput, &root->all_outputs, link) {
-		output_damage_whole(soutput);
-	}
+static void workspace_scroll_mark_dirty(struct sway_output *output) {
+	output_damage_whole(output);
 	transaction_commit_dirty();
 }
 
@@ -1149,7 +1145,7 @@ void update_workspace_scroll_percent(int dx, int invert) {
 	}
 	output->workspace_scroll_percent = MIN(max, MAX(min, percent));
 
-	workspace_scroll_mark_dirty();
+	workspace_scroll_mark_dirty(output);
 }
 
 void snap_workspace_scroll_percent(int dx, int invert) {
@@ -1194,5 +1190,5 @@ void reset_workspace_scroll_percent() {
 
 	output->workspace_scroll_percent = 0;
 
-	workspace_scroll_mark_dirty();
+	workspace_scroll_mark_dirty(output);
 }
