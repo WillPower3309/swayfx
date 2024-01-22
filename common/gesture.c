@@ -115,7 +115,7 @@ char *workspace_gesture_parse(const char *input, struct gesture *output) {
 
 	// Split input type, fingers and directions
 	list_t *split = split_string(input, ":");
-	if (split->length < 1 || split->length > 3) {
+	if (split->length < 1 || split->length > 2) {
 		return strformat(
 				"expected [:<fingers>][:direction], got %s",
 				input);
@@ -123,15 +123,15 @@ char *workspace_gesture_parse(const char *input, struct gesture *output) {
 
 	// Parse optional arguments
 	if (split->length > 1) {
-		char *next = split->items[1];
+		char *next = split->items[0];
 
 		// Try to parse as finger count (1-9)
 		if (strlen(next) == 1 && '1' <= next[0] && next[0] <= '9') {
 			output->fingers = atoi(next);
 
 			// Move to next if available
-			next = split->length == 3 ? split->items[2] : NULL;
-		} else if (split->length == 3) {
+			next = split->length == 2 ? split->items[1] : NULL;
+		} else if (split->length == 2) {
 			// Fail here if argument can only be finger count
 			return strformat("expected 1-9, got %s", next);
 		}
