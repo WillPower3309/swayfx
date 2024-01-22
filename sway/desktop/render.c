@@ -2235,6 +2235,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 			.blur = false,
 			.discard_transparent = false,
 			.shadow = false,
+			.on_focused_workspace = true,
 		};
 		render_view_popups(focus->view, output, damage, deco_data);
 	}
