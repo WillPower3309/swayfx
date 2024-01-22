@@ -202,9 +202,9 @@ void handle_output_manager_test(struct wl_listener *listener, void *data);
 void handle_output_power_manager_set_mode(struct wl_listener *listener,
 	void *data);
 
-void update_workspace_scroll_percent(int dx, int invert);
+void update_workspace_scroll_percent(struct sway_seat *seat, int dx, int invert);
 
-void snap_workspace_scroll_percent(int dx, int invert);
+void snap_workspace_scroll_percent(struct sway_seat *seat);
 
 struct sway_output_non_desktop *output_non_desktop_create(struct wlr_output *wlr_output);
 

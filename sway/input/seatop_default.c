@@ -1065,7 +1065,7 @@ static void handle_swipe_update(struct sway_seat *seat,
 		struct sway_gesture_binding *current = gesture_binding_match(config->current_mode->gesture_bindings, &gesture, input);
 
 		int invert = gesture_workspace_swipe_command_parse(current->command);
-		update_workspace_scroll_percent(seatop->gestures.dx, invert);
+		update_workspace_scroll_percent(seat, seatop->gestures.dx, invert);
 	} else {
 		// ... otherwise forward to client
 		struct sway_cursor *cursor = seat->cursor;
@@ -1100,8 +1100,7 @@ static void handle_swipe_end(struct sway_seat *seat,
 	if (binding) {
 		switch (binding->gesture.type) {
 		case GESTURE_TYPE_WORKSPACE_SWIPE:;
-			int invert = gesture_workspace_swipe_command_parse(binding->command);
-			snap_workspace_scroll_percent(seatop->gestures.dx, invert);
+			snap_workspace_scroll_percent(seat);
 			break;
 		default:
 			gesture_binding_execute(seat, binding);

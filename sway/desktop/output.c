@@ -1105,19 +1105,7 @@ void handle_output_power_manager_set_mode(struct wl_listener *listener,
 	apply_output_config(oc, output);
 }
 
-static void workspace_scroll_mark_dirty(struct sway_output *output) {
-	output_damage_whole(output);
-	transaction_commit_dirty();
-}
-
-static void reset_workspace_scroll_percent(struct sway_output *output) {
-	output->workspace_scroll_percent = 0;
-
-	workspace_scroll_mark_dirty(output);
-}
-
-void update_workspace_scroll_percent(int dx, int invert) {
-	struct sway_seat *seat = input_manager_get_default_seat();
+void update_workspace_scroll_percent(struct sway_seat *seat, int dx, int invert) {
 	struct sway_workspace *focused_ws = seat_get_focused_workspace(seat);
 	struct sway_output *output = focused_ws->output;
 
@@ -1142,38 +1130,39 @@ void update_workspace_scroll_percent(int dx, int invert) {
 
 	// Limit the percent depending on if the workspace is the first/last or in
 	// the middle somewhere.
-	int min = -1, max = 1;
+	float min = -1.0f, max = 1.0f;
 	if (visible_index + 1 >= output->workspaces->length) {
+		// NOTE: Can be adjusted in the future to wrap around workspaces
 		max = 0;
 	}
 	if (visible_index == 0) {
+		// NOTE: Can be adjusted in the future to wrap around workspaces
 		min = 0;
 	}
 	output->workspace_scroll_percent = MIN(max, MAX(min, percent));
 
-	workspace_scroll_mark_dirty(output);
+	output_damage_whole(output);
+	transaction_commit_dirty();
 }
 
-void snap_workspace_scroll_percent(int dx, int invert) {
-	struct sway_seat *seat = input_manager_get_default_seat();
+void snap_workspace_scroll_percent(struct sway_seat *seat) {
 	struct sway_workspace *focused_ws = seat_get_focused_workspace(seat);
 	struct sway_output *output = focused_ws->output;
 
 	// TODO: Make the threshold configurable??
 	const float THRESHOLD = 0.35;
-	if (ABS(output->workspace_scroll_percent) <= THRESHOLD) {
-		goto reset;
+	if (fabs(output->workspace_scroll_percent) <= THRESHOLD) {
+		goto reset_state;
 	}
 
-	dx *= invert;
-
 	int dir = 0;
-	if (dx < 0) {
+	if (output->workspace_scroll_percent < 0) {
 		dir = -1;
-	} else if (dx > 0) {
+	} else if (output->workspace_scroll_percent > 0) {
 		dir = 1;
 	} else {
-		goto reset;
+		// Skip setting workspace if the percentage is zero
+		goto reset_state;
 	}
 
 	int visible_index = list_find(output->workspaces, focused_ws);
@@ -1184,7 +1173,10 @@ void snap_workspace_scroll_percent(int dx, int invert) {
 	workspace_switch(new_ws);
 	seat_consider_warp_to_focus(seat);
 
-reset:
+reset_state:
 	// Reset the state
-	reset_workspace_scroll_percent(output);
+	output->workspace_scroll_percent = 0;
+
+	output_damage_whole(output);
+	transaction_commit_dirty();
 }

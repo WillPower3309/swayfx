@@ -1833,14 +1833,15 @@ static void render_container(struct sway_output *output,
 }
 
 static void render_workspace(struct sway_output *output,
-		pixman_region32_t *damage, struct sway_workspace *ws, bool focused) {
+		pixman_region32_t *damage, struct sway_workspace *ws, bool focused,
+		struct sway_workspace *other_ws) {
 	struct sway_workspace *workspaces[2] = { ws, NULL };
 
 	if (output->workspace_scroll_percent < 0) {
-		workspaces[0] = workspace_output_prev(ws);
+		workspaces[0] = other_ws;
 		workspaces[1] = ws;
 	} else if (output->workspace_scroll_percent > 0) {
-		workspaces[1] = workspace_output_next(ws);
+		workspaces[1] = other_ws;
 	}
 
 	for (int i = 0; i < 2; i++) {
@@ -1918,7 +1919,7 @@ static void render_floating_container(struct sway_output *soutput,
 }
 
 static void render_floating(struct sway_output *soutput,
-		pixman_region32_t *damage) {
+		pixman_region32_t *damage, struct sway_workspace *other_ws) {
 	for (int i = 0; i < root->outputs->length; ++i) {
 		struct sway_output *output = root->outputs->items[i];
 
@@ -1928,13 +1929,6 @@ static void render_floating(struct sway_output *soutput,
 		}
 
 		struct sway_workspace *visible_ws = output->current.active_workspace;
-		struct sway_workspace *other_ws = NULL;
-		if (output->workspace_scroll_percent < 0) {
-			other_ws = workspace_output_prev(visible_ws);
-		} else {
-			other_ws = workspace_output_next(visible_ws);
-		}
-
 		for (int j = 0; j < output->current.workspaces->length; ++j) {
 			struct sway_workspace *ws = output->current.workspaces->items[j];
 
@@ -2186,8 +2180,8 @@ void output_render(struct sway_output *output, struct timespec *when,
 			render_output_blur(output, damage);
 		}
 
-		render_workspace(output, damage, workspace, workspace->current.focused);
-		render_floating(output, damage);
+		render_workspace(output, damage, workspace, workspace->current.focused, other_ws);
+		render_floating(output, damage, other_ws);
 #if HAVE_XWAYLAND
 		render_unmanaged(output, damage, &root->xwayland_unmanaged);
 #endif
