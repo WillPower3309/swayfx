@@ -2005,8 +2005,8 @@ static void render_fullscreen_con(pixman_region32_t *damage,
 
 	// Only clear the transformed fullscreen bounds
 	pixman_region32_t dmg;
+	pixman_region32_init(&dmg);
 	if (!clear_whole_screen) {
-		pixman_region32_init(&dmg);
 		pixman_region32_copy(&dmg, damage);
 		adjust_damage_to_workspace_bounds(&dmg, &deco_data, workspace);
 		damage = &dmg;
