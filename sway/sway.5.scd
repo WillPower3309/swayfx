@@ -588,6 +588,10 @@ runtime.
 
 ```
 
+*workspace_gesture_spring_size* <value>
+	Adjusts the workspace gestures spring size. Can use values between
+	0 (disabled) and 100 while 50 is the default value.
+
 *client.background* <color>
 	This command is ignored and is only present for i3 compatibility.
 

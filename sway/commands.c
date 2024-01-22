@@ -122,6 +122,7 @@ static const struct cmd_handler handlers[] = {
 	{ "unbindworkspacegesture", cmd_unbindworkspacegesture },
 	{ "workspace", cmd_workspace },
 	{ "workspace_auto_back_and_forth", cmd_ws_auto_back_and_forth },
+	{ "workspace_gesture_spring_size", cmd_ws_gesture_spring_size },
 };
 
 /* Config-time only commands. Keep alphabetized */

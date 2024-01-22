@@ -368,6 +368,8 @@ static void config_defaults(struct sway_config *config) {
 	config->titlebar_separator = true;
 	config->scratchpad_minimize = false;
 
+	config->workspace_gesture_spring_size = 50;
+
 	if (!(config->layer_criteria = create_list())) goto cleanup;
 
 	// The keysym to keycode translation

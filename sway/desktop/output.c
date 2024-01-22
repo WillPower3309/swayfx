@@ -1136,7 +1136,8 @@ void update_workspace_scroll_percent(struct sway_seat *seat, int gesture_percent
 	// TODO: Make configurable?
 	// Visualized to the user that this is the last / first workspace by
 	// allowing a small swipe, a "Spring effect"
-	float spring_limit = (float) 50 / output->width * output->wlr_output->scale;
+	float spring_limit = (float) config->workspace_gesture_spring_size /
+		output->width * output->wlr_output->scale;
 	// Make sure that the limit is always smaller than the threshold
 	spring_limit = MIN(THRESHOLD, spring_limit);
 	// Limit the percent depending on if the workspace is the first/last or in

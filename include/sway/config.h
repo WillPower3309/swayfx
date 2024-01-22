@@ -507,6 +507,8 @@ struct sway_config {
 	bool titlebar_separator;
 	bool scratchpad_minimize;
 
+	int workspace_gesture_spring_size;
+
 	list_t *layer_criteria;
 
 	char *swaynag_command;
