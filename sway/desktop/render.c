@@ -1971,26 +1971,31 @@ static void render_seatops(struct sway_output *output,
 
 static void render_fullscreen_con(pixman_region32_t *damage,
 		struct sway_output *output, struct sway_container *fullscreen_con,
-		struct sway_workspace *workspace, bool clear_screen) {
+		struct sway_workspace *workspace, bool clear_whole_screen) {
 	struct wlr_output *wlr_output = output->wlr_output;
-	float clear_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
 
-	// Don't clear the buffer when rendering the workspace transition
-	if (clear_screen) {
-		int nrects;
-		pixman_box32_t *rects = pixman_region32_rectangles(damage, &nrects);
-		for (int i = 0; i < nrects; ++i) {
-			scissor_output(wlr_output, &rects[i]);
-			fx_renderer_clear(clear_color);
-		}
+	struct decoration_data deco_data = get_undecorated_decoration_data();
+	deco_data.saturation = fullscreen_con->saturation;
+	deco_data.on_focused_workspace = workspace == output->current.active_workspace;
+
+	// Only clear the transformed fullscreen bounds
+	pixman_region32_t dmg;
+	if (!clear_whole_screen) {
+		pixman_region32_init(&dmg);
+		pixman_region32_copy(&dmg, damage);
+		adjust_damage_to_workspace_bounds(&dmg, &deco_data, workspace);
+		damage = &dmg;
 	}
 
-	bool on_focused_ws = workspace == output->current.active_workspace;
+	float clear_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
+	int nrects;
+	pixman_box32_t *rects = pixman_region32_rectangles(damage, &nrects);
+	for (int i = 0; i < nrects; ++i) {
+		scissor_output(wlr_output, &rects[i]);
+		fx_renderer_clear(clear_color);
+	}
+
 	if (fullscreen_con->view) {
-		struct decoration_data deco_data = get_undecorated_decoration_data();
-		deco_data.saturation = fullscreen_con->saturation;
-		deco_data.blur = !clear_screen && fullscreen_con->blur_enabled;
-		deco_data.on_focused_workspace = on_focused_ws;
 		if (!wl_list_empty(&fullscreen_con->view->saved_buffers)) {
 			render_saved_view(fullscreen_con->view, output, damage, deco_data);
 		} else if (fullscreen_con->view->surface) {
@@ -1998,19 +2003,21 @@ static void render_fullscreen_con(pixman_region32_t *damage,
 		}
 	} else {
 		render_container(output, damage, fullscreen_con, fullscreen_con->current.focused,
-				on_focused_ws);
+				deco_data.on_focused_workspace);
 	}
 
 	for (int i = 0; i < workspace->current.floating->length; ++i) {
 		struct sway_container *floater =
 			workspace->current.floating->items[i];
 		if (container_is_transient_for(floater, fullscreen_con)) {
-			render_floating_container(output, damage, floater, on_focused_ws);
+			render_floating_container(output, damage, floater, deco_data.on_focused_workspace);
 		}
 	}
 #if HAVE_XWAYLAND
 	render_unmanaged(output, damage, &root->xwayland_unmanaged);
 #endif
+
+	pixman_region32_fini(&dmg);
 }
 
 void output_render(struct sway_output *output, struct timespec *when,
