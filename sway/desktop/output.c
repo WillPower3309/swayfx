@@ -1128,16 +1128,25 @@ void update_workspace_scroll_percent(struct sway_seat *seat, int dx, int invert)
 		return;
 	}
 
+	// TODO: Make the threshold configurable??
+	const float THRESHOLD = MAX(0.35 - 0.1, 0);
+
+	// TODO: Make configurable?
+	// Visualized to the user that this is the last / first workspace by
+	// allowing a small swipe, a "Spring effect"
+	float spring_limit = (float) 50 / output->width * output->wlr_output->scale;
+	// Make sure that the limit is always smaller than the threshold
+	spring_limit = MIN(THRESHOLD, spring_limit);
 	// Limit the percent depending on if the workspace is the first/last or in
 	// the middle somewhere.
 	float min = -1.0f, max = 1.0f;
 	if (visible_index + 1 >= output->workspaces->length) {
 		// NOTE: Can be adjusted in the future to wrap around workspaces
-		max = 0;
+		max = spring_limit;
 	}
 	if (visible_index == 0) {
 		// NOTE: Can be adjusted in the future to wrap around workspaces
-		min = 0;
+		min = -spring_limit;
 	}
 	output->workspace_scroll_percent = MIN(max, MAX(min, percent));
 

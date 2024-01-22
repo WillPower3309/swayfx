@@ -555,6 +555,44 @@ struct sway_workspace *workspace_output_prev(struct sway_workspace *current) {
 	return workspace_output_prev_next_impl(current->output, -1);
 }
 
+/**
+ * Get the previous or next workspace on the specified output. Doesn't wrap
+ * around at the end and beginning. If next is false, the previous workspace
+ * is returned, otherwise the next one is returned.
+ */
+static struct sway_workspace *workspace_output_prev_next_no_wrap_impl(
+		struct sway_output *output, int dir) {
+	struct sway_seat *seat = input_manager_current_seat();
+	struct sway_workspace *workspace = seat_get_focused_workspace(seat);
+	if (!workspace) {
+		sway_log(SWAY_DEBUG,
+				"No focused workspace to base prev/next on output off of");
+		return NULL;
+	}
+
+	int index = list_find(output->workspaces, workspace) + dir;
+	if (index < 0 || index >= output->workspaces->length) {
+		return NULL;
+	}
+	return output->workspaces->items[index];
+}
+
+struct sway_workspace *workspace_output_next_wrap(struct sway_workspace *current,
+		bool should_wrap) {
+	if (should_wrap) {
+		return workspace_output_prev_next_impl(current->output, 1);
+	}
+	return workspace_output_prev_next_no_wrap_impl(current->output, 1);
+}
+
+struct sway_workspace *workspace_output_prev_wrap(struct sway_workspace *current,
+		bool should_wrap) {
+	if (should_wrap) {
+		return workspace_output_prev_next_impl(current->output, -1);
+	}
+	return workspace_output_prev_next_no_wrap_impl(current->output, -1);
+}
+
 struct sway_workspace *workspace_auto_back_and_forth(
 		struct sway_workspace *workspace) {
 	struct sway_seat *seat = input_manager_current_seat();
