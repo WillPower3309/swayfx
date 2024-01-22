@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "sway/commands.h"
 #include "sway/config.h"
+#include "util.h"
 
 struct cmd_results *cmd_ws_gesture_spring_size(int argc, char **argv) {
 	struct cmd_results *error = NULL;
@@ -15,6 +16,17 @@ struct cmd_results *cmd_ws_gesture_spring_size(int argc, char **argv) {
 	}
 
 	config->workspace_gesture_spring_size = value;
+
+	return cmd_results_new(CMD_SUCCESS, NULL);
+}
+
+struct cmd_results *cmd_ws_gesture_wrap_around(int argc, char **argv) {
+	struct cmd_results *error = NULL;
+	if ((error = checkarg(argc, "workspace_gesture_wrap_around", EXPECTED_EQUAL_TO, 1))) {
+		return error;
+	}
+
+	config->workspace_gesture_wrap_around = parse_boolean(argv[0], true);
 
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }

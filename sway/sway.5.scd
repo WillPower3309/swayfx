@@ -592,6 +592,11 @@ runtime.
 	Adjusts the workspace gestures spring size. Can use values between
 	0 (disabled) and 100 while 50 is the default value.
 
+*workspace_gesture_wrap_around* <enable|disable>
+	Sets whether or not the workspace gesture should wrap around when trying to
+	swipe past the first/last workspace. Disables the
+	_workspace_gesture_spring_size_ config option. Disabled by default.
+
 *client.background* <color>
 	This command is ignored and is only present for i3 compatibility.
 

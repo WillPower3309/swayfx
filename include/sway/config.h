@@ -508,6 +508,7 @@ struct sway_config {
 	bool scratchpad_minimize;
 
 	int workspace_gesture_spring_size;
+	bool workspace_gesture_wrap_around;
 
 	list_t *layer_criteria;
 

@@ -33,6 +33,9 @@
 #include "sway/tree/workspace.h"
 #include "util.h"
 
+#define PREV_WS_LIMIT -1.0f
+#define NEXT_WS_LIMIT 1.0f
+
 struct sway_output *output_by_name_or_id(const char *name_or_id) {
 	for (int i = 0; i < root->outputs->length; ++i) {
 		struct sway_output *output = root->outputs->items[i];
@@ -1130,26 +1133,25 @@ void update_workspace_scroll_percent(struct sway_seat *seat, int gesture_percent
 		return;
 	}
 
-	// TODO: Make the threshold configurable??
-	const float THRESHOLD = MAX(0.35 - 0.1, 0);
+	float min = PREV_WS_LIMIT, max = NEXT_WS_LIMIT;
+	if (!config->workspace_gesture_wrap_around) {
+		// TODO: Make the threshold configurable??
+		const float THRESHOLD = MAX(0.35 - 0.1, 0);
 
-	// TODO: Make configurable?
-	// Visualized to the user that this is the last / first workspace by
-	// allowing a small swipe, a "Spring effect"
-	float spring_limit = (float) config->workspace_gesture_spring_size /
-		output->width * output->wlr_output->scale;
-	// Make sure that the limit is always smaller than the threshold
-	spring_limit = MIN(THRESHOLD, spring_limit);
-	// Limit the percent depending on if the workspace is the first/last or in
-	// the middle somewhere.
-	float min = -1.0f, max = 1.0f;
-	if (visible_index + 1 >= output->workspaces->length) {
-		// NOTE: Can be adjusted in the future to wrap around workspaces
-		max = spring_limit;
-	}
-	if (visible_index == 0) {
-		// NOTE: Can be adjusted in the future to wrap around workspaces
-		min = -spring_limit;
+		// Visualized to the user that this is the last / first workspace by
+		// allowing a small swipe, a "Spring effect"
+		float spring_limit = (float) config->workspace_gesture_spring_size /
+			output->width * output->wlr_output->scale;
+		// Make sure that the limit is always smaller than the threshold
+		spring_limit = MIN(THRESHOLD, spring_limit);
+		// Limit the percent depending on if the workspace is the first/last or in
+		// the middle somewhere.
+		if (visible_index + 1 >= output->workspaces->length) {
+			max = spring_limit;
+		}
+		if (visible_index == 0) {
+			min = -spring_limit;
+		}
 	}
 	output->workspace_scroll.percent = MIN(max, MAX(min, percent));
 	output->workspace_scroll.direction = direction;
@@ -1170,9 +1172,9 @@ void snap_workspace_scroll_percent(struct sway_seat *seat) {
 
 	int dir = 0;
 	if (output->workspace_scroll.percent < 0) {
-		dir = -1;
+		dir = PREV_WS_LIMIT;
 	} else if (output->workspace_scroll.percent > 0) {
-		dir = 1;
+		dir = NEXT_WS_LIMIT;
 	} else {
 		// Skip setting workspace if the percentage is zero
 		goto reset_state;

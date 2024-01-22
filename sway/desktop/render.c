@@ -2058,9 +2058,11 @@ void output_render(struct sway_output *output, struct timespec *when,
 	// Get the sibling workspaces
 	struct sway_workspace *other_ws = NULL;
 	if (output->workspace_scroll.percent < 0) {
-		other_ws = workspace_output_prev_wrap(workspace, false);
+		other_ws = workspace_output_prev_wrap(workspace,
+				config->workspace_gesture_wrap_around);
 	} else {
-		other_ws = workspace_output_next_wrap(workspace, false);
+		other_ws = workspace_output_next_wrap(workspace,
+				config->workspace_gesture_wrap_around);
 	}
 
 	struct sway_container *fullscreen_con = root->fullscreen_global;
