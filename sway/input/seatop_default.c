@@ -1086,14 +1086,7 @@ static void handle_swipe_end(struct sway_seat *seat,
 			cursor->seat->wlr_seat, event->time_msec, event->cancelled);
 		return;
 	}
-	if (event->cancelled) {
-		switch (seatop->gestures.type) {
-		case GESTURE_TYPE_WORKSPACE_SWIPE:
-			reset_workspace_scroll_percent();
-			break;
-		default:
-			break;
-		}
+	if (event->cancelled && seatop->gestures.type != GESTURE_TYPE_WORKSPACE_SWIPE) {
 		gesture_tracker_cancel(&seatop->gestures);
 		return;
 	}

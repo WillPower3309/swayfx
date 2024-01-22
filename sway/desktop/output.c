@@ -1110,6 +1110,12 @@ static void workspace_scroll_mark_dirty(struct sway_output *output) {
 	transaction_commit_dirty();
 }
 
+static void reset_workspace_scroll_percent(struct sway_output *output) {
+	output->workspace_scroll_percent = 0;
+
+	workspace_scroll_mark_dirty(output);
+}
+
 void update_workspace_scroll_percent(int dx, int invert) {
 	struct sway_seat *seat = input_manager_get_default_seat();
 	struct sway_workspace *focused_ws = seat_get_focused_workspace(seat);
@@ -1180,15 +1186,5 @@ void snap_workspace_scroll_percent(int dx, int invert) {
 
 reset:
 	// Reset the state
-	reset_workspace_scroll_percent();
-}
-
-void reset_workspace_scroll_percent() {
-	struct sway_seat *seat = input_manager_get_default_seat();
-	struct sway_workspace *focused_ws = seat_get_focused_workspace(seat);
-	struct sway_output *output = focused_ws->output;
-
-	output->workspace_scroll_percent = 0;
-
-	workspace_scroll_mark_dirty(output);
+	reset_workspace_scroll_percent(output);
 }

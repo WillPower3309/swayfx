@@ -206,8 +206,6 @@ void update_workspace_scroll_percent(int dx, int invert);
 
 void snap_workspace_scroll_percent(int dx, int invert);
 
-void reset_workspace_scroll_percent();
-
 struct sway_output_non_desktop *output_non_desktop_create(struct wlr_output *wlr_output);
 
 #endif
