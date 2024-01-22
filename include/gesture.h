@@ -12,13 +12,12 @@ enum gesture_type {
 	GESTURE_TYPE_HOLD,
 	GESTURE_TYPE_PINCH,
 	GESTURE_TYPE_SWIPE,
-	GESTURE_TYPE_WORKSPACE_SWIPE,
+	GESTURE_TYPE_WORKSPACE_SWIPE_HORIZONTAL,
+	GESTURE_TYPE_WORKSPACE_SWIPE_VERTICAL,
 };
 
 // Turns single type enum value to constant string representation.
 const char *gesture_type_string(enum gesture_type direction);
-
-int gesture_workspace_swipe_command_parse(char *cmd);
 
 // Value to use to accept any finger count
 extern const uint8_t GESTURE_FINGERS_ANY;
@@ -39,9 +38,6 @@ enum gesture_direction {
 	// Directions based on rotation
 	GESTURE_DIRECTION_CLOCKWISE = 1 << 6,
 	GESTURE_DIRECTION_COUNTERCLOCKWISE = 1 << 7,
-	// Directions for workspace swipe
-	GESTURE_DIRECTION_HORIZONTAL = 1 << 8,
-	GESTURE_DIRECTION_VERTICAL = 1 << 9,
 };
 
 // Turns single direction enum value to constant string representation.
@@ -62,6 +58,13 @@ struct gesture {
  * Return NULL on success, otherwise error message string
  */
 char *gesture_parse(const char *input, struct gesture *output);
+
+/**
+ * Parses workspace gesture from [:<fingers>][:<directions>] string.
+ *
+ * Return NULL on success, otherwise error message string
+ */
+char *workspace_gesture_parse(const char *input, struct gesture *output);
 
 // Turns gesture into string representation
 char *gesture_to_string(struct gesture *gesture);

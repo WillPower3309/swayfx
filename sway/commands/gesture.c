@@ -154,19 +154,6 @@ static struct cmd_results *cmd_bind_or_unbind_gesture(int argc, char **argv, boo
 		return gesture_binding_remove(binding, argv[0]);
 	}
 	binding->command = join_args(argv + 1, argc - 1);
-	// Make sure that the gesture command is valid
-	switch (binding->gesture.type) {
-		case GESTURE_TYPE_WORKSPACE_SWIPE:
-			if (gesture_workspace_swipe_command_parse(binding->command) == 0) {
-				free(binding);
-				return cmd_results_new(CMD_FAILURE,
-						"Invalid %s command (%s). Either normal or inverted",
-						bindtype, errmsg);
-			}
-			break;
-		default:
-			break;
-	}
 	return gesture_binding_add(binding, argv[0], warn);
 }
 
@@ -176,4 +163,77 @@ struct cmd_results *cmd_bindgesture(int argc, char **argv) {
 
 struct cmd_results *cmd_unbindgesture(int argc, char **argv) {
 	return cmd_bind_or_unbind_gesture(argc, argv, true);
+}
+
+/**
+ * Parse and execute bindgesture or unbindgesture command.
+ */
+static struct cmd_results *cmd_bind_or_unbind_workspacegesture(int argc,
+		char **argv, bool unbind) {
+	int minargs = 1;
+	char *bindtype = "bindgesture";
+	if (unbind) {
+		bindtype = "unbindgesture";
+	}
+
+	struct cmd_results *error = NULL;
+	if ((error = checkarg(argc, bindtype, EXPECTED_AT_LEAST, minargs))) {
+		return error;
+	}
+	struct sway_gesture_binding *binding = calloc(1, sizeof(struct sway_gesture_binding));
+	if (!binding) {
+		return cmd_results_new(CMD_FAILURE, "Unable to allocate binding");
+	}
+	binding->input = strdup("*");
+
+	bool warn = true;
+
+	// Handle flags
+	binding->flags |= BINDING_EXACT;
+	while (argc > 0) {
+		if (strcmp("--inverted", argv[0]) == 0) {
+			binding->flags |= BINDING_INVERTED;
+		} else if (strcmp("--no-warn", argv[0]) == 0) {
+			warn = false;
+		} else if (strncmp("--input-device=", argv[0],
+					strlen("--input-device=")) == 0) {
+			free(binding->input);
+			binding->input = strdup(argv[0] + strlen("--input-device="));
+		} else {
+			break;
+		}
+		argv++;
+		argc--;
+	}
+
+	if (argc < minargs) {
+		free(binding);
+		return cmd_results_new(CMD_FAILURE,
+				"Invalid %s command (expected at least %d "
+				"non-option arguments, got %d)", bindtype, minargs, argc);
+	}
+
+	char* errmsg = NULL;
+	if ((errmsg = workspace_gesture_parse(argv[0], &binding->gesture))) {
+		free(binding);
+		struct cmd_results *final = cmd_results_new(CMD_FAILURE,
+				"Invalid %s command (%s)",
+				bindtype, errmsg);
+		free(errmsg);
+		return final;
+	}
+
+	if (unbind) {
+		return gesture_binding_remove(binding, argv[0]);
+	}
+	binding->command = NULL;
+	return gesture_binding_add(binding, argv[0], warn);
+}
+
+struct cmd_results *cmd_bindworkspacegesture(int argc, char **argv) {
+	return cmd_bind_or_unbind_workspacegesture(argc, argv, false);
+}
+
+struct cmd_results *cmd_unbindworkspacegesture(int argc, char **argv) {
+	return cmd_bind_or_unbind_workspacegesture(argc, argv, true);
 }
