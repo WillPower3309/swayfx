@@ -1135,15 +1135,14 @@ void update_workspace_scroll_percent(struct sway_seat *seat, int gesture_percent
 
 	float min = PREV_WS_LIMIT, max = NEXT_WS_LIMIT;
 	if (!config->workspace_gesture_wrap_around) {
-		// TODO: Make the threshold configurable??
-		const float THRESHOLD = MAX(0.35 - 0.1, 0);
-
 		// Visualized to the user that this is the last / first workspace by
 		// allowing a small swipe, a "Spring effect"
 		float spring_limit = (float) config->workspace_gesture_spring_size /
 			output->width * output->wlr_output->scale;
-		// Make sure that the limit is always smaller than the threshold
-		spring_limit = MIN(THRESHOLD, spring_limit);
+		// Make sure that the limit is always smaller than the threshold to
+		// avoid accidental workspace switches
+		float small_threshold = MAX(config->workspace_gesture_threshold - 0.1, 0);
+		spring_limit = MIN(small_threshold, spring_limit);
 		// Limit the percent depending on if the workspace is the first/last or in
 		// the middle somewhere.
 		if (visible_index + 1 >= output->workspaces->length) {
@@ -1164,9 +1163,7 @@ void snap_workspace_scroll_percent(struct sway_seat *seat) {
 	struct sway_workspace *focused_ws = seat_get_focused_workspace(seat);
 	struct sway_output *output = focused_ws->output;
 
-	// TODO: Make the threshold configurable??
-	const float THRESHOLD = 0.35;
-	if (fabs(output->workspace_scroll.percent) <= THRESHOLD) {
+	if (fabs(output->workspace_scroll.percent) <= config->workspace_gesture_threshold) {
 		goto reset_state;
 	}
 

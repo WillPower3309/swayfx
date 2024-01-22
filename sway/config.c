@@ -370,6 +370,7 @@ static void config_defaults(struct sway_config *config) {
 
 	config->workspace_gesture_spring_size = 50;
 	config->workspace_gesture_wrap_around = false;
+	config->workspace_gesture_threshold = 0.35;
 
 	if (!(config->layer_criteria = create_list())) goto cleanup;
 

@@ -509,6 +509,7 @@ struct sway_config {
 
 	int workspace_gesture_spring_size;
 	bool workspace_gesture_wrap_around;
+	float workspace_gesture_threshold;
 
 	list_t *layer_criteria;
 
