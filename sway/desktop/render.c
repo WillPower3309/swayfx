@@ -2184,6 +2184,17 @@ void output_render(struct sway_output *output, struct timespec *when,
 #if HAVE_XWAYLAND
 		render_unmanaged(output, damage, &root->xwayland_unmanaged);
 #endif
+		render_layer_toplevel(output, damage,
+			&output->layers[ZWLR_LAYER_SHELL_V1_LAYER_TOP]);
+
+		render_layer_popups(output, damage,
+			&output->layers[ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND]);
+		render_layer_popups(output, damage,
+			&output->layers[ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM]);
+		render_layer_popups(output, damage,
+			&output->layers[ZWLR_LAYER_SHELL_V1_LAYER_TOP]);
+
+		// Render the fullscreen containers on top
 		if (has_fullscreen) {
 			struct sway_workspace *workspaces[2] = { workspace, NULL };
 			if (output->workspace_scroll_percent < 0) {
@@ -2205,15 +2216,6 @@ void output_render(struct sway_output *output, struct timespec *when,
 				}
 			}
 		}
-		render_layer_toplevel(output, damage,
-			&output->layers[ZWLR_LAYER_SHELL_V1_LAYER_TOP]);
-
-		render_layer_popups(output, damage,
-			&output->layers[ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND]);
-		render_layer_popups(output, damage,
-			&output->layers[ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM]);
-		render_layer_popups(output, damage,
-			&output->layers[ZWLR_LAYER_SHELL_V1_LAYER_TOP]);
 	}
 
 	render_seatops(output, damage);
