@@ -36,6 +36,15 @@
 #define PREV_WS_LIMIT -1.0f
 #define NEXT_WS_LIMIT 1.0f
 
+static struct workspace_scroll workspace_scroll_get_default() {
+	return (struct workspace_scroll) {
+		.percent = 0,
+		.avg_velocity = 0,
+		.num_updates = 0,
+		.direction = SWIPE_GESTURE_DIRECTION_NONE,
+	};
+}
+
 struct sway_output *output_by_name_or_id(const char *name_or_id) {
 	for (int i = 0; i < root->outputs->length; ++i) {
 		struct sway_output *output = root->outputs->items[i];
@@ -994,8 +1003,7 @@ void handle_new_output(struct wl_listener *listener, void *data) {
 	wlr_damage_ring_set_bounds(&output->damage_ring, width, height);
 	update_output_manager_config(server);
 
-	output->workspace_scroll.percent = 0.0f;
-	output->workspace_scroll.direction = SWIPE_GESTURE_DIRECTION_NONE;
+	output->workspace_scroll = workspace_scroll_get_default();
 }
 
 void handle_output_layout_change(struct wl_listener *listener,
@@ -1109,39 +1117,49 @@ void handle_output_power_manager_set_mode(struct wl_listener *listener,
 	apply_output_config(oc, output);
 }
 
-void update_workspace_scroll_percent(struct sway_seat *seat, int gesture_percent,
-		int invert, enum swipe_gesture_direction direction) {
+void workspace_scroll_begin(struct sway_seat *seat,
+		enum swipe_gesture_direction direction) {
 	struct sway_workspace *focused_ws = seat_get_focused_workspace(seat);
 	struct sway_output *output = focused_ws->output;
+
+	// Reset the state
+	output->workspace_scroll = workspace_scroll_get_default();
+	output->workspace_scroll.direction = direction;
+
+	output_damage_whole(output);
+	transaction_commit_dirty();
+}
+
+void workspace_scroll_update(struct sway_seat *seat, double delta_sum,
+		enum swipe_gesture_direction direction) {
+	struct sway_workspace *focused_ws = seat_get_focused_workspace(seat);
+	struct sway_output *output = focused_ws->output;
+	struct workspace_scroll *ws_scroll = &output->workspace_scroll;
+
+	if (direction != ws_scroll->direction) {
+		return;
+	}
 
 	int visible_index = list_find(output->workspaces, focused_ws);
 	if (visible_index == -1) {
 		return;
 	}
 
-	gesture_percent *= invert;
+	// Get the updated average velocity
+	ws_scroll->avg_velocity = fabs(delta_sum) / (++ws_scroll->num_updates);
+	// TODO: Make configurable
+	const int SPEED_FACTOR = 750;
+	double percent = delta_sum / SPEED_FACTOR;
 
-	// TODO: Make the speed factor configurable?? Works well on my trackpad...
-	// Maybe also take in account the width of the actual trackpad??
-	const int SPEED_FACTOR = 500;
-	float percent = 0;
-	if (gesture_percent < 0) {
-		percent = (float) gesture_percent / SPEED_FACTOR;
-	} else if (gesture_percent > 0) {
-		percent = (float) gesture_percent / SPEED_FACTOR;
-	} else {
-		return;
-	}
-
-	float min = PREV_WS_LIMIT, max = NEXT_WS_LIMIT;
+	double min = PREV_WS_LIMIT, max = NEXT_WS_LIMIT;
 	if (!config->workspace_gesture_wrap_around) {
 		// Visualized to the user that this is the last / first workspace by
 		// allowing a small swipe, a "Spring effect"
-		float spring_limit = (float) config->workspace_gesture_spring_size /
+		double spring_limit = (double) config->workspace_gesture_spring_size /
 			output->width * output->wlr_output->scale;
 		// Make sure that the limit is always smaller than the threshold to
 		// avoid accidental workspace switches
-		float small_threshold = MAX(config->workspace_gesture_threshold - 0.1, 0);
+		double small_threshold = MAX(config->workspace_gesture_threshold - 0.1, 0);
 		spring_limit = MIN(small_threshold, spring_limit);
 		// Limit the percent depending on if the workspace is the first/last or in
 		// the middle somewhere.
@@ -1152,32 +1170,42 @@ void update_workspace_scroll_percent(struct sway_seat *seat, int gesture_percent
 			min = -spring_limit;
 		}
 	}
-	output->workspace_scroll.percent = MIN(max, MAX(min, percent));
-	output->workspace_scroll.direction = direction;
+	ws_scroll->percent = CLAMP(percent, min, max);
+	ws_scroll->direction = direction;
 
 	output_damage_whole(output);
 	transaction_commit_dirty();
 }
 
-void snap_workspace_scroll_percent(struct sway_seat *seat) {
+void workspace_scroll_end(struct sway_seat *seat) {
 	struct sway_workspace *focused_ws = seat_get_focused_workspace(seat);
 	struct sway_output *output = focused_ws->output;
+	struct workspace_scroll *ws_scroll = &output->workspace_scroll;
 
-	if (fabs(output->workspace_scroll.percent) <= config->workspace_gesture_threshold) {
-		goto reset_state;
-	}
+	int visible_index = list_find(output->workspaces, focused_ws);
 
-	int dir = 0;
-	if (output->workspace_scroll.percent < 0) {
+	bool not_edge_ws = config->workspace_gesture_wrap_around;
+	int dir;
+	if (ws_scroll->percent < 0) {
 		dir = PREV_WS_LIMIT;
-	} else if (output->workspace_scroll.percent > 0) {
+		not_edge_ws |= visible_index > 0;
+	} else if (ws_scroll->percent > 0) {
 		dir = NEXT_WS_LIMIT;
+		not_edge_ws |= visible_index + 1 < output->workspaces->length;
 	} else {
 		// Skip setting workspace if the percentage is zero
 		goto reset_state;
 	}
 
-	int visible_index = list_find(output->workspaces, focused_ws);
+	// TODO: Make configurable
+	const int VELOCITY_NEEDED = 8;
+	// Only switch workspaces when the percent exceeds the threshold or if
+	// the avg_speed exceeds the limit (for fast but short swipes).
+	bool threshold_met = fabs(ws_scroll->percent) >= config->workspace_gesture_threshold;
+	bool enough_velocity = ws_scroll->avg_velocity >= VELOCITY_NEEDED && not_edge_ws;
+	if (!threshold_met && !enough_velocity) {
+		goto reset_state;
+	}
 
 	size_t ws_index = wrap(visible_index + dir, output->workspaces->length);
 	struct sway_workspace *new_ws = output->workspaces->items[ws_index];
@@ -1187,8 +1215,7 @@ void snap_workspace_scroll_percent(struct sway_seat *seat) {
 
 reset_state:
 	// Reset the state
-	output->workspace_scroll.percent = 0;
-	output->workspace_scroll.direction = SWIPE_GESTURE_DIRECTION_NONE;
+	output->workspace_scroll = workspace_scroll_get_default();
 
 	output_damage_whole(output);
 	transaction_commit_dirty();

@@ -19,6 +19,13 @@ enum swipe_gesture_direction {
 	SWIPE_GESTURE_DIRECTION_VERTICAL,
 };
 
+struct workspace_scroll {
+	double percent;
+	double avg_velocity;
+	int num_updates;
+	enum swipe_gesture_direction direction;
+};
+
 struct render_data {
 	pixman_region32_t *damage;
 	struct wlr_box *clip_box;
@@ -64,10 +71,7 @@ struct sway_output {
 	struct wl_listener frame;
 	struct wl_listener needs_frame;
 
-	struct {
-		float percent;
-		enum swipe_gesture_direction direction;
-	} workspace_scroll;
+	struct workspace_scroll workspace_scroll;
 
 	struct {
 		struct wl_signal disable;
@@ -211,10 +215,13 @@ void handle_output_manager_test(struct wl_listener *listener, void *data);
 void handle_output_power_manager_set_mode(struct wl_listener *listener,
 	void *data);
 
-void update_workspace_scroll_percent(struct sway_seat *seat, int gesture_percent,
-		int invert, enum swipe_gesture_direction direction);
+void workspace_scroll_begin(struct sway_seat *seat,
+		enum swipe_gesture_direction direction);
 
-void snap_workspace_scroll_percent(struct sway_seat *seat);
+void workspace_scroll_update(struct sway_seat *seat, double delta_sum,
+		enum swipe_gesture_direction direction);
+
+void workspace_scroll_end(struct sway_seat *seat);
 
 struct sway_output_non_desktop *output_non_desktop_create(struct wlr_output *wlr_output);
 
