@@ -1117,6 +1117,15 @@ void handle_output_power_manager_set_mode(struct wl_listener *listener,
 	apply_output_config(oc, output);
 }
 
+static double lerp (double a, double b, double t) {
+	return a * (1.0 - t) + b * t;
+}
+
+static double ease_out_cubic (double t) {
+	double p = t - 1;
+	return pow(p, 3) + 1;
+}
+
 void workspace_scroll_begin(struct sway_seat *seat,
 		enum swipe_gesture_direction direction) {
 	struct sway_workspace *focused_ws = seat_get_focused_workspace(seat);
@@ -1154,7 +1163,7 @@ void workspace_scroll_update(struct sway_seat *seat, double delta_sum,
 	double min = PREV_WS_LIMIT, max = NEXT_WS_LIMIT;
 	if (!config->workspace_gesture_wrap_around) {
 		// Visualized to the user that this is the last / first workspace by
-		// allowing a small swipe, a "Spring effect"
+		// allowing a small eased swipe, a "Spring effect"
 		double spring_limit = (double) config->workspace_gesture_spring_size /
 			output->width * output->wlr_output->scale;
 		// Make sure that the limit is always smaller than the threshold to
@@ -1162,12 +1171,20 @@ void workspace_scroll_update(struct sway_seat *seat, double delta_sum,
 		double small_threshold = MAX(config->workspace_gesture_threshold - 0.1, 0);
 		spring_limit = MIN(small_threshold, spring_limit);
 		// Limit the percent depending on if the workspace is the first/last or in
-		// the middle somewhere.
+		// the middle somewhere. Uses ease_out to make the limit feel more natural.
 		if (visible_index + 1 >= output->workspaces->length) {
 			max = spring_limit;
+			if (percent > 0) {
+				percent = lerp(0, max, ease_out_cubic(fabs(percent)));
+				min = 0;
+			}
 		}
 		if (visible_index == 0) {
 			min = -spring_limit;
+			if (percent < 0) {
+				percent = lerp(0, min, ease_out_cubic(fabs(percent)));
+				max = 0;
+			}
 		}
 	}
 	ws_scroll->percent = CLAMP(percent, min, max);
