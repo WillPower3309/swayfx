@@ -597,10 +597,10 @@ runtime.
 	swipe past the first/last workspace. Disables the
 	_workspace_gesture_spring_size_ config option. Disabled by default.
 
-*workspace_gesture_spring_size* <value>
+*workspace_gesture_threshold* <value>
 	Adjusts the swipe threshold of switching workspaces. A lower value makes it
 	easier to switch workspaces. Accepts values between 0.1 (small swipes) and
-	0.9 (large swipes). The default value is set to 0.35.
+	0.9 (large swipes). The default value is set to 0.5.
 
 *client.background* <color>
 	This command is ignored and is only present for i3 compatibility.
