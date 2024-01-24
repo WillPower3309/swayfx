@@ -365,11 +365,11 @@ struct sway_workspace *workspace_by_name(const char *name) {
 	if (current && strcmp(name, "prev") == 0) {
 		return workspace_prev(current);
 	} else if (current && strcmp(name, "prev_on_output") == 0) {
-		return workspace_output_prev(current);
+		return workspace_output_prev(current, true);
 	} else if (current && strcmp(name, "next") == 0) {
 		return workspace_next(current);
 	} else if (current && strcmp(name, "next_on_output") == 0) {
-		return workspace_output_next(current);
+		return workspace_output_next(current, true);
 	} else if (strcmp(name, "current") == 0) {
 		return current;
 	} else if (strcasecmp(name, "back_and_forth") == 0) {
@@ -532,7 +532,7 @@ struct sway_workspace *workspace_next(struct sway_workspace *workspace) {
  * otherwise the next one is returned.
  */
 static struct sway_workspace *workspace_output_prev_next_impl(
-		struct sway_output *output, int dir) {
+		struct sway_output *output, int dir, bool should_wrap) {
 	struct sway_seat *seat = input_manager_current_seat();
 	struct sway_workspace *workspace = seat_get_focused_workspace(seat);
 	if (!workspace) {
@@ -542,55 +542,27 @@ static struct sway_workspace *workspace_output_prev_next_impl(
 	}
 
 	int index = list_find(output->workspaces, workspace);
-	size_t new_index = wrap(index + dir, output->workspaces->length);
+	size_t new_index;
+	if (!should_wrap) {
+		new_index = index += dir;
+		if (index < 0 || index >= output->workspaces->length) {
+			return NULL;
+		}
+	} else {
+		new_index = wrap(index + dir, output->workspaces->length);
+	}
 	return output->workspaces->items[new_index];
 }
 
 
-struct sway_workspace *workspace_output_next(struct sway_workspace *current) {
-	return workspace_output_prev_next_impl(current->output, 1);
-}
-
-struct sway_workspace *workspace_output_prev(struct sway_workspace *current) {
-	return workspace_output_prev_next_impl(current->output, -1);
-}
-
-/**
- * Get the previous or next workspace on the specified output. Doesn't wrap
- * around at the end and beginning. If next is false, the previous workspace
- * is returned, otherwise the next one is returned.
- */
-static struct sway_workspace *workspace_output_prev_next_no_wrap_impl(
-		struct sway_output *output, int dir) {
-	struct sway_seat *seat = input_manager_current_seat();
-	struct sway_workspace *workspace = seat_get_focused_workspace(seat);
-	if (!workspace) {
-		sway_log(SWAY_DEBUG,
-				"No focused workspace to base prev/next on output off of");
-		return NULL;
-	}
-
-	int index = list_find(output->workspaces, workspace) + dir;
-	if (index < 0 || index >= output->workspaces->length) {
-		return NULL;
-	}
-	return output->workspaces->items[index];
-}
-
-struct sway_workspace *workspace_output_next_wrap(struct sway_workspace *current,
+struct sway_workspace *workspace_output_next(struct sway_workspace *current,
 		bool should_wrap) {
-	if (should_wrap) {
-		return workspace_output_prev_next_impl(current->output, 1);
-	}
-	return workspace_output_prev_next_no_wrap_impl(current->output, 1);
+	return workspace_output_prev_next_impl(current->output, 1, should_wrap);
 }
 
-struct sway_workspace *workspace_output_prev_wrap(struct sway_workspace *current,
+struct sway_workspace *workspace_output_prev(struct sway_workspace *current,
 		bool should_wrap) {
-	if (should_wrap) {
-		return workspace_output_prev_next_impl(current->output, -1);
-	}
-	return workspace_output_prev_next_no_wrap_impl(current->output, -1);
+	return workspace_output_prev_next_impl(current->output, -1, should_wrap);
 }
 
 struct sway_workspace *workspace_auto_back_and_forth(
