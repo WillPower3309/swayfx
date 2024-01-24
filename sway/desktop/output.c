@@ -1126,6 +1126,13 @@ struct workspace_scroll workspace_scroll_get_default() {
 	};
 }
 
+bool workspace_scroll_equal(struct workspace_scroll *a, struct workspace_scroll *b) {
+	return a->avg_velocity == b->avg_velocity &&
+		a->direction == b->direction &&
+		a->num_updates == b->num_updates &&
+		a->percent == b->percent;
+}
+
 void workspace_scroll_begin(struct sway_seat *seat,
 		enum swipe_gesture_direction direction) {
 	struct sway_workspace *focused_ws = seat_get_focused_workspace(seat);
@@ -1232,7 +1239,16 @@ void workspace_scroll_end(struct sway_seat *seat) {
 	sway_log(SWAY_DEBUG, "Switched to workspace: %s\n", focused_ws->name);
 
 reset_state:
-	workspace_switch(focused_ws);
+	workspace_scroll_reset(seat, focused_ws);
+}
+
+void workspace_scroll_reset(struct sway_seat *seat, struct sway_workspace *ws) {
+	if (!ws) {
+		ws = seat_get_focused_workspace(seat);
+	}
+	struct sway_output *output = ws->output;
+
+	workspace_switch(ws);
 	seat_consider_warp_to_focus(seat);
 
 	// Reset the state

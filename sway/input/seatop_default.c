@@ -1131,6 +1131,23 @@ static void handle_rebase(struct sway_seat *seat, uint32_t time_msec) {
 	e->previous_node = node_at_coords(seat,
 			cursor->cursor->x, cursor->cursor->y, &surface, &sx, &sy);
 
+	// Reset the swipe if any other button is pressed during the swipe
+	struct sway_workspace *focused_ws = seat_get_focused_workspace(seat);
+	if (focused_ws) {
+		switch (e->gestures.type) {
+		default:
+			break;
+		case GESTURE_TYPE_WORKSPACE_SWIPE_HORIZONTAL:;
+		case GESTURE_TYPE_WORKSPACE_SWIPE_VERTICAL:;
+			struct sway_output *output = focused_ws->output;
+			struct workspace_scroll workspace_scroll_default = workspace_scroll_get_default();
+			if (!workspace_scroll_equal(&output->workspace_scroll, &workspace_scroll_default)) {
+				workspace_scroll_reset(seat, NULL);
+			}
+			break;
+		}
+	}
+
 	if (surface) {
 		if (seat_is_input_allowed(seat, surface)) {
 			wlr_seat_pointer_notify_enter(seat->wlr_seat, surface, sx, sy);

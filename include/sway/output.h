@@ -217,6 +217,8 @@ void handle_output_power_manager_set_mode(struct wl_listener *listener,
 
 struct workspace_scroll workspace_scroll_get_default();
 
+bool workspace_scroll_equal(struct workspace_scroll *a, struct workspace_scroll *b);
+
 void workspace_scroll_begin(struct sway_seat *seat,
 		enum swipe_gesture_direction direction);
 
@@ -224,6 +226,8 @@ void workspace_scroll_update(struct sway_seat *seat, double delta_sum,
 		enum swipe_gesture_direction direction);
 
 void workspace_scroll_end(struct sway_seat *seat);
+
+void workspace_scroll_reset(struct sway_seat *seat, struct sway_workspace *ws);
 
 struct sway_output_non_desktop *output_non_desktop_create(struct wlr_output *wlr_output);
 
