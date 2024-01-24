@@ -2237,6 +2237,30 @@ void output_render(struct sway_output *output, struct timespec *when,
 			for (int i = 0; i < 2; i++) {
 				struct sway_workspace *ws =  workspaces[i];
 				if (!ws) {
+					// Render a blank rect next to the fullscreen container if
+					// there's nothing to render
+					struct decoration_data deco_data = get_undecorated_decoration_data();
+					deco_data.on_focused_workspace = false;
+					struct wlr_box mon_box = { 0, 0, output->width, output->height };
+					adjust_box_to_workspace_offset(&mon_box, &deco_data, output);
+					scale_box(&mon_box, output->wlr_output->scale);
+					render_rect(output, damage, &mon_box, clear_color);
+
+					// Render a shadow to separate the edge and the fullscreen
+					// container
+					if (!config_should_parameters_shadow()) {
+						continue;
+					}
+					struct wlr_box shadow_box = { 0, 0, output->width, output->height };
+					deco_data.on_focused_workspace = true;
+					adjust_box_to_workspace_offset(&shadow_box, &deco_data, output);
+					scale_box(&shadow_box, output->wlr_output->scale);
+					// Render rect to fix minor pixel gaps between fullscreen
+					// container and shadow
+					render_rect(output, damage, &shadow_box, clear_color);
+					render_box_shadow(output, damage, &shadow_box,
+							config->shadow_color, config->shadow_blur_sigma, 0,
+							0, 0);
 					continue;
 				}
 
