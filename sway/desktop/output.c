@@ -1137,6 +1137,9 @@ void workspace_scroll_begin(struct sway_seat *seat,
 
 	output_damage_whole(output);
 	transaction_commit_dirty();
+
+	// Unset focus
+	seat_set_focus_workspace(seat, NULL);
 }
 
 void workspace_scroll_update(struct sway_seat *seat, double delta_sum,
@@ -1225,12 +1228,13 @@ void workspace_scroll_end(struct sway_seat *seat) {
 	}
 
 	size_t ws_index = wrap(visible_index + dir, output->workspaces->length);
-	struct sway_workspace *new_ws = output->workspaces->items[ws_index];
-	sway_log(SWAY_DEBUG, "Switched to workspace: %s\n", new_ws->name);
-	workspace_switch(new_ws);
-	seat_consider_warp_to_focus(seat);
+	focused_ws = output->workspaces->items[ws_index];
+	sway_log(SWAY_DEBUG, "Switched to workspace: %s\n", focused_ws->name);
 
 reset_state:
+	workspace_switch(focused_ws);
+	seat_consider_warp_to_focus(seat);
+
 	// Reset the state
 	output->workspace_scroll = workspace_scroll_get_default();
 
