@@ -82,20 +82,20 @@ static struct wlr_box get_monitor_box(struct wlr_output *output) {
 
 // Adjust the box position when switching the workspace
 static void adjust_box_to_workspace_offset(struct wlr_box *box,
-		struct decoration_data *deco_data, struct sway_workspace *ws) {
-	float scroll_percent = ws->output->workspace_scroll.percent;
+		struct decoration_data *deco_data, struct sway_output *output) {
+	float scroll_percent = output->workspace_scroll.percent;
 
 	int ws_dimen;
 	int *box_coord;
-	switch (ws->output->workspace_scroll.direction) {
+	switch (output->workspace_scroll.direction) {
 	case SWIPE_GESTURE_DIRECTION_NONE:
 		return;
 	case SWIPE_GESTURE_DIRECTION_HORIZONTAL:
-		ws_dimen = ws->current.width + ws->current_gaps.left + ws->current_gaps.right;
+		ws_dimen = output->width;
 		box_coord = &box->x;
 		break;
 	case SWIPE_GESTURE_DIRECTION_VERTICAL:
-		ws_dimen = ws->current.height + ws->current_gaps.top + ws->current_gaps.bottom;
+		ws_dimen = output->height;
 		box_coord = &box->y;
 		break;
 	}
@@ -113,22 +113,22 @@ static void adjust_box_to_workspace_offset(struct wlr_box *box,
 // Clips the rendered damage to the workspace region.
 // Fixes containers being rendered across workspaces while switching.
 static void adjust_damage_to_workspace_bounds(pixman_region32_t *damage,
-		struct decoration_data *deco_data, struct sway_workspace *ws) {
-	float scale = ws->output->wlr_output->scale;
-	float scroll_percent = ws->output->workspace_scroll.percent;
+		struct decoration_data *deco_data, struct sway_output *output) {
+	float scale = output->wlr_output->scale;
+	float scroll_percent = output->workspace_scroll.percent;
 	int x = 0, y = 0;
 
 	int ws_dimen;
 	int *coord;
-	switch (ws->output->workspace_scroll.direction) {
+	switch (output->workspace_scroll.direction) {
 	case SWIPE_GESTURE_DIRECTION_NONE:
 		return;
 	case SWIPE_GESTURE_DIRECTION_HORIZONTAL:
-		ws_dimen = ws->current.width + ws->current_gaps.left + ws->current_gaps.right;
+		ws_dimen = output->width;
 		coord = &x;
 		break;
 	case SWIPE_GESTURE_DIRECTION_VERTICAL:
-		ws_dimen = ws->current.height + ws->current_gaps.top + ws->current_gaps.bottom;
+		ws_dimen = output->height;
 		coord = &y;
 		break;
 	}
@@ -142,7 +142,7 @@ static void adjust_damage_to_workspace_bounds(pixman_region32_t *damage,
 		}
 	}
 
-	struct wlr_box monitor_box = get_monitor_box(ws->output->wlr_output);
+	struct wlr_box monitor_box = get_monitor_box(output->wlr_output);
 	pixman_region32_intersect_rect(damage, damage,
 			monitor_box.x, monitor_box.y,
 			monitor_box.width, monitor_box.height);
@@ -512,8 +512,7 @@ static void render_surface_iterator(struct sway_output *output,
 	struct wlr_box proj_box = *_box;
 
 	if (view) {
-		adjust_box_to_workspace_offset(&proj_box, &data->deco_data,
-				view->container->current.workspace);
+		adjust_box_to_workspace_offset(&proj_box, &data->deco_data, output);
 	}
 
 	scale_box(&proj_box, wlr_output->scale);
@@ -532,7 +531,7 @@ static void render_surface_iterator(struct sway_output *output,
 	}
 
 	if (view) {
-		adjust_box_to_workspace_offset(&dst_box, &data->deco_data, view->container->current.workspace);
+		adjust_box_to_workspace_offset(&dst_box, &data->deco_data, output);
 	}
 
 	scale_box(&dst_box, wlr_output->scale);
@@ -978,7 +977,7 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 	pixman_region32_t output_damage;
 	pixman_region32_init(&output_damage);
 	pixman_region32_copy(&output_damage, damage);
-	adjust_damage_to_workspace_bounds(&output_damage, &deco_data, con->current.workspace);
+	adjust_damage_to_workspace_bounds(&output_damage, &deco_data, output);
 
 	// render view
 	if (!wl_list_empty(&view->saved_buffers)) {
@@ -1001,7 +1000,7 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		box.y = floor(state->y) - output->ly;
 		box.width = state->width;
 		box.height = state->height;
-		adjust_box_to_workspace_offset(&box, &deco_data, view->container->current.workspace);
+		adjust_box_to_workspace_offset(&box, &deco_data, output);
 		scale_box(&box, output_scale);
 		int scaled_corner_radius = deco_data.corner_radius == 0 ?
 				0 : (deco_data.corner_radius + state->border_thickness) * output_scale;
@@ -1027,7 +1026,7 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		box.y = floor(state->content_y);
 		box.width = state->border_thickness;
 		box.height = state->content_height;
-		adjust_box_to_workspace_offset(&box, &deco_data, view->container->current.workspace);
+		adjust_box_to_workspace_offset(&box, &deco_data, output);
 		// adjust sizing for rounded border corners
 		if (deco_data.corner_radius) {
 			if (!deco_data.has_titlebar) {
@@ -1056,7 +1055,7 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		box.y = floor(state->content_y);
 		box.width = state->border_thickness;
 		box.height = state->content_height;
-		adjust_box_to_workspace_offset(&box, &deco_data, view->container->current.workspace);
+		adjust_box_to_workspace_offset(&box, &deco_data, output);
 		// adjust sizing for rounded border corners
 		if (deco_data.corner_radius) {
 			if (!deco_data.has_titlebar) {
@@ -1081,7 +1080,7 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 		box.y = floor(state->content_y + state->content_height);
 		box.width = state->width;
 		box.height = state->border_thickness;
-		adjust_box_to_workspace_offset(&box, &deco_data, view->container->current.workspace);
+		adjust_box_to_workspace_offset(&box, &deco_data, output);
 
 		// adjust sizing for rounded border corners
 		if (deco_data.corner_radius) {
@@ -1101,7 +1100,7 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 				box.height = size;
 				box.x = floor(state->x);
 				box.y = floor(state->y + state->height - size);
-				adjust_box_to_workspace_offset(&box, &deco_data, view->container->current.workspace);
+				adjust_box_to_workspace_offset(&box, &deco_data, output);
 				scale_box(&box, output_scale);
 				render_border_corner(output, &output_damage, &box, color,
 						scaled_corner_radius, scaled_thickness, BOTTOM_LEFT);
@@ -1111,7 +1110,7 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 				box.height = size;
 				box.x = floor(state->x + state->width - size);
 				box.y = floor(state->y + state->height - size);
-				adjust_box_to_workspace_offset(&box, &deco_data, view->container->current.workspace);
+				adjust_box_to_workspace_offset(&box, &deco_data, output);
 				scale_box(&box, output_scale);
 				render_border_corner(output, &output_damage, &box, color,
 						scaled_corner_radius, scaled_thickness, BOTTOM_RIGHT);
@@ -1152,7 +1151,7 @@ static void render_titlebar(struct sway_output *output,
 	pixman_region32_t output_damage;
 	pixman_region32_init(&output_damage);
 	pixman_region32_copy(&output_damage, damage);
-	adjust_damage_to_workspace_bounds(&output_damage, &con_deco_data, con->current.workspace);
+	adjust_damage_to_workspace_bounds(&output_damage, &con_deco_data, output);
 
 	float alpha = con_deco_data.alpha;
 	int corner_radius = con_deco_data.corner_radius;
@@ -1180,7 +1179,7 @@ static void render_titlebar(struct sway_output *output,
 		box.width -= titlebar_border_thickness * 2;
 	}
 	box.height = titlebar_border_thickness;
-	adjust_box_to_workspace_offset(&box, &con_deco_data, con->current.workspace);
+	adjust_box_to_workspace_offset(&box, &con_deco_data, output);
 	scale_box(&box, output_scale);
 	render_rect(output, &output_damage, &box, color);
 
@@ -1190,7 +1189,7 @@ static void render_titlebar(struct sway_output *output,
 		box.y = y + container_titlebar_height() - titlebar_border_thickness;
 		box.width = width;
 		box.height = titlebar_border_thickness;
-		adjust_box_to_workspace_offset(&box, &con_deco_data, con->current.workspace);
+		adjust_box_to_workspace_offset(&box, &con_deco_data, output);
 		scale_box(&box, output_scale);
 		render_rect(output, &output_damage, &box, color);
 	}
@@ -1204,7 +1203,7 @@ static void render_titlebar(struct sway_output *output,
 		box.height -= corner_radius;
 		box.y += corner_radius;
 	}
-	adjust_box_to_workspace_offset(&box, &con_deco_data, con->current.workspace);
+	adjust_box_to_workspace_offset(&box, &con_deco_data, output);
 	scale_box(&box, output_scale);
 	render_rect(output, &output_damage, &box, color);
 
@@ -1217,7 +1216,7 @@ static void render_titlebar(struct sway_output *output,
 		box.height -= corner_radius;
 		box.y += corner_radius;
 	}
-	adjust_box_to_workspace_offset(&box, &con_deco_data, con->current.workspace);
+	adjust_box_to_workspace_offset(&box, &con_deco_data, output);
 	scale_box(&box, output_scale);
 	render_rect(output, &output_damage, &box, color);
 
@@ -1229,7 +1228,7 @@ static void render_titlebar(struct sway_output *output,
 			box.y = y;
 			box.width = corner_radius * 2;
 			box.height = corner_radius * 2;
-			adjust_box_to_workspace_offset(&box, &con_deco_data, con->current.workspace);
+			adjust_box_to_workspace_offset(&box, &con_deco_data, output);
 			scale_box(&box, output_scale);
 			render_border_corner(output, &output_damage, &box, color,
 				corner_radius, titlebar_border_thickness, TOP_LEFT);
@@ -1241,7 +1240,7 @@ static void render_titlebar(struct sway_output *output,
 			box.y = y;
 			box.width = corner_radius * 2;
 			box.height = corner_radius * 2;
-			adjust_box_to_workspace_offset(&box, &con_deco_data, con->current.workspace);
+			adjust_box_to_workspace_offset(&box, &con_deco_data, output);
 			scale_box(&box, output_scale);
 			render_border_corner(output, &output_damage, &box, color,
 				corner_radius, titlebar_border_thickness, TOP_RIGHT);
@@ -1310,13 +1309,13 @@ static void render_titlebar(struct sway_output *output,
 		box.y = round((y + titlebar_border_thickness) * output_scale);
 		box.width = texture_box.width;
 		box.height = ob_padding_above;
-		adjust_box_to_workspace_offset(&box, &con_deco_data, con->current.workspace);
+		adjust_box_to_workspace_offset(&box, &con_deco_data, output);
 		render_rect(output, &output_damage, &box, color);
 
 		// Padding below
 		box.y += ob_padding_above + texture_box.height;
 		box.height = ob_padding_below + bottom_border_compensation;
-		adjust_box_to_workspace_offset(&box, &con_deco_data, con->current.workspace);
+		adjust_box_to_workspace_offset(&box, &con_deco_data, output);
 		render_rect(output, &output_damage, &box, color);
 	}
 
@@ -1485,7 +1484,7 @@ static void render_top_border(struct sway_output *output,
 	pixman_region32_t output_damage;
 	pixman_region32_init(&output_damage);
 	pixman_region32_copy(&output_damage, damage);
-	adjust_damage_to_workspace_bounds(&output_damage, &border_deco_data, state->workspace);
+	adjust_damage_to_workspace_bounds(&output_damage, &border_deco_data, output);
 
 	float alpha = border_deco_data.alpha;
 	int corner_radius = border_deco_data.corner_radius;
@@ -1503,7 +1502,7 @@ static void render_top_border(struct sway_output *output,
 		box.x += corner_radius + state->border_thickness;
 		box.width -= 2 * (corner_radius + state->border_thickness);
 	}
-	adjust_box_to_workspace_offset(&box, &border_deco_data, state->workspace);
+	adjust_box_to_workspace_offset(&box, &border_deco_data, output);
 	scale_box(&box, output_scale);
 	render_rect(output, &output_damage, &box, color);
 
@@ -1519,7 +1518,7 @@ static void render_top_border(struct sway_output *output,
 			box.height = size;
 			box.x = floor(state->x);
 			box.y = floor(state->y);
-			adjust_box_to_workspace_offset(&box, &border_deco_data, state->workspace);
+			adjust_box_to_workspace_offset(&box, &border_deco_data, output);
 			scale_box(&box, output_scale);
 			render_border_corner(output, &output_damage, &box, color,
 					scaled_corner_radius, scaled_thickness, TOP_LEFT);
@@ -1530,7 +1529,7 @@ static void render_top_border(struct sway_output *output,
 			box.height = size;
 			box.x = floor(state->x + state->width - size);
 			box.y = floor(state->y);
-			adjust_box_to_workspace_offset(&box, &border_deco_data, state->workspace);
+			adjust_box_to_workspace_offset(&box, &border_deco_data, output);
 			scale_box(&box, output_scale);
 			render_border_corner(output, &output_damage, &box, color,
 					scaled_corner_radius, scaled_thickness, TOP_RIGHT);
@@ -1866,18 +1865,11 @@ static void render_container(struct sway_output *output,
 static void render_workspace(struct sway_output *output,
 		pixman_region32_t *damage, struct sway_workspace *ws, bool focused,
 		struct sway_workspace *other_ws) {
-	struct sway_workspace *workspaces[2] = { ws, NULL };
-
-	if (output->workspace_scroll.percent < 0) {
-		workspaces[0] = other_ws;
-		workspaces[1] = ws;
-	} else if (output->workspace_scroll.percent > 0) {
-		workspaces[1] = other_ws;
-	}
+	struct sway_workspace *workspaces[2] = { other_ws, ws };
 
 	for (int i = 0; i < 2; i++) {
 		struct sway_workspace *workspace =  workspaces[i];
-		if (!workspace) {
+		if (!workspace || !workspace->current.tiling) {
 			continue;
 		}
 
@@ -1950,7 +1942,8 @@ static void render_floating_container(struct sway_output *soutput,
 }
 
 static void render_floating(struct sway_output *soutput,
-		pixman_region32_t *damage, struct sway_workspace *other_ws) {
+		pixman_region32_t *damage, struct sway_workspace *other_ws,
+		bool has_fullscreen) {
 	for (int i = 0; i < root->outputs->length; ++i) {
 		struct sway_output *output = root->outputs->items[i];
 
@@ -1966,12 +1959,14 @@ static void render_floating(struct sway_output *soutput,
 			float scroll_percent = soutput->workspace_scroll.percent;
 
 			// Only render visible workspace when not scrolling
-			if (!workspace_is_visible(ws) && scroll_percent == 0) {
+			bool ws_is_visible = workspace_is_visible(ws);
+			if (!ws_is_visible && scroll_percent == 0) {
 				continue;
 			}
 
 			// Only render affected workspaces
-			if (ws != other_ws && ws != visible_ws) {
+			if ((ws != other_ws && ws != visible_ws) || 
+					(ws_is_visible && has_fullscreen)) {
 				continue;
 			}
 
@@ -2008,7 +2003,7 @@ static void render_fullscreen_con(pixman_region32_t *damage,
 	pixman_region32_init(&dmg);
 	if (!clear_whole_screen) {
 		pixman_region32_copy(&dmg, damage);
-		adjust_damage_to_workspace_bounds(&dmg, &deco_data, workspace);
+		adjust_damage_to_workspace_bounds(&dmg, &deco_data, output);
 		damage = &dmg;
 	}
 
@@ -2060,7 +2055,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 	if (output->workspace_scroll.percent < 0) {
 		other_ws = workspace_output_prev_wrap(workspace,
 				config->workspace_gesture_wrap_around);
-	} else {
+	} else if (output->workspace_scroll.percent > 0) {
 		other_ws = workspace_output_next_wrap(workspace,
 				config->workspace_gesture_wrap_around);
 	}
@@ -2071,8 +2066,12 @@ void output_render(struct sway_output *output, struct timespec *when,
 	}
 	// Also check if the sibling workspace has a fullscreen container
 	bool has_fullscreen = fullscreen_con != NULL;
-	if (!has_fullscreen && other_ws) {
-		has_fullscreen = other_ws->current.fullscreen != NULL;
+	bool other_ws_has_fullscreen = false;
+	if (other_ws) {
+		other_ws_has_fullscreen = other_ws->current.fullscreen;
+		if (!has_fullscreen) {
+			has_fullscreen = other_ws_has_fullscreen;
+		}
 	}
 
 	// TODO: generate the monitor box in fx_renderer (since it already has a wlr_output)
@@ -2213,8 +2212,12 @@ void output_render(struct sway_output *output, struct timespec *when,
 			render_output_blur(output, damage);
 		}
 
-		render_workspace(output, damage, workspace, workspace->current.focused, other_ws);
-		render_floating(output, damage, other_ws);
+		render_workspace(output, damage, !fullscreen_con ? workspace : NULL,
+				workspace->current.focused,
+				!other_ws_has_fullscreen ? other_ws : NULL);
+		render_floating(output, damage,
+				!other_ws_has_fullscreen ? other_ws : NULL,
+				fullscreen_con != NULL);
 #if HAVE_XWAYLAND
 		render_unmanaged(output, damage, &root->xwayland_unmanaged);
 #endif
@@ -2230,13 +2233,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 
 		// Render the fullscreen containers on top
 		if (has_fullscreen) {
-			struct sway_workspace *workspaces[2] = { workspace, NULL };
-			if (output->workspace_scroll.percent < 0) {
-				workspaces[0] = other_ws;
-				workspaces[1] = workspace;
-			} else if (output->workspace_scroll.percent > 0) {
-				workspaces[1] = other_ws;
-			}
+			struct sway_workspace *workspaces[2] = { other_ws, workspace };
 			for (int i = 0; i < 2; i++) {
 				struct sway_workspace *ws =  workspaces[i];
 				if (!ws) {

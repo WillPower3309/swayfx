@@ -620,8 +620,7 @@ bool workspace_switch(struct sway_workspace *workspace) {
 
 	sway_log(SWAY_DEBUG, "Switching to workspace %p:%s",
 		workspace, workspace->name);
-	workspace->output->workspace_scroll.percent = 0.0f;
-	workspace->output->workspace_scroll.direction = SWIPE_GESTURE_DIRECTION_NONE;
+	workspace->output->workspace_scroll = workspace_scroll_get_default();
 	struct sway_node *next = seat_get_focus_inactive(seat, &workspace->node);
 	if (next == NULL) {
 		next = &workspace->node;

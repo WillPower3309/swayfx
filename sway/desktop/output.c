@@ -36,15 +36,6 @@
 #define PREV_WS_LIMIT -1.0f
 #define NEXT_WS_LIMIT 1.0f
 
-static struct workspace_scroll workspace_scroll_get_default() {
-	return (struct workspace_scroll) {
-		.percent = 0,
-		.avg_velocity = 0,
-		.num_updates = 0,
-		.direction = SWIPE_GESTURE_DIRECTION_NONE,
-	};
-}
-
 struct sway_output *output_by_name_or_id(const char *name_or_id) {
 	for (int i = 0; i < root->outputs->length; ++i) {
 		struct sway_output *output = root->outputs->items[i];
@@ -1124,6 +1115,15 @@ static double lerp (double a, double b, double t) {
 static double ease_out_cubic (double t) {
 	double p = t - 1;
 	return pow(p, 3) + 1;
+}
+
+struct workspace_scroll workspace_scroll_get_default() {
+	return (struct workspace_scroll) {
+		.percent = 0,
+		.avg_velocity = 0,
+		.num_updates = 0,
+		.direction = SWIPE_GESTURE_DIRECTION_NONE,
+	};
 }
 
 void workspace_scroll_begin(struct sway_seat *seat,
