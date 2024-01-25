@@ -223,8 +223,8 @@ bool workspace_scroll_equal(struct workspace_scroll *a, struct workspace_scroll 
 void workspace_scroll_begin(struct sway_seat *seat,
 		enum swipe_gesture_direction direction);
 
-void workspace_scroll_update(struct sway_seat *seat, double delta_sum,
-		enum swipe_gesture_direction direction);
+void workspace_scroll_update(struct sway_seat *seat, struct gesture_tracker *tracker,
+		struct wlr_pointer_swipe_update_event *event, int invert);
 
 void workspace_scroll_end(struct sway_seat *seat);
 

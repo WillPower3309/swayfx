@@ -1149,8 +1149,23 @@ void workspace_scroll_begin(struct sway_seat *seat,
 	seat_set_focus_workspace(seat, NULL);
 }
 
-void workspace_scroll_update(struct sway_seat *seat, double delta_sum,
-		enum swipe_gesture_direction direction) {
+void workspace_scroll_update(struct sway_seat *seat, struct gesture_tracker *tracker,
+		struct wlr_pointer_swipe_update_event *event, int invert) {
+	double delta_sum;
+	enum swipe_gesture_direction direction;
+	switch (tracker->type) {
+	case GESTURE_TYPE_WORKSPACE_SWIPE_HORIZONTAL:
+		direction = SWIPE_GESTURE_DIRECTION_HORIZONTAL;
+		delta_sum = tracker->dx + event->dx * invert;
+		break;
+	case GESTURE_TYPE_WORKSPACE_SWIPE_VERTICAL:
+		direction = SWIPE_GESTURE_DIRECTION_VERTICAL;
+		delta_sum = tracker->dy + event->dy * invert;
+		break;
+	default:
+		return;
+	}
+
 	struct sway_workspace *focused_ws = seat_get_focused_workspace(seat);
 	struct sway_output *output = focused_ws->output;
 	struct workspace_scroll *ws_scroll = &output->workspace_scroll;
@@ -1197,6 +1212,13 @@ void workspace_scroll_update(struct sway_seat *seat, double delta_sum,
 			}
 		}
 	}
+
+	// Update the tracker data if we aren't exceeding the max swipe limit
+	if (percent < max && percent > min) {
+		tracker->dx += event->dx * invert;
+		tracker->dy += event->dy * invert;
+	}
+
 	ws_scroll->percent = CLAMP(percent, min, max);
 	ws_scroll->direction = direction;
 

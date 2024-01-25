@@ -1057,20 +1057,7 @@ static void handle_swipe_update(struct sway_seat *seat,
 
 		if (binding) {
 			int invert = binding->flags & BINDING_INVERTED ? 1 : -1;
-			tracker->dx += event->dx * invert;
-			tracker->dy += event->dy * invert;
-			switch (binding->gesture.type) {
-			case GESTURE_TYPE_WORKSPACE_SWIPE_HORIZONTAL:
-				workspace_scroll_update(seat, tracker->dx,
-						SWIPE_GESTURE_DIRECTION_HORIZONTAL);
-				break;
-			case GESTURE_TYPE_WORKSPACE_SWIPE_VERTICAL:
-				workspace_scroll_update(seat, tracker->dy,
-						SWIPE_GESTURE_DIRECTION_VERTICAL);
-				break;
-			default:
-				break;
-			}
+			workspace_scroll_update(seat, tracker, event, invert);
 		}
 	} else {
 		// ... otherwise forward to client
