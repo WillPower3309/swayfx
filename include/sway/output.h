@@ -30,6 +30,7 @@ struct render_data {
 	pixman_region32_t *damage;
 	struct wlr_box *clip_box;
 	struct decoration_data deco_data;
+	bool on_focused_workspace;
 };
 
 struct sway_output_state {
