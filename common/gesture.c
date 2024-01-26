@@ -107,6 +107,8 @@ char *gesture_parse(const char *input, struct gesture *output) {
 	return NULL;
 }
 
+// Similar to gesture_parse but with fewer checks to match the different
+// workspace_gesture syntax
 char *workspace_gesture_parse(const char *input, struct gesture *output) {
 	// Clear output in case of failure
 	output->type = GESTURE_TYPE_NONE;
