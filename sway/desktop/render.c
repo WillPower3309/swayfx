@@ -1932,17 +1932,9 @@ static void render_floating(struct sway_output *soutput,
 		for (int j = 0; j < output->current.workspaces->length; ++j) {
 			struct sway_workspace *ws = output->current.workspaces->items[j];
 
-			float scroll_percent = soutput->workspace_scroll.percent;
-
-			// Only render visible workspace when not scrolling
-			bool ws_is_visible = workspace_is_visible(ws);
-			if (!ws_is_visible && scroll_percent == 0) {
-				continue;
-			}
-
 			// Only render affected workspaces
 			if ((ws != other_ws && ws != visible_ws) || 
-					(ws_is_visible && has_fullscreen)) {
+					(workspace_is_visible(ws) && has_fullscreen)) {
 				continue;
 			}
 
