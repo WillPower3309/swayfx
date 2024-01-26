@@ -2215,22 +2215,17 @@ void output_render(struct sway_output *output, struct timespec *when,
 
 		// Render the fullscreen containers on top
 		if (has_fullscreen) {
-			struct sway_workspace *workspaces[2] = { other_ws, workspace };
-			for (int i = 0; i < 2; i++) {
-				struct sway_workspace *ws =  workspaces[i];
-				if (!ws) {
-					// Render a blank rect next to the fullscreen container if
-					// there's nothing to render
-					struct wlr_box mon_box = { 0, 0, output->width, output->height };
-					adjust_box_to_workspace_offset(&mon_box, false, output);
-					scale_box(&mon_box, output->wlr_output->scale);
-					render_rect(output, damage, &mon_box, clear_color);
+			// Render a blank rect next to the fullscreen container if
+			// there's no sibling workspace in the swipes direction
+			if (!other_ws) {
+				struct wlr_box mon_box = { 0, 0, output->width, output->height };
+				adjust_box_to_workspace_offset(&mon_box, false, output);
+				scale_box(&mon_box, output->wlr_output->scale);
+				render_rect(output, damage, &mon_box, clear_color);
 
-					// Render a shadow to separate the edge and the fullscreen
-					// container
-					if (!config_should_parameters_shadow()) {
-						continue;
-					}
+				// Render a shadow to separate the edge and the fullscreen
+				// container
+				if (config_should_parameters_shadow()) {
 					struct wlr_box shadow_box = { 0, 0, output->width, output->height };
 					adjust_box_to_workspace_offset(&shadow_box, true, output);
 					scale_box(&shadow_box, output->wlr_output->scale);
@@ -2240,14 +2235,17 @@ void output_render(struct sway_output *output, struct timespec *when,
 					render_box_shadow(output, damage, &shadow_box,
 							config->shadow_color, config->shadow_blur_sigma, 0,
 							0, 0);
-					continue;
 				}
-
-				struct sway_container *f_con = ws == workspace ?
-					fullscreen_con : ws->current.fullscreen;
-				if (f_con) {
-					render_fullscreen_con(damage, output, f_con, ws, false);
+			} else {
+				// Render sibling fullscreen container
+				struct sway_container *f_con = other_ws->current.fullscreen;
+				if (other_ws->current.fullscreen) {
+					render_fullscreen_con(damage, output, f_con, other_ws, false);
 				}
+			}
+			// Render focused fullscreen container
+			if (fullscreen_con) {
+				render_fullscreen_con(damage, output, fullscreen_con, workspace, false);
 			}
 		}
 	}
