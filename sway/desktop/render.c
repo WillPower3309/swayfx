@@ -1843,31 +1843,26 @@ static void render_container(struct sway_output *output,
 }
 
 static void render_workspace(struct sway_output *output,
-		pixman_region32_t *damage, struct sway_workspace *ws, bool focused,
-		struct sway_workspace *other_ws) {
-	struct sway_workspace *workspaces[2] = { other_ws, ws };
-
-	for (int i = 0; i < 2; i++) {
-		struct sway_workspace *workspace =  workspaces[i];
-		if (!workspace || !workspace->current.tiling) {
-			continue;
-		}
-
-		struct parent_data data = {
-			.layout = workspace->current.layout,
-			.box = {
-				.x = floor(workspace->current.x),
-				.y = floor(workspace->current.y),
-				.width = workspace->current.width,
-				.height = workspace->current.height,
-			},
-			.children = workspace->current.tiling,
-			.focused = ws == workspace ? focused : false,
-			.active_child = workspace->current.focused_inactive_child,
-			.on_focused_workspace = ws == workspace,
-		};
-		render_containers(output, damage, &data);
+		pixman_region32_t *damage, struct sway_workspace *workspace,
+		bool focused, bool on_focused_workspace) {
+	if (!workspace || !workspace->current.tiling) {
+		return;
 	}
+
+	struct parent_data data = {
+		.layout = workspace->current.layout,
+		.box = {
+			.x = floor(workspace->current.x),
+			.y = floor(workspace->current.y),
+			.width = workspace->current.width,
+			.height = workspace->current.height,
+		},
+		.children = workspace->current.tiling,
+		.focused = focused,
+		.active_child = workspace->current.focused_inactive_child,
+		.on_focused_workspace = on_focused_workspace,
+	};
+	render_containers(output, damage, &data);
 }
 
 static void render_floating_container(struct sway_output *soutput,
@@ -2195,9 +2190,13 @@ void output_render(struct sway_output *output, struct timespec *when,
 			render_output_blur(output, damage);
 		}
 
-		render_workspace(output, damage, !fullscreen_con ? workspace : NULL,
-				workspace->current.focused,
-				!other_ws_has_fullscreen ? other_ws : NULL);
+		// Render both workspaces
+		if (!other_ws_has_fullscreen) {
+			render_workspace(output, damage, other_ws, false, false);
+		}
+		if (!fullscreen_con) {
+			render_workspace(output, damage, workspace, workspace->current.focused, true);
+		}
 		render_floating(output, damage,
 				!other_ws_has_fullscreen ? other_ws : NULL,
 				fullscreen_con != NULL);
