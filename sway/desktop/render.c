@@ -85,7 +85,7 @@ static void adjust_box_to_workspace_offset(struct wlr_box *box,
 	float scroll_percent = output->workspace_scroll.percent;
 
 	int ws_dimen;
-	int *box_coord;
+	int *box_coord = NULL;
 	switch (output->workspace_scroll.direction) {
 	case SWIPE_GESTURE_DIRECTION_NONE:
 		return;
@@ -97,6 +97,10 @@ static void adjust_box_to_workspace_offset(struct wlr_box *box,
 		ws_dimen = output->height;
 		box_coord = &box->y;
 		break;
+	}
+
+	if (box_coord == NULL || ws_dimen == 0) {
+		return;
 	}
 
 	*box_coord -= ws_dimen * scroll_percent;
@@ -117,8 +121,8 @@ static void adjust_damage_to_workspace_bounds(pixman_region32_t *damage,
 	float scroll_percent = output->workspace_scroll.percent;
 	int x = 0, y = 0;
 
-	int ws_dimen;
-	int *coord;
+	int ws_dimen = 0;
+	int *coord = NULL;
 	switch (output->workspace_scroll.direction) {
 	case SWIPE_GESTURE_DIRECTION_NONE:
 		return;
@@ -130,6 +134,10 @@ static void adjust_damage_to_workspace_bounds(pixman_region32_t *damage,
 		ws_dimen = output->height;
 		coord = &y;
 		break;
+	}
+
+	if (coord == NULL || ws_dimen == 0) {
+		return;
 	}
 
 	*coord = round(-ws_dimen * scroll_percent);
