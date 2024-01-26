@@ -20,6 +20,7 @@ sway_sources = files(
 	'desktop/fx_renderer/fx_stencilbuffer.c',
 	'desktop/fx_renderer/fx_texture.c',
 	'desktop/fx_renderer/matrix.c',
+	'desktop/fx_renderer/animation_utils.c',
 	'desktop/idle_inhibit_v1.c',
 	'desktop/layer_shell.c',
 	'desktop/output.c',

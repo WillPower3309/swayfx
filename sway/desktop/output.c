@@ -19,6 +19,7 @@
 #include "config.h"
 #include "log.h"
 #include "sway/config.h"
+#include "sway/desktop/fx_renderer/animation_utils.h"
 #include "sway/desktop/transaction.h"
 #include "sway/input/input-manager.h"
 #include "sway/input/seat.h"
@@ -1106,15 +1107,6 @@ void handle_output_power_manager_set_mode(struct wl_listener *listener,
 	}
 	oc = store_output_config(oc);
 	apply_output_config(oc, output);
-}
-
-static double lerp (double a, double b, double t) {
-	return a * (1.0 - t) + b * t;
-}
-
-static double ease_out_cubic (double t) {
-	double p = t - 1;
-	return pow(p, 3) + 1;
 }
 
 struct workspace_scroll workspace_scroll_get_default() {
