@@ -256,7 +256,7 @@ static void apply_container_state(struct sway_container *container,
 
 	memcpy(&container->current, state, sizeof(struct sway_container_state));
 
-	if (view && !wl_list_empty(&view->saved_buffers)) {
+	if (view && !wl_list_empty(&view->saved_buffers) && !container->is_fading_out) {
 		if (!container->node.destroying || container->node.ntxnrefs == 1) {
 			view_remove_saved_buffer(view);
 		}
@@ -401,6 +401,7 @@ static void transaction_commit(struct sway_transaction *transaction) {
 	for (int i = 0; i < transaction->instructions->length; ++i) {
 		struct sway_transaction_instruction *instruction =
 			transaction->instructions->items[i];
+		printf("processing instruction for %s\n", instruction->node->sway_container->title);
 		struct sway_node *node = instruction->node;
 		bool hidden = node_is_view(node) && !node->destroying &&
 			!view_is_visible(node->sway_container->view);
@@ -426,6 +427,7 @@ static void transaction_commit(struct sway_transaction *transaction) {
 		}
 		if (!hidden && node_is_view(node) &&
 				wl_list_empty(&node->sway_container->view->saved_buffers)) {
+			printf("saving buffer\n");
 			view_save_buffer(node->sway_container->view);
 			memcpy(&node->sway_container->view->saved_geometry,
 					&node->sway_container->view->geometry,
@@ -523,6 +525,7 @@ void transaction_notify_view_ready_by_geometry(struct sway_view *view,
 
 static void _transaction_commit_dirty(bool server_request) {
 	if (!server.dirty_nodes->length) {
+		printf("no dirty nodes\n");
 		return;
 	}
 
@@ -540,6 +543,7 @@ static void _transaction_commit_dirty(bool server_request) {
 	}
 	server.dirty_nodes->length = 0;
 
+	printf("committing pending transaction\n");
 	transaction_commit_pending();
 }
 

@@ -273,7 +273,6 @@ struct fx_renderer *fx_renderer_create(struct wlr_egl *egl, struct wlr_output *w
 		sway_log(SWAY_ERROR, "GLES2 RENDERER: Could not make EGL current");
 		return NULL;
 	}
-	renderer->wlr_egl = egl;
 
 	renderer->wlr_buffer = fx_framebuffer_create();
 	renderer->blur_buffer = fx_framebuffer_create();
@@ -876,58 +875,4 @@ void fx_render_blur(struct fx_renderer *renderer, const float matrix[static 9],
 
 	glDisableVertexAttribArray(shader->pos_attrib);
 	glDisableVertexAttribArray(shader->tex_attrib);
-}
-
-void fx_render_container_snapshot(struct fx_renderer *renderer, struct sway_container *con) {
-	// TODO: move create_deco_data
-	// TODO: render without blur?
-	struct decoration_data deco_data = {
-		.alpha = 1.0f,
-		.dim = 0.0f,
-		.dim_color = config->dim_inactive_colors.unfocused,
-		.corner_radius = 0,
-		.saturation = 1.0f,
-		.has_titlebar = false,
-		.blur = false,
-		.discard_transparent = false,
-		.shadow = false,
-	};
-	struct sway_output *output = con->pending.workspace->output;
-	struct wlr_box dst_box = { 0, 0, output->width, output->height };
-	enum wl_output_transform transform = wlr_output_transform_invert(output->wlr_output->transform);
-	float matrix[9];
-	wlr_matrix_project_box(matrix, &dst_box, transform, 0.0, output->wlr_output->transform_matrix);
-
-	fx_render_texture_with_matrix(renderer, &con->close_animation_fb.texture, &dst_box, matrix, deco_data);
-}
-
-void fx_create_container_snapshot(struct fx_renderer *renderer, struct sway_container *con) {
-	assert(con);
-
-	// TODO: move to function? used in creation too
-	if (!eglMakeCurrent(wlr_egl_get_display(renderer->wlr_egl), EGL_NO_SURFACE, EGL_NO_SURFACE,
-			wlr_egl_get_context(renderer->wlr_egl))) {
-		sway_log(SWAY_ERROR, "GLES2 RENDERER: Could not make EGL current");
-		return;
-	}
-
-	struct sway_output *output = con->pending.workspace->output;
-
-	fx_framebuffer_update(&con->close_animation_fb, output->width, output->height);
-	fx_framebuffer_bind(&con->close_animation_fb);
-
-	// damage whole output to ensure full container is rendered
-	// (temporary, render_container will only render container area)
-	struct wlr_box box = { 0, 0, output->width, output->height };
-	scale_box(&box, output->wlr_output->scale);
-	pixman_region32_t damage;
-	pixman_region32_init(&damage);
-	pixman_region32_union_rect(&damage, &damage, box.x, box.y, box.width, box.height);
-
-	// render container instead?
-	fx_render_container_snapshot(renderer, con);
-
-	// rebind the main fb
-	fx_framebuffer_bind(&renderer->wlr_buffer);
-	printf("snapshot created\n");
 }

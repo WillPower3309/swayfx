@@ -185,9 +185,6 @@ void render_rounded_rect(struct sway_output *output,
 		float color[static 4], int corner_radius,
 		enum corner_location corner_location);
 
-void render_container(struct sway_output *output,
-	pixman_region32_t *damage, struct sway_container *con, bool parent_focused);
-
 void premultiply_alpha(float color[4], float opacity);
 
 void scale_box(struct wlr_box *box, float scale);

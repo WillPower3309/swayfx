@@ -46,6 +46,7 @@ void view_init(struct sway_view *view, enum sway_view_type type,
 }
 
 void view_destroy(struct sway_view *view) {
+	printf("view destroy\n");
 	if (!sway_assert(view->surface == NULL, "Tried to free mapped view")) {
 		return;
 	}
@@ -76,6 +77,7 @@ void view_destroy(struct sway_view *view) {
 }
 
 void view_begin_destroy(struct sway_view *view) {
+	printf("view begin destroy\n");
 	if (!sway_assert(view->surface == NULL, "Tried to destroy a mapped view")) {
 		return;
 	}
@@ -906,9 +908,13 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 	}
 }
 
-void view_container_cleanup(struct sway_view *view) {
+void view_unmap(struct sway_view *view) {
+	printf("unmapping view\n");
+	wl_signal_emit_mutable(&view->events.unmap, view);
+
 	wl_list_remove(&view->surface_new_subsurface.link);
 
+	/*
 	if (view->urgent_timer) {
 		wl_event_source_remove(view->urgent_timer);
 		view->urgent_timer = NULL;
@@ -935,7 +941,7 @@ void view_container_cleanup(struct sway_view *view) {
 		arrange_workspace(ws);
 		workspace_detect_urgent(ws);
 	}
-
+	*/
 	struct sway_seat *seat;
 	wl_list_for_each(seat, &server.input->seats, link) {
 		seat->cursor->image_surface = NULL;
@@ -949,22 +955,12 @@ void view_container_cleanup(struct sway_view *view) {
 		seat_consider_warp_to_focus(seat);
 	}
 
+	node_set_dirty(&view->container->node);
+	view->container->is_fading_out = true;
+	view->container->target_alpha = 0;
+	wl_event_source_timer_update(view->container->animation_present_timer, 50);
 	transaction_commit_dirty();
 	view->surface = NULL;
-}
-
-void view_unmap(struct sway_view *view) {
-	wl_signal_emit_mutable(&view->events.unmap, view);
-	struct sway_workspace *ws = view->container->pending.workspace;
-	if (ws && config->animation_duration > 0) {
-		printf("starting fade out animation\n");
-		view->container->is_fading_out = true;
-		fx_render_container_snapshot(ws->output->renderer, view->container);
-		view->container->target_alpha = 0;
-		wl_event_source_timer_update(view->container->animation_present_timer, 50);
-	} else {
-		view_container_cleanup(view);
-	}
 }
 
 void view_update_size(struct sway_view *view) {

@@ -765,6 +765,7 @@ static void render_view_popups(struct sway_view *view, struct sway_output *outpu
 
 static void render_saved_view(struct sway_view *view, struct sway_output *output,
 		pixman_region32_t *damage, struct decoration_data deco_data) {
+	printf("rendering saved view\n");
 	struct wlr_output *wlr_output = output->wlr_output;
 
 	if (wl_list_empty(&view->saved_buffers)) {
@@ -873,8 +874,11 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 
 	// render view
 	if (!wl_list_empty(&view->saved_buffers)) {
+	printf("rendering saved view\n");
 		render_saved_view(view, output, damage, deco_data);
 	} else if (view->surface) {
+
+	printf("rendering view toplevels\n");
 		render_view_toplevels(view, output, damage, deco_data);
 	}
 
@@ -1398,6 +1402,9 @@ struct parent_data {
 	struct sway_container *active_child;
 };
 
+static void render_container(struct sway_output *output,
+	pixman_region32_t *damage, struct sway_container *con, bool parent_focused);
+
 /**
  * Render a container's children using a L_HORIZ or L_VERT layout.
  *
@@ -1684,12 +1691,6 @@ static void render_containers(struct sway_output *output,
 
 void render_container(struct sway_output *output,
 		pixman_region32_t *damage, struct sway_container *con, bool focused) {
-	if (con->is_fading_out) {
-		printf("rendering snapshot\n");
-		fx_render_container_snapshot(output->renderer, con);
-		return;
-	}
-
 	struct parent_data data = {
 		.layout = con->current.layout,
 		.box = {
@@ -1805,6 +1806,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 	struct wlr_output *wlr_output = output->wlr_output;
 	struct fx_renderer *renderer = output->renderer;
 
+	printf("rendering output\n");
 	struct sway_workspace *workspace = output->current.active_workspace;
 	if (workspace == NULL) {
 		return;
@@ -1983,6 +1985,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 			render_output_blur(output, damage);
 		}
 
+		printf("rendering workspace\n");
 		render_workspace(output, damage, workspace, workspace->current.focused);
 		render_floating(output, damage);
 #if HAVE_XWAYLAND

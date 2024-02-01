@@ -380,7 +380,4 @@ void view_assign_ctx(struct sway_view *view, struct launcher_ctx *ctx);
 
 bool gaps_to_edge(struct sway_view *view);
 
-
-void view_container_cleanup(struct sway_view *view);
-
 #endif

@@ -52,8 +52,7 @@ static int animation_timer(void *data) {
 		wl_event_source_timer_update(con->animation_present_timer, fastest_output_refresh_s * 1000);
 	} else if (is_closing) { // equal to target and closing
 		printf("done animation; clean up view\n");
-		con->is_fading_out = false;
-		view_container_cleanup(con->view);
+		//con->is_fading_out = false;
 		return 1;
 	}
 
@@ -130,13 +129,10 @@ void container_destroy(struct sway_container *con) {
 
 	wl_event_source_remove(con->animation_present_timer);
 
-	printf("alive 0\n");
 	if (con->view && con->view->container == con) {
 		con->view->container = NULL;
 		if (con->view->destroying) {
-			printf("alive\n");
 			view_destroy(con->view);
-			printf("alive 2\n");
 		}
 	}
 
@@ -145,7 +141,6 @@ void container_destroy(struct sway_container *con) {
 
 void container_begin_destroy(struct sway_container *con) {
 	printf("container begin destroy\n");
-	// TODO; better way of deleting view
 	if (con->view && !con->is_fading_out) {
 		ipc_event_window(con, "close");
 	}
@@ -158,8 +153,6 @@ void container_begin_destroy(struct sway_container *con) {
 		container_fullscreen_disable(con);
 	}
 
-	// TODO: problem here
-	printf("about to emit signal\n");
 	wl_signal_emit_mutable(&con->node.events.destroy, &con->node);
 
 	container_end_mouse_operation(con);
@@ -236,6 +229,9 @@ static struct sway_container *surface_at_view(struct sway_container *con, double
 		return NULL;
 	}
 	struct sway_view *view = con->view;
+	if (con->is_fading_out) {
+		return NULL;
+	}
 	double view_sx = lx - con->surface_x + view->geometry.x;
 	double view_sy = ly - con->surface_y + view->geometry.y;
 
