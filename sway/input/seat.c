@@ -1097,7 +1097,7 @@ bool seat_is_input_allowed(struct sway_seat *seat,
 }
 
 static void send_unfocus(struct sway_container *con, void *data) {
-	if (con->view) {
+	if (con->view && !con->is_fading_out) {
 		view_set_activated(con->view, false);
 	}
 }
@@ -1245,7 +1245,7 @@ static void seat_set_workspace_focus(struct sway_seat *seat, struct sway_node *n
 	}
 
 	// Close any popups on the old focus
-	if (last_focus && node_is_view(last_focus)) {
+	if (last_focus && node_is_view(last_focus) && !last_focus->sway_container->is_fading_out) {
 		view_close_popups(last_focus->sway_container->view);
 	}
 

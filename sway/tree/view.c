@@ -171,7 +171,7 @@ void view_get_constraints(struct sway_view *view, double *min_width,
 
 uint32_t view_configure(struct sway_view *view, double lx, double ly, int width,
 		int height) {
-	if (view->impl->configure) {
+	if (view->impl->configure && !view->container->is_fading_out) {
 		return view->impl->configure(view, lx, ly, width, height);
 	}
 	return 0;
@@ -430,7 +430,7 @@ void view_set_tiled(struct sway_view *view, bool tiled) {
 }
 
 void view_close(struct sway_view *view) {
-	if (view->impl->close) {
+	if (view->impl->close && !view->container->is_fading_out) {
 		view->impl->close(view);
 	}
 }
@@ -942,6 +942,7 @@ void view_unmap(struct sway_view *view) {
 		workspace_detect_urgent(ws);
 	}
 	*/
+	// TODO: deactivate input / focus
 	struct sway_seat *seat;
 	wl_list_for_each(seat, &server.input->seats, link) {
 		seat->cursor->image_surface = NULL;

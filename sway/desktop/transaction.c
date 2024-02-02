@@ -365,6 +365,9 @@ static bool should_configure(struct sway_node *node,
 	if (!node_is_view(node)) {
 		return false;
 	}
+	if (node->sway_container->is_fading_out) {
+		return false;
+	}
 	if (node->destroying) {
 		return false;
 	}
@@ -401,7 +404,6 @@ static void transaction_commit(struct sway_transaction *transaction) {
 	for (int i = 0; i < transaction->instructions->length; ++i) {
 		struct sway_transaction_instruction *instruction =
 			transaction->instructions->items[i];
-		printf("processing instruction for %s\n", instruction->node->sway_container->title);
 		struct sway_node *node = instruction->node;
 		bool hidden = node_is_view(node) && !node->destroying &&
 			!view_is_visible(node->sway_container->view);
