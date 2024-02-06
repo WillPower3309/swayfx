@@ -256,7 +256,7 @@ static void apply_container_state(struct sway_container *container,
 
 	memcpy(&container->current, state, sizeof(struct sway_container_state));
 
-	if (view && !wl_list_empty(&view->saved_buffers) && !container->is_fading_out) {
+	if (view && !wl_list_empty(&view->saved_buffers) && view->surface) {
 		if (!container->node.destroying || container->node.ntxnrefs == 1) {
 			view_remove_saved_buffer(view);
 		}
@@ -365,7 +365,7 @@ static bool should_configure(struct sway_node *node,
 	if (!node_is_view(node)) {
 		return false;
 	}
-	if (node->sway_container->is_fading_out) {
+	if (!node->sway_container->view->surface) {
 		return false;
 	}
 	if (node->destroying) {

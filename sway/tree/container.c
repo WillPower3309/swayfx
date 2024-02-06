@@ -52,7 +52,7 @@ static int animation_timer(void *data) {
 		wl_event_source_timer_update(con->animation_present_timer, fastest_output_refresh_s * 1000);
 	} else if (is_closing) { // equal to target and closing
 		printf("done animation; clean up view\n");
-		//con->is_fading_out = false;
+		view_remove_container(con->view);
 		return 1;
 	}
 
@@ -77,8 +77,6 @@ struct sway_container *container_create(struct sway_view *view) {
 	c->shadow_enabled = config->shadow_enabled;
 	c->blur_enabled = config->blur_enabled;
 	c->corner_radius = config->corner_radius;
-	c->is_fading_out = false;
-	c->close_animation_fb = fx_framebuffer_create();
 
 	if (!view) {
 		c->pending.children = create_list();
@@ -141,7 +139,7 @@ void container_destroy(struct sway_container *con) {
 
 void container_begin_destroy(struct sway_container *con) {
 	printf("container begin destroy\n");
-	if (con->view && !con->is_fading_out) {
+	if (con->view) {
 		ipc_event_window(con, "close");
 	}
 	// The workspace must have the fullscreen pointer cleared so that the
@@ -229,7 +227,7 @@ static struct sway_container *surface_at_view(struct sway_container *con, double
 		return NULL;
 	}
 	struct sway_view *view = con->view;
-	if (con->is_fading_out) {
+	if (!view->surface) {
 		return NULL;
 	}
 	double view_sx = lx - con->surface_x + view->geometry.x;

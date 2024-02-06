@@ -281,7 +281,7 @@ static void handle_seat_node_destroy(struct wl_listener *listener, void *data) {
 	while (next_focus == NULL && parent != NULL) {
 		struct sway_container *con =
 			seat_get_focus_inactive_view(seat, parent);
-		next_focus = con ? &con->node : NULL;
+		next_focus = (con && !con->node.destroying) ? &con->node : NULL;
 
 		if (next_focus == NULL && parent->type == N_WORKSPACE) {
 			next_focus = parent;
@@ -1080,6 +1080,9 @@ void seat_configure_xcursor(struct sway_seat *seat) {
 
 bool seat_is_input_allowed(struct sway_seat *seat,
 		struct wlr_surface *surface) {
+	if (surface == NULL) {
+		return false;
+	}
 	if (server.session_lock.locked) {
 		if (server.session_lock.lock == NULL) {
 			return false;
@@ -1097,7 +1100,7 @@ bool seat_is_input_allowed(struct sway_seat *seat,
 }
 
 static void send_unfocus(struct sway_container *con, void *data) {
-	if (con->view && !con->is_fading_out) {
+	if (con->view && con->view->surface) {
 		view_set_activated(con->view, false);
 	}
 }
@@ -1245,7 +1248,7 @@ static void seat_set_workspace_focus(struct sway_seat *seat, struct sway_node *n
 	}
 
 	// Close any popups on the old focus
-	if (last_focus && node_is_view(last_focus) && !last_focus->sway_container->is_fading_out) {
+	if (last_focus && node_is_view(last_focus) && last_focus->sway_container->view->surface) {
 		view_close_popups(last_focus->sway_container->view);
 	}
 
