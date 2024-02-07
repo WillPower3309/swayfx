@@ -429,7 +429,6 @@ static void transaction_commit(struct sway_transaction *transaction) {
 		}
 		if (!hidden && node_is_view(node) &&
 				wl_list_empty(&node->sway_container->view->saved_buffers)) {
-			printf("saving buffer\n");
 			view_save_buffer(node->sway_container->view);
 			memcpy(&node->sway_container->view->saved_geometry,
 					&node->sway_container->view->geometry,
