@@ -947,12 +947,14 @@ void view_unmap(struct sway_view *view) {
 	if (!config->animation_duration) {
 		view_remove_container(view);
 	} else {
+		// unfocus the view
+		// look at handle_seat_node_destroy
+
 		view_save_buffer(view);
 		view->container->target_alpha = 0;
 		wl_event_source_timer_update(view->container->animation_present_timer, 50);
 	}
 
-	// TODO: deactivate input / focus
 	struct sway_seat *seat;
 	wl_list_for_each(seat, &server.input->seats, link) {
 		seat->cursor->image_surface = NULL;

@@ -681,7 +681,7 @@ size_t container_build_representation(enum sway_container_layout layout,
 		}
 		struct sway_container *child = children->items[i];
 		const char *identifier = NULL;
-		if (child->view) {
+		if (child->view && child->view->surface) {
 			identifier = view_get_class(child->view);
 			if (!identifier) {
 				identifier = view_get_app_id(child->view);
