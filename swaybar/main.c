@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
 			swaybar.id = strdup(optarg);
 			break;
 		case 'v':
-			printf("swaybar version " SWAY_VERSION "\n");
+			printf("swaybar version " SWAY_VERSION " (based on sway " SWAY_ORIGINAL_VERSION ")\n");
 			exit(EXIT_SUCCESS);
 			break;
 		case 'd': // Debug

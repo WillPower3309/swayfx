@@ -294,9 +294,12 @@ static void pretty_print_output(json_object *o) {
 }
 
 static void pretty_print_version(json_object *v) {
-	json_object *ver;
-	json_object_object_get_ex(v, "human_readable", &ver);
-	printf("sway version %s\n", json_object_get_string(ver));
+	json_object *swayfx_ver;
+	json_object *sway_ver;
+	json_object_object_get_ex(v, "human_readable", &swayfx_ver);
+	json_object_object_get_ex(v, "sway_original_version", &sway_ver);
+	printf("swayfx version %s (based on sway %s)\n",
+			json_object_get_string(swayfx_ver), json_object_get_string(sway_ver));
 }
 
 static void pretty_print_config(json_object *c) {
@@ -470,7 +473,7 @@ int main(int argc, char **argv) {
 			cmdtype = strdup(optarg);
 			break;
 		case 'v':
-			printf("swaymsg version " SWAY_VERSION "\n");
+			printf("swaymsg version " SWAY_VERSION " (based on sway " SWAY_ORIGINAL_VERSION ")\n");
 			exit(EXIT_SUCCESS);
 			break;
 		default:
