@@ -83,6 +83,9 @@ You can also bring up a development shell and follow the build instructions belo
 ```
 nix develop
 ```
+### Debian
+Check [INSTALL-deb.md](/INSTALL-deb.md)
+
 
 ### Manual Steps
 
