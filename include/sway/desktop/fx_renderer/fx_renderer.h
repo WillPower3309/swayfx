@@ -180,6 +180,8 @@ struct fx_renderer {
 	} shaders;
 };
 
+struct decoration_data get_undecorated_decoration_data();
+
 struct fx_renderer *fx_renderer_create(struct wlr_egl *egl, struct wlr_output *output);
 
 void fx_renderer_fini(struct fx_renderer *renderer);

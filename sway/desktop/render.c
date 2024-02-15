@@ -295,12 +295,6 @@ struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer, struct
 	return current_buffer;
 }
 
-struct blur_stencil_data {
-	struct fx_texture *stencil_texture;
-	const struct wlr_fbox *stencil_src_box;
-	float *stencil_matrix;
-};
-
 void render_blur(bool optimized, struct sway_output *output,
 		pixman_region32_t *output_damage, const struct wlr_box *dst_box,
 		pixman_region32_t *opaque_region, struct decoration_data *deco_data,
@@ -336,7 +330,7 @@ void render_blur(bool optimized, struct sway_output *output,
 	}
 
 	// Get a stencil of the window ignoring transparent regions
-	if (deco_data->discard_transparent) {
+	if (deco_data->discard_transparent && stencil_data) {
 		fx_renderer_scissor(NULL);
 		fx_renderer_stencil_mask_init();
 
@@ -358,7 +352,7 @@ void render_blur(bool optimized, struct sway_output *output,
 	render_texture(wlr_output, &damage, &buffer->texture, NULL, dst_box, matrix, blur_deco_data);
 
 	// Finish stenciling
-	if (deco_data->discard_transparent) {
+	if (deco_data->discard_transparent && stencil_data) {
 		fx_renderer_stencil_mask_fini();
 	}
 
