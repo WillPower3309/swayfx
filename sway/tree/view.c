@@ -950,6 +950,7 @@ void view_unmap(struct sway_view *view) {
 		// unfocus the view
 		// look at handle_seat_node_destroy
 
+		wl_signal_emit_mutable(&view->container->node.events.destroy, &view->container->node);
 		view_save_buffer(view);
 		view->container->target_alpha = 0;
 		wl_event_source_timer_update(view->container->animation_present_timer, 50);

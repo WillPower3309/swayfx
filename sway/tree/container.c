@@ -90,7 +90,7 @@ struct sway_container *container_create(struct sway_view *view) {
 	c->animation_present_timer = wl_event_loop_add_timer(server.wl_event_loop,
 			animation_timer, c);
 	// TODO: WON'T SPAWN IF LESS THAN 50, get optimal time (or use a signal?)
-	wl_event_source_timer_update(c->animation_present_timer, 50);
+	wl_event_source_timer_update(c->animation_present_timer, 200);
 
 	wl_signal_emit_mutable(&root->events.new_node, &c->node);
 
