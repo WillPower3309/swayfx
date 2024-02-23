@@ -210,7 +210,7 @@ static void invoke_swaybar(struct bar_config *bar) {
 
 	pid_t pid = fork();
 	if (pid < 0) {
-		sway_log(SWAY_ERROR, "Failed to create fork for swaybar");
+		sway_log(SWAY_ERROR, "Failed to create fork for swayfxbar");
 		return;
 	} else if (pid == 0) {
 		// Remove the SIGUSR1 handler that wlroots adds for xwayland
@@ -237,7 +237,7 @@ static void invoke_swaybar(struct bar_config *bar) {
 
 			// run custom swaybar
 			char *const cmd[] = {
-					bar->swaybar_command ? bar->swaybar_command : "swaybar",
+					bar->swaybar_command ? bar->swaybar_command : "swayfxbar",
 					"-b", bar->id, NULL};
 			execvp(cmd[0], cmd);
 			_exit(EXIT_FAILURE);
@@ -255,7 +255,7 @@ static void invoke_swaybar(struct bar_config *bar) {
 		return;
 	}
 
-	sway_log(SWAY_DEBUG, "Spawned swaybar %s", bar->id);
+	sway_log(SWAY_DEBUG, "Spawned swayfxbar %s", bar->id);
 	return;
 }
 
@@ -263,7 +263,7 @@ void load_swaybar(struct bar_config *bar) {
 	if (bar->client != NULL) {
 		wl_client_destroy(bar->client);
 	}
-	sway_log(SWAY_DEBUG, "Invoking swaybar for bar id '%s'", bar->id);
+	sway_log(SWAY_DEBUG, "Invoking swayfxbar for bar id '%s'", bar->id);
 	invoke_swaybar(bar);
 }
 

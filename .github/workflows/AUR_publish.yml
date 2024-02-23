@@ -21,9 +21,9 @@ jobs:
           pkgname: swayfx
           pkgbuild: ./build-scripts/aur/PKGBUILD
           assets: |
-            ./build-scripts/aur/sway-portals.conf
+            ./build-scripts/aur/swayfx-portals.conf
             ./build-scripts/aur/50-systemd-user.conf
-            ./build-scripts/aur/sway.install
+            ./build-scripts/aur/swayfx.install
           commit_username: ${{ secrets.AUR_USERNAME }}
           commit_email: ${{ secrets.AUR_EMAIL }}
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
@@ -45,9 +45,9 @@ jobs:
           pkgname: swayfx-git
           pkgbuild: ./build-scripts/aur-git/PKGBUILD
           assets: |
-            ./build-scripts/aur/sway-portals.conf
+            ./build-scripts/aur/swayfx-portals.conf
             ./build-scripts/aur-git/50-systemd-user.conf
-            ./build-scripts/aur-git/sway.install
+            ./build-scripts/aur-git/swayfx.install
           commit_username: ${{ secrets.AUR_USERNAME }}
           commit_email: ${{ secrets.AUR_EMAIL }}
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}

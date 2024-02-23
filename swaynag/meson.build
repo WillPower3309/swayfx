@@ -1,5 +1,5 @@
 executable(
-	'swaynag', [
+	'swayfxnag', [
 		'config.c',
 		'main.c',
 		'render.c',
@@ -7,7 +7,7 @@ executable(
 		'types.c',
 		wl_protos_src,
 	],
-	include_directories: [sway_inc],
+	include_directories: [swayfx_inc],
 	dependencies: [
 		cairo,
 		pango,

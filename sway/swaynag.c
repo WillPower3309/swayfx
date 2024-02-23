@@ -33,7 +33,7 @@ bool swaynag_spawn(const char *swaynag_command,
 
 	if (swaynag->detailed) {
 		if (pipe(swaynag->fd) != 0) {
-			sway_log(SWAY_ERROR, "Failed to create pipe for swaynag");
+			sway_log(SWAY_ERROR, "Failed to create pipe for swayfxnag");
 			return false;
 		}
 		if (!sway_set_cloexec(swaynag->fd[1], true)) {
@@ -61,7 +61,7 @@ bool swaynag_spawn(const char *swaynag_command,
 
 	pid_t pid = fork();
 	if (pid < 0) {
-		sway_log(SWAY_ERROR, "Failed to create fork for swaynag");
+		sway_log(SWAY_ERROR, "Failed to create fork for swayfxnag");
 		goto failed;
 	} else if (pid == 0) {
 		restore_nofile_limit();
@@ -135,7 +135,7 @@ void swaynag_log(const char *swaynag_command, struct swaynag_instance *swaynag,
 	}
 
 	if (!swaynag->detailed) {
-		sway_log(SWAY_ERROR, "Attempting to write to non-detailed swaynag inst");
+		sway_log(SWAY_ERROR, "Attempting to write to non-detailed swayfxnag inst");
 		return;
 	}
 
@@ -150,7 +150,7 @@ void swaynag_log(const char *swaynag_command, struct swaynag_instance *swaynag,
 
 	char *temp = malloc(length + 1);
 	if (!temp) {
-		sway_log(SWAY_ERROR, "Failed to allocate buffer for swaynag log entry.");
+		sway_log(SWAY_ERROR, "Failed to allocate buffer for swayfxnag log entry.");
 		return;
 	}
 

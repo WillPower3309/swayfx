@@ -1,5 +1,5 @@
 {
-  description = "swaywm development environment";
+  description = "swayfx development environment";
 
   inputs = {
     flake-compat = {

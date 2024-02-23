@@ -18,7 +18,7 @@ static void nop() {
 }
 
 static bool terminal_execute(char *terminal, char *command) {
-	char fname[] = "/tmp/swaynagXXXXXX";
+	char fname[] = "/tmp/swayfxnagXXXXXX";
 	FILE *tmp= fdopen(mkstemp(fname), "w");
 	if (!tmp) {
 		sway_log(SWAY_ERROR, "Failed to create temp script");

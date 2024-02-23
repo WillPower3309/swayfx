@@ -1,6 +1,6 @@
-# swaymsg(1) completion
+# swayfxmsg(1) completion
 
-_swaymsg()
+_swayfxmsg()
 {
   local cur prev types short long
   _get_comp_words_by_ref cur prev
@@ -62,4 +62,4 @@ _swaymsg()
   fi
 
 } &&
-complete -F _swaymsg swaymsg
+complete -F _swayfxmsg swayfxmsg

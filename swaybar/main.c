@@ -28,15 +28,15 @@ int main(int argc, char **argv) {
 	};
 
 	const char *usage =
-		"Usage: swaybar [options...]\n"
+		"Usage: swayfxbar [options...]\n"
 		"\n"
 		"  -h, --help             Show help message and quit.\n"
 		"  -v, --version          Show the version number and quit.\n"
-		"  -s, --socket <socket>  Connect to sway via socket.\n"
+		"  -s, --socket <socket>  Connect to swayfx via socket.\n"
 		"  -b, --bar_id <id>      Bar ID for which to get the configuration.\n"
 		"  -d, --debug            Enable debugging.\n"
 		"\n"
-		" PLEASE NOTE that swaybar will be automatically started by sway as\n"
+		" PLEASE NOTE that swayfxbar will be automatically started by swayfx as\n"
 		" soon as there is a 'bar' configuration block in your config file.\n"
 		" You should never need to start it manually.\n";
 
@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
 			swaybar.id = strdup(optarg);
 			break;
 		case 'v':
-			printf("swaybar version " SWAY_VERSION " (based on sway " SWAY_ORIGINAL_VERSION ")\n");
+			printf("swayfxbar version " SWAY_VERSION " (based on sway " SWAY_ORIGINAL_VERSION ")\n");
 			exit(EXIT_SUCCESS);
 			break;
 		case 'd': // Debug
@@ -75,7 +75,7 @@ int main(int argc, char **argv) {
 
 	if (!swaybar.id) {
 		sway_log(SWAY_ERROR, "No bar_id passed. "
-				"Provide --bar_id or let sway start swaybar");
+				"Provide --bar_id or let swayfx start swayfxbar");
 		return 1;
 	}
 

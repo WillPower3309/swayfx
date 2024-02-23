@@ -1,5 +1,5 @@
 project(
-	'sway',
+	'swayfx',
 	'c',
 	version: '0.3.2',
 	license: 'MIT',
@@ -83,7 +83,7 @@ foreach name, _ : wlroots_features
 endforeach
 
 if get_option('xwayland').enabled() and not wlroots_features['xwayland']
-	error('Cannot enable Xwayland in sway: wlroots has been built without Xwayland support')
+	error('Cannot enable Xwayland in swayfx: wlroots has been built without Xwayland support')
 endif
 have_xwayland = xcb.found() and xcb_icccm.found() and wlroots_features['xwayland']
 
@@ -137,7 +137,7 @@ if scdoc.found()
 		'swaymsg/swaymsg.1.scd',
 	]
 
-	if get_option('swaynag')
+	if get_option('swayfxnag')
 		man_files += [
 			'swaynag/swaynag.1.scd',
 			'swaynag/swaynag.5.scd',
@@ -145,7 +145,10 @@ if scdoc.found()
 	endif
 
 	foreach filename : man_files
-		topic = filename.split('.')[-3].split('/')[-1]
+		topic = filename \
+			.split('.')[-3] \
+			.split('/')[-1] \
+			.replace('sway', 'swayfx')
 		section = filename.split('.')[-2]
 		output = '@0@.@1@'.format(topic, section)
 
@@ -218,7 +221,7 @@ else
 endif
 
 
-sway_inc = include_directories('include')
+swayfx_inc = include_directories('include')
 
 subdir('include')
 subdir('protocols')
@@ -226,13 +229,13 @@ subdir('common')
 subdir('sway')
 subdir('swaymsg')
 
-if get_option('swaybar') or get_option('swaynag')
+if get_option('swayfxbar') or get_option('swayfxnag')
 	subdir('client')
 endif
-if get_option('swaybar')
+if get_option('swayfxbar')
 	subdir('swaybar')
 endif
-if get_option('swaynag')
+if get_option('swayfxnag')
 	subdir('swaynag')
 endif
 
@@ -245,11 +248,12 @@ configure_file(
 	configuration: config,
 	input: 'config.in',
 	output: '@BASENAME@',
-	install_dir: join_paths(sysconfdir, 'sway')
+	install_dir: join_paths(sysconfdir, 'swayfx')
 )
 
 install_data(
 	'sway.desktop',
+	rename: 'swayfx.desktop',
 	install_dir: join_paths(datadir, 'wayland-sessions')
 )
 
@@ -264,7 +268,7 @@ if get_option('default-wallpaper')
 		'assets/Sway_Wallpaper_Blue_2048x1536.png',
 		'assets/Sway_Wallpaper_Blue_2048x1536_Portrait.png',
 	)
-	wallpaper_install_dir = join_paths(datadir, 'backgrounds', 'sway')
+	wallpaper_install_dir = join_paths(datadir, 'backgrounds', 'swayfx')
 
 	install_data(wallpaper_files, install_dir: wallpaper_install_dir)
 endif
@@ -274,9 +278,17 @@ if get_option('zsh-completions')
 		'completions/zsh/_sway',
 		'completions/zsh/_swaymsg',
 	)
+	swayfx_zsh_files = [
+		'_swayfx',
+		'_swayfxmsg',
+	]
 	zsh_install_dir = join_paths(datadir, 'zsh', 'site-functions')
 
-	install_data(zsh_files, install_dir: zsh_install_dir)
+	install_data(
+		zsh_files,
+		rename: swayfx_zsh_files,
+		install_dir: zsh_install_dir,
+	)
 endif
 
 if get_option('bash-completions')
@@ -284,9 +296,14 @@ if get_option('bash-completions')
 		'completions/bash/sway',
 		'completions/bash/swaymsg',
 	)
+	swayfx_bash_files = [
+		'swayfx',
+		'swayfxmsg',
+	]
 
-	if get_option('swaybar')
+	if get_option('swayfxbar')
 		bash_files += files('completions/bash/swaybar')
+		swayfx_bash_files += ['swayfxbar']
 	endif
 
 	if bash_comp.found()
@@ -298,7 +315,11 @@ if get_option('bash-completions')
 		bash_install_dir = join_paths(datadir, 'bash-completion', 'completions')
 	endif
 
-	install_data(bash_files, install_dir: bash_install_dir)
+	install_data(
+		bash_files,
+		rename: swayfx_bash_files,
+		install_dir: bash_install_dir,
+	)
 endif
 
 if get_option('fish-completions')
@@ -306,9 +327,14 @@ if get_option('fish-completions')
 		'completions/fish/sway.fish',
 		'completions/fish/swaymsg.fish',
 	)
+	swayfx_fish_files = [
+		'swayfx.fish',
+		'swayfxmsg.fish',
+	]
 
-	if get_option('swaynag')
+	if get_option('swayfxnag')
 		fish_files += files('completions/fish/swaynag.fish')
+		swayfx_fish_files += ['swayfxnag.fish']
 	endif
 
 	if fish_comp.found()
@@ -320,7 +346,11 @@ if get_option('fish-completions')
 		fish_install_dir = join_paths(datadir, 'fish', 'vendor_completions.d')
 	endif
 
-	install_data(fish_files, install_dir: fish_install_dir)
+	install_data(
+		fish_files,
+		rename: swayfx_fish_files,
+		install_dir: fish_install_dir
+	)
 endif
 
 summary({

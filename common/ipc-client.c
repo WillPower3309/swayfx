@@ -20,7 +20,7 @@ char *get_socketpath(void) {
 	}
 	char *line = NULL;
 	size_t line_size = 0;
-	FILE *fp = popen("sway --get-socketpath 2>/dev/null", "r");
+	FILE *fp = popen("swayfx --get-socketpath 2>/dev/null", "r");
 	if (fp) {
 		ssize_t nret = getline(&line, &line_size, fp);
 		pclose(fp);

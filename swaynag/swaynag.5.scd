@@ -1,18 +1,18 @@
-swaynag(5)
+swayfxnag(5)
 
 # NAME
 
-swaynag - swaynag configuration file
+swayfxnag - swayfxnag configuration file
 
 # SYNOPSIS
 
-$HOME/.swaynag/config, $XDG\_CONFIG\_HOME/swaynag/config,
-SYSCONFDIR/swaynag/config
+$HOME/.swayfxnag/config, $XDG\_CONFIG\_HOME/swayfxnag/config,
+SYSCONFDIR/swayfxnag/config
 
 # CONFIG FILE
 
-At the top of the config file, _swaynag_ options can be set using the format
-_long-option=value_. These will be used as default values if _swaynag_ is not
+At the top of the config file, _swayfxnag_ options can be set using the format
+_long-option=value_. These will be used as default values if _swayfxnag_ is not
 given the option. This can be useful for setting a preferred font, output, and
 edge.
 
@@ -28,13 +28,13 @@ All colors may be given in the form _RRGGBB_ or _RRGGBBAA_. The following
 colors can be set:
 
 *background=<color>*
-	The background color for _swaynag_.
+	The background color for _swayfxnag_.
 
 *border=<color>*
 	The color to use for borders of buttons.
 
 *border-bottom=<color>*
-	The color of the border line at the bottom of _swaynag_.
+	The color of the border line at the bottom of _swayfxnag_.
 
 *button-background=<color>*
 	The background color for the buttons.
@@ -106,4 +106,4 @@ message-padding=10
 
 # SEE
 
-swaynag(1)
+swayfxnag(1)

@@ -1,6 +1,6 @@
-# swaybar(1) completion
+# swayfxbar(1) completion
 
-_swaybar()
+_swayfxbar()
 {
   local cur prev short long
   _get_comp_words_by_ref cur prev
@@ -27,7 +27,7 @@ _swaybar()
       return
       ;;
     -b|--bar_id)
-      bars=($(swaymsg -t get_bar_config | jq -r '.[]'))
+      bars=($(swayfxmsg -t get_bar_config | jq -r '.[]'))
       COMPREPLY=($(compgen -W "${bars[*]}" -- "$cur"))
       return
       ;;
@@ -41,4 +41,4 @@ _swaybar()
   fi
 
 } &&
-complete -F _swaybar swaybar
+complete -F _swayfxbar swayfxbar

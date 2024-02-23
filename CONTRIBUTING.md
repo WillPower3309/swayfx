@@ -1,30 +1,12 @@
-# Contributing to sway
-
-Contributing just involves sending a pull request. You will probably be more
-successful with your contribution if you visit #sway-devel on Libera Chat
-upfront and discuss your plans.
-
-Note: rules are made to be broken. Adjust or ignore any/all of these as you see
-fit, but be prepared to justify it to your peers.
-
-## Scope of future changes to sway
-
-**Important**: Sway has completed its core value proposition: it is a fully
-featured Wayland-compatible replacement for i3. It is not our intention to
-expand on the scope of what i3 aims to accomplish. Our priorities now are
-increasing the stability, reliability, and performance of sway within its
-current scope. For this reason, most new window management feature requests are
-not accepted, even if accompanied by a patch.
-
 ## Pull Requests
 
 If you already have your own pull request habits, feel free to use them. If you
 don't, however, allow me to make a suggestion: feature branches pulled from
 upstream. Try this:
 
-1. Fork sway
-2. `git clone https://github.com/username/sway && cd sway`
-3. `git remote add upstream https://github.com/swaywm/sway`
+1. Fork SwayFX
+2. `git clone https://github.com/username/swayfx && cd swayfx`
+3. `git remote add upstream https://github.com/WillPower3309/swayfx`
 
 You only need to do this once. You're never going to use your fork's master
 branch. Instead, when you start working on a feature, do this:
@@ -92,7 +74,7 @@ process is:
 
 ## Style Reference
 
-Sway is written in C with a style similar to the [kernel
+SwayFX is written in C with a style similar to the [kernel
 style](https://www.kernel.org/doc/Documentation/process/coding-style.rst), but
 with a few notable differences.
 

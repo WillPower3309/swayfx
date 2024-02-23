@@ -1,12 +1,12 @@
-sway-bar(5)
+swayfx-bar(5)
 
 # NAME
 
-sway-bar - bar configuration file and commands
+swayfx-bar - bar configuration file and commands
 
 # DESCRIPTION
 
-Sway allows configuring swaybar in the sway configuration file.
+SwayFX allows configuring swayfxbar in the swayfx configuration file.
 
 # COMMANDS
 
@@ -16,7 +16,7 @@ The following commands may only be used in the configuration file.
 	Sets the ID of the bar.
 
 *swaybar_command* <command>
-	Executes custom bar command. Default is _swaybar_.
+	Executes custom bar command. Default is _swayfxbar_.
 
 The following commands may be used either in the configuration file or at
 runtime.
@@ -101,11 +101,11 @@ runtime.
 *status_command* <status command>
 	Executes the bar _status command_ with _sh -c_. Each line of text printed
 	to stdout from this command will be displayed in the status area of the
-	bar. You may also use swaybar's JSON status line protocol. See
-	*swaybar-protocol*(7) for more information on the protocol
+	bar. You may also use swayfxbar's JSON status line protocol. See
+	*swayfxbar-protocol*(7) for more information on the protocol
 
 	If running this command via IPC, you can disable a running status command by
-	setting the command to a single dash: _swaybar bar bar-0 status\_command -_
+	setting the command to a single dash: _swayfxbar bar bar-0 status\_command -_
 
 *status_edge_padding* <padding>
 	Sets the padding that is used when the status line is at the right edge of
@@ -145,7 +145,7 @@ runtime.
 
 ## TRAY
 
-Swaybar provides a system tray where third-party applications may place icons.
+swayfxbar provides a system tray where third-party applications may place icons.
 The following commands configure the tray.
 
 *tray_bindcode* <event-code>
@@ -168,13 +168,13 @@ ContextMenu|Activate|SecondaryActivate|ScrollDown|ScrollLeft|ScrollRight|ScrollU
 
 *tray_output* none|<output>|\*
 	Restrict the tray to a certain output, can be specified multiple times. If
-	omitted, the tray will be displayed on all outputs. Unlike i3bar, swaybar
+	omitted, the tray will be displayed on all outputs. Unlike i3bar, swayfxbar
 	can show icons on any number of bars and outputs without races. _\*_ can be
 	given at any point to reset it to display on all outputs.
 
 *icon_theme* <name>
-	Sets the icon theme that sway will look for item icons in. This option has
-	no default value, because sway will always default to the fallback theme,
+	Sets the icon theme that swayfx will look for item icons in. This option has
+	no default value, because swayfx will always default to the fallback theme,
 	hicolor.
 
 ## COLORS
@@ -228,4 +228,4 @@ must be defined in hex: _#RRGGBB_ or _#RRGGBBAA_.
 
 # SEE ALSO
 
-*sway*(5) *swaybar-protocol*(7)
+*swayfx*(5) *swayfxbar-protocol*(7)

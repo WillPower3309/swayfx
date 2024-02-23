@@ -1,13 +1,13 @@
 post_install() {
 cat << EOD
-Sway requires additional setup for privilege escalation. Without this setup,
-sway will fail to start with session activation permission failures. Choose one
+SwayFX requires additional setup for privilege escalation. Without this setup,
+SwayFX will fail to start with session activation permission failures. Choose one
 of the two available options (In alphabetical, not recommended, order):
 
-1. polkit: This will make sway "just work" right after installation but may be
+1. polkit: This will make SwayFX "just work" right after installation but may be
            a weightier solution than desired.
 
-2. seatd: Already required as a sway dependency, this is a lighter-weight
+2. seatd: Already required as a SwayFX dependency, this is a lighter-weight
           solution but requires some user configuration: Enabling the service,
           adding your user to the "seat" group, then logging out/in again.
 
@@ -18,7 +18,7 @@ EOD
 
 post_upgrade() {
 cat << EOD
-Sway's necessary privileges can now be obtained through seatd as well as the
+SwayFX's necessary privileges can now be obtained through seatd as well as the
 incumbent polkit package. As such, polkit has been relegated to an optional
 dependency.
 

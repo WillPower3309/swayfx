@@ -433,7 +433,7 @@ int main(int argc, char **argv) {
 	};
 
 	const char *usage =
-		"Usage: swaymsg [options] [message]\n"
+		"Usage: swayfxmsg [options] [message]\n"
 		"\n"
 		"  -h, --help             Show help message and quit.\n"
 		"  -m, --monitor          Monitor until killed (-t SUBSCRIBE only)\n"
@@ -473,7 +473,7 @@ int main(int argc, char **argv) {
 			cmdtype = strdup(optarg);
 			break;
 		case 'v':
-			printf("swaymsg version " SWAY_VERSION " (based on sway " SWAY_ORIGINAL_VERSION ")\n");
+			printf("swayfxmsg version " SWAY_VERSION " (based on sway " SWAY_ORIGINAL_VERSION ")\n");
 			exit(EXIT_SUCCESS);
 			break;
 		default:
