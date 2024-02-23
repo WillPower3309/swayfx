@@ -43,7 +43,7 @@ meson build/
 ninja -C build/
 sudo ninja -C build/ install
 ```
-Reboot and then add the desired effects in your ~/.config/sway/config file <br/>
+Reboot and then add the desired effects in your ~/.config/swayfx/config file <br/>
 e.g. `blur enable|disable`
 
 + Guide created with ♥️ by babymusk

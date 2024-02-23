@@ -1,12 +1,12 @@
-swaynag(1)
+swayfxnag(1)
 
 # NAME
 
-swaynag - Show a warning or error message with buttons
+swayfxnag - Show a warning or error message with buttons
 
 # SYNOPSIS
 
-_swaynag_ [options...]
+_swayfxnag_ [options...]
 
 # OPTIONS
 
@@ -23,24 +23,24 @@ _swaynag_ [options...]
 
 *-z, --button-dismiss* <text> <action>
 	Create a button with the text _text_ that executes _action_ when pressed,
-	and dismisses swaynag. If the environment variable _TERMINAL_ is set,
+	and dismisses swayfxnag. If the environment variable _TERMINAL_ is set,
 	_action_ will be run inside the terminal. Otherwise, it will fallback to
 	running directly. Multiple buttons can be defined by providing the flag
 	multiple times.
 
 *-Z, --button-dismiss-no-terminal* <text> <action>
 	Create a button with the text _text_ that executes _action_ when pressed,
-	and dismisses swaynag. _action_ will be run directly instead of in a
+	and dismisses swayfxnag. _action_ will be run directly instead of in a
 	terminal. Multiple buttons can be defined by providing the flag multiple
 	times.
 
 *-c, --config* <path>
 	The config file to use. By default, the following paths are checked:
-	_$HOME/.swaynag/config_, _$XDG\_CONFIG\_HOME/swaynag/config_, and
-	_SYSCONFDIR/swaynag/config_. All flags aside from this one and _debug_ are
+	_$HOME/.swayfxnag/config_, _$XDG\_CONFIG\_HOME/swayfxnag/config_, and
+	_SYSCONFDIR/swayfxnag/config_. All flags aside from this one and _debug_ are
 	valid options in the configuration file using the format
 	_long-option=value_. All leading dashes should be omitted and the equals
-	sign is required. See swaynag(5) for more information.
+	sign is required. See swayfxnag(5) for more information.
 
 *-d, --debug*
 	Enable debugging.
@@ -77,7 +77,7 @@ _swaynag_ [options...]
 *-t, --type* <type>
 	Set the message type. Two types are created by default _error_ and
 	_warning_. Custom types can be defined in the config file. See
-	_--config_ and swaynag(5) for details. Both of the default types can be
+	_--config_ and swayfxnag(5) for details. Both of the default types can be
 	overridden in the config file as well.
 
 *-v, --version*
@@ -132,4 +132,4 @@ _swaynag_ [options...]
 
 # SEE
 
-swaynag(5)
+swayfxnag(5)

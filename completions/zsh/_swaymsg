@@ -1,17 +1,5 @@
-#compdef swaymsg
-#-----------------
-# Description
-# -----------
-#
-# Completion script for swaymsg in sway wm (http://swaywm.org)
-#
-# ------------------------------------------------------
-# Author
-# --------
-#
-#  * Seth Barberee <seth.barberee@gmail.com>
-#
-#  -------------------------------------------
+#compdef swayfxmsg
+# Author: Seth Barberee <seth.barberee@gmail.com>
 
 types=(
 'get_workspaces'

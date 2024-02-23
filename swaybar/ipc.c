@@ -100,7 +100,7 @@ static bool ipc_parse_config(
 	json_object *success;
 	if (json_object_object_get_ex(bar_config, "success", &success)
 			&& !json_object_get_boolean(success)) {
-		sway_log(SWAY_ERROR, "No bar with that ID. Use 'swaymsg -t "
+		sway_log(SWAY_ERROR, "No bar with that ID. Use 'swayfxmsg -t "
 				"get_bar_config' to get the available bar configs.");
 		json_object_put(bar_config);
 		return false;

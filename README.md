@@ -44,10 +44,10 @@ Sway is an incredible window manager, and certainly one of the most well establi
     - `shadow_inactive_color <hex color with alpha> ex, #0000007F`
 + LayerShell effects (to blur panels / notifications etc):
     - `layer_effects <layer namespace> <effects>`
-    - The current layer namespaces can be shown with `swaymsg -r -t get_outputs | jq '.[0].layer_shell_surfaces | .[] | .namespace'`
+    - The current layer namespaces can be shown with `swayfxmsg -r -t get_outputs | jq '.[0].layer_shell_surfaces | .[] | .namespace'`
     - Example: `layer_effects "waybar" blur enable; shadows enable; corner_radius 6`
       - Note: If an application uses gtk, its namespace is likely to be "gtk-layer-shell"
-    - SwayIPC Example: `swaymsg "layer_effects 'waybar' 'blur enable; shadows enable; corner_radius 6'"`
+    - SwayIPC Example: `swayfxmsg "layer_effects 'waybar' 'blur enable; shadows enable; corner_radius 6'"`
     - Available Effects:
         - `blur <enable|disable>`
         - `blur_ignore_transparent <enable|disable>`
@@ -75,7 +75,7 @@ If you have Nix installed, you can build and run SwayFX easily:
 
 ```
 nix build
-./result/bin/sway
+./result/bin/swayfx
 ```
 
 You can also bring up a development shell and follow the build instructions below, without installing all of the dependencies manually:
@@ -111,9 +111,9 @@ Run these commands:
     ninja -C build/
     sudo ninja -C build/ install
 
-On systems without logind nor seatd, you need to suid the sway binary:
+On systems without logind nor seatd, you need to suid the swayfx binary:
 
-    sudo chmod a+s /usr/local/bin/sway
+    sudo chmod a+s /usr/local/bin/swayfx
 
 SwayFX will drop root permissions shortly after startup.
 

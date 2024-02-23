@@ -22,7 +22,7 @@ if have_tray
 endif
 
 executable(
-	'swaybar', [
+	'swayfxbar', [
 		'bar.c',
 		'config.c',
 		'i3bar.c',
@@ -34,7 +34,7 @@ executable(
 		tray_files,
 		wl_protos_src,
 	],
-	include_directories: [sway_inc],
+	include_directories: [swayfx_inc],
 	dependencies: swaybar_deps,
 	link_with: [lib_sway_common, lib_sway_client],
 	install: true

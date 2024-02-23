@@ -14,7 +14,7 @@ License:		MIT
 URL:			https://github.com/WillPower3309/swayfx
 VCS:			{{{ git_dir_vcs }}}
 Source:			{{{ git_dir_pack }}}
-Source101:		sway-portals.conf
+Source101:		swayfx-portals.conf
 
 BuildRequires:	gcc-c++
 BuildRequires:	gnupg2
@@ -60,9 +60,9 @@ Recommends:		mesa-dri-drivers
 Recommends:		(qt5-qtwayland if qt5-qtbase-gui)
 Recommends:		(qt6-qtwayland if qt6-qtbase-gui)
 
-# dmenu (as well as rxvt any many others) requires XWayland on Sway
+# dmenu (as well as rxvt any many others) requires XWayland on SwayFX
 Requires:		xorg-x11-server-Xwayland
-# Sway binds the terminal shortcut to one specific terminal. In our case foot
+# SwayFX binds the terminal shortcut to one specific terminal. In our case foot
 Recommends:		foot
 # grim is the recommended way to take screenshots on sway 1.0+
 Recommends:		grim
@@ -76,12 +76,12 @@ SwayFX: Sway, but with eye candy!
 
 # The artwork is heavy and we don't use it with our default config
 %package        wallpapers
-Summary:        Wallpapers for Sway
+Summary:        Wallpapers for SwayFX
 BuildArch:      noarch
 License:        CC0
 
 %description    wallpapers
-Wallpaper collection provided with Sway
+Wallpaper collection provided with SwayFX
 
 
 %package -n     grimshot
@@ -93,7 +93,7 @@ Requires:       /usr/bin/wl-copy
 Recommends:     /usr/bin/notify-send
 
 %description -n grimshot
-Grimshot is an easy to use screenshot tool for sway. It relies on grim,
+Grimshot is an easy to use screenshot tool for swayfx. It relies on grim,
 slurp and jq to do the heavy lifting, and mostly provides an easy to use
 interface.
 
@@ -110,15 +110,15 @@ interface.
 %install
 %meson_install
 # Set Fedora background as default background
-sed -i "s|^output \* bg .*|output * bg /usr/share/backgrounds/default.png fill|" %{buildroot}%{_sysconfdir}/sway/config
+sed -i "s|^output \* bg .*|output * bg /usr/share/backgrounds/default.png fill|" %{buildroot}%{_sysconfdir}/swayfx/config
 # Create directory for extra config snippets
-install -d -m755 -pv %{buildroot}%{_sysconfdir}/sway/config.d
+install -d -m755 -pv %{buildroot}%{_sysconfdir}/swayfx/config.d
 
 # Install portals.conf for xdg-desktop-portal
-install -D -m644 -pv %{SOURCE101} %{buildroot}%{_datadir}/xdg-desktop-portal/sway-portals.conf
+install -D -m644 -pv %{SOURCE101} %{buildroot}%{_datadir}/xdg-desktop-portal/swayfx-portals.conf
 
 # install python scripts from contrib
-install -D -m644 -pv -t %{buildroot}%{_datadir}/sway/contrib contrib/*.py
+install -D -m644 -pv -t %{buildroot}%{_datadir}/swayfx/contrib contrib/*.py
 
 # install contrib/grimshot tool
 scdoc <contrib/grimshot.1.scd >%{buildroot}%{_mandir}/man1/grimshot.1
@@ -127,27 +127,27 @@ install -D -m755 -pv contrib/grimshot %{buildroot}%{_bindir}/grimshot
 %files
 %license LICENSE
 %doc README.md
-%dir %{_sysconfdir}/sway
-%dir %{_sysconfdir}/sway/config.d
-%config(noreplace) %{_sysconfdir}/sway/config
-%{_mandir}/man1/sway*
+%dir %{_sysconfdir}/swayfx
+%dir %{_sysconfdir}/swayfx/config.d
+%config(noreplace) %{_sysconfdir}/swayfx/config
+%{_mandir}/man1/swayfx*
 %{_mandir}/man5/*
 %{_mandir}/man7/*
-%{_bindir}/sway
-%{_bindir}/swaybar
-%{_bindir}/swaymsg
-%{_bindir}/swaynag
-%{_datadir}/sway
-%{_datadir}/wayland-sessions/sway.desktop
+%{_bindir}/swayfx
+%{_bindir}/swayfxbar
+%{_bindir}/swayfxmsg
+%{_bindir}/swayfxnag
+%{_datadir}/swayfx
+%{_datadir}/wayland-sessions/swayfx.desktop
 %dir %{_datadir}/xdg-desktop-portal
-%{_datadir}/xdg-desktop-portal/sway-portals.conf
-%{bash_completions_dir}/sway*
-%{fish_completions_dir}/sway*.fish
-%{zsh_completions_dir}/_sway*
+%{_datadir}/xdg-desktop-portal/swayfx-portals.conf
+%{bash_completions_dir}/swayfx*
+%{fish_completions_dir}/swayfx*.fish
+%{zsh_completions_dir}/_swayfx*
 
 %files wallpapers
 %license assets/LICENSE
-%{_datadir}/backgrounds/sway
+%{_datadir}/backgrounds/swayfx
 
 %files -n grimshot
 %{_bindir}/grimshot

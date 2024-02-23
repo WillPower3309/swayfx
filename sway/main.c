@@ -64,7 +64,7 @@ void detect_proprietary(int allow_unsupported_gpu) {
 			} else {
 				sway_log(SWAY_ERROR,
 					"Proprietary Nvidia drivers are NOT supported. "
-					"Use Nouveau. To launch sway anyway, launch with "
+					"Use Nouveau. To launch SwayFX anyway, launch with "
 					"--unsupported-gpu and DO NOT report issues.");
 				exit(EXIT_FAILURE);
 			}
@@ -76,7 +76,7 @@ void detect_proprietary(int allow_unsupported_gpu) {
 						"!!! Proprietary AMD drivers are in use !!!");
 			} else {
 				sway_log(SWAY_ERROR, "Proprietary AMD drivers do NOT support "
-					"Wayland. Use radeon. To try anyway, launch sway with "
+					"Wayland. Use radeon. To try anyway, launch SwayFX with "
 					"--unsupported-gpu and DO NOT report issues.");
 				exit(EXIT_FAILURE);
 			}
@@ -243,7 +243,7 @@ static const struct option long_options[] = {
 };
 
 static const char usage[] =
-	"Usage: sway [options] [command]\n"
+	"Usage: swayfx [options] [command]\n"
 	"\n"
 	"  -h, --help             Show help message and quit.\n"
 	"  -c, --config <config>  Specify a config file.\n"
@@ -299,7 +299,7 @@ int main(int argc, char **argv) {
 				printf("%s\n", getenv("SWAYSOCK"));
 				exit(EXIT_SUCCESS);
 			} else {
-				fprintf(stderr, "sway socket not detected.\n");
+				fprintf(stderr, "swayfx socket not detected.\n");
 				exit(EXIT_FAILURE);
 			}
 			break;
@@ -347,9 +347,9 @@ int main(int argc, char **argv) {
 					"Detected both options and positional arguments. If you "
 					"are trying to use the IPC client, options are not "
 					"supported. Otherwise, check the provided arguments for "
-					"issues. See `man 1 sway` or `sway -h` for usage. If you "
+					"issues. See `man 1 swayfx` or `swayfx -h` for usage. If you "
 					"are trying to generate a debug log, use "
-					"`sway -d 2>sway.log`.");
+					"`swayfx -d 2>swayfx.log`.");
 			exit(EXIT_FAILURE);
 		}
 		char *socket_path = getenv("SWAYSOCK");
@@ -416,7 +416,7 @@ int main(int argc, char **argv) {
 	server_run(&server);
 
 shutdown:
-	sway_log(SWAY_INFO, "Shutting down sway");
+	sway_log(SWAY_INFO, "Shutting down SwayFX");
 
 	server_fini(&server);
 	root_destroy(root);

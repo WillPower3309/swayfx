@@ -1,8 +1,8 @@
-# Default config for sway
+# Default config for swayfx
 #
-# Copy this to ~/.config/sway/config and edit it to your liking.
+# Copy this to ~/.config/swayfx/config and edit it to your liking.
 #
-# Read `man 5 sway` for a complete reference.
+# Read `man 5 swayfx` for a complete reference.
 
 ### Variables
 #
@@ -16,9 +16,9 @@ set $right l
 # Your preferred terminal emulator
 set $term foot
 # Your preferred application launcher
-# Note: pass the final command to swaymsg so that the resulting window can be opened
+# Note: pass the final command to swayfxmsg so that the resulting window can be opened
 # on the original workspace that the command was run on.
-set $menu dmenu_path | dmenu | xargs swaymsg exec --
+set $menu dmenu_path | dmenu | xargs swayfxmsg exec --
 
 ### Appearance
 # window corner radius in px
@@ -45,14 +45,14 @@ scratchpad_minimize disable
 
 ### Output configuration
 #
-# Default wallpaper (more resolutions are available in @datadir@/backgrounds/sway/)
-output * bg @datadir@/backgrounds/sway/Sway_Wallpaper_Blue_1920x1080.png fill
+# Default wallpaper (more resolutions are available in @datadir@/backgrounds/swayfx/)
+output * bg @datadir@/backgrounds/swayfx/Sway_Wallpaper_Blue_1920x1080.png fill
 #
 # Example configuration:
 #
 #   output HDMI-A-1 resolution 1920x1080 position 1920,0
 #
-# You can get the names of your outputs by running: swaymsg -t get_outputs
+# You can get the names of your outputs by running: swayfxmsg -t get_outputs
 
 ### Idle configuration
 #
@@ -60,7 +60,7 @@ output * bg @datadir@/backgrounds/sway/Sway_Wallpaper_Blue_1920x1080.png fill
 #
 # exec swayidle -w \
 #          timeout 300 'swaylock -f -c 000000' \
-#          timeout 600 'swaymsg "output * power off"' resume 'swaymsg "output * power on"' \
+#          timeout 600 'swayfxmsg "output * power off"' resume 'swayfxmsg "output * power on"' \
 #          before-sleep 'swaylock -f -c 000000'
 #
 # This will lock your screen after 300 seconds of inactivity, then turn off
@@ -78,8 +78,8 @@ output * bg @datadir@/backgrounds/sway/Sway_Wallpaper_Blue_1920x1080.png fill
 #       middle_emulation enabled
 #   }
 #
-# You can get the names of your inputs by running: swaymsg -t get_inputs
-# Read `man 5 sway-input` for more information about this section.
+# You can get the names of your inputs by running: swayfxmsg -t get_inputs
+# Read `man 5 swayfx-input` for more information about this section.
 
 ### Key bindings
 #
@@ -104,8 +104,8 @@ output * bg @datadir@/backgrounds/sway/Sway_Wallpaper_Blue_1920x1080.png fill
     # Reload the configuration file
     bindsym $mod+Shift+c reload
 
-    # Exit sway (logs you out of your Wayland session)
-    bindsym $mod+Shift+e exec swaynag -t warning -m 'You pressed the exit shortcut. Do you really want to exit sway? This will end your Wayland session.' -B 'Yes, exit sway' 'swaymsg exit'
+    # Exit swayfx (logs you out of your Wayland session)
+    bindsym $mod+Shift+e exec swaynag -t warning -m 'You pressed the exit shortcut. Do you really want to exit swayfx? This will end your Wayland session.' -B 'Yes, exit swayfx' 'swayfxmsg exit'
 #
 # Moving around:
 #
@@ -185,7 +185,7 @@ output * bg @datadir@/backgrounds/sway/Sway_Wallpaper_Blue_1920x1080.png fill
 #
 # Scratchpad:
 #
-    # Sway has a "scratchpad", which is a bag of holding for windows.
+    # Swayfx has a "scratchpad", which is a bag of holding for windows.
     # You can send windows there and get them back later.
 
     # Move the currently focused window to the scratchpad
@@ -222,11 +222,11 @@ bindsym $mod+r mode "resize"
 #
 # Status Bar:
 #
-# Read `man 5 sway-bar` for more information about this section.
+# Read `man 5 swayfx-bar` for more information about this section.
 bar {
     position top
 
-    # When the status_command prints a new line to stdout, swaybar updates.
+    # When the status_command prints a new line to stdout, swayfxbar updates.
     # The default just shows the current date and time.
     status_command while date +'%Y-%m-%d %I:%M:%S %p'; do sleep 1; done
 
@@ -237,4 +237,4 @@ bar {
     }
 }
 
-include @sysconfdir@/sway/config.d/*
+include @sysconfdir@/swayfx/config.d/*

@@ -27,7 +27,7 @@ struct cmd_results *cmd_xwayland(int argc, char **argv) {
 	config->xwayland = xwayland;
 #else
 	sway_log(SWAY_INFO, "Ignoring `xwayland` command, "
-		"sway hasn't been built with Xwayland support");
+		"swayfx hasn't been built with Xwayland support");
 #endif
 
 	return cmd_results_new(CMD_SUCCESS, NULL);

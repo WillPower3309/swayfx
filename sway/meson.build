@@ -127,7 +127,7 @@ sway_sources = files(
 	'commands/set.c',
 	'commands/shadow_blur_radius.c',
 	'commands/shadow_color.c',
-    'commands/shadow_offset.c',
+	'commands/shadow_offset.c',
 	'commands/shadow_inactive_color.c',
 	'commands/shadows.c',
 	'commands/shadows_on_csd.c',
@@ -268,9 +268,9 @@ if have_xwayland
 endif
 
 executable(
-	'sway',
+	'swayfx',
 	sway_sources + wl_protos_src,
-	include_directories: [sway_inc],
+	include_directories: [swayfx_inc],
 	dependencies: sway_deps,
 	link_with: [lib_sway_common],
 	install: true

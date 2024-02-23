@@ -1,18 +1,18 @@
-sway-ipc(7)
+swayfx-ipc(7)
 
 # NAME
 
-sway-ipc - IPC protocol for sway
+swayfx-ipc - IPC protocol for swayfx
 
 # DESCRIPTION
 
-This details the interprocess communication (IPC) protocol for *sway*(1). This
-IPC protocol can be used to control or obtain information from a sway process.
+This details the interprocess communication (IPC) protocol for *swayfx*(1). This
+IPC protocol can be used to control or obtain information from a swayfx process.
 
 The IPC protocol uses a UNIX socket as the method of communication. The path
 to the socket is stored in the environment variable _SWAYSOCK_ and, for
 backwards compatibility with i3, _I3SOCK_. You can also retrieve the socket
-path by calling _sway --get-socketpath_.
+path by calling _swayfx --get-socketpath_.
 
 # MESSAGE AND REPLY FORMAT
 
@@ -41,7 +41,7 @@ supported. *For all replies, any properties not listed are subject to removal.*
 :- *PURPOSE*
 |- 0
 :  RUN_COMMAND
-:[ Runs the payload as sway commands
+:[ Runs the payload as swayfx commands
 |- 1
 :  GET_WORKSPACES
 :  Get the list of current workspaces
@@ -62,7 +62,7 @@ supported. *For all replies, any properties not listed are subject to removal.*
 :  Get the specified bar config or a list of bar config names
 |- 7
 :  GET_VERSION
-:  Get the version of sway that owns the IPC socket
+:  Get the version of swayfx that owns the IPC socket
 |- 8
 :  GET_BINDING_MODES
 :  Get the list of binding mode names
@@ -88,7 +88,7 @@ supported. *For all replies, any properties not listed are subject to removal.*
 ## 0. RUN_COMMAND
 
 *MESSAGE*++
-Parses and runs the payload as sway commands
+Parses and runs the payload as swayfx commands
 
 *REPLY*++
 An array of objects corresponding to each command that was parsed. Each object
@@ -841,13 +841,13 @@ An array of bar IDs, which are strings
 
 *MESSAGE*++
 When sent with a bar ID as the payload, this retrieves the config associated
-with the specified by the bar ID in the payload. This is used by swaybar, but
+with the specified by the bar ID in the payload. This is used by swayfxbar, but
 could also be used for third party bars
 
 *REPLY*++
 An object that represents the configuration for the bar with the bar ID sent as
 the payload. The following properties exists and more information about what
-their value mean can be found in *sway-bar*(5):
+their value mean can be found in *swayfx-bar*(5):
 
 [- *PROPERTY*
 :- *DATA TYPE*
@@ -1008,7 +1008,7 @@ containing the _#RRGGBBAA_ representation of the color:
 ## 7. GET_VERSION
 
 *MESSAGE*++
-Retrieve version information about the sway process
+Retrieve version information about the swayfx process
 
 *REPLY*++
 An object containing the following properties:
@@ -1018,13 +1018,13 @@ An object containing the following properties:
 :- *DESCRIPTION*
 |- major
 :  integer
-:[ The major version of the sway process
+:[ The major version of the swayfx process
 |- minor
 :  integer
-:  The minor version of the sway process
+:  The minor version of the swayfx process
 |- patch
 :  integer
-:  The patch version of the sway process
+:  The patch version of the swayfx process
 |- human_readable
 :  string
 :  A human readable version string that will likely contain more useful
@@ -1041,7 +1041,7 @@ An object containing the following properties:
 	"major": 1,
 	"minor": 0,
 	"patch": 0,
-	"loaded_config_file_name": "/home/redsoxfan/.config/sway/config"
+	"loaded_config_file_name": "/home/redsoxfan/.config/swayfx/config"
 }
 ```
 
@@ -1100,7 +1100,7 @@ indicating whether the _TICK_ event was sent.
 
 *MESSAGE*++
 For i3 compatibility, this command will just return a failure object since it
-does not make sense to implement in sway due to the X11 nature of the command.
+does not make sense to implement in swayfx due to the X11 nature of the command.
 If you are curious about what this IPC command does in i3, refer to the i3
 documentation.
 
@@ -1181,7 +1181,7 @@ The _libinput_ object describes the device configuration for libinput devices.
 Only properties that are supported for the device will be added to the object.
 In addition to the possible options listed, all string properties may also be
 _unknown_, in the case that a new option is added to libinput. See
-*sway-input*(5) for information on the meaning of the possible values. The
+*swayfx-input*(5) for information on the meaning of the possible values. The
 following properties will be included for devices that support them:
 
 [- *PROPERTY*
@@ -1468,7 +1468,7 @@ one seat. Each object has the following properties:
 
 # EVENTS
 
-Events are a way for client to get notified of changes to sway. A client can
+Events are a way for client to get notified of changes to swayfx. A client can
 subscribe to any events it wants to be notified of changes for. The event is
 sent in the same format as a reply. The following events are currently
 available:
@@ -1495,7 +1495,7 @@ available:
 :  Sent when a configured binding is executed
 |- 0x80000006
 :  shutdown
-:  Sent when the ipc shuts down because sway is exiting
+:  Sent when the ipc shuts down because swayfx is exiting
 |- 0x80000007
 :  tick
 :  Sent when an ipc client sends a _SEND\_TICK_ message
@@ -1777,7 +1777,7 @@ following properties:
 
 Sent whenever the IPC is shutting down. The event is a single object with the
 property _change_, which is a string containing the reason for the shutdown.
-Currently, the only value for _change_ is _exit_, which is issued when sway is
+Currently, the only value for _change_ is _exit_, which is issued when swayfx is
 exiting.
 
 *Example Event:*
@@ -1890,4 +1890,4 @@ The following change types are currently available:
 
 # SEE ALSO
 
-*sway*(1) *sway*(5) *sway-bar*(5) *swaymsg*(1) *sway-input*(5) *sway-output*(5)
+*swayfx*(1) *swayfx*(5) *swayfx-bar*(5) *swayfxmsg*(1) *swayfx-input*(5) *swayfx-output*(5)

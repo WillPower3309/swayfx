@@ -1,12 +1,12 @@
-swaymsg(1)
+swayfxmsg(1)
 
 # NAME
 
-swaymsg - Send messages to a running instance of sway over the IPC socket.
+swayfxmsg - Send messages to a running instance of sway over the IPC socket.
 
 # SYNOPSIS
 
-_swaymsg_ [options...] [message]
+_swayfxmsg_ [options...] [message]
 
 # OPTIONS
 
@@ -17,7 +17,7 @@ _swaymsg_ [options...] [message]
 	Monitor for responses until killed instead of exiting after the first
 	response. This can only be used with the IPC message type _subscribe_. If
 	there is a malformed response or an invalid event type was requested,
-	swaymsg will stop monitoring and exit.
+	swayfxmsg will stop monitoring and exit.
 
 *-p, --pretty*
 	Use pretty output even when not using a tty.
@@ -30,14 +30,14 @@ _swaymsg_ [options...] [message]
 	Use raw JSON output even if using a tty.
 
 *-s, --socket* <path>
-	Use the specified socket path. Otherwise, swaymsg will ask sway where the
+	Use the specified socket path. Otherwise, swayfxmsg will ask sway where the
 	socket is (which is the value of $SWAYSOCK, then of $I3SOCK).
 
 *-t, --type* <type>
 	Specify the type of IPC message. See below.
 
 *-v, --version*
-	Print the version (of swaymsg) and quit.
+	Print the version (of swayfxmsg) and quit.
 
 # IPC MESSAGE TYPES
 
@@ -45,25 +45,25 @@ _swaymsg_ [options...] [message]
 	The message is a sway command (the same commands you can bind to keybindings
 	in your sway config file). It will be executed immediately.
 
-	See *sway*(5) for a list of commands.
+	See *swayfx*(5) for a list of commands.
 
-	_swaymsg_ can return pretty printed (standalone-default) or JSON-formatted
+	_swayfxmsg_ can return pretty printed (standalone-default) or JSON-formatted
 	(*--raw*) output. For detailed documentation on the returned JSON-data of
-	each message type listed below,	refer to *sway-ipc*(7). The JSON-format can
+	each message type listed below,	refer to *swayfx-ipc*(7). The JSON-format can
 	contain more information than the pretty print.
 
 	Tips:
-	- Command expansion is performed twice: once by swaymsg, and again by sway.
+	- Command expansion is performed twice: once by swayfxmsg, and again by sway.
 	  If you have quoted multi-word strings in your command, enclose the entire
 	  command in single-quotes. For example, use
-	  _swaymsg 'output "Foobar Display" enable'_ instead of
-	  _swaymsg output "Foobar Display" enable_. Furthermore, note that comma
+	  _swayfxmsg 'output "Foobar Display" enable'_ instead of
+	  _swayfxmsg output "Foobar Display" enable_. Furthermore, note that comma
 	  separated options also count as multi-word strings, because commas can be
 	  used to execute commands on the same line.
 	- If you are providing a command that contains a leading hyphen (_-_), insert
-	  two hyphens (_--_) before the command to signal to swaymsg not to parse
+	  two hyphens (_--_) before the command to signal to swayfxmsg not to parse
 	  anything beyond that point as an option. For example, use
-	  _swaymsg -- mark --add test_ instead of _swaymsg mark --add test_.
+	  _swayfxmsg -- mark --add test_ instead of _swayfxmsg mark --add test_.
 
 *get\_workspaces*
 	Gets a list of workspaces and their status.
@@ -86,10 +86,10 @@ _swaymsg_ [options...] [message]
 	Get a JSON-encoded list of marks.
 
 *get\_bar\_config*
-	Get a JSON-encoded configuration for swaybar.
+	Get a JSON-encoded configuration for swayfxbar.
 
 *get\_version*
-	Get version information for the running instance of sway.
+	Get version information for the running instance of swayfx.
 
 *get\_binding\_modes*
 	Gets a JSON-encoded list of currently configured binding modes.
@@ -114,13 +114,13 @@ _swaymsg_ [options...] [message]
 	Success
 
 *1*
-	swaymsg errors such as invalid syntax, unable to connect to the ipc socket
-	or unable to parse sway's reply
+	swayfxmsg errors such as invalid syntax, unable to connect to the ipc socket
+	or unable to parse swayfx's reply
 
 *2*
-	Sway returned an error when processing the command (ex. invalid command,
+	swayfx returned an error when processing the command (ex. invalid command,
 	command failed, and invalid subscription request)
 
 # SEE ALSO
 
-*sway*(5) *sway-bar*(5) *sway-input*(5) *sway-output*(5) *sway-ipc*(7)
+*swayfx*(5) *swayfx-bar*(5) *swayfx-input*(5) *swayfx-output*(5) *swayfx-ipc*(7)
