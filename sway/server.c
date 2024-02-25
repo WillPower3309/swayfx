@@ -63,22 +63,30 @@ static void handle_drm_lease_request(struct wl_listener *listener, void *data) {
 	}
 }
 
+float get_fastest_output_refresh_s() {
+	float fastest_output_refresh_s = 0.0166667; // fallback to 60 Hz
+	for (int i = 0; i < root->outputs->length; ++i) {
+		struct sway_output *output = root->outputs->items[i];
+		if (output->refresh_nsec > 0) {
+			fastest_output_refresh_s = MIN(fastest_output_refresh_s, output->refresh_sec);
+		}
+	}
+	return fastest_output_refresh_s;
+}
+
+
 static int animation_timer(void *data) {
 	struct sway_server *server = data;
-	float fastest_output_refresh_s = 1.0 / 60.0; // fallback to 60 Hz
+	float fastest_output_refresh_s = get_fastest_output_refresh_s();
 
 	for (int i = 0; i < server->animated_containers->length; i++) {
 		struct sway_container *con = server->animated_containers->items[i];
 		bool is_closing = con->alpha > con->target_alpha;
 
-		for (int i = 0; i < con->outputs->length; ++i) {
-			struct sway_output *output = root->outputs->items[i];
-			fastest_output_refresh_s = MIN(fastest_output_refresh_s, output->refresh_sec);
-			float alpha_step = config->animation_duration ?
-				(con->max_alpha * output->refresh_sec) / config->animation_duration : con->max_alpha;
-			con->alpha = is_closing ? MAX(con->alpha - alpha_step, con->target_alpha) :
-				MIN(con->alpha + alpha_step, con->target_alpha);
-		}
+		float alpha_step = config->animation_duration ?
+			(con->max_alpha * fastest_output_refresh_s) / config->animation_duration : con->max_alpha;
+		con->alpha = is_closing ? MAX(con->alpha - alpha_step, con->target_alpha) :
+			MIN(con->alpha + alpha_step, con->target_alpha);
 
 		if (con->alpha == con->target_alpha) {
 			list_del(server->animated_containers, i);
