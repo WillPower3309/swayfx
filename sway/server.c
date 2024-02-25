@@ -63,6 +63,39 @@ static void handle_drm_lease_request(struct wl_listener *listener, void *data) {
 	}
 }
 
+static int animation_timer(void *data) {
+	struct sway_server *server = data;
+	float fastest_output_refresh_s = 1.0 / 60.0; // fallback to 60 Hz
+
+	for (int i = 0; i < server->animated_containers->length; i++) {
+		struct sway_container *con = server->animated_containers->items[i];
+		bool is_closing = con->alpha > con->target_alpha;
+
+		for (int i = 0; i < con->outputs->length; ++i) {
+			struct sway_output *output = root->outputs->items[i];
+			fastest_output_refresh_s = MIN(fastest_output_refresh_s, output->refresh_sec);
+			float alpha_step = config->animation_duration ?
+				(con->max_alpha * output->refresh_sec) / config->animation_duration : con->max_alpha;
+			con->alpha = is_closing ? MAX(con->alpha - alpha_step, con->target_alpha) :
+				MIN(con->alpha + alpha_step, con->target_alpha);
+		}
+
+		if (con->alpha == con->target_alpha) {
+			list_del(server->animated_containers, i);
+			if (is_closing) {
+				printf("done animation; clean up view\n");
+				view_remove_container(con->view);
+				continue;
+			}
+		}
+
+		container_damage_whole(con);
+	}
+
+	wl_event_source_timer_update(server->animation_tick, fastest_output_refresh_s * 1000);
+	return 1;
+}
+
 #define SWAY_XDG_SHELL_VERSION	2
 
 bool server_init(struct sway_server *server) {
@@ -264,6 +297,10 @@ bool server_init(struct sway_server *server) {
 	server->input = input_manager_create(server);
 	input_manager_get_default_seat(); // create seat0
 
+	server->animated_containers = create_list();
+	server->animation_tick = wl_event_loop_add_timer(server->wl_event_loop, animation_timer, server);
+	wl_event_source_timer_update(server->animation_tick, 1);
+
 	return true;
 }
 
@@ -275,6 +312,8 @@ void server_fini(struct sway_server *server) {
 	wl_display_destroy_clients(server->wl_display);
 	wl_display_destroy(server->wl_display);
 	list_free(server->dirty_nodes);
+	list_free(server->animated_containers);
+	wl_event_source_remove(server->animation_tick);
 }
 
 bool server_start(struct sway_server *server) {

@@ -93,7 +93,6 @@ void view_remove_container(struct sway_view *view) {
 		arrange_workspace(ws);
 		workspace_detect_urgent(ws);
 	}
-	transaction_commit_dirty();
 }
 
 void view_begin_destroy(struct sway_view *view) {
@@ -946,14 +945,12 @@ void view_unmap(struct sway_view *view) {
 
 	if (!config->animation_duration) {
 		view_remove_container(view);
+		transaction_commit_dirty();
 	} else {
-		// unfocus the view
-		// look at handle_seat_node_destroy
-
 		wl_signal_emit_mutable(&view->container->node.events.destroy, &view->container->node);
 		view_save_buffer(view);
 		view->container->target_alpha = 0;
-		wl_event_source_timer_update(view->container->animation_present_timer, 50);
+		list_add(server.animated_containers, view->container);
 	}
 
 	struct sway_seat *seat;
