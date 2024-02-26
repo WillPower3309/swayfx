@@ -978,11 +978,6 @@ static json_object *describe_libinput_device(struct libinput_device *device) {
 		case LIBINPUT_CONFIG_DRAG_LOCK_DISABLED:
 			drag_lock = "disabled";
 			break;
-#if HAVE_LIBINPUT_CONFIG_ACCEL_PROFILE_CUSTOM
-		case LIBINPUT_CONFIG_ACCEL_PROFILE_CUSTOM:
-			accel_profile = "custom";
-			break;
-#endif
 		}
 		json_object_object_add(object, "tap_drag_lock",
 				json_object_new_string(drag_lock));
