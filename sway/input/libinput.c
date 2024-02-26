@@ -79,6 +79,16 @@ static bool set_accel_speed(struct libinput_device *device, double speed) {
 	return true;
 }
 
+static bool set_rotation_angle(struct libinput_device *device, double angle) {
+	if (!libinput_device_config_rotation_is_available(device) ||
+			libinput_device_config_rotation_get_angle(device) == angle) {
+		return false;
+	}
+	sway_log(SWAY_DEBUG, "rotation_set_angle(%f)", angle);
+	log_status(libinput_device_config_rotation_set_angle(device, angle));
+	return true;
+}
+
 static bool set_accel_profile(struct libinput_device *device,
 		enum libinput_config_accel_profile profile) {
 	if (!libinput_device_config_accel_is_available(device) ||
@@ -156,6 +166,18 @@ static bool set_scroll_button(struct libinput_device *dev, uint32_t button) {
 	return true;
 }
 
+static bool set_scroll_button_lock(struct libinput_device *dev,
+		enum libinput_config_scroll_button_lock_state lock) {
+	uint32_t scroll = libinput_device_config_scroll_get_methods(dev);
+	if ((scroll & ~LIBINPUT_CONFIG_SCROLL_NO_SCROLL) == 0 ||
+			libinput_device_config_scroll_get_button_lock(dev) == lock) {
+		return false;
+	}
+	sway_log(SWAY_DEBUG, "scroll_set_button_lock(%" PRIu32 ")", lock);
+	log_status(libinput_device_config_scroll_set_button_lock(dev, lock));
+	return true;
+}
+
 static bool set_dwt(struct libinput_device *device, bool dwt) {
 	if (!libinput_device_config_dwt_is_available(device) ||
 			libinput_device_config_dwt_get_enabled(device) == dwt) {
@@ -197,6 +219,26 @@ static bool set_calibration_matrix(struct libinput_device *dev, float mat[6]) {
 	return changed;
 }
 
+static bool configure_send_events(struct libinput_device *device,
+		struct input_config *ic) {
+	if (ic->mapped_to_output &&
+			strcmp("*", ic->mapped_to_output) != 0 &&
+			!output_by_name_or_id(ic->mapped_to_output)) {
+		sway_log(SWAY_DEBUG,
+				"%s '%s' is mapped to offline output '%s'; disabling input",
+				ic->input_type, ic->identifier, ic->mapped_to_output);
+		return set_send_events(device, LIBINPUT_CONFIG_SEND_EVENTS_DISABLED);
+	} else if (ic->send_events != INT_MIN) {
+		return set_send_events(device, ic->send_events);
+	} else {
+		// Have to reset to the default mode here, otherwise if ic->send_events
+		// is unset and a mapped output just came online after being disabled,
+		// we'd remain stuck sending no events.
+		return set_send_events(device,
+			libinput_device_config_send_events_get_default_mode(device));
+	}
+}
+
 bool sway_input_configure_libinput_device(struct sway_input_device *input_device) {
 	struct input_config *ic = input_device_get_config(input_device);
 	if (!ic || !wlr_input_device_is_libinput(input_device->wlr_device)) {
@@ -208,24 +250,7 @@ bool sway_input_configure_libinput_device(struct sway_input_device *input_device
 	sway_log(SWAY_DEBUG, "sway_input_configure_libinput_device('%s' on '%s')",
 			ic->identifier, input_device->identifier);
 
-	bool changed = false;
-	if (ic->mapped_to_output &&
-			!output_by_name_or_id(ic->mapped_to_output)) {
-		sway_log(SWAY_DEBUG,
-				"%s '%s' is mapped to offline output '%s'; disabling input",
-				ic->input_type, ic->identifier, ic->mapped_to_output);
-		changed |= set_send_events(device,
-			LIBINPUT_CONFIG_SEND_EVENTS_DISABLED);
-	} else if (ic->send_events != INT_MIN) {
-		changed |= set_send_events(device, ic->send_events);
-	} else {
-		// Have to reset to the default mode here, otherwise if ic->send_events
-		// is unset and a mapped output just came online after being disabled,
-		// we'd remain stuck sending no events.
-		changed |= set_send_events(device,
-			libinput_device_config_send_events_get_default_mode(device));
-	}
-
+	bool changed = configure_send_events(device, ic);
 	if (ic->tap != INT_MIN) {
 		changed |= set_tap(device, ic->tap);
 	}
@@ -240,6 +265,9 @@ bool sway_input_configure_libinput_device(struct sway_input_device *input_device
 	}
 	if (ic->pointer_accel != FLT_MIN) {
 		changed |= set_accel_speed(device, ic->pointer_accel);
+	}
+	if (ic->rotation_angle != FLT_MIN) {
+		changed |= set_rotation_angle(device, ic->rotation_angle);
 	}
 	if (ic->accel_profile != INT_MIN) {
 		changed |= set_accel_profile(device, ic->accel_profile);
@@ -262,6 +290,9 @@ bool sway_input_configure_libinput_device(struct sway_input_device *input_device
 	if (ic->scroll_button != INT_MIN) {
 		changed |= set_scroll_button(device, ic->scroll_button);
 	}
+	if (ic->scroll_button_lock != INT_MIN) {
+		changed |= set_scroll_button_lock(device, ic->scroll_button_lock);
+	}
 	if (ic->dwt != INT_MIN) {
 		changed |= set_dwt(device, ic->dwt);
 	}
@@ -273,6 +304,22 @@ bool sway_input_configure_libinput_device(struct sway_input_device *input_device
 	}
 
 	return changed;
+}
+
+void sway_input_configure_libinput_device_send_events(
+		struct sway_input_device *input_device) {
+	struct input_config *ic = input_device_get_config(input_device);
+	if (!ic || !wlr_input_device_is_libinput(input_device->wlr_device)) {
+		return;
+	}
+
+	struct libinput_device *device =
+		wlr_libinput_get_device_handle(input_device->wlr_device);
+	bool changed = configure_send_events(device, ic);
+
+	if (changed) {
+		ipc_event_input("libinput_config", input_device);
+	}
 }
 
 void sway_input_reset_libinput_device(struct sway_input_device *input_device) {
@@ -298,6 +345,8 @@ void sway_input_reset_libinput_device(struct sway_input_device *input_device) {
 		libinput_device_config_tap_get_default_drag_lock_enabled(device));
 	changed |= set_accel_speed(device,
 		libinput_device_config_accel_get_default_speed(device));
+	changed |= set_rotation_angle(device,
+		libinput_device_config_rotation_get_default_angle(device));
 	changed |= set_accel_profile(device,
 		libinput_device_config_accel_get_default_profile(device));
 	changed |= set_natural_scroll(device,

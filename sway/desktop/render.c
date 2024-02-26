@@ -1,11 +1,10 @@
 #include <stdio.h>
 #include <assert.h>
-#include <GLES2/gl2.h>
 #include <stdlib.h>
 #include <strings.h>
 #include <time.h>
 #include <wayland-server-core.h>
-#include <wlr/render/gles2.h>
+#include <wlr/config.h>
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/types/wlr_buffer.h>
 #include <wlr/types/wlr_compositor.h>
@@ -85,7 +84,7 @@ enum corner_location get_rotated_corner(enum corner_location corner_location,
  * scaled to 2px.
  */
 static int scale_length(int length, int offset, float scale) {
-	return round((offset + length) * scale) - round(offset * scale);
+	return roundf((offset + length) * scale) - roundf(offset * scale);
 }
 
 static void scissor_output(struct wlr_output *wlr_output,
@@ -426,30 +425,20 @@ static void render_surface_iterator(struct sway_output *output,
 		struct wlr_box *_box, void *_data) {
 	struct render_data *data = _data;
 	struct wlr_output *wlr_output = output->wlr_output;
-	pixman_region32_t *output_damage = data->damage;
 
 	struct wlr_texture *texture = wlr_surface_get_texture(surface);
 	if (!texture) {
 		return;
 	}
 
-	struct wlr_box proj_box = *_box;
-
-	scale_box(&proj_box, wlr_output->scale);
-
-	float matrix[9];
-	enum wl_output_transform transform = wlr_output_transform_invert(surface->current.transform);
-	wlr_matrix_project_box(matrix, &proj_box, transform, 0.0, wlr_output->transform_matrix);
-
 	struct wlr_box dst_box = *_box;
-	struct wlr_box *clip_box = data->clip_box;
-	if (clip_box != NULL) {
-		dst_box.width = fmin(dst_box.width, clip_box->width);
-		dst_box.height = fmin(dst_box.height, clip_box->height);
-		dst_box.x = fmax(dst_box.x, clip_box->x);
-		dst_box.y = fmax(dst_box.y, clip_box->y);
-	}
+	struct wlr_box clip_box = *_box;
+	if (data->clip_box != NULL) {
+		clip_box.width = fmin(dst_box.width, data->clip_box->width);
+		clip_box.height = fmin(dst_box.height, data->clip_box->height);
+ 	}
 	scale_box(&dst_box, wlr_output->scale);
+	scale_box(&clip_box, wlr_output->scale);
 
 	struct decoration_data deco_data = data->deco_data;
 	deco_data.corner_radius *= wlr_output->scale;
@@ -522,45 +511,42 @@ static void render_layer_iterator(struct sway_output *output,
 	}
 }
 
-static void render_layer_toplevel(struct sway_output *output,
-		pixman_region32_t *damage, struct wl_list *layer_surfaces) {
+static void render_layer_toplevel(struct render_context *ctx, struct wl_list *layer_surfaces) {
 	struct render_data data = {
-		.damage = damage,
 		.deco_data = get_undecorated_decoration_data(),
++		.ctx = ctx,
 	};
-	output_layer_for_each_toplevel_surface(output, layer_surfaces,
+	output_layer_for_each_toplevel_surface(ctx->output, layer_surfaces,
 		render_layer_iterator, &data);
 }
 
-static void render_layer_popups(struct sway_output *output,
++static void render_layer_popups(struct render_context *ctx, struct wl_list *layer_surfaces) {
 		pixman_region32_t *damage, struct wl_list *layer_surfaces) {
 	struct render_data data = {
-		.damage = damage,
 		.deco_data = get_undecorated_decoration_data(),
+		.ctx = ctx,
 	};
-	output_layer_for_each_popup_surface(output, layer_surfaces,
+	output_layer_for_each_popup_surface(ctx->output, layer_surfaces,
 		render_layer_iterator, &data);
 }
 
 #if HAVE_XWAYLAND
-static void render_unmanaged(struct sway_output *output,
-		pixman_region32_t *damage, struct wl_list *unmanaged) {
+static void render_unmanaged(struct render_context *ctx, struct wl_list *unmanaged) {
 	struct render_data data = {
-		.damage = damage,
 		.deco_data = get_undecorated_decoration_data(),
+		.ctx = ctx,
 	};
-	output_unmanaged_for_each_surface(output, unmanaged,
+	output_unmanaged_for_each_surface(ctx->output, unmanaged,
 		render_surface_iterator, &data);
 }
 #endif
 
-static void render_drag_icons(struct sway_output *output,
-		pixman_region32_t *damage, struct wl_list *drag_icons) {
+static void render_drag_icons(struct render_context *ctx, struct wl_list *drag_icons) {
 	struct render_data data = {
-		.damage = damage,
 		.deco_data = get_undecorated_decoration_data(),
+		.ctx = ctx,
 	};
-	output_drag_icons_for_each_surface(output, drag_icons,
++	output_drag_icons_for_each_surface(ctx->output, drag_icons,
 		render_surface_iterator, &data);
 }
 
@@ -608,18 +594,16 @@ void render_output_blur(struct sway_output *output, pixman_region32_t *damage) {
 
 // _box.x and .y are expected to be layout-local
 // _box.width and .height are expected to be output-buffer-local
-void render_rect(struct sway_output *output,
-		pixman_region32_t *output_damage, const struct wlr_box *_box,
++void render_rect(struct render_context *ctx, const struct wlr_box *_box,
 		float color[static 4]) {
-	struct wlr_output *wlr_output = output->wlr_output;
+	struct wlr_output *wlr_output = ctx->output->wlr_output;
 	struct fx_renderer *renderer = output->renderer;
 
-	struct wlr_box box;
-	memcpy(&box, _box, sizeof(struct wlr_box));
-	box.x -= output->lx * wlr_output->scale;
-	box.y -= output->ly * wlr_output->scale;
+	struct wlr_box box = *_box;
+	box.x -= ctx->output->lx * wlr_output->scale;
+	box.y -= ctx->output->ly * wlr_output->scale;
 
-	pixman_region32_t damage = create_damage(box, output_damage);
++	pixman_region32_init_rect(&damage, box.x, box.y,
 	bool damaged = pixman_region32_not_empty(&damage);
 	if (!damaged) {
 		goto damage_finish;
@@ -731,17 +715,17 @@ void premultiply_alpha(float color[4], float opacity) {
 	color[2] *= color[3];
 }
 
-static void render_view_toplevels(struct sway_view *view, struct sway_output *output,
-		pixman_region32_t *damage, struct decoration_data deco_data) {
+static void render_view_toplevels(struct render_context *ctx,
+		struct sway_view *view, float alpha) {
 	struct render_data data = {
-		.damage = damage,
 		.deco_data = deco_data,
+		.ctx = ctx,
 	};
 	// Clip the window to its view size, ignoring CSD
 	struct wlr_box clip_box;
 	struct sway_container_state state = view->container->current;
-	clip_box.x = state.x - output->lx;
-	clip_box.y = state.y - output->ly;
+	clip_box.x = state.x - ctx->output->lx;
+	clip_box.y = state.y - ctx->output->ly;
 	clip_box.width = state.width;
 	clip_box.height = state.height;
 
@@ -768,7 +752,7 @@ static void render_view_toplevels(struct sway_view *view, struct sway_output *ou
 	}
 	data.clip_box = &clip_box;
 
-	output_view_for_each_surface(output, view, render_surface_iterator, &data);
+	output_view_for_each_surface(ctx->output, view, render_surface_iterator, &data);
 }
 
 static void render_view_popups(struct sway_view *view, struct sway_output *output,
@@ -943,7 +927,7 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 			}
 		}
 		scale_box(&box, output_scale);
-		render_rect(output, damage, &box, color);
+		render_rect(ctx, &box, color);
 	}
 
 	list_t *siblings = container_get_current_siblings(con);
@@ -971,7 +955,7 @@ static void render_view(struct sway_output *output, pixman_region32_t *damage,
 			}
 		}
 		scale_box(&box, output_scale);
-		render_rect(output, damage, &box, color);
+		render_rect(ctx, &box, color);
 	}
 
 	if (state->border_bottom) {
@@ -1072,7 +1056,7 @@ static void render_titlebar(struct sway_output *output,
 	}
 	box.height = titlebar_border_thickness;
 	scale_box(&box, output_scale);
-	render_rect(output, output_damage, &box, color);
+	render_rect(ctx, &box, color);
 
 	// Single pixel bar below title
 	if (config->titlebar_separator) {
@@ -1094,7 +1078,7 @@ static void render_titlebar(struct sway_output *output,
 		box.y += corner_radius;
 	}
 	scale_box(&box, output_scale);
-	render_rect(output, output_damage, &box, color);
+	render_rect(ctx, &box, color);
 
 	// Single pixel bar right edge
 	box.x = x + width - titlebar_border_thickness;
@@ -1106,7 +1090,7 @@ static void render_titlebar(struct sway_output *output,
 		box.y += corner_radius;
 	}
 	scale_box(&box, output_scale);
-	render_rect(output, output_damage, &box, color);
+	render_rect(ctx, &box, color);
 
 	// if corner_radius: single pixel corners
 	if (corner_radius) {
@@ -1223,7 +1207,7 @@ static void render_titlebar(struct sway_output *output,
 
 		// The title texture might be shorter than the config->font_height,
 		// in which case we need to pad it above and below.
-		int ob_padding_above = round((titlebar_v_padding -
+		int ob_padding_above = roundf((titlebar_v_padding -
 					titlebar_border_thickness) * output_scale);
 		int ob_padding_below = ob_bg_height - ob_padding_above -
 			texture_box.height;
@@ -1361,7 +1345,7 @@ static void render_top_border(struct sway_output *output,
 	}
 	struct wlr_box box;
 	float color[4];
-	float output_scale = output->wlr_output->scale;
+	float output_scale = ctx->output->wlr_output->scale;
 
 	// Child border - top edge
 	memcpy(&color, colors->child_border, sizeof(float) * 4);
@@ -1416,8 +1400,8 @@ struct parent_data {
 	struct sway_container *active_child;
 };
 
-static void render_container(struct sway_output *output,
-	pixman_region32_t *damage, struct sway_container *con, bool parent_focused);
+static void render_container(struct render_context *ctx,
+	struct sway_container *con, bool parent_focused);
 
 /**
  * Render a container's children using a L_HORIZ or L_VERT layout.
@@ -1425,8 +1409,7 @@ static void render_container(struct sway_output *output,
  * Wrap child views in borders and leave child containers borderless because
  * they'll apply their own borders to their children.
  */
-static void render_containers_linear(struct sway_output *output,
-		pixman_region32_t *damage, struct parent_data *parent) {
+static void render_containers_linear(struct render_context *ctx, struct parent_data *parent) {
 	for (int i = 0; i < parent->children->length; ++i) {
 		struct sway_container *child = parent->children->items[i];
 
@@ -1503,8 +1486,7 @@ static bool container_has_focused_child(struct sway_container *con) {
 /**
  * Render a container's children using the L_TABBED layout.
  */
-static void render_containers_tabbed(struct sway_output *output,
-		pixman_region32_t *damage, struct parent_data *parent) {
+static void render_containers_tabbed(struct render_context *ctx, struct parent_data *parent) {
 	if (!parent->children->length) {
 		return;
 	}
@@ -1601,8 +1583,7 @@ static void render_containers_tabbed(struct sway_output *output,
 /**
  * Render a container's children using the L_STACKED layout.
  */
-static void render_containers_stacked(struct sway_output *output,
-		pixman_region32_t *damage, struct parent_data *parent) {
+static void render_containers_stacked(struct render_context *ctx, struct parent_data *parent) {
 	if (!parent->children->length) {
 		return;
 	}
@@ -1692,19 +1673,19 @@ static void render_containers(struct sway_output *output,
 	case L_NONE:
 	case L_HORIZ:
 	case L_VERT:
-		render_containers_linear(output, damage, parent);
+		render_containers_linear(ctx, parent);
 		break;
 	case L_STACKED:
-		render_containers_stacked(output, damage, parent);
+		render_containers_stacked(ctx, parent);
 		break;
 	case L_TABBED:
-		render_containers_tabbed(output, damage, parent);
+		render_containers_tabbed(ctx, parent);
 		break;
 	}
 }
 
-static void render_container(struct sway_output *output,
-		pixman_region32_t *damage, struct sway_container *con, bool focused) {
+static void render_container(struct render_context *ctx,
+		struct sway_container *con, bool focused) {
 	struct parent_data data = {
 		.layout = con->current.layout,
 		.box = {
@@ -1717,11 +1698,11 @@ static void render_container(struct sway_output *output,
 		.focused = focused,
 		.active_child = con->current.focused_inactive_child,
 	};
-	render_containers(output, damage, &data);
+	render_containers(ctx, &data);
 }
 
-static void render_workspace(struct sway_output *output,
-		pixman_region32_t *damage, struct sway_workspace *ws, bool focused) {
+static void render_workspace(struct render_context *ctx,
+		struct sway_workspace *ws, bool focused) {
 	struct parent_data data = {
 		.layout = ws->current.layout,
 		.box = {
@@ -1878,7 +1859,7 @@ void output_render(struct sway_output *output, struct timespec *when,
 				if (lock_surface->output != wlr_output) {
 					continue;
 				}
-				if (!lock_surface->mapped) {
+				if (!lock_surface->surface->mapped) {
 					continue;
 				}
 

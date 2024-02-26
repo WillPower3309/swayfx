@@ -3,7 +3,8 @@
 #include <json.h>
 #include <libevdev/libevdev.h>
 #include <stdio.h>
-#include <wlr/backend/libinput.h>
+#include <wlr/config.h>
+#include <wlr/types/wlr_content_type_v1.h>
 #include <wlr/types/wlr_output.h>
 #include <xkbcommon/xkbcommon.h>
 #include "config.h"
@@ -20,6 +21,10 @@
 #include "sway/input/seat.h"
 #include "wlr-layer-shell-unstable-v1-protocol.h"
 #include "sway/desktop/idle_inhibit_v1.h"
+
+#if WLR_HAS_LIBINPUT_BACKEND
+#include <wlr/backend/libinput.h>
+#endif
 
 static const int i3_output_id = INT32_MAX;
 static const int i3_scratch_id = INT32_MAX - 1;
@@ -198,6 +203,20 @@ static const char *ipc_json_user_idle_inhibitor_description(enum sway_idle_inhib
 		return "visible";
 	case INHIBIT_IDLE_APPLICATION:
 		return NULL;
+	}
+	return NULL;
+}
+
+static const char *ipc_json_content_type_description(enum wp_content_type_v1_type type) {
+	switch (type) {
+	case WP_CONTENT_TYPE_V1_TYPE_NONE:
+		return "none";
+	case WP_CONTENT_TYPE_V1_TYPE_PHOTO:
+		return "photo";
+	case WP_CONTENT_TYPE_V1_TYPE_VIDEO:
+		return "video";
+	case WP_CONTENT_TYPE_V1_TYPE_GAME:
+		return "game";
 	}
 	return NULL;
 }
@@ -666,6 +685,16 @@ static void ipc_json_describe_view(struct sway_container *c, json_object *object
 
 	json_object_object_add(object, "idle_inhibitors", idle_inhibitors);
 
+	enum wp_content_type_v1_type content_type = WP_CONTENT_TYPE_V1_TYPE_NONE;
+	if (c->view->surface != NULL) {
+		content_type = wlr_surface_get_content_type_v1(server.content_type_manager_v1,
+			c->view->surface);
+	}
+	if (content_type != WP_CONTENT_TYPE_V1_TYPE_NONE) {
+		json_object_object_add(object, "content_type",
+			json_object_new_string(ipc_json_content_type_description(content_type)));
+	}
+
 #if HAVE_XWAYLAND
 	if (c->view->type == SWAY_VIEW_XWAYLAND) {
 		json_object_object_add(object, "window",
@@ -886,6 +915,7 @@ json_object *ipc_json_describe_node_recursive(struct sway_node *node) {
 	return object;
 }
 
+#if WLR_HAS_LIBINPUT_BACKEND
 static json_object *describe_libinput_device(struct libinput_device *device) {
 	json_object *object = json_object_new_object();
 
@@ -948,6 +978,11 @@ static json_object *describe_libinput_device(struct libinput_device *device) {
 		case LIBINPUT_CONFIG_DRAG_LOCK_DISABLED:
 			drag_lock = "disabled";
 			break;
+#if HAVE_LIBINPUT_CONFIG_ACCEL_PROFILE_CUSTOM
+		case LIBINPUT_CONFIG_ACCEL_PROFILE_CUSTOM:
+			accel_profile = "custom";
+			break;
+#endif
 		}
 		json_object_object_add(object, "tap_drag_lock",
 				json_object_new_string(drag_lock));
@@ -1053,6 +1088,17 @@ static json_object *describe_libinput_device(struct libinput_device *device) {
 			uint32_t button = libinput_device_config_scroll_get_button(device);
 			json_object_object_add(object, "scroll_button",
 					json_object_new_int(button));
+			const char *lock = "unknown";
+			switch (libinput_device_config_scroll_get_button_lock(device)) {
+			case LIBINPUT_CONFIG_SCROLL_BUTTON_LOCK_ENABLED:
+				lock = "enabled";
+				break;
+			case LIBINPUT_CONFIG_SCROLL_BUTTON_LOCK_DISABLED:
+				lock = "disabled";
+				break;
+			}
+			json_object_object_add(object, "scroll_button_lock",
+					json_object_new_string(lock));
 		}
 	}
 
@@ -1096,6 +1142,7 @@ static json_object *describe_libinput_device(struct libinput_device *device) {
 
 	return object;
 }
+#endif
 
 json_object *ipc_json_describe_input(struct sway_input_device *device) {
 	if (!(sway_assert(device, "Device must not be null"))) {
@@ -1159,12 +1206,14 @@ json_object *ipc_json_describe_input(struct sway_input_device *device) {
 				json_object_new_double(scroll_factor));
 	}
 
+#if WLR_HAS_LIBINPUT_BACKEND
 	if (wlr_input_device_is_libinput(device->wlr_device)) {
 		struct libinput_device *libinput_dev;
 		libinput_dev = wlr_libinput_get_device_handle(device->wlr_device);
 		json_object_object_add(object, "libinput",
 				describe_libinput_device(libinput_dev));
 	}
+#endif
 
 	return object;
 }

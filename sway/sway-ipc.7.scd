@@ -1229,6 +1229,9 @@ following properties will be included for devices that support them:
 :  int
 :  The scroll button to use when _scroll_method_ is _on_button_down_. This
    will be given as an input event code
+|- scroll_button_lock
+:  string
+:  Whether scroll button lock is enabled. It can be _enabled_ or _disabled_
 |- dwt
 :  string
 :  Whether disable-while-typing is enabled. It can be _enabled_ or _disabled_
@@ -1480,6 +1483,9 @@ available:
 :  workspace
 :[ Sent whenever an event involving a workspace occurs such as initialization
    of a new workspace or a different workspace gains focus
+|- 0x80000001
+:  output
+:  Sent when outputs are updated
 |- 0x80000002
 :  mode
 :  Sent whenever the binding mode changes
@@ -1597,6 +1603,20 @@ The following change types are currently available:
 		"nodes": [
 		]
 	}
+}
+```
+
+## 0x80000001. OUTPUT
+
+Sent whenever an output is added, removed, or its configuration is changed.
+The event is a single object with the property _change_, which is a string
+containing the reason for the change. Currently, the only value for _change_ is
+_unspecified_.
+
+*Example Event:*
+```
+{
+	"change": "unspecified"
 }
 ```
 

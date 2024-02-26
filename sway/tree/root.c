@@ -50,6 +50,7 @@ struct sway_root *root_create(void) {
 void root_destroy(struct sway_root *root) {
 	wl_list_remove(&root->output_layout_change.link);
 	list_free(root->scratchpad);
+	list_free(root->non_desktop_outputs);
 	list_free(root->outputs);
 	wlr_output_layout_destroy(root->output_layout);
 	free(root);
@@ -73,6 +74,16 @@ static void root_scratchpad_set_minimize(struct sway_container *con, bool minimi
 	}
 }
 
+static void set_container_transform(struct sway_workspace *ws,
+			struct sway_container *con) {
+	struct sway_output *output = ws->output;
+	struct wlr_box box = {0};
+	if (output) {
+		output_get_box(output, &box);
+	}
+	con->transform = box;
+}
+
 void root_scratchpad_add_container(struct sway_container *con, struct sway_workspace *ws) {
 	if (!sway_assert(!con->scratchpad, "Container is already in scratchpad")) {
 		return;
@@ -80,6 +91,8 @@ void root_scratchpad_add_container(struct sway_container *con, struct sway_works
 
 	struct sway_container *parent = con->pending.parent;
 	struct sway_workspace *workspace = con->pending.workspace;
+
+	set_container_transform(workspace, con);
 
 	// Clear the fullscreen mode when sending to the scratchpad
 	if (con->pending.fullscreen_mode != FULLSCREEN_NONE) {
@@ -155,7 +168,10 @@ void root_scratchpad_show(struct sway_container *con) {
 	// Show the container
 	if (old_ws) {
 		container_detach(con);
-		workspace_consider_destroy(old_ws);
+		// Make sure the last inactive container on the old workspace is above
+		// the workspace itself in the focus stack.
+		struct sway_node *node = seat_get_focus_inactive(seat, &old_ws->node);
+		seat_set_raw_focus(seat, node);
 	} else {
 		// Act on the ancestor of scratchpad hidden split containers
 		while (con->pending.parent) {
@@ -169,18 +185,18 @@ void root_scratchpad_show(struct sway_container *con) {
 		root_scratchpad_set_minimize(con, false);
 	}
 
-	// Make sure the container's center point overlaps this workspace
-	double center_lx = con->pending.x + con->pending.width / 2;
-	double center_ly = con->pending.y + con->pending.height / 2;
-
-	struct wlr_box workspace_box;
-	workspace_get_box(new_ws, &workspace_box);
-	if (!wlr_box_contains_point(&workspace_box, center_lx, center_ly)) {
-		container_floating_resize_and_center(con);
+	if (new_ws->output) {
+		struct wlr_box output_box;
+		output_get_box(new_ws->output, &output_box);
+		floating_fix_coordinates(con, &con->transform, &output_box);
 	}
+	set_container_transform(new_ws, con);
 
 	arrange_workspace(new_ws);
 	seat_set_focus(seat, seat_get_focus_inactive(seat, &con->node));
+	if (old_ws) {
+		workspace_consider_destroy(old_ws);
+	}
 }
 
 static void disable_fullscreen(struct sway_container *con, void *data) {
@@ -204,6 +220,8 @@ void root_scratchpad_hide(struct sway_container *con) {
 	if (config->scratchpad_minimize) {
 		root_scratchpad_set_minimize(con, true);
 	}
+
+	set_container_transform(con->pending.workspace, con);
 
 	disable_fullscreen(con, NULL);
 	container_for_each_child(con, disable_fullscreen, NULL);

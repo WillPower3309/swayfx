@@ -7,7 +7,7 @@
 #include <time.h>
 #include <strings.h>
 #include <wlr/types/wlr_cursor.h>
-#include <wlr/types/wlr_idle.h>
+#include <wlr/types/wlr_cursor_shape_v1.h>
 #include <wlr/types/wlr_pointer.h>
 #include <wlr/types/wlr_touch.h>
 #include <wlr/types/wlr_tablet_v2.h>
@@ -53,12 +53,10 @@ static struct wlr_surface *layer_surface_at(struct sway_output *output,
 }
 
 static bool surface_is_xdg_popup(struct wlr_surface *surface) {
-    if (wlr_surface_is_xdg_surface(surface)) {
-        struct wlr_xdg_surface *xdg_surface =
-            wlr_xdg_surface_from_wlr_surface(surface);
-        return xdg_surface->role == WLR_XDG_SURFACE_ROLE_POPUP;
-    }
-    return false;
+	struct wlr_xdg_surface *xdg_surface =
+		wlr_xdg_surface_try_from_wlr_surface(surface);
+	return xdg_surface != NULL && xdg_surface->role == WLR_XDG_SURFACE_ROLE_POPUP &&
+		xdg_surface->popup != NULL;
 }
 
 static struct wlr_surface *layer_surface_popup_at(struct sway_output *output,
@@ -239,7 +237,7 @@ void cursor_update_image(struct sway_cursor *cursor,
 		// Try a node's resize edge
 		enum wlr_edges edge = find_resize_edge(node->sway_container, NULL, cursor);
 		if (edge == WLR_EDGE_NONE) {
-			cursor_set_image(cursor, "left_ptr", NULL);
+			cursor_set_image(cursor, "default", NULL);
 		} else if (container_is_floating(node->sway_container)) {
 			cursor_set_image(cursor, wlr_xcursor_get_resize_name(edge), NULL);
 		} else {
@@ -250,12 +248,12 @@ void cursor_update_image(struct sway_cursor *cursor,
 			}
 		}
 	} else {
-		cursor_set_image(cursor, "left_ptr", NULL);
+		cursor_set_image(cursor, "default", NULL);
 	}
 }
 
 static void cursor_hide(struct sway_cursor *cursor) {
-	wlr_cursor_set_image(cursor->cursor, NULL, 0, 0, 0, 0, 0, 0);
+	wlr_cursor_unset_image(cursor->cursor);
 	cursor->hidden = true;
 	wlr_seat_pointer_notify_clear_focus(cursor->seat->wlr_seat);
 }
@@ -367,7 +365,7 @@ void cursor_unhide(struct sway_cursor *cursor) {
 	wl_event_source_timer_update(cursor->hide_source, cursor_get_timeout(cursor));
 }
 
-static void pointer_motion(struct sway_cursor *cursor, uint32_t time_msec,
+void pointer_motion(struct sway_cursor *cursor, uint32_t time_msec,
 		struct wlr_input_device *device, double dx, double dy,
 		double dx_unaccel, double dy_unaccel) {
 	wlr_relative_pointer_manager_v1_send_relative_motion(
@@ -482,43 +480,16 @@ static void handle_touch_down(struct wl_listener *listener, void *data) {
 	cursor_hide(cursor);
 
 	struct sway_seat *seat = cursor->seat;
-	struct wlr_seat *wlr_seat = seat->wlr_seat;
-	struct wlr_surface *surface = NULL;
 
 	double lx, ly;
 	wlr_cursor_absolute_to_layout_coords(cursor->cursor, &event->touch->base,
 			event->x, event->y, &lx, &ly);
-	double sx, sy;
-	struct sway_node *focused_node = node_at_coords(seat, lx, ly, &surface, &sx, &sy);
 
 	seat->touch_id = event->touch_id;
 	seat->touch_x = lx;
 	seat->touch_y = ly;
 
-	if (surface && wlr_surface_accepts_touch(wlr_seat, surface)) {
-		if (seat_is_input_allowed(seat, surface)) {
-			wlr_seat_touch_notify_down(wlr_seat, surface, event->time_msec,
-					event->touch_id, sx, sy);
-
-			if (focused_node) {
-			    seat_set_focus(seat, focused_node);
-			}
-		}
-	} else if (!cursor->simulating_pointer_from_touch &&
-			(!surface || seat_is_input_allowed(seat, surface))) {
-		// Fallback to cursor simulation.
-		// The pointer_touch_id state is needed, so drags are not aborted when over
-		// a surface supporting touch and multi touch events don't interfere.
-		cursor->simulating_pointer_from_touch = true;
-		cursor->pointer_touch_id = seat->touch_id;
-		double dx, dy;
-		dx = lx - cursor->cursor->x;
-		dy = ly - cursor->cursor->y;
-		pointer_motion(cursor, event->time_msec, &event->touch->base, dx, dy,
-			dx, dy);
-		dispatch_cursor_button(cursor, &event->touch->base, event->time_msec,
-				BTN_LEFT, WLR_BUTTON_PRESSED);
-	}
+	seatop_touch_down(seat, event, lx, ly);
 }
 
 static void handle_touch_up(struct wl_listener *listener, void *data) {
@@ -526,7 +497,7 @@ static void handle_touch_up(struct wl_listener *listener, void *data) {
 	struct wlr_touch_up_event *event = data;
 	cursor_handle_activity_from_device(cursor, &event->touch->base);
 
-	struct wlr_seat *wlr_seat = cursor->seat->wlr_seat;
+	struct sway_seat *seat = cursor->seat;
 
 	if (cursor->simulating_pointer_from_touch) {
 		if (cursor->pointer_touch_id == cursor->seat->touch_id) {
@@ -535,7 +506,25 @@ static void handle_touch_up(struct wl_listener *listener, void *data) {
 				event->time_msec, BTN_LEFT, WLR_BUTTON_RELEASED);
 		}
 	} else {
-		wlr_seat_touch_notify_up(wlr_seat, event->time_msec, event->touch_id);
+		seatop_touch_up(seat, event);
+	}
+}
+
+static void handle_touch_cancel(struct wl_listener *listener, void *data) {
+	struct sway_cursor *cursor = wl_container_of(listener, cursor, touch_cancel);
+	struct wlr_touch_cancel_event *event = data;
+	cursor_handle_activity_from_device(cursor, &event->touch->base);
+
+	struct sway_seat *seat = cursor->seat;
+
+	if (cursor->simulating_pointer_from_touch) {
+		if (cursor->pointer_touch_id == cursor->seat->touch_id) {
+			cursor->pointer_touch_up = true;
+			dispatch_cursor_button(cursor, &event->touch->base,
+				event->time_msec, BTN_LEFT, WLR_BUTTON_RELEASED);
+		}
+	} else {
+		seatop_touch_cancel(seat, event);
 	}
 }
 
@@ -546,19 +535,14 @@ static void handle_touch_motion(struct wl_listener *listener, void *data) {
 	cursor_handle_activity_from_device(cursor, &event->touch->base);
 
 	struct sway_seat *seat = cursor->seat;
-	struct wlr_seat *wlr_seat = seat->wlr_seat;
-	struct wlr_surface *surface = NULL;
 
 	double lx, ly;
 	wlr_cursor_absolute_to_layout_coords(cursor->cursor, &event->touch->base,
 			event->x, event->y, &lx, &ly);
-	double sx, sy;
-	node_at_coords(cursor->seat, lx, ly, &surface, &sx, &sy);
 
 	if (seat->touch_id == event->touch_id) {
 		seat->touch_x = lx;
 		seat->touch_y = ly;
-
 		struct sway_drag_icon *drag_icon;
 		wl_list_for_each(drag_icon, &root->drag_icons, link) {
 			if (drag_icon->seat == seat) {
@@ -575,9 +559,8 @@ static void handle_touch_motion(struct wl_listener *listener, void *data) {
 			pointer_motion(cursor, event->time_msec, &event->touch->base,
 				dx, dy, dx, dy);
 		}
-	} else if (surface) {
-		wlr_seat_touch_notify_motion(wlr_seat, event->time_msec,
-			event->touch_id, sx, sy);
+	} else {
+		seatop_touch_motion(seat, event, lx, ly);
 	}
 }
 
@@ -836,7 +819,34 @@ static void handle_tool_button(struct wl_listener *listener, void *data) {
 	node_at_coords(cursor->seat, cursor->cursor->x, cursor->cursor->y,
 		&surface, &sx, &sy);
 
-	if (!surface || !wlr_surface_accepts_tablet_v2(tablet_v2, surface)) {
+	// TODO: floating resize should support graphics tablet events
+	struct wlr_keyboard *keyboard = wlr_seat_get_keyboard(cursor->seat->wlr_seat);
+	uint32_t modifiers = keyboard ? wlr_keyboard_get_modifiers(keyboard) : 0;
+	bool mod_pressed = modifiers & config->floating_mod;
+
+	bool surface_supports_tablet_events =
+		surface && wlr_surface_accepts_tablet_v2(tablet_v2, surface);
+
+	// Simulate pointer when:
+	// 1. The modifier key is pressed, OR
+	// 2. The surface under the cursor does not support tablet events.
+	bool should_simulate_pointer = mod_pressed || !surface_supports_tablet_events;
+
+	// Similar to tool tip, we need to selectively simulate mouse events, but we
+	// want to make sure that it is always consistent. Because all tool buttons
+	// currently map to BTN_RIGHT, we need to keep count of how many tool
+	// buttons are currently pressed down so we can send consistent events.
+	//
+	// The logic follows:
+	// - If we are already simulating the pointer, we should continue to do so
+	//   until at least no tool button is held down.
+	// - If we should simulate the pointer and no tool button is currently held
+	//   down, begin simulating the pointer.
+	// - If neither of the above are true, send the tablet events.
+	if ((cursor->tool_buttons > 0 && cursor->simulating_pointer_from_tool_button)
+		|| (cursor->tool_buttons == 0 && should_simulate_pointer)) {
+		cursor->simulating_pointer_from_tool_button = true;
+
 		// TODO: the user may want to configure which tool buttons are mapped to
 		// which simulated pointer buttons
 		switch (event->state) {
@@ -845,22 +855,35 @@ static void handle_tool_button(struct wl_listener *listener, void *data) {
 				dispatch_cursor_button(cursor, &event->tablet->base,
 						event->time_msec, BTN_RIGHT, event->state);
 			}
-			cursor->tool_buttons++;
 			break;
 		case WLR_BUTTON_RELEASED:
-			if (cursor->tool_buttons == 1) {
+			if (cursor->tool_buttons <= 1) {
 				dispatch_cursor_button(cursor, &event->tablet->base,
 						event->time_msec, BTN_RIGHT, event->state);
 			}
-			cursor->tool_buttons--;
 			break;
 		}
 		wlr_seat_pointer_notify_frame(cursor->seat->wlr_seat);
-		return;
+	} else {
+		cursor->simulating_pointer_from_tool_button = false;
+
+		wlr_tablet_v2_tablet_tool_notify_button(sway_tool->tablet_v2_tool,
+			event->button, (enum zwp_tablet_pad_v2_button_state)event->state);
 	}
 
-	wlr_tablet_v2_tablet_tool_notify_button(sway_tool->tablet_v2_tool,
-		event->button, (enum zwp_tablet_pad_v2_button_state)event->state);
+	// Update tool button count.
+	switch (event->state) {
+	case WLR_BUTTON_PRESSED:
+		cursor->tool_buttons++;
+		break;
+	case WLR_BUTTON_RELEASED:
+		if (cursor->tool_buttons == 0) {
+			sway_log(SWAY_ERROR, "inconsistent tablet tool button events");
+		} else {
+			cursor->tool_buttons--;
+		}
+		break;
+	}
 }
 
 static void check_constraint_region(struct sway_cursor *cursor) {
@@ -1046,10 +1069,9 @@ void cursor_set_image(struct sway_cursor *cursor, const char *image,
 	}
 
 	if (!image) {
-		wlr_cursor_set_image(cursor->cursor, NULL, 0, 0, 0, 0, 0, 0);
+		wlr_cursor_unset_image(cursor->cursor);
 	} else if (!current_image || strcmp(current_image, image) != 0) {
-		wlr_xcursor_manager_set_cursor_image(cursor->xcursor_manager, image,
-				cursor->cursor);
+		wlr_cursor_set_xcursor(cursor->cursor, cursor->xcursor_manager, image);
 	}
 }
 
@@ -1096,6 +1118,7 @@ void sway_cursor_destroy(struct sway_cursor *cursor) {
 	wl_list_remove(&cursor->frame.link);
 	wl_list_remove(&cursor->touch_down.link);
 	wl_list_remove(&cursor->touch_up.link);
+	wl_list_remove(&cursor->touch_cancel.link);
 	wl_list_remove(&cursor->touch_motion.link);
 	wl_list_remove(&cursor->touch_frame.link);
 	wl_list_remove(&cursor->tool_axis.link);
@@ -1131,9 +1154,6 @@ struct sway_cursor *sway_cursor_create(struct sway_seat *seat) {
 
 	wl_list_init(&cursor->image_surface_destroy.link);
 	cursor->image_surface_destroy.notify = handle_image_surface_destroy;
-
-	// gesture events
-	cursor->pointer_gestures = wlr_pointer_gestures_v1_create(server.wl_display);
 
 	wl_signal_add(&wlr_cursor->events.hold_begin, &cursor->hold_begin);
 	cursor->hold_begin.notify = handle_pointer_hold_begin;
@@ -1176,6 +1196,9 @@ struct sway_cursor *sway_cursor_create(struct sway_seat *seat) {
 
 	wl_signal_add(&wlr_cursor->events.touch_up, &cursor->touch_up);
 	cursor->touch_up.notify = handle_touch_up;
+
+	wl_signal_add(&wlr_cursor->events.touch_cancel, &cursor->touch_cancel);
+	cursor->touch_cancel.notify = handle_touch_cancel;
 
 	wl_signal_add(&wlr_cursor->events.touch_motion,
 		&cursor->touch_motion);
@@ -1269,11 +1292,7 @@ uint32_t get_mouse_bindsym(const char *name, char **error) {
 		// Get event code from name
 		int code = libevdev_event_code_from_name(EV_KEY, name);
 		if (code == -1) {
-			size_t len = snprintf(NULL, 0, "Unknown event %s", name) + 1;
-			*error = malloc(len);
-			if (*error) {
-				snprintf(*error, len, "Unknown event %s", name);
-			}
+			*error = format_str("Unknown event %s", name);
 			return 0;
 		}
 		return code;
@@ -1295,13 +1314,8 @@ uint32_t get_mouse_bindcode(const char *name, char **error) {
 	}
 	const char *event = libevdev_event_code_get_name(EV_KEY, code);
 	if (!event || strncmp(event, "BTN_", strlen("BTN_")) != 0) {
-		size_t len = snprintf(NULL, 0, "Event code %d (%s) is not a button",
-				code, event ? event : "(null)") + 1;
-		*error = malloc(len);
-		if (*error) {
-			snprintf(*error, len, "Event code %d (%s) is not a button",
-					code, event ? event : "(null)");
-		}
+		*error = format_str("Event code %d (%s) is not a button",
+			code, event ? event : "(null)");
 		return 0;
 	}
 	return code;
@@ -1453,4 +1467,27 @@ void sway_cursor_constrain(struct sway_cursor *cursor,
 	cursor->constraint_commit.notify = handle_constraint_commit;
 	wl_signal_add(&constraint->surface->events.commit,
 		&cursor->constraint_commit);
+}
+
+void handle_request_set_cursor_shape(struct wl_listener *listener, void *data) {
+	const struct wlr_cursor_shape_manager_v1_request_set_shape_event *event = data;
+	struct sway_seat *seat = event->seat_client->seat->data;
+
+	if (!seatop_allows_set_cursor(seat)) {
+		return;
+	}
+
+	struct wl_client *focused_client = NULL;
+	struct wlr_surface *focused_surface = seat->wlr_seat->pointer_state.focused_surface;
+	if (focused_surface != NULL) {
+		focused_client = wl_resource_get_client(focused_surface->resource);
+	}
+
+	// TODO: check cursor mode
+	if (focused_client == NULL || event->seat_client->client != focused_client) {
+		sway_log(SWAY_DEBUG, "denying request to set cursor from unfocused client");
+		return;
+	}
+
+	cursor_set_image(seat->cursor, wlr_cursor_shape_v1_name(event->shape), focused_client);
 }

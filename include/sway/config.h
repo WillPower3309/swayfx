@@ -12,6 +12,7 @@
 #include "../include/config.h"
 #include "gesture.h"
 #include "list.h"
+#include "stringop.h"
 #include "swaynag.h"
 #include "tree/container.h"
 #include "sway/input/tablet.h"
@@ -155,10 +156,12 @@ struct input_config {
 	int middle_emulation;
 	int natural_scroll;
 	float pointer_accel;
+	float rotation_angle;
 	float scroll_factor;
 	int repeat_delay;
 	int repeat_rate;
 	int scroll_button;
+	int scroll_button_lock;
 	int scroll_method;
 	int send_events;
 	int tap;
@@ -564,6 +567,7 @@ struct sway_config {
 	bool auto_back_and_forth;
 	bool show_marks;
 	enum alignment title_align;
+	bool primary_selection;
 
 	bool tiling_drag;
 	int tiling_drag_threshold;
@@ -657,7 +661,7 @@ void run_deferred_bindings(void);
 /**
  * Adds a warning entry to the swaynag instance used for errors.
  */
-void config_add_swaynag_warning(char *fmt, ...);
+void config_add_swaynag_warning(char *fmt, ...) _SWAY_ATTRIB_PRINTF(1, 2);
 
 /**
  * Free config struct

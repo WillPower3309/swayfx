@@ -1,10 +1,12 @@
 #define _POSIX_C_SOURCE 200809L
 #include <assert.h>
 #include "log.h"
+#include "sway/input/cursor.h"
 #include "sway/input/keyboard.h"
 #include "sway/input/seat.h"
 #include "sway/output.h"
 #include "sway/server.h"
+#include "sway/surface.h"
 
 struct sway_session_lock_surface {
 	struct wlr_session_lock_surface_v1 *lock_surface;
@@ -13,7 +15,6 @@ struct sway_session_lock_surface {
 	struct wl_listener map;
 	struct wl_listener destroy;
 	struct wl_listener surface_commit;
-	struct wl_listener output_mode;
 	struct wl_listener output_commit;
 	struct wl_listener output_destroy;
 };
@@ -32,7 +33,8 @@ static void handle_surface_map(struct wl_listener *listener, void *data) {
 	if (server.session_lock.focused == NULL) {
 		set_lock_focused_surface(surf->surface);
 	}
-	wlr_surface_send_enter(surf->surface, surf->output->wlr_output);
+	cursor_rebase_all();
+	surface_enter_output(surf->surface, surf->output);
 	output_damage_whole(surf->output);
 }
 
@@ -41,16 +43,10 @@ static void handle_surface_commit(struct wl_listener *listener, void *data) {
 	output_damage_surface(surf->output, 0, 0, surf->surface, false);
 }
 
-static void handle_output_mode(struct wl_listener *listener, void *data) {
-	struct sway_session_lock_surface *surf = wl_container_of(listener, surf, output_mode);
-	wlr_session_lock_surface_v1_configure(surf->lock_surface,
-		surf->output->width, surf->output->height);
-}
-
 static void handle_output_commit(struct wl_listener *listener, void *data) {
 	struct wlr_output_event_commit *event = data;
 	struct sway_session_lock_surface *surf = wl_container_of(listener, surf, output_commit);
-	if (event->committed & (
+	if (event->state->committed & (
 			WLR_OUTPUT_STATE_MODE |
 			WLR_OUTPUT_STATE_SCALE |
 			WLR_OUTPUT_STATE_TRANSFORM)) {
@@ -66,7 +62,7 @@ static void destroy_lock_surface(struct sway_session_lock_surface *surf) {
 
 		struct wlr_session_lock_surface_v1 *other;
 		wl_list_for_each(other, &server.session_lock.lock->surfaces, link) {
-			if (other != surf->lock_surface && other->mapped) {
+			if (other != surf->lock_surface && other->surface->mapped) {
 				next_focus = other->surface;
 				break;
 			}
@@ -77,7 +73,6 @@ static void destroy_lock_surface(struct sway_session_lock_surface *surf) {
 	wl_list_remove(&surf->map.link);
 	wl_list_remove(&surf->destroy.link);
 	wl_list_remove(&surf->surface_commit.link);
-	wl_list_remove(&surf->output_mode.link);
 	wl_list_remove(&surf->output_commit.link);
 	wl_list_remove(&surf->output_destroy.link);
 	output_damage_whole(surf->output);
@@ -111,13 +106,11 @@ static void handle_new_surface(struct wl_listener *listener, void *data) {
 	surf->surface = lock_surface->surface;
 	surf->output = output;
 	surf->map.notify = handle_surface_map;
-	wl_signal_add(&lock_surface->events.map, &surf->map);
+	wl_signal_add(&lock_surface->surface->events.map, &surf->map);
 	surf->destroy.notify = handle_surface_destroy;
 	wl_signal_add(&lock_surface->events.destroy, &surf->destroy);
 	surf->surface_commit.notify = handle_surface_commit;
 	wl_signal_add(&surf->surface->events.commit, &surf->surface_commit);
-	surf->output_mode.notify = handle_output_mode;
-	wl_signal_add(&output->wlr_output->events.mode, &surf->output_mode);
 	surf->output_commit.notify = handle_output_commit;
 	wl_signal_add(&output->wlr_output->events.commit, &surf->output_commit);
 	surf->output_destroy.notify = handle_output_destroy;

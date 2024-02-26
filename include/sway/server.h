@@ -3,14 +3,12 @@
 #include <stdbool.h>
 #include <wayland-server-core.h>
 #include <wlr/backend.h>
-#include <wlr/backend/session.h>
 #include <wlr/render/allocator.h>
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/types/wlr_compositor.h>
 #include <wlr/types/wlr_data_device.h>
 #include <wlr/types/wlr_input_method_v2.h>
 #include <wlr/types/wlr_foreign_toplevel_management_v1.h>
-#include <wlr/types/wlr_drm_lease_v1.h>
 #include <wlr/types/wlr_layer_shell_v1.h>
 #include <wlr/types/wlr_output_management_v1.h>
 #include <wlr/types/wlr_output_power_management_v1.h>
@@ -22,6 +20,7 @@
 #include <wlr/types/wlr_xdg_shell.h>
 #include "config.h"
 #include "list.h"
+#include "sway/desktop/idle_inhibit_v1.h"
 #if HAVE_XWAYLAND
 #include "sway/xwayland.h"
 #endif
@@ -34,6 +33,7 @@ struct sway_server {
 	const char *socket;
 
 	struct wlr_backend *backend;
+	struct wlr_session *session;
 	// secondary headless backend used for creating virtual outputs on-the-fly
 	struct wlr_backend *headless_backend;
 	struct wlr_renderer *wlr_renderer;
@@ -51,9 +51,8 @@ struct sway_server {
 	struct wl_listener new_output;
 	struct wl_listener output_layout_change;
 
-	struct wlr_idle *idle;
 	struct wlr_idle_notifier_v1 *idle_notifier_v1;
-	struct sway_idle_inhibit_manager_v1 *idle_inhibit_manager_v1;
+	struct sway_idle_inhibit_manager_v1 idle_inhibit_manager_v1;
 
 	struct wlr_layer_shell_v1 *layer_shell;
 	struct wl_listener layer_shell_surface;
@@ -91,6 +90,9 @@ struct sway_server {
 	struct wl_listener output_manager_apply;
 	struct wl_listener output_manager_test;
 
+	struct wlr_gamma_control_manager_v1 *gamma_control_manager_v1;
+	struct wl_listener gamma_control_set_gamma;
+
 	struct {
 		bool locked;
 		struct wlr_session_lock_manager_v1 *manager;
@@ -110,9 +112,17 @@ struct sway_server {
 	struct wlr_input_method_manager_v2 *input_method;
 	struct wlr_text_input_manager_v3 *text_input;
 	struct wlr_foreign_toplevel_manager_v1 *foreign_toplevel_manager;
+	struct wlr_content_type_manager_v1 *content_type_manager_v1;
+	struct wlr_data_control_manager_v1 *data_control_manager_v1;
+	struct wlr_screencopy_manager_v1 *screencopy_manager_v1;
+	struct wlr_export_dmabuf_manager_v1 *export_dmabuf_manager_v1;
+	struct wlr_security_context_manager_v1 *security_context_manager_v1;
 
 	struct wlr_xdg_activation_v1 *xdg_activation_v1;
 	struct wl_listener xdg_activation_v1_request_activate;
+	struct wl_listener xdg_activation_v1_new_token;
+
+	struct wl_listener request_set_cursor_shape;
 
 	struct wl_list pending_launcher_ctxs; // launcher_ctx::link
 
@@ -173,6 +183,8 @@ void handle_server_decoration(struct wl_listener *listener, void *data);
 void handle_xdg_decoration(struct wl_listener *listener, void *data);
 void handle_pointer_constraint(struct wl_listener *listener, void *data);
 void xdg_activation_v1_handle_request_activate(struct wl_listener *listener,
+	void *data);
+void xdg_activation_v1_handle_new_token(struct wl_listener *listener,
 	void *data);
 
 void set_rr_scheduling(void);

@@ -31,13 +31,12 @@ struct seatop_move_tiling_event {
 	bool insert_after_target;
 };
 
-static void handle_render(struct sway_seat *seat,
-		struct sway_output *output, pixman_region32_t *damage) {
+static void handle_render(struct sway_seat *seat, struct render_context *ctx) {
 	struct seatop_move_tiling_event *e = seat->seatop_data;
 	if (!e->threshold_reached) {
 		return;
 	}
-	if (e->target_node && node_get_output(e->target_node) == output) {
+	if (e->target_node && node_get_output(e->target_node) == ctx->output) {
 		float color[4];
 		memcpy(&color, config->border_colors.focused.indicator,
 				sizeof(float) * 4);
@@ -45,6 +44,7 @@ static void handle_render(struct sway_seat *seat,
 		struct wlr_box box;
 		memcpy(&box, &e->drop_box, sizeof(struct wlr_box));
 		scale_box(&box, output->wlr_output->scale);
++		scale_box(&box, ctx->output->wlr_output->scale);
 
 		// Render blur
 		pixman_region32_t opaque_region;
