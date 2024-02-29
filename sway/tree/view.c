@@ -76,10 +76,10 @@ void view_destroy(struct sway_view *view) {
 	}
 }
 
-void view_remove_container(struct sway_view *view) {
-	struct sway_container *parent = view->container->pending.parent;
-	struct sway_workspace *ws = view->container->pending.workspace;
-	container_begin_destroy(view->container);
+void view_remove_container(struct sway_container *container) {
+	struct sway_container *parent = container->pending.parent;
+	struct sway_workspace *ws = container->pending.workspace;
+	container_begin_destroy(container);
 	if (parent) {
 		container_reap_empty(parent);
 	} else if (ws) {
@@ -943,15 +943,16 @@ void view_unmap(struct sway_view *view) {
 		view->foreign_toplevel = NULL;
 	}
 
+	/*
 	if (!config->animation_duration) {
 		view_remove_container(view);
 		transaction_commit_dirty();
-	} else {
+	} else {*/
 		wl_signal_emit_mutable(&view->container->node.events.destroy, &view->container->node);
 		view_save_buffer(view);
 		view->container->target_alpha = 0;
 		list_add(server.animated_containers, view->container);
-	}
+	//}
 
 	struct sway_seat *seat;
 	wl_list_for_each(seat, &server.input->seats, link) {

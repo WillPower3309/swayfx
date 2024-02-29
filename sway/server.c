@@ -43,6 +43,7 @@
 #include "sway/config.h"
 #include "sway/desktop/fx_renderer/fx_renderer.h"
 #include "sway/desktop/idle_inhibit_v1.h"
+#include "sway/desktop/transaction.h"
 #include "sway/input/input-manager.h"
 #include "sway/output.h"
 #include "sway/server.h"
@@ -74,33 +75,56 @@ float get_fastest_output_refresh_s() {
 	return fastest_output_refresh_s;
 }
 
-
+// TODO: animation struct with callback on completion
 static int animation_timer(void *data) {
 	struct sway_server *server = data;
 	float fastest_output_refresh_s = get_fastest_output_refresh_s();
+	wl_event_source_timer_update(server->animation_tick, fastest_output_refresh_s * 1000);
 
-	for (int i = 0; i < server->animated_containers->length; i++) {
+	int num_containers;
+	memcpy(&num_containers, &server->animated_containers->length, sizeof(int));
+	int num_animations_complete = 0;
+	int completed_animation_indexes[100]; // TODO: this can be better
+	bool should_commit_transaction = false;
+
+	// update state
+	for (int i = 0; i < num_containers; i++) {
 		struct sway_container *con = server->animated_containers->items[i];
 		bool is_closing = con->alpha > con->target_alpha;
-
 		float alpha_step = config->animation_duration ?
 			(con->max_alpha * fastest_output_refresh_s) / config->animation_duration : con->max_alpha;
+
 		con->alpha = is_closing ? MAX(con->alpha - alpha_step, con->target_alpha) :
 			MIN(con->alpha + alpha_step, con->target_alpha);
 
 		if (con->alpha == con->target_alpha) {
-			list_del(server->animated_containers, i);
-			if (is_closing) {
-				printf("done animation; clean up view\n");
-				view_remove_container(con->view);
-				continue;
+			completed_animation_indexes[num_animations_complete] = i;
+			num_animations_complete++;
+			if (con->alpha == 0) {
+				view_remove_container(con);
+				should_commit_transaction = true;
 			}
 		}
-
-		container_damage_whole(con);
 	}
 
-	wl_event_source_timer_update(server->animation_tick, fastest_output_refresh_s * 1000);
+	// damage track
+	if (should_commit_transaction) {
+		transaction_commit_dirty();
+	} else {
+		for (int i = 0; i < num_containers; i++) {
+			struct sway_container *con = server->animated_containers->items[i];
+			if (view_is_visible(con->view)) {
+				container_damage_whole(con);
+			}
+		}
+	}
+
+	// clean up list
+	for (int i = 0; i < num_animations_complete; i++) {
+		int container_index = completed_animation_indexes[i];
+		list_del(server->animated_containers, container_index);
+	}
+
 	return 1;
 }
 
