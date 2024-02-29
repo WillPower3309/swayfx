@@ -84,7 +84,7 @@ static int animation_timer(void *data) {
 	int num_containers;
 	memcpy(&num_containers, &server->animated_containers->length, sizeof(int));
 	int num_animations_complete = 0;
-	int completed_animation_indexes[100]; // TODO: this can be better
+	int completed_animation_indices[100]; // TODO: this can be better
 	bool should_commit_transaction = false;
 
 	// update state
@@ -98,7 +98,7 @@ static int animation_timer(void *data) {
 			MIN(con->alpha + alpha_step, con->target_alpha);
 
 		if (con->alpha == con->target_alpha) {
-			completed_animation_indexes[num_animations_complete] = i;
+			completed_animation_indices[num_animations_complete] = i;
 			num_animations_complete++;
 			if (con->alpha == 0) {
 				view_remove_container(con);
@@ -121,11 +121,11 @@ static int animation_timer(void *data) {
 
 	// clean up list
 	for (int i = 0; i < num_animations_complete; i++) {
-		int container_index = completed_animation_indexes[i];
+		int container_index = completed_animation_indices[i];
 		list_del(server->animated_containers, container_index);
 	}
 
-	return 1;
+	return 0;
 }
 
 #define SWAY_XDG_SHELL_VERSION	2
