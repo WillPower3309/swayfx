@@ -113,7 +113,8 @@ static int animation_timer(void *data) {
 	} else {
 		for (int i = 0; i < num_containers; i++) {
 			struct sway_container *con = server->animated_containers->items[i];
-			if (view_is_visible(con->view)) {
+			// TODO: remove add assertion for con->view & investigate what happens when split h containers are spawned
+			if (con->view && view_is_visible(con->view)) {
 				container_damage_whole(con);
 			}
 		}
