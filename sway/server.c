@@ -85,7 +85,8 @@ static int animation_timer(void *data) {
 	memcpy(&num_containers, &server->animated_containers->length, sizeof(int));
 	int num_animations_complete = 0;
 	int completed_animation_indices[100]; // TODO: this can be better
-	bool should_commit_transaction = false;
+	bool is_container_close_animation_complete = false;
+	bool should_delay_transaction_commit = false;
 
 	// update state
 	for (int i = 0; i < num_containers; i++) {
@@ -102,13 +103,16 @@ static int animation_timer(void *data) {
 			num_animations_complete++;
 			if (con->alpha == 0) {
 				view_remove_container(con);
-				should_commit_transaction = true;
+				is_container_close_animation_complete = true;
 			}
+		} else if (is_closing) {
+			should_delay_transaction_commit = true;
 		}
 	}
 
 	// damage track
-	if (should_commit_transaction) {
+	// only commit transaction if no containers are close to finishing their close animation, or it looks weird
+	if (is_container_close_animation_complete && !should_delay_transaction_commit) {
 		transaction_commit_dirty();
 	} else {
 		for (int i = 0; i < num_containers; i++) {
