@@ -76,6 +76,7 @@ float get_fastest_output_refresh_s() {
 }
 
 // TODO: animation struct with callback on completion
+// TODO: fix new window placement when a container is fading out
 static int animation_timer(void *data) {
 	struct sway_server *server = data;
 	float fastest_output_refresh_s = get_fastest_output_refresh_s();
@@ -111,7 +112,6 @@ static int animation_timer(void *data) {
 	}
 
 	// damage track
-	// only commit transaction if no containers are close to finishing their close animation, or it looks weird
 	if (is_container_close_animation_complete && !should_delay_transaction_commit) {
 		transaction_commit_dirty();
 	} else {
