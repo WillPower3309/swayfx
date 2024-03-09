@@ -237,8 +237,6 @@ sway_sources = files(
 	'tree/output.c',
 )
 
-subdir('desktop/fx_renderer/shaders')
-
 sway_deps = [
 	cairo,
 	drm,
@@ -250,6 +248,7 @@ sway_deps = [
 	pango,
 	pcre2,
 	pixman,
+	scenefx,
 	threads,
 	wayland_server,
 	wlroots,

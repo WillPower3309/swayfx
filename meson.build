@@ -36,6 +36,13 @@ if is_freebsd
 	add_project_arguments('-D_C11_SOURCE', language: 'c')
 endif
 
+# Execute the scenefx subproject, if any
+subproject(
+	'scenefx',
+	required: false,
+)
+scenefx = dependency('scenefx')
+
 # Execute the wlroots subproject, if any
 wlroots_version = ['>=0.17.0', '<0.18.0']
 subproject(
