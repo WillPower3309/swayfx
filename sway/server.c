@@ -1,5 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 #include <assert.h>
+#include <scenefx/fx_renderer/fx_renderer.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -42,7 +43,6 @@
 #include "list.h"
 #include "log.h"
 #include "sway/config.h"
-#include "sway/desktop/fx_renderer/fx_renderer.h"
 #include "sway/desktop/idle_inhibit_v1.h"
 #include "sway/input/input-manager.h"
 #include "sway/output.h"

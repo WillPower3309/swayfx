@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <assert.h>
+#include <scenefx/fx_renderer/fx_renderer.h>
 #include <stdlib.h>
 #include <strings.h>
 #include <time.h>
@@ -18,8 +19,6 @@
 #include "config.h"
 #include "log.h"
 #include "sway/config.h"
-#include "sway/desktop/fx_renderer/fx_framebuffer.h"
-#include "sway/desktop/fx_renderer/fx_renderer.h"
 #include "sway/input/input-manager.h"
 #include "sway/input/seat.h"
 #include "sway/output.h"
@@ -44,6 +43,7 @@ struct decoration_data get_undecorated_decoration_data() {
 	};
 }
 
+/*
 // TODO: Remove this ugly abomination with a complete border rework...
 enum corner_location get_rotated_corner(enum corner_location corner_location,
 		enum wl_output_transform transform) {
@@ -70,6 +70,7 @@ enum corner_location get_rotated_corner(enum corner_location corner_location,
 	}
 	return corner_location;
 }
+*/
 
 /**
  * Apply scale to a width or height.
@@ -631,47 +632,10 @@ damage_finish:
 	pixman_region32_fini(&damage);
 }
 
-void render_rounded_rect(struct sway_output *output, const pixman_region32_t *output_damage,
-		const struct wlr_box *_box, float color[static 4], int corner_radius,
-		enum corner_location corner_location) {
-	struct wlr_output *wlr_output = output->wlr_output;
-	struct fx_renderer *renderer = output->renderer;
-
-	struct wlr_box box;
-	memcpy(&box, _box, sizeof(struct wlr_box));
-	box.x -= output->lx * wlr_output->scale;
-	box.y -= output->ly * wlr_output->scale;
-
-	pixman_region32_t damage = create_damage(box, output_damage);
-	bool damaged = pixman_region32_not_empty(&damage);
-	if (!damaged) {
-		goto damage_finish;
-	}
-
-	float matrix[9];
-	wlr_matrix_project_box(matrix, &box, WL_OUTPUT_TRANSFORM_NORMAL, 0,
-			wlr_output->transform_matrix);
-
-	enum wl_output_transform transform = wlr_output_transform_invert(wlr_output->transform);
-
-	// ensure the box is updated as per the output orientation
-	struct wlr_box transformed_box;
-	int width, height;
-	wlr_output_transformed_resolution(wlr_output, &width, &height);
-	wlr_box_transform(&transformed_box, &box, transform, width, height);
-
-	corner_location = get_rotated_corner(corner_location, transform);
-
-	int nrects;
-	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
-	for (int i = 0; i < nrects; ++i) {
-		scissor_output(wlr_output, &rects[i]);
-		fx_render_rounded_rect(renderer, &transformed_box, color, matrix,
-				corner_radius, corner_location);
-	}
-
-damage_finish:
-	pixman_region32_fini(&damage);
+void render_rounded_rect(struct render_context *ctx, const struct wlr_box *_box,
+		float color[static 4], int corner_radius) {
+	// TODO
+	render_rect(ctx, _box, color);
 }
 
 // _box.x and .y are expected to be layout-local

@@ -1,17 +1,29 @@
 #ifndef _SWAY_OUTPUT_H
 #define _SWAY_OUTPUT_H
+#include <scenefx/fx_renderer/fx_renderer.h>
 #include <time.h>
 #include <unistd.h>
 #include <wayland-server-core.h>
 #include <wlr/types/wlr_damage_ring.h>
 #include <wlr/types/wlr_output.h>
 #include "config.h"
-#include "sway/desktop/fx_renderer/fx_renderer.h"
 #include "sway/tree/node.h"
 #include "sway/tree/view.h"
 
 struct sway_server;
 struct sway_container;
+
+struct decoration_data {
+	float alpha;
+	float saturation;
+	int corner_radius;
+	float dim;
+	float *dim_color;
+	bool has_titlebar;
+	bool discard_transparent;
+	bool blur;
+	bool shadow;
+};
 
 struct render_data {
 	struct render_context *ctx;
@@ -195,16 +207,13 @@ enum sway_container_layout output_get_default_layout(
 void render_rect(struct render_context *ctx, const struct wlr_box *_box,
 		float color[static 4]);
 
-void render_rounded_rect(struct sway_output *output,
-		const pixman_region32_t *output_damage, const struct wlr_box *_box,
-		float color[static 4], int corner_radius,
-		enum corner_location corner_location);
+void render_rounded_rect(struct render_context *ctx, const struct wlr_box *_box,
+		float color[static 4], int corner_radius);
 
 void render_blur(bool optimized, struct sway_output *output,
 		const pixman_region32_t *output_damage, const struct wlr_box *dst_box,
 		pixman_region32_t *opaque_region, struct decoration_data *deco_data,
 		struct blur_stencil_data *stencil_data);
-
 
 void premultiply_alpha(float color[4], float opacity);
 

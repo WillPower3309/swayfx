@@ -912,8 +912,6 @@ static void begin_destroy(struct sway_output *output) {
 		output_disable(output);
 	}
 
-	fx_renderer_fini(output->renderer);
-
 	output_begin_destroy(output);
 
 	wl_list_remove(&output->link);
