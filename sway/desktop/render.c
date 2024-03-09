@@ -604,18 +604,28 @@ void render_output_blur(struct sway_output *output, pixman_region32_t *damage) {
 	box.x -= ctx->output->lx * wlr_output->scale;
 	box.y -= ctx->output->ly * wlr_output->scale;
 
-+	pixman_region32_init_rect(&damage, box.x, box.y,
+	pixman_region32_t damage;
+	pixman_region32_init_rect(&damage, box.x, box.y,
+		box.width, box.height);
+	pixman_region32_intersect(&damage, &damage, ctx->output_damage);
 	bool damaged = pixman_region32_not_empty(&damage);
 	if (!damaged) {
 		goto damage_finish;
 	}
 
-	int nrects;
-	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
-	for (int i = 0; i < nrects; ++i) {
-		scissor_output(wlr_output, &rects[i]);
-		fx_render_rect(renderer, &box, color, wlr_output->transform_matrix);
-	}
+	transform_output_damage(&damage, wlr_output);
+	transform_output_box(&box, wlr_output);
+
+	wlr_render_pass_add_rect(ctx->pass, &(struct wlr_render_rect_options){
+		.box = box,
+		.color = {
+			.r = color[0],
+			.g = color[1],
+			.b = color[2],
+			.a = color[3],
+		},
+		.clip = &damage,
+	});
 
 damage_finish:
 	pixman_region32_fini(&damage);
