@@ -126,7 +126,8 @@ static void set_scale_filter(struct wlr_output *wlr_output,
 	}
 }
 
-pixman_region32_t create_damage(const struct wlr_box damage_box, pixman_region32_t *output_damage) {
+pixman_region32_t create_damage(const struct wlr_box damage_box,
+		const pixman_region32_t *output_damage) {
 	pixman_region32_t damage;
 	pixman_region32_init(&damage);
 	pixman_region32_union_rect(&damage, &damage, damage_box.x, damage_box.y,
@@ -295,7 +296,7 @@ struct fx_framebuffer *get_main_buffer_blur(struct fx_renderer *renderer, struct
 }
 
 void render_blur(bool optimized, struct sway_output *output,
-		pixman_region32_t *output_damage, const struct wlr_box *dst_box,
+		const pixman_region32_t *output_damage, const struct wlr_box *dst_box,
 		pixman_region32_t *opaque_region, struct decoration_data *deco_data,
 		struct blur_stencil_data *stencil_data) {
 	struct wlr_output *wlr_output = output->wlr_output;
@@ -620,7 +621,7 @@ damage_finish:
 	pixman_region32_fini(&damage);
 }
 
-void render_rounded_rect(struct sway_output *output, pixman_region32_t *output_damage,
+void render_rounded_rect(struct sway_output *output, const pixman_region32_t *output_damage,
 		const struct wlr_box *_box, float color[static 4], int corner_radius,
 		enum corner_location corner_location) {
 	struct wlr_output *wlr_output = output->wlr_output;

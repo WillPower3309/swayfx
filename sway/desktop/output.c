@@ -1052,7 +1052,7 @@ void handle_new_output(struct wl_listener *listener, void *data) {
 	}
 
 	if (!wlr_output_init_render(wlr_output, server->allocator,
-			server->wlr_renderer)) {
+			server->renderer)) {
 		sway_log(SWAY_ERROR, "Failed to init output render");
 		return;
 	}
@@ -1065,7 +1065,7 @@ void handle_new_output(struct wl_listener *listener, void *data) {
 	wlr_damage_ring_init(&output->damage_ring);
 
 	// Init FX Renderer
-	struct wlr_egl *egl = wlr_gles2_renderer_get_egl(server->wlr_renderer);
+	struct wlr_egl *egl = wlr_gles2_renderer_get_egl(server->renderer);
 	output->renderer = fx_renderer_create(egl, wlr_output);
 	if (!output->renderer) {
 		sway_log(SWAY_ERROR, "Failed to create fx_renderer");

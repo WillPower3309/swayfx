@@ -43,8 +43,7 @@ static void handle_render(struct sway_seat *seat, struct render_context *ctx) {
 		premultiply_alpha(color, 0.5);
 		struct wlr_box box;
 		memcpy(&box, &e->drop_box, sizeof(struct wlr_box));
-		scale_box(&box, output->wlr_output->scale);
-+		scale_box(&box, ctx->output->wlr_output->scale);
+ 		scale_box(&box, ctx->output->wlr_output->scale);
 
 		// Render blur
 		pixman_region32_t opaque_region;
@@ -52,11 +51,11 @@ static void handle_render(struct sway_seat *seat, struct render_context *ctx) {
 		struct decoration_data deco_data = get_undecorated_decoration_data();
 		deco_data.blur = e->con->blur_enabled;
 		deco_data.corner_radius = e->con->corner_radius;
-		render_blur(false, output, damage, &box, &opaque_region, &deco_data, NULL);
+		render_blur(false, ctx->output, ctx->output_damage, &box, &opaque_region, &deco_data, NULL);
 		pixman_region32_fini(&opaque_region);
 
-		render_rounded_rect(output, damage, &box, color,
-			e->con->corner_radius * output->wlr_output->scale, ALL);
+		render_rounded_rect(ctx->output, ctx->output_damage, &box, color,
+			e->con->corner_radius * ctx->output->wlr_output->scale, ALL);
 	}
 }
 

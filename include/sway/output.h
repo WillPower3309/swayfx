@@ -196,12 +196,12 @@ void render_rect(struct render_context *ctx, const struct wlr_box *_box,
 		float color[static 4]);
 
 void render_rounded_rect(struct sway_output *output,
-		pixman_region32_t *output_damage, const struct wlr_box *_box,
+		const pixman_region32_t *output_damage, const struct wlr_box *_box,
 		float color[static 4], int corner_radius,
 		enum corner_location corner_location);
 
 void render_blur(bool optimized, struct sway_output *output,
-		pixman_region32_t *output_damage, const struct wlr_box *dst_box,
+		const pixman_region32_t *output_damage, const struct wlr_box *dst_box,
 		pixman_region32_t *opaque_region, struct decoration_data *deco_data,
 		struct blur_stencil_data *stencil_data);
 
