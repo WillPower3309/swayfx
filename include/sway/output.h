@@ -1,6 +1,5 @@
 #ifndef _SWAY_OUTPUT_H
 #define _SWAY_OUTPUT_H
-#include <scenefx/fx_renderer/fx_renderer.h>
 #include <time.h>
 #include <unistd.h>
 #include <wayland-server-core.h>
@@ -48,8 +47,6 @@ struct sway_output {
 	struct wlr_output *wlr_output;
 	struct sway_server *server;
 	struct wl_list link;
-
-	struct fx_renderer *renderer;
 
 	struct wl_list layers[4]; // sway_layer_surface::link
 	struct wlr_box usable_area;

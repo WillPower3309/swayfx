@@ -145,9 +145,9 @@ bool server_init(struct sway_server *server) {
 		return false;
 	}
 
-	server->renderer = wlr_renderer_autocreate(server->backend);
+	server->renderer = fx_renderer_create(server->backend);
 	if (!server->renderer) {
-		sway_log(SWAY_ERROR, "Failed to create wlr_renderer");
+		sway_log(SWAY_ERROR, "Failed to create fx_renderer");
 		return false;
 	}
 
