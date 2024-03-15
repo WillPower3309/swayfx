@@ -20,6 +20,7 @@
 #include <wlr/util/region.h>
 #include "config.h"
 #include "log.h"
+#include "scenefx/render/pass.h"
 #include "sway/config.h"
 #include "sway/desktop/transaction.h"
 #include "sway/input/input-manager.h"
@@ -645,8 +646,8 @@ static int output_repaint_timer_handler(void *data) {
 		goto out;
 	}
 
-	struct wlr_render_pass *render_pass = wlr_renderer_begin_buffer_pass(
-		wlr_output->renderer, buffer, NULL);
+	struct fx_gles_render_pass *render_pass = fx_renderer_begin_buffer_pass(
+		wlr_output->renderer, buffer, wlr_output, NULL);
 	if (render_pass == NULL) {
 		wlr_buffer_unlock(buffer);
 		goto out;
@@ -666,7 +667,7 @@ static int output_repaint_timer_handler(void *data) {
 		.output_damage = &damage,
 		.renderer = wlr_output->renderer,
 		.output = output,
-		.pass = fx_render_pass,
+		.pass = render_pass,
 	};
 
 	struct timespec now;
@@ -676,7 +677,7 @@ static int output_repaint_timer_handler(void *data) {
 
 	pixman_region32_fini(&damage);
 
-	if (!wlr_render_pass_submit(render_pass)) {
+	if (!wlr_render_pass_submit(&render_pass->base)) {
 		wlr_buffer_unlock(buffer);
 		goto out;
 	}
