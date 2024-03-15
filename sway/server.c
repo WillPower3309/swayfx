@@ -1,6 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 #include <assert.h>
-#include <scenefx/fx_renderer/fx_renderer.h>
+#include <scenefx/render/fx_renderer/fx_renderer.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
