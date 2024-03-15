@@ -1,4 +1,4 @@
-#include <stdio.h>
+#define _POSIX_C_SOURCE 200809L
 #include <assert.h>
 #include <scenefx/render/pass.h>
 #include <stdlib.h>
@@ -8,19 +8,18 @@
 #include <wlr/config.h>
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/types/wlr_buffer.h>
-#include <wlr/types/wlr_compositor.h>
 #include <wlr/types/wlr_damage_ring.h>
 #include <wlr/types/wlr_matrix.h>
-#include <wlr/types/wlr_output.h>
 #include <wlr/types/wlr_output_layout.h>
-#include <wlr/util/box.h>
+#include <wlr/types/wlr_output.h>
+#include <wlr/types/wlr_compositor.h>
 #include <wlr/util/region.h>
-
-#include "config.h"
 #include "log.h"
+#include "config.h"
 #include "sway/config.h"
 #include "sway/input/input-manager.h"
 #include "sway/input/seat.h"
+#include "sway/layers.h"
 #include "sway/output.h"
 #include "sway/server.h"
 #include "sway/tree/arrange.h"
@@ -28,6 +27,22 @@
 #include "sway/tree/root.h"
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
+
+static void transform_output_damage(pixman_region32_t *damage, struct wlr_output *output) {
+	int ow, oh;
+	wlr_output_transformed_resolution(output, &ow, &oh);
+	enum wl_output_transform transform =
+		wlr_output_transform_invert(output->transform);
+	wlr_region_transform(damage, damage, transform, ow, oh);
+}
+
+static void transform_output_box(struct wlr_box *box, struct wlr_output *output) {
+	int ow, oh;
+	wlr_output_transformed_resolution(output, &ow, &oh);
+	enum wl_output_transform transform =
+		wlr_output_transform_invert(output->transform);
+	wlr_box_transform(box, box, transform, ow, oh);
+}
 
 struct decoration_data get_undecorated_decoration_data() {
 	return (struct decoration_data) {
@@ -86,6 +101,17 @@ enum corner_location get_rotated_corner(enum corner_location corner_location,
  */
 static int scale_length(int length, int offset, float scale) {
 	return roundf((offset + length) * scale) - roundf(offset * scale);
+}
+
+static enum wlr_scale_filter_mode get_scale_filter(struct sway_output *output) {
+	switch (output->scale_filter) {
+	case SCALE_FILTER_LINEAR:
+		return WLR_SCALE_FILTER_BILINEAR;
+	case SCALE_FILTER_NEAREST:
+		return WLR_SCALE_FILTER_NEAREST;
+	default:
+		abort(); // unreachable
+	}
 }
 
 pixman_region32_t create_damage(const struct wlr_box damage_box,
@@ -898,6 +924,10 @@ static void render_titlebar(struct render_context *ctx, struct sway_container *c
 			(titlebar_v_padding - titlebar_border_thickness) * 2 +
 			config->font_height, bg_y, output_scale);
 
+	// title marks textures should have no eyecandy
+	struct decoration_data deco_data = get_undecorated_decoration_data();
+	deco_data.alpha = con->alpha;
+
 	// Marks
 	int ob_marks_x = 0; // output-buffer-local
 	int ob_marks_width = 0; // output-buffer-local
@@ -931,7 +961,7 @@ static void render_titlebar(struct render_context *ctx, struct sway_container *c
 			clip_box.width = ob_inner_width;
 		}
 		render_texture(ctx, marks_texture,
-			NULL, &texture_box, &clip_box, WL_OUTPUT_TRANSFORM_NORMAL, con->alpha);
+			NULL, &texture_box, &clip_box, WL_OUTPUT_TRANSFORM_NORMAL, deco_data);
 
 		// Padding above
 		memcpy(&color, colors->background, sizeof(float) * 4);
@@ -1001,10 +1031,6 @@ static void render_titlebar(struct render_context *ctx, struct sway_container *c
 		if (ob_inner_width - ob_marks_width < clip_box.width) {
 			clip_box.width = ob_inner_width - ob_marks_width;
 		}
-
-		// title marks textures should have no eyecandy
-		struct decoration_data deco_data = get_undecorated_decoration_data();
-		deco_data.alpha = con->alpha;
 
 		render_texture(ctx, title_texture,
 			NULL, &texture_box, &clip_box, WL_OUTPUT_TRANSFORM_NORMAL, deco_data);
@@ -1536,8 +1562,8 @@ void output_render(struct render_context *ctx) {
 	if (debug.damage == DAMAGE_HIGHLIGHT) {
 		fx_render_pass_add_rect(ctx->pass, &(struct fx_render_rect_options){
 			.base = {
-				.box = { .width = wlr_output->width, .height = wlr_output->height };
-				.color = { .r = 1, .g = 1, .b = 0, .a = 1 };
+				.box = { .width = wlr_output->width, .height = wlr_output->height },
+				.color = { .r = 1, .g = 1, .b = 0, .a = 1 },
 			},
 		});
 	}
