@@ -60,9 +60,8 @@ void root_destroy(struct sway_root *root) {
 static void root_scratchpad_set_minimize(struct sway_container *con, bool minimize) {
 	if (con->view) {
 #if HAVE_XWAYLAND
-		if (wlr_surface_is_xwayland_surface(con->view->surface)) {
-			struct wlr_xwayland_surface *xsurface
-				= wlr_xwayland_surface_from_wlr_surface(con->view->surface);
+		struct wlr_xwayland_surface *xsurface;
+		if ((xsurface = wlr_xwayland_surface_try_from_wlr_surface(con->view->surface))) {
 			wlr_xwayland_surface_set_minimized(xsurface, minimize);
 			return;
 		}
