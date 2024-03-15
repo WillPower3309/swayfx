@@ -1,5 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 #include <assert.h>
+#include <scenefx/render/pass.h>
 #include <stdlib.h>
 #include <strings.h>
 #include <time.h>
@@ -661,11 +662,11 @@ static int output_repaint_timer_handler(void *data) {
 		pixman_region32_union_rect(&damage, &damage, 0, 0, width, height);
 	}
 
-	struct render_context ctx = {
+	struct fx_render_context ctx = {
 		.output_damage = &damage,
 		.renderer = wlr_output->renderer,
 		.output = output,
-		.pass = render_pass,
+		.pass = fx_render_pass,
 	};
 
 	struct timespec now;

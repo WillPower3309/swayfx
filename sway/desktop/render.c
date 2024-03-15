@@ -131,7 +131,7 @@ struct wlr_box get_monitor_box(struct wlr_output *output) {
 	return monitor_box;
 }
 
-static void render_texture(struct render_context *ctx, struct wlr_texture *texture,
+static void render_texture(struct fx_render_context *ctx, struct wlr_texture *texture,
 		const struct wlr_fbox *_src_box, const struct wlr_box *dst_box,
 		const struct wlr_box *clip_box, enum wl_output_transform transform,
 		struct decoration_data deco_data) {
@@ -514,7 +514,7 @@ static void render_layer_iterator(struct sway_output *output,
 	} */
 }
 
-static void render_layer_toplevel(struct render_context *ctx, struct wl_list *layer_surfaces) {
+static void render_layer_toplevel(struct fx_render_context *ctx, struct wl_list *layer_surfaces) {
 	struct render_data data = {
 		.deco_data = get_undecorated_decoration_data(),
  		.ctx = ctx,
@@ -523,7 +523,7 @@ static void render_layer_toplevel(struct render_context *ctx, struct wl_list *la
 		render_layer_iterator, &data);
 }
 
- static void render_layer_popups(struct render_context *ctx, struct wl_list *layer_surfaces) {
+ static void render_layer_popups(struct fx_render_context *ctx, struct wl_list *layer_surfaces) {
 	struct render_data data = {
 		.deco_data = get_undecorated_decoration_data(),
 		.ctx = ctx,
@@ -533,7 +533,7 @@ static void render_layer_toplevel(struct render_context *ctx, struct wl_list *la
 }
 
 #if HAVE_XWAYLAND
-static void render_unmanaged(struct render_context *ctx, struct wl_list *unmanaged) {
+static void render_unmanaged(struct fx_render_context *ctx, struct wl_list *unmanaged) {
 	struct render_data data = {
 		.deco_data = get_undecorated_decoration_data(),
 		.ctx = ctx,
@@ -543,7 +543,7 @@ static void render_unmanaged(struct render_context *ctx, struct wl_list *unmanag
 }
 #endif
 
-static void render_drag_icons(struct render_context *ctx, struct wl_list *drag_icons) {
+static void render_drag_icons(struct fx_render_context *ctx, struct wl_list *drag_icons) {
 	struct render_data data = {
 		.deco_data = get_undecorated_decoration_data(),
 		.ctx = ctx,
@@ -597,7 +597,7 @@ void render_output_blur(struct sway_output *output, pixman_region32_t *damage) {
 
 // _box.x and .y are expected to be layout-local
 // _box.width and .height are expected to be output-buffer-local
-void render_rect(struct render_context *ctx, const struct wlr_box *_box,
+void render_rect(struct fx_render_context *ctx, const struct wlr_box *_box,
 		float color[static 4]) {
 	struct wlr_output *wlr_output = ctx->output->wlr_output;
 
@@ -634,7 +634,7 @@ damage_finish:
 	pixman_region32_fini(&damage);
 }
 
-void render_rounded_rect(struct render_context *ctx, const struct wlr_box *_box,
+void render_rounded_rect(struct fx_render_context *ctx, const struct wlr_box *_box,
 		float color[static 4], int corner_radius) {
 	// TODO
 	render_rect(ctx, _box, color);
@@ -693,7 +693,7 @@ void premultiply_alpha(float color[4], float opacity) {
 	color[2] *= color[3];
 }
 
-static void render_view_toplevels(struct render_context *ctx,
+static void render_view_toplevels(struct fx_render_context *ctx,
 		struct sway_view *view, struct decoration_data deco_data) {
 	struct render_data data = {
 		.deco_data = deco_data,
@@ -717,7 +717,7 @@ static void render_view_toplevels(struct render_context *ctx,
 			render_surface_iterator, &data);
 }
 
-static void render_view_popups(struct render_context *ctx, struct sway_view *view,
+static void render_view_popups(struct fx_render_context *ctx, struct sway_view *view,
 		struct decoration_data deco_data) {
 	struct render_data data = {
 		.deco_data = deco_data,
@@ -727,7 +727,7 @@ static void render_view_popups(struct render_context *ctx, struct sway_view *vie
 		render_surface_iterator, &data);
 }
 
-static void render_saved_view(struct render_context *ctx, struct sway_view *view, struct decoration_data deco_data) {
+static void render_saved_view(struct fx_render_context *ctx, struct sway_view *view, struct decoration_data deco_data) {
 	struct sway_output *output = ctx->output;
 	struct wlr_output *wlr_output = output->wlr_output;
 
@@ -791,7 +791,7 @@ static void render_saved_view(struct render_context *ctx, struct sway_view *view
 /**
  * Render a view's surface, shadow, and left/bottom/right borders.
  */
-static void render_view(struct render_context *ctx, struct sway_container *con,
+static void render_view(struct fx_render_context *ctx, struct sway_container *con,
 		struct border_colors *colors, struct decoration_data deco_data) {
 	struct sway_view *view = con->view;
 	if (!wl_list_empty(&view->saved_buffers)) {
@@ -864,7 +864,7 @@ static void render_view(struct render_context *ctx, struct sway_container *con,
  * The height is: 1px border, 3px padding, font height, 3px padding, 1px border
  * The left side is: 1px border, 2px padding, title
  */
-static void render_titlebar(struct render_context *ctx, struct sway_container *con,
+static void render_titlebar(struct fx_render_context *ctx, struct sway_container *con,
 		int x, int y, int width,
 		struct border_colors *colors, struct wlr_texture *title_texture,
 		struct wlr_texture *marks_texture) {
@@ -1116,7 +1116,7 @@ static void render_titlebar(struct render_context *ctx, struct sway_container *c
 /**
  * Render the top border line for a view using "border pixel".
  */
-static void render_top_border(struct render_context *ctx, struct sway_container *con,
+static void render_top_border(struct fx_render_context *ctx, struct sway_container *con,
 		struct border_colors *colors) {
 	struct sway_container_state *state = &con->current;
 	if (!state->border_top) {
@@ -1145,7 +1145,7 @@ struct parent_data {
 	struct sway_container *active_child;
 };
 
-static void render_container(struct render_context *ctx,
+static void render_container(struct fx_render_context *ctx,
 	struct sway_container *con, bool parent_focused);
 
 // TODO: no rounding top corners when rendering with titlebar
@@ -1155,7 +1155,7 @@ static void render_container(struct render_context *ctx,
  * Wrap child views in borders and leave child containers borderless because
  * they'll apply their own borders to their children.
  */
-static void render_containers_linear(struct render_context *ctx, struct parent_data *parent) {
+static void render_containers_linear(struct fx_render_context *ctx, struct parent_data *parent) {
 	for (int i = 0; i < parent->children->length; ++i) {
 		struct sway_container *child = parent->children->items[i];
 
@@ -1232,7 +1232,7 @@ static bool container_has_focused_child(struct sway_container *con) {
 /**
  * Render a container's children using the L_TABBED layout.
  */
-static void render_containers_tabbed(struct render_context *ctx, struct parent_data *parent) {
+static void render_containers_tabbed(struct fx_render_context *ctx, struct parent_data *parent) {
 	if (!parent->children->length) {
 		return;
 	}
@@ -1330,7 +1330,7 @@ static void render_containers_tabbed(struct render_context *ctx, struct parent_d
 /**
  * Render a container's children using the L_STACKED layout.
  */
-static void render_containers_stacked(struct render_context *ctx, struct parent_data *parent) {
+static void render_containers_stacked(struct fx_render_context *ctx, struct parent_data *parent) {
 	if (!parent->children->length) {
 		return;
 	}
@@ -1405,7 +1405,7 @@ static void render_containers_stacked(struct render_context *ctx, struct parent_
 	}
 }
 
-static void render_containers(struct render_context *ctx, struct parent_data *parent) {
+static void render_containers(struct fx_render_context *ctx, struct parent_data *parent) {
 	if (config->hide_lone_tab && parent->children->length == 1) {
 		struct sway_container *child = parent->children->items[0];
 		if (child->view) {
@@ -1429,7 +1429,7 @@ static void render_containers(struct render_context *ctx, struct parent_data *pa
 	}
 }
 
-static void render_container(struct render_context *ctx,
+static void render_container(struct fx_render_context *ctx,
 		struct sway_container *con, bool focused) {
 	struct parent_data data = {
 		.layout = con->current.layout,
@@ -1446,7 +1446,7 @@ static void render_container(struct render_context *ctx,
 	render_containers(ctx, &data);
 }
 
-static void render_workspace(struct render_context *ctx,
+static void render_workspace(struct fx_render_context *ctx,
 		struct sway_workspace *ws, bool focused) {
 	struct parent_data data = {
 		.layout = ws->current.layout,
@@ -1463,7 +1463,7 @@ static void render_workspace(struct render_context *ctx,
 	render_containers(ctx, &data);
 }
 
-static void render_floating_container(struct render_context *ctx,
+static void render_floating_container(struct fx_render_context *ctx,
 		struct sway_container *con) {
 	struct sway_container_state *state = &con->current;
 	if (con->view) {
@@ -1513,7 +1513,7 @@ static void render_floating_container(struct render_context *ctx,
 	}
 }
 
-static void render_floating(struct render_context *ctx) {
+static void render_floating(struct fx_render_context *ctx) {
 	for (int i = 0; i < root->outputs->length; ++i) {
 		struct sway_output *output = root->outputs->items[i];
 		for (int j = 0; j < output->current.workspaces->length; ++j) {
@@ -1532,14 +1532,14 @@ static void render_floating(struct render_context *ctx) {
 	}
 }
 
-static void render_seatops(struct render_context *ctx) {
+static void render_seatops(struct fx_render_context *ctx) {
 	struct sway_seat *seat;
 	wl_list_for_each(seat, &server.input->seats, link) {
 		seatop_render(seat, ctx);
 	}
 }
 
-void output_render(struct render_context *ctx) {
+void output_render(struct fx_render_context *ctx) {
 	struct wlr_output *wlr_output = ctx->output->wlr_output;
 	struct sway_output *output = ctx->output;
 	const pixman_region32_t *damage = ctx->output_damage;
@@ -1780,5 +1780,5 @@ renderer_end:
 	*/
 
 	pixman_region32_fini(&transformed_damage);
-	wlr_output_add_software_cursors_to_render_pass(wlr_output, ctx->pass, damage);
+	wlr_output_add_software_cursors_to_render_pass(wlr_output, &ctx->pass->base, damage);
 }

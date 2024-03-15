@@ -31,7 +31,7 @@ struct seatop_move_tiling_event {
 	bool insert_after_target;
 };
 
-static void handle_render(struct sway_seat *seat, struct render_context *ctx) {
+static void handle_render(struct sway_seat *seat, struct fx_render_context *ctx) {
 	struct seatop_move_tiling_event *e = seat->seatop_data;
 	if (!e->threshold_reached) {
 		return;

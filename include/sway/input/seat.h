@@ -12,7 +12,7 @@
 #include "sway/input/text_input.h"
 
 struct sway_seat;
-struct render_context;
+struct fx_render_context;
 
 struct sway_seatop_impl {
 	void (*button)(struct sway_seat *seat, uint32_t time_msec,
@@ -52,7 +52,7 @@ struct sway_seatop_impl {
 			uint32_t time_msec, enum wlr_tablet_tool_tip_state state);
 	void (*end)(struct sway_seat *seat);
 	void (*unref)(struct sway_seat *seat, struct sway_container *con);
-	void (*render)(struct sway_seat *seat, struct render_context *ctx);
+	void (*render)(struct sway_seat *seat, struct fx_render_context *ctx);
 	bool allow_set_cursor;
 };
 
@@ -365,7 +365,7 @@ void seatop_unref(struct sway_seat *seat, struct sway_container *con);
  * Instructs a seatop to render anything that it needs to render
  * (eg. dropzone for move-tiling)
  */
-void seatop_render(struct sway_seat *seat, struct render_context *ctx);
+void seatop_render(struct sway_seat *seat, struct fx_render_context *ctx);
 
 bool seatop_allows_set_cursor(struct sway_seat *seat);
 
