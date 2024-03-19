@@ -647,7 +647,11 @@ static int output_repaint_timer_handler(void *data) {
 	}
 
 	struct fx_gles_render_pass *render_pass = fx_renderer_begin_buffer_pass(
-		wlr_output->renderer, buffer, wlr_output, NULL);
+		wlr_output->renderer, buffer, wlr_output,
+				&(struct wlr_buffer_pass_options) {
+					.timer = NULL,
+				}
+			);
 	if (render_pass == NULL) {
 		wlr_buffer_unlock(buffer);
 		goto out;
