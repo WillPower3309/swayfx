@@ -45,13 +45,15 @@ static void handle_render(struct sway_seat *seat, struct fx_render_context *ctx)
 		memcpy(&box, &e->drop_box, sizeof(struct wlr_box));
  		scale_box(&box, ctx->output->wlr_output->scale);
 
-		/* TODO: Render blur
+		// Render blur
 		pixman_region32_t opaque_region;
 		pixman_region32_init(&opaque_region);
-
-		render_blur(false, ctx->output, ctx->output_damage, &box, &opaque_region, &deco_data, NULL);
+		struct decoration_data deco_data = get_undecorated_decoration_data();
+		deco_data.blur = e->con->blur_enabled;
+		deco_data.corner_radius = e->con->corner_radius;
+		struct wlr_fbox src_box = {0};
+		render_blur(ctx, NULL, &src_box, &box, 0, false, &opaque_region, deco_data);
 		pixman_region32_fini(&opaque_region);
-		*/
 
 		render_rounded_rect(ctx, &box, color, e->con->corner_radius * ctx->output->wlr_output->scale);
 	}

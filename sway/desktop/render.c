@@ -171,7 +171,7 @@ damage_finish:
 	pixman_region32_fini(&damage);
 }
 
-static void render_blur(struct fx_render_context *ctx, struct wlr_texture *texture,
+void render_blur(struct fx_render_context *ctx, struct wlr_texture *texture,
 		const struct wlr_fbox *src_box, const struct wlr_box *dst_box,
 		enum wl_output_transform transform, bool optimized_blur,
 		pixman_region32_t *opaque_region, struct decoration_data deco_data) {

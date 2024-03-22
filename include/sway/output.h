@@ -9,6 +9,8 @@
 #include "sway/tree/node.h"
 #include "sway/tree/view.h"
 
+struct decoration_data get_undecorated_decoration_data();
+
 struct sway_server;
 struct sway_container;
 
@@ -200,6 +202,11 @@ void render_rect(struct fx_render_context *ctx, const struct wlr_box *_box,
 
 void render_rounded_rect(struct fx_render_context *ctx, const struct wlr_box *_box,
 		float color[static 4], int corner_radius);
+
+void render_blur(struct fx_render_context *ctx, struct wlr_texture *texture,
+		const struct wlr_fbox *src_box, const struct wlr_box *dst_box,
+		enum wl_output_transform transform, bool optimized_blur,
+		pixman_region32_t *opaque_region, struct decoration_data deco_data);
 
 void premultiply_alpha(float color[4], float opacity);
 
