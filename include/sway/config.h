@@ -15,6 +15,7 @@
 #include "stringop.h"
 #include "swaynag.h"
 #include "tree/container.h"
+#include "scenefx/types/fx/blur_data.h"
 #include "sway/input/tablet.h"
 #include "sway/tree/root.h"
 #include "wlr-layer-shell-unstable-v1-protocol.h"
@@ -473,15 +474,6 @@ enum xwayland_mode {
 	XWAYLAND_MODE_IMMEDIATE,
 };
 
-struct blur_parameters {
-	int num_passes;
-	int radius;
-	float noise;
-	float brightness;
-	float contrast;
-	float saturation;
-};
-
 /**
  * The configuration struct. The result of loading a config file.
  */
@@ -504,7 +496,7 @@ struct sway_config {
 
 	bool blur_enabled;
 	bool blur_xray;
-	struct blur_parameters blur_params;
+	struct blur_data blur_params;
 
 	bool titlebar_separator;
 	bool scratchpad_minimize;

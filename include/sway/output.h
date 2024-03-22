@@ -31,12 +31,6 @@ struct render_data {
 	struct decoration_data deco_data;
 };
 
-struct blur_stencil_data {
-	struct fx_texture *stencil_texture;
-	const struct wlr_fbox *stencil_src_box;
-	float *stencil_matrix;
-};
-
 struct sway_output_state {
 	list_t *workspaces;
 	struct sway_workspace *active_workspace;
@@ -93,7 +87,7 @@ struct sway_output_non_desktop {
 struct fx_render_context {
 	struct sway_output *output;
 	struct wlr_renderer *renderer;
-	const pixman_region32_t *output_damage;
+	pixman_region32_t *output_damage;
 
 	struct fx_gles_render_pass *pass;
 };
@@ -206,11 +200,6 @@ void render_rect(struct fx_render_context *ctx, const struct wlr_box *_box,
 
 void render_rounded_rect(struct fx_render_context *ctx, const struct wlr_box *_box,
 		float color[static 4], int corner_radius);
-
-void render_blur(bool optimized, struct sway_output *output,
-		const pixman_region32_t *output_damage, const struct wlr_box *dst_box,
-		pixman_region32_t *opaque_region, struct decoration_data *deco_data,
-		struct blur_stencil_data *stencil_data);
 
 void premultiply_alpha(float color[4], float opacity);
 

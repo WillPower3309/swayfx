@@ -1,3 +1,4 @@
+#include <scenefx/render/fx_renderer/fx_effect_framebuffers.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -346,7 +347,9 @@ static void handle_surface_commit(struct wl_listener *listener, void *data) {
 	// Rerender the static blur on change
 	if (layer->layer == ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND
 			|| layer->layer == ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM) {
-		// TODO: output->renderer->blur_buffer_dirty = true;
+		struct fx_effect_framebuffers *effect_fbos =
+			fx_effect_framebuffers_try_get(output->wlr_output);
+		effect_fbos->blur_buffer_dirty = true;
 	}
 
 	bool layer_changed = false;
@@ -437,7 +440,9 @@ static void handle_destroy(struct wl_listener *listener, void *data) {
 	// Rerender the static blur
 	if (sway_layer->layer == ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND
 			|| sway_layer->layer == ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM) {
-		// TODO: output->renderer->blur_buffer_dirty = true;
+		struct fx_effect_framebuffers *effect_fbos =
+			fx_effect_framebuffers_try_get(output->wlr_output);
+		effect_fbos->blur_buffer_dirty = true;
 	}
 
 	arrange_layers(output);
