@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include <assert.h>
 #include <scenefx/render/pass.h>
+#include <scenefx/render/fx_renderer/fx_effect_framebuffers.h>
 #include <stdlib.h>
 #include <strings.h>
 #include <time.h>
@@ -978,6 +979,11 @@ static void handle_commit(struct wl_listener *listener, void *data) {
 			WLR_OUTPUT_STATE_MODE |
 			WLR_OUTPUT_STATE_TRANSFORM |
 			WLR_OUTPUT_STATE_SCALE)) {
+		// Mark optimized blur as dirty
+		struct fx_effect_framebuffers *effect_fbos =
+			fx_effect_framebuffers_try_get(output->wlr_output);
+		effect_fbos->blur_buffer_dirty = true;
+
 		arrange_layers(output);
 		arrange_output(output);
 		transaction_commit_dirty();
