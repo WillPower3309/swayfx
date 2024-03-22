@@ -777,6 +777,7 @@ static void render_view(struct fx_render_context *ctx, struct sway_container *co
 	}
 
 	struct wlr_box box;
+	int corner_radius = deco_data.corner_radius;
 	float output_scale = ctx->output->wlr_output->scale;
 
 	// render shadow
@@ -786,8 +787,8 @@ static void render_view(struct fx_render_context *ctx, struct sway_container *co
 		box.width = state->width;
 		box.height = state->height;
 		scale_box(&box, output_scale);
-		int scaled_corner_radius = deco_data.corner_radius == 0 ?
-				0 : (deco_data.corner_radius + state->border_thickness) * output_scale;
+		int scaled_corner_radius = corner_radius == 0 ? 0 :
+				(corner_radius + state->border_thickness) * output_scale;
 		float* shadow_color = view_is_urgent(view) || state->focused ?
 				config->shadow_color : config->shadow_inactive_color;
 		render_box_shadow(ctx, &box, shadow_color, config->shadow_blur_sigma,
@@ -804,9 +805,9 @@ static void render_view(struct fx_render_context *ctx, struct sway_container *co
 		memcpy(&color, colors->child_border, sizeof(float) * 4);
 		premultiply_alpha(color, con->alpha);
 		box.x = floor(state->x);
-		box.y = floor(state->content_y);
+		box.y = floor(state->content_y) + corner_radius;
 		box.width = state->border_thickness;
-		box.height = state->content_height;
+		box.height = state->content_height - (2 * corner_radius);
 		scale_box(&box, output_scale);
 		render_rect(ctx, &box, color);
 	}
@@ -823,9 +824,9 @@ static void render_view(struct fx_render_context *ctx, struct sway_container *co
 		}
 		premultiply_alpha(color, con->alpha);
 		box.x = floor(state->content_x + state->content_width);
-		box.y = floor(state->content_y);
+		box.y = floor(state->content_y + corner_radius);
 		box.width = state->border_thickness;
-		box.height = state->content_height;
+		box.height = state->content_height - (2 * corner_radius);
 		scale_box(&box, output_scale);
 		render_rect(ctx, &box, color);
 	}
@@ -837,9 +838,9 @@ static void render_view(struct fx_render_context *ctx, struct sway_container *co
 			memcpy(&color, colors->child_border, sizeof(float) * 4);
 		}
 		premultiply_alpha(color, con->alpha);
-		box.x = floor(state->x);
+		box.x = floor(state->x) + corner_radius;
 		box.y = floor(state->content_y + state->content_height);
-		box.width = state->width;
+		box.width = state->width - (2 * corner_radius);
 		box.height = state->border_thickness;
 		scale_box(&box, output_scale);
 		render_rect(ctx, &box, color);
@@ -857,9 +858,8 @@ static void render_view(struct fx_render_context *ctx, struct sway_container *co
  * The left side is: 1px border, 2px padding, title
  */
 static void render_titlebar(struct fx_render_context *ctx, struct sway_container *con,
-		int x, int y, int width,
-		struct border_colors *colors, struct wlr_texture *title_texture,
-		struct wlr_texture *marks_texture) {
+		int x, int y, int width, struct border_colors *colors, int corner_radius,
+		struct wlr_texture *title_texture, struct wlr_texture *marks_texture) {
 	struct wlr_box box;
 	float color[4];
 	struct sway_output *output = ctx->output;
@@ -870,21 +870,23 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 	int titlebar_h_padding = config->titlebar_h_padding;
 	int titlebar_v_padding = config->titlebar_v_padding;
 	enum alignment title_align = config->title_align;
+	// value by which all heights should be adjusted to counteract removed bottom border
+	// TODO: int bottom_border_compensation = config->titlebar_separator ? 0 : titlebar_border_thickness;
 
 	// Single pixel bar above title
 	memcpy(&color, colors->border, sizeof(float) * 4);
 	premultiply_alpha(color, con->alpha);
-	box.x = x;
+	box.x = x + corner_radius;
 	box.y = y;
-	box.width = width;
+	box.width = width - (2 * corner_radius);
 	box.height = titlebar_border_thickness;
 	scale_box(&box, output_scale);
 	render_rect(ctx, &box, color);
 
 	// Single pixel bar below title
-	box.x = x;
+	box.x = x + corner_radius;
 	box.y = y + container_titlebar_height() - titlebar_border_thickness;
-	box.width = width;
+	box.width = width - (2 * corner_radius);
 	box.height = titlebar_border_thickness;
 	scale_box(&box, output_scale);
 	render_rect(ctx, &box, color);
@@ -1202,7 +1204,7 @@ static void render_containers_linear(struct fx_render_context *ctx, struct paren
 			if (has_titlebar) {
 				render_titlebar(ctx, child, floor(state->x),
 						floor(state->y), state->width, colors,
-						title_texture, marks_texture);
+						deco_data.corner_radius, title_texture, marks_texture);
 			} else if (state->border == B_PIXEL) {
 				render_top_border(ctx, child, colors);
 			}
@@ -1303,7 +1305,7 @@ static void render_containers_tabbed(struct fx_render_context *ctx, struct paren
 		} */
 
 		render_titlebar(ctx, child, x, parent->box.y, tab_width,
-		colors, title_texture, marks_texture);
+		colors, deco_data.corner_radius, title_texture, marks_texture);
 
 		if (child == current) {
 			current_colors = colors;
@@ -1380,8 +1382,8 @@ static void render_containers_stacked(struct fx_render_context *ctx, struct pare
 		}
 
 		int y = parent->box.y + titlebar_height * i;
-		render_titlebar(ctx, child, parent->box.x, y,
-				parent->box.width, colors, title_texture, marks_texture);
+		render_titlebar(ctx, child, parent->box.x, y, parent->box.width,
+				colors, deco_data.corner_radius, title_texture, marks_texture);
 
 		if (child == current) {
 			current_colors = colors;
@@ -1494,9 +1496,8 @@ static void render_floating_container(struct fx_render_context *ctx,
 		};
 		render_view(ctx, con, colors, deco_data);
 		if (has_titlebar) {
-			render_titlebar(ctx, con, floor(con->current.x),
-					floor(con->current.y), con->current.width, colors,
-					title_texture, marks_texture);
+			render_titlebar(ctx, con, floor(con->current.x), floor(con->current.y),
+					con->current.width, colors, deco_data.corner_radius, title_texture, marks_texture);
 		} else if (state->border == B_PIXEL) {
 			render_top_border(ctx, con, colors);
 		}
