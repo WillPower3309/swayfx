@@ -472,8 +472,7 @@ static void render_layer_iterator(struct sway_output *output,
 	struct decoration_data deco_data = data->deco_data;
 
 	// Ignore effects if this is a subsurface
-	// TODO: replacement for !wlr_surface_is_layer_surface(surface)
-	if (true) {
+	if (!wlr_layer_surface_v1_try_from_wlr_surface(surface)) {
 		deco_data = get_undecorated_decoration_data();
 	}
 
