@@ -171,7 +171,7 @@ damage_finish:
 	pixman_region32_fini(&damage);
 }
 
-static void render_blur(struct fx_render_context *ctx,
+static void render_blur(struct fx_render_context *ctx, struct wlr_texture *texture,
 		const struct wlr_fbox *src_box, const struct wlr_box *dst_box,
 		enum wl_output_transform transform, bool optimized_blur,
 		pixman_region32_t *opaque_region, struct decoration_data deco_data) {
@@ -202,7 +202,7 @@ static void render_blur(struct fx_render_context *ctx,
 	struct fx_render_blur_pass_options blur_options = {
 		.tex_options = {
 			.base = {
-				.texture = NULL,
+				.texture = texture,
 				.src_box = *src_box,
 				.dst_box = proj_box,
 				.transform = transform,
@@ -326,7 +326,7 @@ static void render_surface_iterator(struct sway_output *output,
 			wlr_box_transform(&monitor_box, &monitor_box,
 					wlr_output_transform_invert(wlr_output->transform), monitor_box.width, monitor_box.height);
 			bool should_optimize_blur = view ? !container_is_floating_or_child(view->container) || config->blur_xray : false;
-			render_blur(data->ctx, &src_box, &clip_box,
+			render_blur(data->ctx, texture, &src_box, &clip_box,
 					surface->current.transform, should_optimize_blur,
 					&opaque_region, deco_data);
 		}
@@ -598,9 +598,9 @@ static void render_saved_view(struct fx_render_context *ctx, struct sway_view *v
 						wlr_output_transform_invert(wlr_output->transform),
 						monitor_box.width, monitor_box.height);
 				bool should_optimize_blur = !container_is_floating_or_child(view->container) || config->blur_xray;
-				render_blur(ctx, &saved_buf->source_box, &clip_box,
-						saved_buf->transform, should_optimize_blur,
-						&opaque_region, deco_data);
+				render_blur(ctx, saved_buf->buffer->texture,
+						&saved_buf->source_box, &clip_box, saved_buf->transform,
+						should_optimize_blur, &opaque_region, deco_data);
 
 				pixman_region32_fini(&opaque_region);
 			}
