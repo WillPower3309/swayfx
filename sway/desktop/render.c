@@ -1,5 +1,4 @@
 #define _POSIX_C_SOURCE 200809L
-#include <assert.h>
 #include <scenefx/render/pass.h>
 #include <stdlib.h>
 #include <strings.h>
@@ -14,7 +13,6 @@
 #include <wlr/types/wlr_output.h>
 #include <wlr/types/wlr_compositor.h>
 #include <wlr/util/region.h>
-#include "log.h"
 #include "config.h"
 #include "sway/config.h"
 #include "sway/input/input-manager.h"
@@ -112,16 +110,6 @@ static enum wlr_scale_filter_mode get_scale_filter(struct sway_output *output) {
 	default:
 		abort(); // unreachable
 	}
-}
-
-pixman_region32_t create_damage(const struct wlr_box damage_box,
-		const pixman_region32_t *output_damage) {
-	pixman_region32_t damage;
-	pixman_region32_init(&damage);
-	pixman_region32_union_rect(&damage, &damage, damage_box.x, damage_box.y,
-		damage_box.width, damage_box.height);
-	pixman_region32_intersect(&damage, &damage, output_damage);
-	return damage;
 }
 
 struct wlr_box get_monitor_box(struct wlr_output *output) {
@@ -370,31 +358,13 @@ void render_box_shadow(struct fx_render_context *ctx, const struct wlr_box *_box
 	struct wlr_output *wlr_output = ctx->output->wlr_output;
 
 	struct wlr_box box = *_box;
-	box.x -= blur_sigma - offset_x + (ctx->output->lx * wlr_output->scale);
-	box.y -= blur_sigma - offset_y + (ctx->output->ly * wlr_output->scale);
-	box.width += 2 * blur_sigma;
-	box.height += 2 * blur_sigma;
+	box.x -= (ctx->output->lx - offset_x) * wlr_output->scale;
+	box.y -= (ctx->output->ly - offset_y) * wlr_output->scale;
 
 	pixman_region32_t damage;
 	pixman_region32_init_rect(&damage, box.x, box.y,
 		box.width, box.height);
 	pixman_region32_intersect(&damage, &damage, ctx->output_damage);
-
-	// don't damage area behind window since we dont render it anyway
-	/* TODO
-	struct wlr_box inner_box;
-	memcpy(&inner_box, _box, sizeof(struct wlr_box));
-	inner_box.x += corner_radius;
-	inner_box.y += corner_radius;
-	inner_box.width -= 2 * corner_radius;
-	inner_box.height -= 2 * corner_radius;
-	pixman_region32_t inner_damage;
-	pixman_region32_init_rect(&inner_damage, inner_box.x, inner_box.y,
-		inner_box.width, inner_box.height);
-	pixman_region32_subtract(&damage, &damage, &inner_damage);
-	pixman_region32_fini(&inner_damage);
-	*/
-
 	bool damaged = pixman_region32_not_empty(&damage);
 	if (!damaged) {
 		goto damage_finish;
@@ -403,6 +373,13 @@ void render_box_shadow(struct fx_render_context *ctx, const struct wlr_box *_box
 	transform_output_damage(&damage, wlr_output);
 	transform_output_box(&box, wlr_output);
 
+	struct fx_render_rect_options shadow_options = {
+		.base = {
+			.box = box,
+			.clip = &damage, // Render with the original extended clip region
+		},
+		.scale = wlr_output->scale,// TODO: remove?
+	};
 	struct shadow_data shadow_data = {
 		.enabled = true,
 		.color = {
@@ -413,12 +390,8 @@ void render_box_shadow(struct fx_render_context *ctx, const struct wlr_box *_box
 		},
 		.blur_sigma = blur_sigma,
 	};
-	fx_render_pass_add_box_shadow(ctx->pass, &(struct fx_render_rect_options) {
-		.base = {
-			.box = box,
-			.clip = &damage,
-		},
-	}, corner_radius, &shadow_data);
+	fx_render_pass_add_box_shadow(ctx->pass, &shadow_options, corner_radius,
+			&shadow_data);
 
 damage_finish:
 	pixman_region32_fini(&damage);
@@ -506,12 +479,8 @@ static void render_layer_iterator(struct sway_output *output,
 
 	// render shadow
 	if (deco_data.shadow && config_should_parameters_shadow()) {
-		int corner_radius = deco_data.corner_radius *= output->wlr_output->scale;
-		int offset_x = config->shadow_offset_x * output->wlr_output->scale;
-		int offset_y = config->shadow_offset_y * output->wlr_output->scale;
-		scale_box(_box, output->wlr_output->scale);
-		render_box_shadow(data->ctx, _box, config->shadow_color,
-				config->shadow_blur_sigma, corner_radius, offset_x, offset_y);
+		render_box_shadow(data->ctx, _box, config->shadow_color, config->shadow_blur_sigma,
+			deco_data.corner_radius, config->shadow_offset_x, config->shadow_offset_y);
 	}
 }
 
@@ -821,10 +790,8 @@ static void render_view(struct fx_render_context *ctx, struct sway_container *co
 				0 : (deco_data.corner_radius + state->border_thickness) * output_scale;
 		float* shadow_color = view_is_urgent(view) || state->focused ?
 				config->shadow_color : config->shadow_inactive_color;
-		int offset_x = config->shadow_offset_x * ctx->output->wlr_output->scale;
-		int offset_y = config->shadow_offset_y * ctx->output->wlr_output->scale;
 		render_box_shadow(ctx, &box, shadow_color, config->shadow_blur_sigma,
-				scaled_corner_radius, offset_x, offset_y);
+				scaled_corner_radius, config->shadow_offset_x, config->shadow_offset_y);
 	}
 
 	if (state->border == B_NONE || state->border == B_CSD) {
