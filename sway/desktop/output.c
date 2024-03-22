@@ -808,7 +808,6 @@ static void damage_surface_iterator(struct sway_output *output,
 			ceilf(output->wlr_output->scale) - surface->current.scale);
 	}
 	pixman_region32_translate(&damage, box.x, box.y);
-
 	if (wlr_damage_ring_add(&output->damage_ring, &damage)) {
 		wlr_output_schedule_frame(output->wlr_output);
 	}
@@ -938,9 +937,6 @@ static void begin_destroy(struct sway_output *output) {
 
 	transaction_commit_dirty();
 
-	int width, height;
-	wlr_output_transformed_resolution(output->wlr_output, &width, &height);
-	wlr_damage_ring_set_bounds(&output->damage_ring, width, height);
 	update_output_manager_config(server);
 }
 
