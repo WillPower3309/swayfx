@@ -358,15 +358,17 @@ void render_box_shadow(struct fx_render_context *ctx, const struct wlr_box *_box
 	struct wlr_output *wlr_output = ctx->output->wlr_output;
 
 	struct wlr_box box = *_box;
-	box.x -= (ctx->output->lx - offset_x) * wlr_output->scale;
-	box.y -= (ctx->output->ly - offset_y) * wlr_output->scale;
+	box.x -= ctx->output->lx * wlr_output->scale;
+	box.y -= ctx->output->ly * wlr_output->scale;
 
 	pixman_region32_t damage;
-	pixman_region32_init_rect(&damage, box.x - blur_sigma, box.y - blur_sigma,
-		box.width + (blur_sigma * 2), box.height + (blur_sigma * 2));
+	pixman_region32_init_rect(&damage,
+			box.x - blur_sigma + offset_x,
+			box.y - blur_sigma + offset_y,
+			box.width + blur_sigma * 2,
+			box.height + blur_sigma * 2);
 	pixman_region32_intersect(&damage, &damage, ctx->output_damage);
-	bool damaged = pixman_region32_not_empty(&damage);
-	if (!damaged) {
+	if (!pixman_region32_not_empty(&damage)) {
 		goto damage_finish;
 	}
 
@@ -382,6 +384,8 @@ void render_box_shadow(struct fx_render_context *ctx, const struct wlr_box *_box
 	};
 	struct shadow_data shadow_data = {
 		.enabled = true,
+		.offset_x = offset_x,
+		.offset_y = offset_y,
 		.color = {
 			.r = color[0],
 			.g = color[1],
