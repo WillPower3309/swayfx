@@ -362,8 +362,8 @@ void render_box_shadow(struct fx_render_context *ctx, const struct wlr_box *_box
 	box.y -= (ctx->output->ly - offset_y) * wlr_output->scale;
 
 	pixman_region32_t damage;
-	pixman_region32_init_rect(&damage, box.x, box.y,
-		box.width, box.height);
+	pixman_region32_init_rect(&damage, box.x - blur_sigma, box.y - blur_sigma,
+		box.width + (blur_sigma * 2), box.height + (blur_sigma * 2));
 	pixman_region32_intersect(&damage, &damage, ctx->output_damage);
 	bool damaged = pixman_region32_not_empty(&damage);
 	if (!damaged) {
