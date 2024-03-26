@@ -732,7 +732,7 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 	int titlebar_v_padding = config->titlebar_v_padding;
 	enum alignment title_align = config->title_align;
 	// value by which all heights should be adjusted to counteract removed bottom border
-	// TODO: int bottom_border_compensation = config->titlebar_separator ? 0 : titlebar_border_thickness;
+	int bottom_border_compensation = config->titlebar_separator ? 0 : titlebar_border_thickness;
 
 	// Single pixel bar above title
 	memcpy(&color, colors->border, sizeof(float) * 4);
@@ -745,18 +745,20 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 	render_rect(ctx, &box, color);
 
 	// Single pixel bar below title
-	box.x = x + corner_radius;
-	box.y = y + container_titlebar_height() - titlebar_border_thickness;
-	box.width = width - (2 * corner_radius);
-	box.height = titlebar_border_thickness;
-	scale_box(&box, output_scale);
-	render_rect(ctx, &box, color);
+	if (!bottom_border_compensation) {
+		box.x = x + corner_radius;
+		box.y = y + container_titlebar_height();
+		box.width = width - (2 * corner_radius);
+		box.height = titlebar_border_thickness;
+		scale_box(&box, output_scale);
+		render_rect(ctx, &box, color);
+	}
 
 	// Single pixel left edge
 	box.x = x;
 	box.y = y + titlebar_border_thickness;
 	box.width = titlebar_border_thickness;
-	box.height = container_titlebar_height() - titlebar_border_thickness * 2;
+	box.height = container_titlebar_height() - titlebar_border_thickness * 2 + bottom_border_compensation;
 	scale_box(&box, output_scale);
 	render_rect(ctx, &box, color);
 
@@ -764,7 +766,7 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 	box.x = x + width - titlebar_border_thickness;
 	box.y = y + titlebar_border_thickness;
 	box.width = titlebar_border_thickness;
-	box.height = container_titlebar_height() - titlebar_border_thickness * 2;
+	box.height = container_titlebar_height() - titlebar_border_thickness * 2 + bottom_border_compensation;
 	scale_box(&box, output_scale);
 	render_rect(ctx, &box, color);
 
@@ -829,7 +831,7 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 
 		// Padding below
 		box.y += ob_padding_above + clip_box.height;
-		box.height = ob_padding_below;
+		box.height = ob_padding_below + bottom_border_compensation;
 		render_rect(ctx, &box, color);
 	}
 
@@ -901,7 +903,7 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 
 		// Padding below
 		box.y += ob_padding_above + clip_box.height;
-		box.height = ob_padding_below;
+		box.height = ob_padding_below + bottom_border_compensation;
 		render_rect(ctx, &box, color);
 	}
 
@@ -935,7 +937,7 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 	if (box.width > 0) {
 		box.x = ob_left_x + ob_left_width + round(output_x * output_scale);
 		box.y = roundf(bg_y * output_scale);
-		box.height = ob_bg_height;
+		box.height = ob_bg_height + bottom_border_compensation;
 		render_rect(ctx, &box, color);
 	}
 
@@ -944,7 +946,7 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 	box.y = y + titlebar_border_thickness;
 	box.width = titlebar_h_padding - titlebar_border_thickness;
 	box.height = (titlebar_v_padding - titlebar_border_thickness) * 2 +
-		config->font_height;
+		config->font_height + bottom_border_compensation;
 	scale_box(&box, output_scale);
 	int left_x = ob_left_x + round(output_x * output_scale);
 	if (box.x + box.width < left_x) {
@@ -957,7 +959,7 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 	box.y = y + titlebar_border_thickness;
 	box.width = titlebar_h_padding - titlebar_border_thickness;
 	box.height = (titlebar_v_padding - titlebar_border_thickness) * 2 +
-		config->font_height;
+		config->font_height + bottom_border_compensation;
 	scale_box(&box, output_scale);
 	int right_rx = ob_right_x + ob_right_width + round(output_x * output_scale);
 	if (right_rx < box.x) {
