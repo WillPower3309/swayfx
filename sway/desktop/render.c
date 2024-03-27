@@ -16,7 +16,6 @@
 #include <wlr/types/wlr_compositor.h>
 #include <wlr/util/region.h>
 #include "config.h"
-#include "render/fx_renderer/fx_renderer.h" // TODO: Expose fx_renderer?
 #include "sway/config.h"
 #include "sway/input/input-manager.h"
 #include "sway/input/seat.h"
