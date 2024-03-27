@@ -1,10 +1,13 @@
 #ifndef _SWAYNAG_TYPES_H
 #define _SWAYNAG_TYPES_H
 
+#include <stdint.h>
+#include <pango/pangocairo.h>
+#include "list.h"
+
 struct swaynag_type {
 	char *name;
 
-	char *font; // Used for debugging.
 	PangoFontDescription *font_description;
 	char *output;
 	uint32_t anchors;

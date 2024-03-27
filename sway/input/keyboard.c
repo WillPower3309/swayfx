@@ -1,10 +1,9 @@
 #include <assert.h>
 #include <limits.h>
 #include <strings.h>
+#include <wlr/config.h>
 #include <wlr/backend/multi.h>
-#include <wlr/backend/session.h>
 #include <wlr/interfaces/wlr_keyboard.h>
-#include <wlr/types/wlr_idle.h>
 #include <wlr/types/wlr_keyboard.h>
 #include <wlr/types/wlr_keyboard_group.h>
 #include <xkbcommon/xkbcommon-names.h>
@@ -15,6 +14,10 @@
 #include "sway/input/cursor.h"
 #include "sway/ipc-server.h"
 #include "log.h"
+
+#if WLR_HAS_SESSION
+#include <wlr/backend/session.h>
+#endif
 
 static struct modifier_key {
 	char *name;
@@ -264,14 +267,12 @@ static bool keyboard_execute_compositor_binding(struct sway_keyboard *keyboard,
 		xkb_keysym_t keysym = pressed_keysyms[i];
 		if (keysym >= XKB_KEY_XF86Switch_VT_1 &&
 				keysym <= XKB_KEY_XF86Switch_VT_12) {
-			if (wlr_backend_is_multi(server.backend)) {
-				struct wlr_session *session =
-					wlr_backend_get_session(server.backend);
-				if (session) {
-					unsigned vt = keysym - XKB_KEY_XF86Switch_VT_1 + 1;
-					wlr_session_change_vt(session, vt);
-				}
+#if WLR_HAS_SESSION
+			if (server.session) {
+				unsigned vt = keysym - XKB_KEY_XF86Switch_VT_1 + 1;
+				wlr_session_change_vt(server.session, vt);
 			}
+#endif
 			return true;
 		}
 	}
@@ -715,23 +716,11 @@ struct sway_keyboard *sway_keyboard_create(struct sway_seat *seat,
 
 static void handle_xkb_context_log(struct xkb_context *context,
 		enum xkb_log_level level, const char *format, va_list args) {
-	va_list args_copy;
-	va_copy(args_copy, args);
-	size_t length = vsnprintf(NULL, 0, format, args_copy) + 1;
-	va_end(args_copy);
+	char *error = vformat_str(format, args);
 
-	char *error = malloc(length);
-	if (!error) {
-		sway_log(SWAY_ERROR, "Failed to allocate libxkbcommon log message");
-		return;
-	}
-
-	va_copy(args_copy, args);
-	vsnprintf(error, length, format, args_copy);
-	va_end(args_copy);
-
-	if (error[length - 2] == '\n') {
-		error[length - 2] = '\0';
+	size_t len = strlen(error);
+	if (error[len - 1] == '\n') {
+		error[len - 1] = '\0';
 	}
 
 	sway_log_importance_t importance = SWAY_DEBUG;
@@ -752,7 +741,7 @@ static void handle_xkb_context_log(struct xkb_context *context,
 
 struct xkb_keymap *sway_keyboard_compile_keymap(struct input_config *ic,
 		char **error) {
-	struct xkb_context *context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
+	struct xkb_context *context = xkb_context_new(XKB_CONTEXT_NO_SECURE_GETENV);
 	if (!sway_assert(context, "cannot create XKB context")) {
 		return NULL;
 	}
@@ -766,13 +755,8 @@ struct xkb_keymap *sway_keyboard_compile_keymap(struct input_config *ic,
 		if (!keymap_file) {
 			sway_log_errno(SWAY_ERROR, "cannot read xkb file %s", ic->xkb_file);
 			if (error) {
-				size_t len = snprintf(NULL, 0, "cannot read xkb file %s: %s",
-						ic->xkb_file, strerror(errno)) + 1;
-				*error = malloc(len);
-				if (*error) {
-					snprintf(*error, len, "cannot read xkb_file %s: %s",
-							ic->xkb_file, strerror(errno));
-				}
+				*error = format_str("cannot read xkb file %s: %s",
+					ic->xkb_file, strerror(errno));
 			}
 			goto cleanup;
 		}

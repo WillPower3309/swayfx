@@ -393,8 +393,8 @@ runtime.
 		for_window <criteria> move container to output <output>
 
 *bindsym* [--whole-window] [--border] [--exclude-titlebar] [--release] [--locked] \
-[--to-code] [--input-device=<device>] [--no-warn] [--no-repeat] [Group<1-4>+]<key combo> \
-<command>
+[--to-code] [--input-device=<device>] [--no-warn] [--no-repeat] [--inhibited] \
+[Group<1-4>+]<key combo> <command>
 	Binds _key combo_ to execute the sway command _command_ when pressed. You
 	may use XKB key names here (*wev*(1) is a good tool for discovering these).
 	With the flag _--release_, the command is executed when the key combo is
@@ -458,7 +458,8 @@ runtime.
 ```
 
 	*bindcode* [--whole-window] [--border] [--exclude-titlebar] [--release] \
-[--locked] [--input-device=<device>] [--no-warn] [Group<1-4>+]<code> <command>
+[--locked] [--input-device=<device>] [--no-warn] [--no-repeat] [--inhibited] \
+[Group<1-4>+]<code> <command>
 	is also available for binding with key/button codes instead of key/button names.
 
 *bindswitch* [--locked] [--no-warn] [--reload] <switch>:<state> <command>
@@ -724,7 +725,8 @@ The default colors are:
 	while 1.1 (110%) is the default value.
 
 *default_border* normal|none|pixel [<n>]
-	Set default border style for new tiled windows.
+	Set default border style for new tiled windows. Config reload won't affect
+	existing windows, only newly created ones after the reload.
 
 *default_floating_border* normal|none|pixel [<n>]
 	Set default border style for new floating windows. This only applies to
@@ -908,6 +910,10 @@ The default colors are:
 	dialog will not be rendered. If _leave_fullscreen_, the view will exit
 	fullscreen mode and the dialog will be rendered.
 
+*primary_selection* enabled|disabled
+	Enable or disable the primary selection clipboard. May only be configured
+	at launch. Default is _enabled_.
+
 *set* $<name> <value>
 	Sets variable $_name_ to _value_. You can use the new variable in the
 	arguments of future commands. When the variable is used, it can be escaped
@@ -1062,6 +1068,9 @@ You may like to use swaymsg -t get_tree for finding the values of these
 properties in practice for your applications.
 
 The following attributes may be matched with:
+
+*all*
+	Matches all windows.
 
 *app_id*
 	Compare value against the app id. Can be a regular expression. If value is

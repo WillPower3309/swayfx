@@ -2,7 +2,7 @@
 #define _SWAY_VIEW_H
 #include <wayland-server-core.h>
 #include <wlr/types/wlr_compositor.h>
-#include "config.h"
+#include "sway/config.h"
 #if HAVE_XWAYLAND
 #include <wlr/xwayland.h>
 #endif
@@ -162,6 +162,8 @@ struct sway_xwayland_view {
 	struct wl_listener set_window_type;
 	struct wl_listener set_hints;
 	struct wl_listener set_decorations;
+	struct wl_listener associate;
+	struct wl_listener dissociate;
 	struct wl_listener map;
 	struct wl_listener unmap;
 	struct wl_listener destroy;
@@ -179,6 +181,8 @@ struct sway_xwayland_unmanaged {
 	struct wl_listener request_fullscreen;
 	struct wl_listener commit;
 	struct wl_listener set_geometry;
+	struct wl_listener associate;
+	struct wl_listener dissociate;
 	struct wl_listener map;
 	struct wl_listener unmap;
 	struct wl_listener destroy;
@@ -273,7 +277,12 @@ void view_set_activated(struct sway_view *view, bool activated);
 /**
  * Called when the view requests to be focused.
  */
-void view_request_activate(struct sway_view *view);
+void view_request_activate(struct sway_view *view, struct sway_seat *seat);
+
+/*
+ * Called when the view requests urgent state
+ */
+void view_request_urgent(struct sway_view *view);
 
 /**
  * If possible, instructs the client to change their decoration mode.

@@ -56,7 +56,6 @@ struct ipc_client {
 	enum ipc_command_type pending_type;
 };
 
-struct sockaddr_un *ipc_user_sockaddr(void);
 int ipc_handle_connection(int fd, uint32_t mask, void *data);
 int ipc_client_handle_readable(int client_fd, uint32_t mask, void *data);
 int ipc_client_handle_writable(int client_fd, uint32_t mask, void *data);
@@ -509,6 +508,20 @@ void ipc_event_input(const char *change, struct sway_input_device *device) {
 	json_object_put(json);
 }
 
+void ipc_event_output(void) {
+	if (!ipc_has_event_listeners(IPC_EVENT_OUTPUT)) {
+		return;
+	}
+	sway_log(SWAY_DEBUG, "Sending output event");
+
+	json_object *json = json_object_new_object();
+	json_object_object_add(json, "change", json_object_new_string("unspecified"));
+
+	const char *json_string = json_object_to_json_string(json);
+	ipc_send_event(json_string, IPC_EVENT_OUTPUT);
+	json_object_put(json);
+}
+
 int ipc_client_handle_writable(int client_fd, uint32_t mask, void *data) {
 	struct ipc_client *client = data;
 
@@ -726,6 +739,8 @@ void ipc_client_handle_command(struct ipc_client *client, uint32_t payload_lengt
 			const char *event_type = json_object_get_string(json_object_array_get_idx(request, i));
 			if (strcmp(event_type, "workspace") == 0) {
 				client->subscribed_events |= event_mask(IPC_EVENT_WORKSPACE);
+			} else if (strcmp(event_type, "output") == 0) {
+				client->subscribed_events |= event_mask(IPC_EVENT_OUTPUT);
 			} else if (strcmp(event_type, "barconfig_update") == 0) {
 				client->subscribed_events |= event_mask(IPC_EVENT_BARCONFIG_UPDATE);
 			} else if (strcmp(event_type, "bar_state_update") == 0) {
@@ -910,7 +925,6 @@ void ipc_client_handle_command(struct ipc_client *client, uint32_t payload_lengt
 
 exit_cleanup:
 	free(buf);
-	return;
 }
 
 bool ipc_send_reply(struct ipc_client *client, enum ipc_command_type payload_type,
