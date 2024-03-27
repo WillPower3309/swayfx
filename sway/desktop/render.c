@@ -746,9 +746,9 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 
 	// Single pixel bar below title
 	if (!bottom_border_compensation) {
-		box.x = x + corner_radius;
-		box.y = y + container_titlebar_height();
-		box.width = width - (2 * corner_radius);
+		box.x = x;
+		box.y = y + container_titlebar_height() - titlebar_border_thickness;
+		box.width = width;
 		box.height = titlebar_border_thickness;
 		scale_box(&box, output_scale);
 		render_rect(ctx, &box, color);
