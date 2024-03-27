@@ -974,7 +974,7 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
  * Render the top border line for a view using "border pixel".
  */
 static void render_top_border(struct fx_render_context *ctx, struct sway_container *con,
-		struct border_colors *colors) {
+		struct border_colors *colors, int corner_radius) {
 	struct sway_container_state *state = &con->current;
 	if (!state->border_top) {
 		return;
@@ -986,9 +986,9 @@ static void render_top_border(struct fx_render_context *ctx, struct sway_contain
 	// Child border - top edge
 	memcpy(&color, colors->child_border, sizeof(float) * 4);
 	premultiply_alpha(color, con->alpha);
-	box.x = floor(state->x);
+	box.x = floor(state->x) + corner_radius;
 	box.y = floor(state->y);
-	box.width = state->width;
+	box.width = state->width - (2 * corner_radius);
 	box.height = state->border_thickness;
 	scale_box(&box, output_scale);
 	render_rect(ctx, &box, color);
@@ -1069,7 +1069,7 @@ static void render_containers_linear(struct fx_render_context *ctx, struct paren
 						floor(state->y), state->width, colors,
 						deco_data.corner_radius, title_texture, marks_texture);
 			} else if (state->border == B_PIXEL) {
-				render_top_border(ctx, child, colors);
+				render_top_border(ctx, child, colors, deco_data.corner_radius);
 			}
 		} else {
 			render_container(ctx, child,
@@ -1362,7 +1362,7 @@ static void render_floating_container(struct fx_render_context *ctx,
 			render_titlebar(ctx, con, floor(con->current.x), floor(con->current.y),
 					con->current.width, colors, deco_data.corner_radius, title_texture, marks_texture);
 		} else if (state->border == B_PIXEL) {
-			render_top_border(ctx, con, colors);
+			render_top_border(ctx, con, colors, deco_data.corner_radius);
 		}
 	} else {
 		render_container(ctx, con, state->focused);
