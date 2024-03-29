@@ -279,6 +279,43 @@ damage_finish:
 	pixman_region32_fini(&damage);
 }
 
+// _box.x and .y are expected to be layout-local
+// _box.width and .height are expected to be output-buffer-local
+void render_rounded_border_corner(struct fx_render_context *ctx, const struct wlr_box *_box,
+			const float color[static 4], int corner_radius, int border_thickness,
+			enum corner_location location) {
+	struct wlr_output *wlr_output = ctx->output->wlr_output;
+
+	struct wlr_box box = *_box;
+	box.x -= ctx->output->lx * wlr_output->scale;
+	box.y -= ctx->output->ly * wlr_output->scale;
+
+	pixman_region32_t damage;
+	pixman_region32_init_rect(&damage, box.x, box.y, box.width, box.height);
+	pixman_region32_intersect(&damage, &damage, ctx->output_damage);
+	if (!pixman_region32_not_empty(&damage)) {
+		goto damage_finish;
+	}
+
+	transform_output_damage(&damage, wlr_output);
+	transform_output_box(&box, wlr_output);
+
+	struct fx_render_rounded_border_corner_options border_corner_options = {
+		.base = {
+			.box = box,
+			.clip = &damage, // Render with the original extended clip region
+		},
+		.scale = wlr_output->scale,// TODO: remove?
+		.corner_radius = corner_radius,
+		.border_thickness = border_thickness,
+		.corner_location = location
+	};
+	fx_render_pass_add_rounded_border_corner(ctx->pass, &border_corner_options);
+
+damage_finish:
+	pixman_region32_fini(&damage);
+}
+
 static void render_surface_iterator(struct sway_output *output,
 		struct sway_view *view, struct wlr_surface *surface,
 		struct wlr_box *_box, void *_data) {
@@ -447,52 +484,6 @@ void render_rounded_rect(struct fx_render_context *ctx, const struct wlr_box *_b
 	render_rect(ctx, _box, color);
 }
 
-// _box.x and .y are expected to be layout-local
-// _box.width and .height are expected to be output-buffer-local
-/* TODO
-void render_border_corner(struct sway_output *output, pixman_region32_t *output_damage,
-		const struct wlr_box *_box, const float color[static 4], int corner_radius,
-		int border_thickness, enum corner_location corner_location) {
-	struct wlr_output *wlr_output = output->wlr_output;
-	struct fx_renderer *renderer = output->renderer;
-
-	struct wlr_box box;
-	memcpy(&box, _box, sizeof(struct wlr_box));
-	box.x -= output->lx * wlr_output->scale;
-	box.y -= output->ly * wlr_output->scale;
-
-	pixman_region32_t damage = create_damage(box, output_damage);
-	bool damaged = pixman_region32_not_empty(&damage);
-	if (!damaged) {
-		goto damage_finish;
-	}
-
-	float matrix[9];
-	wlr_matrix_project_box(matrix, &box, WL_OUTPUT_TRANSFORM_NORMAL, 0,
-			wlr_output->transform_matrix);
-
-	enum wl_output_transform transform = wlr_output_transform_invert(wlr_output->transform);
-
-	// ensure the box is updated as per the output orientation
-	struct wlr_box transformed_box;
-	int width, height;
-	wlr_output_transformed_resolution(wlr_output, &width, &height);
-	wlr_box_transform(&transformed_box, &box, transform, width, height);
-
-	corner_location = get_rotated_corner(corner_location, transform);
-
-	int nrects;
-	pixman_box32_t *rects = pixman_region32_rectangles(&damage, &nrects);
-	for (int i = 0; i < nrects; ++i) {
-		scissor_output(wlr_output, &rects[i]);
-		fx_render_border_corner(renderer, &transformed_box, color, matrix,
-				corner_location, corner_radius, border_thickness);
-	}
-
-damage_finish:
-	pixman_region32_fini(&damage);
-} */
-
 void premultiply_alpha(float color[4], float opacity) {
 	color[3] *= opacity;
 	color[0] *= color[3];
@@ -616,7 +607,6 @@ static void render_saved_view(struct fx_render_context *ctx, struct sway_view *v
 	}
 }
 
-// TODO: rounded corners
 /**
  * Render a view's surface, shadow, and left/bottom/right borders.
  */
@@ -704,6 +694,28 @@ static void render_view(struct fx_render_context *ctx, struct sway_container *co
 		box.height = state->border_thickness;
 		scale_box(&box, output_scale);
 		render_rect(ctx, &box, color);
+
+		if (corner_radius) {
+			int size = 2 * (corner_radius + state->border_thickness);
+			box.y = floor(state->y + state->height - size);
+			box.width = size;
+			box.height = size;
+
+			int scaled_corner_radius = corner_radius * output_scale;
+			int scaled_border_thickness = state->border_thickness * output_scale;
+			if (state->border_left) {
+				box.x = floor(state->x);
+				scale_box(&box, output_scale);
+				render_rounded_border_corner(ctx, &box, color, scaled_corner_radius,
+					scaled_border_thickness, BOTTOM_LEFT);
+			}
+			if (state->border_right) {
+				box.x = floor(state->x + state->width - size);
+				scale_box(&box, output_scale);
+				render_rounded_border_corner(ctx, &box, color, scaled_corner_radius,
+					scaled_border_thickness, BOTTOM_RIGHT);
+			}
+		}
 	}
 }
 
