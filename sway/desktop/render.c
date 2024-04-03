@@ -163,7 +163,8 @@ static void render_texture(struct fx_render_context *ctx, struct wlr_texture *te
 			.clip = &damage,
 			.filter_mode = get_scale_filter(output),
 		},
-		.corner_radius = deco_data.corner_radius
+		.corner_radius = deco_data.corner_radius,
+		.has_titlebar = deco_data.has_titlebar
 	});
 
 damage_finish:
@@ -661,9 +662,13 @@ static void render_view(struct fx_render_context *ctx, struct sway_container *co
 		memcpy(&color, colors->child_border, sizeof(float) * 4);
 		premultiply_alpha(color, con->alpha);
 		box.x = floor(state->x);
-		box.y = floor(state->content_y) + corner_radius;
+		box.y = floor(state->content_y);
 		box.width = state->border_thickness;
-		box.height = state->content_height - (2 * corner_radius);
+		box.height = state->content_height - corner_radius;
+		if (corner_radius && !deco_data.has_titlebar) {
+			box.y += corner_radius;
+			box.height -= corner_radius;
+		}
 		scale_box(&box, output_scale);
 		render_rect(ctx, &box, color);
 	}
@@ -680,9 +685,13 @@ static void render_view(struct fx_render_context *ctx, struct sway_container *co
 		}
 		premultiply_alpha(color, con->alpha);
 		box.x = floor(state->content_x + state->content_width);
-		box.y = floor(state->content_y + corner_radius);
+		box.y = floor(state->content_y);
 		box.width = state->border_thickness;
-		box.height = state->content_height - (2 * corner_radius);
+		box.height = state->content_height - corner_radius;
+		if (corner_radius && !deco_data.has_titlebar) {
+			box.y += corner_radius;
+			box.height -= corner_radius;
+		}
 		scale_box(&box, output_scale);
 		render_rect(ctx, &box, color);
 	}
@@ -986,7 +995,6 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 	render_rect(ctx, &box, color);
 }
 
-// TODO: rounded corners
 /**
  * Render the top border line for a view using "border pixel".
  */
