@@ -303,6 +303,12 @@ void render_rounded_border_corner(struct fx_render_context *ctx, const struct wl
 	struct fx_render_rounded_border_corner_options border_corner_options = {
 		.base = {
 			.box = box,
+			.color = {
+				.r = color[0],
+				.g = color[1],
+				.b = color[2],
+				.a = color[3],
+			},
 			.clip = &damage, // Render with the original extended clip region
 		},
 		.scale = wlr_output->scale,// TODO: remove?
@@ -1003,6 +1009,28 @@ static void render_top_border(struct fx_render_context *ctx, struct sway_contain
 	box.height = state->border_thickness;
 	scale_box(&box, output_scale);
 	render_rect(ctx, &box, color);
+
+	if (corner_radius) {
+		int size = 2 * (corner_radius + state->border_thickness);
+		box.y = floor(state->y);
+		box.width = size;
+		box.height = size;
+
+		int scaled_corner_radius = corner_radius * output_scale;
+		int scaled_border_thickness = state->border_thickness * output_scale;
+		if (state->border_left) {
+			box.x = floor(state->x);
+			scale_box(&box, output_scale);
+			render_rounded_border_corner(ctx, &box, color, scaled_corner_radius,
+				scaled_border_thickness, TOP_LEFT);
+		}
+		if (state->border_right) {
+			box.x = floor(state->x + state->width - size);
+			scale_box(&box, output_scale);
+			render_rounded_border_corner(ctx, &box, color, scaled_corner_radius,
+				scaled_border_thickness, TOP_RIGHT);
+		}
+	}
 }
 
 struct parent_data {
