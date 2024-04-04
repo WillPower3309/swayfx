@@ -486,9 +486,47 @@ damage_finish:
 }
 
 void render_rounded_rect(struct fx_render_context *ctx, const struct wlr_box *_box,
-		float color[static 4], int corner_radius) {
-	// TODO
-	render_rect(ctx, _box, color);
+		float color[static 4], int corner_radius, enum corner_location corner_location) {
+	if (!corner_radius) {
+		render_rect(ctx, _box, color);
+		return;
+	}
+
+	struct wlr_output *wlr_output = ctx->output->wlr_output;
+
+	struct wlr_box box = *_box;
+	box.x -= ctx->output->lx * wlr_output->scale;
+	box.y -= ctx->output->ly * wlr_output->scale;
+
+	pixman_region32_t damage;
+	pixman_region32_init_rect(&damage, box.x, box.y,
+		box.width, box.height);
+	pixman_region32_intersect(&damage, &damage, ctx->output_damage);
+	bool damaged = pixman_region32_not_empty(&damage);
+	if (!damaged) {
+		goto damage_finish;
+	}
+
+	transform_output_damage(&damage, wlr_output);
+	transform_output_box(&box, wlr_output);
+
+	fx_render_pass_add_rounded_rect(ctx->pass, &(struct fx_render_rounded_rect_options){
+		.base = {
+			.box = box,
+			.color = {
+				.r = color[0],
+				.g = color[1],
+				.b = color[2],
+				.a = color[3],
+			},
+			.clip = &damage,
+		},
+		.corner_radius = corner_radius,
+		.corner_location = corner_location
+	});
+
+damage_finish:
+	pixman_region32_fini(&damage);
 }
 
 void premultiply_alpha(float color[4], float opacity) {
@@ -978,7 +1016,11 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 	if (box.x + box.width < left_x) {
 		box.width += left_x - box.x - box.width;
 	}
-	render_rect(ctx, &box, color);
+	if (corner_radius) {
+		render_rounded_rect(ctx, &box, color, corner_radius, TOP_LEFT);
+	} else {
+		render_rect(ctx, &box, color);
+	}
 
 	// Padding on right side
 	box.x = x + width - titlebar_h_padding;
@@ -992,7 +1034,11 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 		box.width += box.x - right_rx;
 		box.x = right_rx;
 	}
-	render_rect(ctx, &box, color);
+	if (corner_radius) {
+		render_rounded_rect(ctx, &box, color, corner_radius, TOP_RIGHT);
+	} else {
+		render_rect(ctx, &box, color);
+	}
 }
 
 /**

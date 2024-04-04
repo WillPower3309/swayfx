@@ -6,6 +6,7 @@
 #include <wlr/types/wlr_damage_ring.h>
 #include <wlr/types/wlr_output.h>
 #include "config.h"
+#include "scenefx/render/pass.h"
 #include "sway/tree/node.h"
 #include "sway/tree/view.h"
 
@@ -201,7 +202,7 @@ void render_rect(struct fx_render_context *ctx, const struct wlr_box *_box,
 		float color[static 4]);
 
 void render_rounded_rect(struct fx_render_context *ctx, const struct wlr_box *_box,
-		float color[static 4], int corner_radius);
+		float color[static 4], int corner_radius, enum corner_location corner_location);
 
 void render_blur(struct fx_render_context *ctx, struct wlr_texture *texture,
 		const struct wlr_fbox *src_box, const struct wlr_box *dst_box,

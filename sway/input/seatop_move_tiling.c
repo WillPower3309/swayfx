@@ -55,7 +55,7 @@ static void handle_render(struct sway_seat *seat, struct fx_render_context *ctx)
 		render_blur(ctx, NULL, &src_box, &box, 0, false, &opaque_region, deco_data);
 		pixman_region32_fini(&opaque_region);
 
-		render_rounded_rect(ctx, &box, color, e->con->corner_radius * ctx->output->wlr_output->scale);
+		render_rounded_rect(ctx, &box, color, e->con->corner_radius * ctx->output->wlr_output->scale, ALL);
 	}
 }
 
