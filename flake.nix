@@ -9,27 +9,29 @@
         "aarch64-linux"
         "x86_64-linux"
       ];
+      mkPackage = pkgs: {
+        swayfx-unwrapped =
+          (pkgs.swayfx-unwrapped.override {
+            # When the sway 1.9 rebase is finished, this will need to be overridden.
+            # wlroots_0_16 = pkgs.wlroots_0_16;
+          }).overrideAttrs
+            (old: {
+              version = "0.3.2-git";
+              src = pkgs.lib.cleanSource ./.;
+            });
+      };
     in
     {
-      overlays.default = _: prev: { swayfx-unwrapped = self.packages.${prev.system}.swayfx-unwrapped; };
+      overlays = rec {
+        default = override;
+        # Override onto the input nixpkgs
+        override = _: prev: mkPackage prev;
+        # Insert using the locked nixpkgs
+        insert = _: prev: mkPackage (pkgsFor prev.system);
+      };
 
       packages = nixpkgs.lib.genAttrs targetSystems (
-        system:
-        let
-          pkgs = pkgsFor system;
-        in
-        rec {
-          swayfx-unwrapped =
-            (pkgs.swayfx-unwrapped.override {
-              # When the sway 1.9 rebase is finished, this will need to be overridden.
-              # wlroots_0_16 = pkgs.wlroots_0_16;
-            }).overrideAttrs
-              (old: {
-                version = "0.3.2-git";
-                src = pkgs.lib.cleanSource ./.;
-              });
-          default = swayfx-unwrapped;
-        }
+        system: (mkPackage (pkgsFor system) // { default = self.packages.${system}.swayfx-unwrapped; })
       );
 
       devShells = nixpkgs.lib.genAttrs targetSystems (
