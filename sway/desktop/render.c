@@ -164,7 +164,14 @@ static void render_texture(struct fx_render_context *ctx, struct wlr_texture *te
 			.filter_mode = get_scale_filter(output),
 		},
 		.corner_radius = deco_data.corner_radius,
-		.has_titlebar = deco_data.has_titlebar
+		.has_titlebar = deco_data.has_titlebar,
+		.dim = deco_data.dim,
+		.dim_color = {
+			.r = deco_data.dim_color[0],
+			.g = deco_data.dim_color[1],
+			.b = deco_data.dim_color[2],
+			.a = deco_data.dim_color[3],
+		}
 	});
 
 damage_finish:
