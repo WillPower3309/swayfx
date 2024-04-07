@@ -801,9 +801,9 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 	// Single pixel bar above title
 	memcpy(&color, colors->border, sizeof(float) * 4);
 	premultiply_alpha(color, con->alpha);
-	box.x = x + corner_radius;
+	box.x = x;
 	box.y = y;
-	box.width = width - (2 * corner_radius);
+	box.width = width;
 	box.height = titlebar_border_thickness;
 	if (corner_radius) {
 		if (corner_location != TOP_RIGHT) {
@@ -814,9 +814,6 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 		} else {
 			box.width -= corner_radius;
 		}
-	} else {
-		box.x += titlebar_border_thickness;
-		box.width -= titlebar_border_thickness * 2;
 	}
 	scale_box(&box, output_scale);
 	render_rect(ctx, &box, color);
