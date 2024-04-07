@@ -1059,7 +1059,7 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 	if (box.x + box.width < left_x) {
 		box.width += left_x - box.x - box.width;
 	}
-	if (corner_radius) {
+	if (corner_radius && (corner_location == TOP_LEFT || corner_location == ALL)) {
 		render_rounded_rect(ctx, &box, color, corner_radius, TOP_LEFT);
 	} else {
 		render_rect(ctx, &box, color);
@@ -1077,7 +1077,7 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 		box.width += box.x - right_rx;
 		box.x = right_rx;
 	}
-	if (corner_radius) {
+	if (corner_radius && (corner_location == TOP_RIGHT || corner_location == ALL)) {
 		render_rounded_rect(ctx, &box, color, corner_radius, TOP_RIGHT);
 	} else {
 		render_rect(ctx, &box, color);
