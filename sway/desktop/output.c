@@ -865,14 +865,12 @@ static void damage_child_views_iterator(struct sway_container *con,
 
 void output_damage_whole_container(struct sway_output *output,
 		struct sway_container *con) {
-	int shadow_sigma = con->shadow_enabled ? config->shadow_blur_sigma : 0;
-
 	// Pad the box by 1px, because the width is a double and might be a fraction
 	struct wlr_box box = {
-		.x = con->current.x - output->lx - 1 - shadow_sigma + config->shadow_offset_x,
-		.y = con->current.y - output->ly - 1 - shadow_sigma + config->shadow_offset_y,
-		.width = con->current.width + 2 + shadow_sigma * 2,
-		.height = con->current.height + 2 + shadow_sigma * 2,
+		.x = con->current.x - output->lx - 1,
+		.y = con->current.y - output->ly - 1,
+		.width = con->current.width + 2,
+		.height = con->current.height + 2,
 	};
 	scale_box(&box, output->wlr_output->scale);
 	if (wlr_damage_ring_add_box(&output->damage_ring, &box)) {
@@ -884,6 +882,27 @@ void output_damage_whole_container(struct sway_output *output,
 	} else {
 		container_for_each_child(con, damage_child_views_iterator, output);
 	}
+
+	// Shadow damage
+	if (con->shadow_enabled && config_should_parameters_shadow()) {
+		pixman_region32_t container;
+		pixman_region32_init_rect(&container, box.x, box.y, box.width, box.height);
+
+		pixman_region32_t shadow;
+		pixman_region32_init(&shadow);
+		pixman_region32_copy(&shadow, &container);
+		wlr_region_expand(&shadow, &shadow, config->shadow_blur_sigma);
+		pixman_region32_translate(&shadow, config->shadow_offset_x, config->shadow_offset_y);
+		pixman_region32_subtract(&shadow, &shadow, &container);
+
+		if (wlr_damage_ring_add(&output->damage_ring, &shadow)) {
+			wlr_output_schedule_frame(output->wlr_output);
+		}
+
+		pixman_region32_fini(&shadow);
+		pixman_region32_fini(&container);
+	}
+
 }
 
 static void update_output_manager_config(struct sway_server *server) {

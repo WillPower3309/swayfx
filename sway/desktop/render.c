@@ -716,7 +716,7 @@ static void render_view(struct fx_render_context *ctx, struct sway_container *co
 	float output_scale = ctx->output->wlr_output->scale;
 
 	// render shadow
-	if (con->shadow_enabled && config->shadow_blur_sigma > 0 && config->shadow_color[3] > 0.0) {
+	if (con->shadow_enabled && config_should_parameters_shadow()) {
 		box.x = floor(state->x) - ctx->output->lx;
 		box.y = floor(state->y) - ctx->output->ly;
 		box.width = state->width;
