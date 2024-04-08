@@ -32,6 +32,7 @@ struct render_data {
 	pixman_region32_t *damage;
 	struct wlr_box *clip_box;
 	struct decoration_data deco_data;
+	struct sway_view *view;
 };
 
 struct sway_output_state {

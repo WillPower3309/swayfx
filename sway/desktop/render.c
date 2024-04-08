@@ -329,7 +329,7 @@ damage_finish:
 }
 
 static void render_surface_iterator(struct sway_output *output,
-		struct sway_view *view, struct wlr_surface *surface,
+		struct sway_view *_view, struct wlr_surface *surface,
 		struct wlr_box *_box, void *_data) {
 	struct render_data *data = _data;
 	struct wlr_output *wlr_output = output->wlr_output;
@@ -357,6 +357,7 @@ static void render_surface_iterator(struct sway_output *output,
 	deco_data.corner_radius *= wlr_output->scale;
 
 	// render blur
+	struct sway_view *view = data->view;
 	bool is_subsurface = view ? view->surface != surface : false;
 	if (deco_data.blur && config_should_parameters_blur() && !is_subsurface) {
 		pixman_region32_t opaque_region;
@@ -372,7 +373,9 @@ static void render_surface_iterator(struct sway_output *output,
 		}
 
 		if (has_alpha) {
-			bool should_optimize_blur = view ? !container_is_floating_or_child(view->container) || config->blur_xray : false;
+			bool should_optimize_blur = view ?
+				!container_is_floating_or_child(view->container) || config->blur_xray
+				: false;
 			render_blur(data->ctx, texture, &src_box, &clip_box,
 					should_optimize_blur, &opaque_region, deco_data);
 		}
@@ -544,6 +547,7 @@ static void render_view_toplevels(struct fx_render_context *ctx,
 		struct sway_view *view, struct decoration_data deco_data) {
 	struct render_data data = {
 		.deco_data = deco_data,
+		.view = view,
 		.ctx = ctx,
 	};
 	// Clip the window to its view size, ignoring CSD
@@ -590,6 +594,7 @@ static void render_view_popups(struct fx_render_context *ctx, struct sway_view *
 		struct decoration_data deco_data) {
 	struct render_data data = {
 		.deco_data = deco_data,
+		.view = view,
 		.ctx = ctx,
 	};
 	output_view_for_each_popup_surface(ctx->output, view,
@@ -1736,7 +1741,7 @@ void output_render(struct fx_render_context *ctx) {
 				// Capture the padding pixels before blur for later use
 				fx_renderer_read_to_buffer(ctx->pass, &renderer->blur_padding_region,
 						ctx->pass->fx_effect_framebuffers->blur_saved_pixels_buffer,
-						ctx->pass->buffer);
+						ctx->pass->buffer, true);
 			}
 		}
 		pixman_region32_fini(&blur_region);
@@ -1758,13 +1763,10 @@ void output_render(struct fx_render_context *ctx) {
 		// Render optimized/x-ray blur
 		if (workspace_has_blur && effect_fbos->blur_buffer_dirty) {
 			const float opacity = 1.0f;
-			enum wl_output_transform transform =
-				wlr_output_transform_invert(wlr_output->transform);
-			transform = wlr_output_transform_compose(transform, wlr_output->transform);
 			struct fx_render_blur_pass_options blur_options = {
 				.tex_options = {
 					.base = {
-						.transform = transform,
+						.transform = WL_OUTPUT_TRANSFORM_NORMAL,
 						.alpha = &opacity,
 						.blend_mode = WLR_RENDER_BLEND_MODE_NONE,
 					},
@@ -1827,7 +1829,7 @@ renderer_end:
 		// Render the saved pixels over the blur artifacts
 		fx_renderer_read_to_buffer(ctx->pass, &renderer->blur_padding_region,
 				ctx->pass->buffer,
-				ctx->pass->fx_effect_framebuffers->blur_saved_pixels_buffer);
+				ctx->pass->fx_effect_framebuffers->blur_saved_pixels_buffer, true);
 	}
 
 	pixman_region32_fini(&transformed_damage);
