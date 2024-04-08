@@ -247,6 +247,7 @@ void render_box_shadow(struct fx_render_context *ctx, const struct wlr_box *_box
 		const float color[static 4], float blur_sigma, float corner_radius,
 		float offset_x, float offset_y) {
 	struct wlr_output *wlr_output = ctx->output->wlr_output;
+	float scaled_blur_sigma = blur_sigma * wlr_output->scale;
 
 	struct wlr_box box = *_box;
 	box.x -= ctx->output->lx * wlr_output->scale;
@@ -254,10 +255,10 @@ void render_box_shadow(struct fx_render_context *ctx, const struct wlr_box *_box
 
 	pixman_region32_t damage;
 	pixman_region32_init_rect(&damage,
-			box.x - blur_sigma + offset_x,
-			box.y - blur_sigma + offset_y,
-			box.width + blur_sigma * 2,
-			box.height + blur_sigma * 2);
+			box.x - scaled_blur_sigma + offset_x,
+			box.y - scaled_blur_sigma + offset_y,
+			box.width + scaled_blur_sigma * 2,
+			box.height + scaled_blur_sigma * 2);
 	pixman_region32_intersect(&damage, &damage, ctx->output_damage);
 	if (!pixman_region32_not_empty(&damage)) {
 		goto damage_finish;
@@ -271,7 +272,7 @@ void render_box_shadow(struct fx_render_context *ctx, const struct wlr_box *_box
 			.box = box,
 			.clip = &damage, // Render with the original extended clip region
 		},
-		.scale = wlr_output->scale,// TODO: remove?
+		.scale = wlr_output->scale,
 	};
 	struct shadow_data shadow_data = {
 		.enabled = true,
@@ -283,10 +284,10 @@ void render_box_shadow(struct fx_render_context *ctx, const struct wlr_box *_box
 			.b = color[2],
 			.a = color[3],
 		},
-		.blur_sigma = blur_sigma,
+		.blur_sigma = scaled_blur_sigma,
 	};
-	fx_render_pass_add_box_shadow(ctx->pass, &shadow_options, corner_radius,
-			&shadow_data);
+	fx_render_pass_add_box_shadow(ctx->pass, &shadow_options,
+			corner_radius, &shadow_data);
 
 damage_finish:
 	pixman_region32_fini(&damage);
