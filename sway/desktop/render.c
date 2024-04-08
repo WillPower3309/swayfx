@@ -168,6 +168,7 @@ static void render_texture(struct fx_render_context *ctx, struct wlr_texture *te
 			.clip = &damage,
 			.filter_mode = get_scale_filter(output),
 		},
+		.clip_box = clip_box,
 		.corner_radius = deco_data.corner_radius,
 		.has_titlebar = deco_data.has_titlebar,
 		.dim = deco_data.dim,
@@ -356,6 +357,8 @@ static void render_surface_iterator(struct sway_output *output,
 	if (data->clip_box != NULL) {
 		clip_box.width = fmin(dst_box.width, data->clip_box->width);
 		clip_box.height = fmin(dst_box.height, data->clip_box->height);
+		clip_box.x = fmax(dst_box.x, data->clip_box->x);
+		clip_box.y = fmax(dst_box.y, data->clip_box->y);
  	}
 	scale_box(&dst_box, wlr_output->scale);
 	scale_box(&clip_box, wlr_output->scale);
@@ -559,13 +562,35 @@ static void render_view_toplevels(struct fx_render_context *ctx,
 	};
 	// Clip the window to its view size, ignoring CSD
 	struct wlr_box clip_box;
-	if (!container_is_current_floating(view->container)) {
-		// As we pass the geometry offsets to the surface iterator, we will
-		// need to account for the offsets in the clip dimensions.
-		clip_box.width = view->container->current.content_width + view->geometry.x;
-		clip_box.height = view->container->current.content_height + view->geometry.y;
-		data.clip_box = &clip_box;
+	struct sway_container_state state = view->container->current;
+	clip_box.x = floor(state.x) - ctx->output->lx;
+	clip_box.y = floor(state.y) - ctx->output->ly;
+	clip_box.width = state.width;
+	clip_box.height = state.height;
+
+	bool smart = config->hide_edge_borders_smart == ESMART_ON ||
+		(config->hide_edge_borders_smart == ESMART_NO_GAPS &&
+		!gaps_to_edge(view));
+	
+	if (state.fullscreen_mode == FULLSCREEN_NONE
+			&& (state.border == B_PIXEL || state.border == B_NORMAL)
+			&& !smart) {
+		clip_box.x += state.border_thickness;
+		clip_box.width -= state.border_thickness * 2;
+	
+		if (deco_data.has_titlebar) {
+			// Shift the box downward to compensate for the titlebar
+			int titlebar_thickness = container_titlebar_height();
+			clip_box.y += titlebar_thickness;
+			clip_box.height -= state.border_thickness + titlebar_thickness;
+		} else {
+			// Regular border
+			clip_box.y += state.border_thickness;
+			clip_box.height -= state.border_thickness * 2;
+		}
 	}
+	data.clip_box = &clip_box;
+
 	// Render all toplevels without descending into popups
 	double ox = view->container->surface_x -
 		ctx->output->lx - view->geometry.x;
@@ -592,8 +617,6 @@ static void render_saved_view(struct fx_render_context *ctx, struct sway_view *v
 	if (wl_list_empty(&view->saved_buffers)) {
 		return;
 	}
-
-	bool floating = container_is_current_floating(view->container);
 
 	deco_data.corner_radius *= wlr_output->scale;
 
@@ -623,14 +646,29 @@ static void render_saved_view(struct fx_render_context *ctx, struct sway_view *v
 
 		struct wlr_box dst_box = proj_box;
 		struct wlr_box clip_box = proj_box;
-		if (!floating) {
-			clip_box.width = fmin(dst_box.width,
-					view->container->current.content_width -
-					(saved_buf->x - view->container->current.content_x) + view->saved_geometry.x);
-			clip_box.height = fmin(dst_box.height,
-					view->container->current.content_height -
-					(saved_buf->y - view->container->current.content_y) + view->saved_geometry.y);
+
+		// Clip to actual geometry, clipping the CSD
+		struct sway_container_state state = view->container->current;
+		clip_box.x = state.x - output->lx;
+		clip_box.y = state.y - output->ly;
+		clip_box.width = state.width;
+		clip_box.height = state.height;
+		if (state.border == B_PIXEL || state.border == B_NORMAL) {
+			clip_box.x += state.border_thickness;
+			clip_box.width -= state.border_thickness * 2;
+
+			if (deco_data.has_titlebar) {
+				// Shift the box downward to compensate for the titlebar
+				int titlebar_thickness = container_titlebar_height();
+				clip_box.y += titlebar_thickness;
+				clip_box.height -= state.border_thickness + titlebar_thickness;
+			} else {
+				// Regular border
+				clip_box.y += state.border_thickness;
+				clip_box.height -= state.border_thickness * 2;
+			}
 		}
+
 		scale_box(&dst_box, wlr_output->scale);
 		scale_box(&clip_box, wlr_output->scale);
 
