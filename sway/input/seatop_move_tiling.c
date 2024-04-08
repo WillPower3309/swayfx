@@ -52,7 +52,7 @@ static void handle_render(struct sway_seat *seat, struct fx_render_context *ctx)
 		deco_data.blur = e->con->blur_enabled;
 		deco_data.corner_radius = e->con->corner_radius;
 		struct wlr_fbox src_box = {0};
-		render_blur(ctx, NULL, &src_box, &box, 0, false, &opaque_region, deco_data);
+		render_blur(ctx, NULL, &src_box, &box, false, &opaque_region, deco_data);
 		pixman_region32_fini(&opaque_region);
 
 		render_rounded_rect(ctx, &box, color, e->con->corner_radius * ctx->output->wlr_output->scale, ALL);

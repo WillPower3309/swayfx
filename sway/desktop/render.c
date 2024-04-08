@@ -119,16 +119,9 @@ static enum wlr_scale_filter_mode get_scale_filter(struct sway_output *output) {
 	}
 }
 
-struct wlr_box get_monitor_box(struct wlr_output *output) {
-	int width, height;
-	wlr_output_transformed_resolution(output, &width, &height);
-	struct wlr_box monitor_box = { 0, 0, width, height };
-	return monitor_box;
-}
-
 static void render_texture(struct fx_render_context *ctx, struct wlr_texture *texture,
 		const struct wlr_fbox *_src_box, const struct wlr_box *dst_box,
-		const struct wlr_box *clip_box, enum wl_output_transform transform,
+		const struct wlr_box *_clip_box, enum wl_output_transform transform,
 		struct decoration_data deco_data) {
 	struct sway_output *output = ctx->output;
 
@@ -144,9 +137,12 @@ static void render_texture(struct fx_render_context *ctx, struct wlr_texture *te
 		proj_box.width, proj_box.height);
 	pixman_region32_intersect(&damage, &damage, ctx->output_damage);
 
-	if (clip_box) {
+	struct wlr_box clip_box = {0};
+	if (_clip_box) {
 		pixman_region32_intersect_rect(&damage, &damage,
-				clip_box->x, clip_box->y, clip_box->width, clip_box->height);
+				_clip_box->x, _clip_box->y, _clip_box->width, _clip_box->height);
+
+		clip_box = *_clip_box;
 	}
 
 	bool damaged = pixman_region32_not_empty(&damage);
@@ -155,6 +151,7 @@ static void render_texture(struct fx_render_context *ctx, struct wlr_texture *te
 	}
 
 	transform_output_box(&proj_box, output->wlr_output);
+	transform_output_box(&clip_box, output->wlr_output);
 	transform_output_damage(&damage, output->wlr_output);
 	transform = wlr_output_transform_compose(transform, output->wlr_output->transform);
 
@@ -168,7 +165,7 @@ static void render_texture(struct fx_render_context *ctx, struct wlr_texture *te
 			.clip = &damage,
 			.filter_mode = get_scale_filter(output),
 		},
-		.clip_box = clip_box,
+		.clip_box = &clip_box,
 		.corner_radius = deco_data.corner_radius,
 		.has_titlebar = deco_data.has_titlebar,
 		.dim = deco_data.dim,
@@ -186,10 +183,9 @@ damage_finish:
 
 void render_blur(struct fx_render_context *ctx, struct wlr_texture *texture,
 		const struct wlr_fbox *src_box, const struct wlr_box *dst_box,
-		enum wl_output_transform transform, bool optimized_blur,
-		pixman_region32_t *opaque_region, struct decoration_data deco_data) {
+		bool optimized_blur, pixman_region32_t *opaque_region,
+		struct decoration_data deco_data) {
 	struct sway_output *output = ctx->output;
-	struct wlr_output *wlr_output = output->wlr_output;
 
 	struct wlr_box proj_box = *dst_box;
 
@@ -204,21 +200,14 @@ void render_blur(struct fx_render_context *ctx, struct wlr_texture *texture,
 
 	transform_output_box(&proj_box, output->wlr_output);
 	transform_output_damage(&damage, output->wlr_output);
-	transform = wlr_output_transform_compose(transform, output->wlr_output->transform);
 
-	int width, height;
-	wlr_output_transformed_resolution(wlr_output, &width, &height);
-	struct wlr_box monitor_box = { 0, 0, width, height };
-	wlr_box_transform(&monitor_box, &monitor_box,
-			wlr_output_transform_invert(wlr_output->transform),
-			monitor_box.width, monitor_box.height);
 	struct fx_render_blur_pass_options blur_options = {
 		.tex_options = {
 			.base = {
 				.texture = texture,
 				.src_box = *src_box,
 				.dst_box = proj_box,
-				.transform = transform,
+				.transform = WL_OUTPUT_TRANSFORM_NORMAL,
 				.alpha = &deco_data.alpha,
 				.clip = &damage,
 				.filter_mode = WLR_SCALE_FILTER_BILINEAR,
@@ -230,8 +219,6 @@ void render_blur(struct fx_render_context *ctx, struct wlr_texture *texture,
 		},
 		.opaque_region = opaque_region,
 		.use_optimized_blur = optimized_blur,
-		.output = wlr_output,
-		.monitor_box = monitor_box,
 		.blur_data = &config->blur_params,
 		.ignore_transparent = deco_data.discard_transparent,
 	};
@@ -385,13 +372,9 @@ static void render_surface_iterator(struct sway_output *output,
 		}
 
 		if (has_alpha) {
-			struct wlr_box monitor_box = get_monitor_box(wlr_output);
-			wlr_box_transform(&monitor_box, &monitor_box,
-					wlr_output_transform_invert(wlr_output->transform), monitor_box.width, monitor_box.height);
 			bool should_optimize_blur = view ? !container_is_floating_or_child(view->container) || config->blur_xray : false;
 			render_blur(data->ctx, texture, &src_box, &clip_box,
-					surface->current.transform, should_optimize_blur,
-					&opaque_region, deco_data);
+					should_optimize_blur, &opaque_region, deco_data);
 		}
 
 		pixman_region32_fini(&opaque_region);
@@ -684,14 +667,10 @@ static void render_saved_view(struct fx_render_context *ctx, struct sway_view *v
 				pixman_region32_init(&opaque_region);
 				pixman_region32_union_rect(&opaque_region, &opaque_region, 0, 0, 0, 0);
 
-				struct wlr_box monitor_box = get_monitor_box(wlr_output);
-				wlr_box_transform(&monitor_box, &monitor_box,
-						wlr_output_transform_invert(wlr_output->transform),
-						monitor_box.width, monitor_box.height);
 				bool should_optimize_blur = !container_is_floating_or_child(view->container) || config->blur_xray;
 				render_blur(ctx, saved_buf->buffer->texture,
-						&saved_buf->source_box, &clip_box, saved_buf->transform,
-						should_optimize_blur, &opaque_region, deco_data);
+						&saved_buf->source_box, &clip_box, should_optimize_blur,
+						&opaque_region, deco_data);
 
 				pixman_region32_fini(&opaque_region);
 			}
@@ -1793,8 +1772,6 @@ void output_render(struct fx_render_context *ctx) {
 					.corner_radius = 0,
 					.discard_transparent = false,
 				},
-				.output = wlr_output,
-				.monitor_box = get_monitor_box(wlr_output),
 				.blur_data = &config->blur_params,
 			};
 			fx_render_pass_add_optimized_blur(ctx->pass, &blur_options);

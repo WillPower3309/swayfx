@@ -206,8 +206,8 @@ void render_rounded_rect(struct fx_render_context *ctx, const struct wlr_box *_b
 
 void render_blur(struct fx_render_context *ctx, struct wlr_texture *texture,
 		const struct wlr_fbox *src_box, const struct wlr_box *dst_box,
-		enum wl_output_transform transform, bool optimized_blur,
-		pixman_region32_t *opaque_region, struct decoration_data deco_data);
+		bool optimized_blur, pixman_region32_t *opaque_region,
+		struct decoration_data deco_data);
 
 void premultiply_alpha(float color[4], float opacity);
 
