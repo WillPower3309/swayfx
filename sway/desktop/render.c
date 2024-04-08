@@ -302,6 +302,9 @@ void render_rounded_border_corner(struct fx_render_context *ctx, const struct wl
 	struct wlr_output *wlr_output = ctx->output->wlr_output;
 
 	struct wlr_box box = *_box;
+	const int size = MAX(box.width, box.height);
+	box.width = size;
+	box.height = size;
 	box.x -= ctx->output->lx * wlr_output->scale;
 	box.y -= ctx->output->ly * wlr_output->scale;
 
