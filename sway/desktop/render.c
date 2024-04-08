@@ -1131,20 +1131,22 @@ static void render_top_border(struct fx_render_context *ctx, struct sway_contain
 
 	if (corner_radius) {
 		int size = 2 * (corner_radius + state->border_thickness);
-		box.y = floor(state->y);
-		box.width = size;
-		box.height = size;
-
 		int scaled_corner_radius = corner_radius * output_scale;
 		int scaled_border_thickness = state->border_thickness * output_scale;
 		if (state->border_left) {
 			box.x = floor(state->x);
+			box.y = floor(state->y);
+			box.width = size;
+			box.height = size;
 			scale_box(&box, output_scale);
 			render_rounded_border_corner(ctx, &box, color, scaled_corner_radius,
 				scaled_border_thickness, TOP_LEFT);
 		}
 		if (state->border_right) {
 			box.x = floor(state->x + state->width - size);
+			box.y = floor(state->y);
+			box.width = size;
+			box.height = size;
 			scale_box(&box, output_scale);
 			render_rounded_border_corner(ctx, &box, color, scaled_corner_radius,
 				scaled_border_thickness, TOP_RIGHT);
