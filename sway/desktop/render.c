@@ -755,29 +755,36 @@ static void render_view(struct fx_render_context *ctx, struct sway_container *co
 			memcpy(&color, colors->child_border, sizeof(float) * 4);
 		}
 		premultiply_alpha(color, con->alpha);
-		box.x = floor(state->x) + corner_radius;
+		box.x = floor(state->x);
 		box.y = floor(state->content_y + state->content_height);
-		box.width = state->width - (2 * corner_radius);
+		box.width = state->width;
 		box.height = state->border_thickness;
+		// adjust sizing for rounded border corners
+		if (deco_data.corner_radius) {
+			box.x += corner_radius + state->border_thickness;
+			box.width -= 2 * (corner_radius + state->border_thickness);
+		}
 		scale_box(&box, output_scale);
 		render_rect(ctx, &box, color);
 
 		if (corner_radius) {
 			int size = 2 * (corner_radius + state->border_thickness);
-			box.y = floor(state->y + state->height - size);
-			box.width = size;
-			box.height = size;
-
 			int scaled_corner_radius = corner_radius * output_scale;
 			int scaled_border_thickness = state->border_thickness * output_scale;
 			if (state->border_left) {
 				box.x = floor(state->x);
+				box.y = floor(state->y + state->height - size);
+				box.width = size;
+				box.height = size;
 				scale_box(&box, output_scale);
 				render_rounded_border_corner(ctx, &box, color, scaled_corner_radius,
 					scaled_border_thickness, BOTTOM_LEFT);
 			}
 			if (state->border_right) {
 				box.x = floor(state->x + state->width - size);
+				box.y = floor(state->y + state->height - size);
+				box.width = size;
+				box.height = size;
 				scale_box(&box, output_scale);
 				render_rounded_border_corner(ctx, &box, color, scaled_corner_radius,
 					scaled_border_thickness, BOTTOM_RIGHT);
@@ -811,6 +818,7 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 	enum alignment title_align = config->title_align;
 	// value by which all heights should be adjusted to counteract removed bottom border
 	int bottom_border_compensation = config->titlebar_separator ? 0 : titlebar_border_thickness;
+	corner_radius *= output_scale;
 
 	// Single pixel bar above title
 	memcpy(&color, colors->border, sizeof(float) * 4);
@@ -844,9 +852,9 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 
 	// Single pixel left edge
 	box.x = x;
-	box.y = y + titlebar_border_thickness;
+	box.y = y;
 	box.width = titlebar_border_thickness;
-	box.height = container_titlebar_height() - titlebar_border_thickness * 2 + bottom_border_compensation;
+	box.height = container_titlebar_height() - titlebar_border_thickness + bottom_border_compensation;
 	if (corner_radius && corner_location != TOP_RIGHT) {
 		box.height -= corner_radius;
 		box.y += corner_radius;
@@ -856,9 +864,9 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 
 	// Single pixel right edge
 	box.x = x + width - titlebar_border_thickness;
-	box.y = y + titlebar_border_thickness;
+	box.y = y;
 	box.width = titlebar_border_thickness;
-	box.height = container_titlebar_height() - titlebar_border_thickness * 2 + bottom_border_compensation;
+	box.height = container_titlebar_height() - titlebar_border_thickness + bottom_border_compensation;
 	if (corner_radius && corner_location != TOP_LEFT) {
 		box.height -= corner_radius;
 		box.y += corner_radius;
@@ -876,7 +884,7 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 			box.height = corner_radius * 2;
 			scale_box(&box, output_scale);
 			render_rounded_border_corner(ctx, &box, color, corner_radius,
-					titlebar_border_thickness, TOP_LEFT);
+					titlebar_border_thickness * output_scale, TOP_LEFT);
 		}
 
 		// right corner
@@ -887,7 +895,7 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 			box.height = corner_radius * 2;
 			scale_box(&box, output_scale);
 			render_rounded_border_corner(ctx, &box, color, corner_radius,
-					titlebar_border_thickness, TOP_RIGHT);
+					titlebar_border_thickness * output_scale, TOP_RIGHT);
 		}
 	}
 
