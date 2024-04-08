@@ -241,6 +241,13 @@ void render_box_shadow(struct fx_render_context *ctx, const struct wlr_box *_box
 	box.x -= ctx->output->lx * wlr_output->scale;
 	box.y -= ctx->output->ly * wlr_output->scale;
 
+	// Extend the size of the box while also considering the shadow offset
+	struct wlr_box shadow_box = box;
+	shadow_box.x -= blur_sigma - offset_x;
+	shadow_box.y -= blur_sigma - offset_y;
+	shadow_box.width += blur_sigma * 2;
+	shadow_box.height += blur_sigma * 2;
+
 	pixman_region32_t damage;
 	pixman_region32_init_rect(&damage,
 			box.x - scaled_blur_sigma + offset_x,
@@ -254,14 +261,8 @@ void render_box_shadow(struct fx_render_context *ctx, const struct wlr_box *_box
 
 	transform_output_damage(&damage, wlr_output);
 	transform_output_box(&box, wlr_output);
+	transform_output_box(&shadow_box, wlr_output);
 
-	struct fx_render_rect_options shadow_options = {
-		.base = {
-			.box = box,
-			.clip = &damage, // Render with the original extended clip region
-		},
-		.scale = wlr_output->scale,
-	};
 	struct shadow_data shadow_data = {
 		.enabled = true,
 		.offset_x = offset_x,
@@ -274,8 +275,15 @@ void render_box_shadow(struct fx_render_context *ctx, const struct wlr_box *_box
 		},
 		.blur_sigma = scaled_blur_sigma,
 	};
-	fx_render_pass_add_box_shadow(ctx->pass, &shadow_options,
-			corner_radius, &shadow_data);
+	struct fx_render_box_shadow_options shadow_options = {
+		.shadow_box = shadow_box,
+		.clip_box = box,
+		.clip = &damage,
+		.scale = wlr_output->scale, // TODO: REMOVE?
+		.shadow_data = &shadow_data,
+		.corner_radius = corner_radius,
+	};
+	fx_render_pass_add_box_shadow(ctx->pass, &shadow_options);
 
 damage_finish:
 	pixman_region32_fini(&damage);
