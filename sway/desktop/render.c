@@ -44,6 +44,40 @@ static void transform_output_box(struct wlr_box *box, struct wlr_output *output)
 	wlr_box_transform(box, box, transform, ow, oh);
 }
 
+// TODO: Remove this ugly abomination with a complete border rework...
+static void transform_corner_location(enum corner_location *corner_location, struct wlr_output *output) {
+	if (*corner_location == ALL) {
+		return;
+	}
+	switch (wlr_output_transform_invert(output->transform)) {
+		case WL_OUTPUT_TRANSFORM_NORMAL:
+			return;
+		case WL_OUTPUT_TRANSFORM_90:
+			*corner_location = (*corner_location + 1) % 4;
+			return;
+		case WL_OUTPUT_TRANSFORM_180:
+			*corner_location = (*corner_location + 2) % 4;
+			return;
+		case WL_OUTPUT_TRANSFORM_270:
+			*corner_location = (*corner_location + 3) % 4;
+			return;
+		case WL_OUTPUT_TRANSFORM_FLIPPED:
+			*corner_location = (*corner_location + (1 - 2 * (*corner_location % 2))) % 4;
+			return;
+		case WL_OUTPUT_TRANSFORM_FLIPPED_90:
+			*corner_location = (*corner_location + (4 - 2 * (*corner_location % 2))) % 4;
+			return;
+		case WL_OUTPUT_TRANSFORM_FLIPPED_180:
+			*corner_location = (*corner_location + (3 - 2 * (*corner_location % 2))) % 4;
+			return;
+		case WL_OUTPUT_TRANSFORM_FLIPPED_270:
+			*corner_location = (*corner_location + (2 - 2 * (*corner_location % 2))) % 4;
+			return;
+		default:
+			return;
+	}
+}
+
 struct decoration_data get_undecorated_decoration_data() {
 	return (struct decoration_data) {
 		.alpha = 1.0f,
@@ -57,35 +91,6 @@ struct decoration_data get_undecorated_decoration_data() {
 		.shadow = false,
 	};
 }
-
-/*
-// TODO: Remove this ugly abomination with a complete border rework...
-enum corner_location get_rotated_corner(enum corner_location corner_location,
-		enum wl_output_transform transform) {
-	if (corner_location == ALL) {
-		return corner_location;
-	}
-	switch (transform) {
-		case WL_OUTPUT_TRANSFORM_NORMAL:
-			return corner_location;
-		case WL_OUTPUT_TRANSFORM_90:
-			return (corner_location + 1) % 4;
-		case WL_OUTPUT_TRANSFORM_180:
-			return (corner_location + 2) % 4;
-		case WL_OUTPUT_TRANSFORM_270:
-			return (corner_location + 3) % 4;
-		case WL_OUTPUT_TRANSFORM_FLIPPED:
-			return (corner_location + (1 - 2 * (corner_location % 2))) % 4;
-		case WL_OUTPUT_TRANSFORM_FLIPPED_90:
-			return (corner_location + (4 - 2 * (corner_location % 2))) % 4;
-		case WL_OUTPUT_TRANSFORM_FLIPPED_180:
-			return (corner_location + (3 - 2 * (corner_location % 2))) % 4;
-		case WL_OUTPUT_TRANSFORM_FLIPPED_270:
-			return (corner_location + (2 - 2 * (corner_location % 2))) % 4;
-	}
-	return corner_location;
-}
-*/
 
 /**
  * Apply scale to a width or height.
@@ -307,6 +312,7 @@ void render_rounded_border_corner(struct fx_render_context *ctx, const struct wl
 
 	transform_output_damage(&damage, wlr_output);
 	transform_output_box(&box, wlr_output);
+	transform_corner_location(&location, wlr_output);
 
 	struct fx_render_rounded_border_corner_options border_corner_options = {
 		.base = {
@@ -516,6 +522,7 @@ void render_rounded_rect(struct fx_render_context *ctx, const struct wlr_box *_b
 
 	transform_output_damage(&damage, wlr_output);
 	transform_output_box(&box, wlr_output);
+	transform_corner_location(&corner_location, wlr_output);
 
 	fx_render_pass_add_rounded_rect(ctx->pass, &(struct fx_render_rounded_rect_options){
 		.base = {
