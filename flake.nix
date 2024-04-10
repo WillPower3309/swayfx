@@ -60,8 +60,6 @@
         }
       );
 
-      formatter = nixpkgs.lib.genAttrs targetSystems (system: {
-        default = (pkgsFor system).nixfmt-rfc-style;
-      });
+      formatter = nixpkgs.lib.genAttrs targetSystems (system: (pkgsFor system).nixfmt-rfc-style);
     };
 }
