@@ -888,11 +888,13 @@ void output_damage_whole_container(struct sway_output *output,
 		pixman_region32_t container;
 		pixman_region32_init_rect(&container, box.x, box.y, box.width, box.height);
 
+		float output_scale = output->wlr_output->scale;
 		pixman_region32_t shadow;
 		pixman_region32_init(&shadow);
 		pixman_region32_copy(&shadow, &container);
-		wlr_region_expand(&shadow, &shadow, config->shadow_blur_sigma);
-		pixman_region32_translate(&shadow, config->shadow_offset_x, config->shadow_offset_y);
+		wlr_region_expand(&shadow, &shadow, config->shadow_blur_sigma * output_scale);
+		pixman_region32_translate(&shadow, config->shadow_offset_x * output_scale,
+				config->shadow_offset_y * output_scale);
 		pixman_region32_subtract(&shadow, &shadow, &container);
 
 		if (wlr_damage_ring_add(&output->damage_ring, &shadow)) {

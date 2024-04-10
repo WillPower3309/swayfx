@@ -235,7 +235,6 @@ void render_box_shadow(struct fx_render_context *ctx, const struct wlr_box *_box
 		const float color[static 4], float blur_sigma, float corner_radius,
 		float offset_x, float offset_y) {
 	struct wlr_output *wlr_output = ctx->output->wlr_output;
-	float scaled_blur_sigma = blur_sigma * wlr_output->scale;
 
 	struct wlr_box box = *_box;
 	box.x -= ctx->output->lx * wlr_output->scale;
@@ -249,11 +248,8 @@ void render_box_shadow(struct fx_render_context *ctx, const struct wlr_box *_box
 	shadow_box.height += blur_sigma * 2;
 
 	pixman_region32_t damage;
-	pixman_region32_init_rect(&damage,
-			box.x - scaled_blur_sigma + offset_x,
-			box.y - scaled_blur_sigma + offset_y,
-			box.width + scaled_blur_sigma * 2,
-			box.height + scaled_blur_sigma * 2);
+	pixman_region32_init_rect(&damage, shadow_box.x, shadow_box.y,
+			shadow_box.width, shadow_box.height);
 	pixman_region32_intersect(&damage, &damage, ctx->output_damage);
 	if (!pixman_region32_not_empty(&damage)) {
 		goto damage_finish;
@@ -273,13 +269,12 @@ void render_box_shadow(struct fx_render_context *ctx, const struct wlr_box *_box
 			.b = color[2],
 			.a = color[3],
 		},
-		.blur_sigma = scaled_blur_sigma,
+		.blur_sigma = blur_sigma,
 	};
 	struct fx_render_box_shadow_options shadow_options = {
 		.shadow_box = shadow_box,
 		.clip_box = box,
 		.clip = &damage,
-		.scale = wlr_output->scale, // TODO: REMOVE?
 		.shadow_data = &shadow_data,
 		.corner_radius = corner_radius,
 	};
@@ -417,8 +412,9 @@ static void render_layer_iterator(struct sway_output *output,
 
 	// render shadow
 	if (deco_data.shadow && config_should_parameters_shadow()) {
-		render_box_shadow(data->ctx, _box, config->shadow_color, config->shadow_blur_sigma,
-			deco_data.corner_radius, config->shadow_offset_x, config->shadow_offset_y);
+		float output_scale = output->wlr_output->scale;
+		render_box_shadow(data->ctx, _box, config->shadow_color, config->shadow_blur_sigma * output_scale,
+			deco_data.corner_radius, config->shadow_offset_x * output_scale, config->shadow_offset_y * output_scale);
 	}
 }
 
@@ -734,8 +730,8 @@ static void render_view(struct fx_render_context *ctx, struct sway_container *co
 				(corner_radius + state->border_thickness) * output_scale;
 		float* shadow_color = view_is_urgent(view) || state->focused ?
 				config->shadow_color : config->shadow_inactive_color;
-		render_box_shadow(ctx, &box, shadow_color, config->shadow_blur_sigma,
-				scaled_corner_radius, config->shadow_offset_x, config->shadow_offset_y);
+		render_box_shadow(ctx, &box, shadow_color, config->shadow_blur_sigma * output_scale,
+				scaled_corner_radius, config->shadow_offset_x * output_scale, config->shadow_offset_y * output_scale);
 	}
 
 	if (state->border == B_NONE || state->border == B_CSD) {
