@@ -1,73 +1,65 @@
 {
-  description = "swaywm development environment";
-
-  inputs = {
-    flake-compat = {
-      url = "github:edolstra/flake-compat";
-      flake = false;
-    };
-
-    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
-  };
-
-  outputs = { self, nixpkgs, flake-compat, ... }:
+  description = "Swayfx development environment";
+  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+  outputs =
+    { self, nixpkgs, ... }:
     let
-      pkgsFor = system:
-        import nixpkgs {
-          inherit system;
-          overlays = [ ];
-        };
-
-      targetSystems = [ "aarch64-linux" "x86_64-linux" ];
+      pkgsFor = system: import nixpkgs { inherit system; };
+      targetSystems = [
+        "aarch64-linux"
+        "x86_64-linux"
+      ];
+      mkPackage = pkgs: {
+        swayfx-unwrapped =
+          (pkgs.swayfx-unwrapped.override {
+            # When the sway 1.9 rebase is finished, this will need to be overridden.
+            # wlroots_0_16 = pkgs.wlroots_0_16;
+          }).overrideAttrs
+            (old: {
+              version = "0.3.2-git";
+              src = pkgs.lib.cleanSource ./.;
+            });
+      };
     in
     {
-      overlays.default = final: prev: {
-        swayfx-unwrapped = prev.sway-unwrapped.overrideAttrs (old: {
-          src = builtins.path { path = prev.lib.cleanSource ./.; };
-          patches =
-            let
-              removePatches = [
-                "LIBINPUT_CONFIG_ACCEL_PROFILE_CUSTOM.patch"
-              ];
-            in
-            builtins.filter
-              (patch: !builtins.elem (patch.name or null) removePatches)
-              (old.patches or [ ]);
-        });
+      overlays = rec {
+        default = override;
+        # Override onto the input nixpkgs
+        override = _: prev: mkPackage prev;
+        # Insert using the locked nixpkgs
+        insert = _: prev: mkPackage (pkgsFor prev.system);
       };
 
-      packages = nixpkgs.lib.genAttrs targetSystems (system:
-        let pkgs = pkgsFor system;
-        in (self.overlays.default pkgs pkgs) // {
-          default = self.packages.${system}.swayfx-unwrapped;
-        });
+      packages = nixpkgs.lib.genAttrs targetSystems (
+        system: (mkPackage (pkgsFor system) // { default = self.packages.${system}.swayfx-unwrapped; })
+      );
 
-      devShells = nixpkgs.lib.genAttrs targetSystems (system:
+      devShells = nixpkgs.lib.genAttrs targetSystems (
+        system:
         let
           pkgs = pkgsFor system;
         in
         {
           default = pkgs.mkShell {
             name = "swayfx-shell";
-            depsBuildBuild = with pkgs; [ pkg-config ];
-            inputsFrom = [ self.packages.${system}.swayfx-unwrapped pkgs.wlroots_0_17 ];
-
+            inputsFrom = [
+              self.packages.${system}.swayfx-unwrapped
+              pkgs.wlroots_0_16
+            ];
             nativeBuildInputs = with pkgs; [
               cmake
-              meson
-              ninja
-              pkg-config
               wayland-scanner
-              scdoc
-              hwdata # for wlroots
             ];
-
-            shellHook = with pkgs; ''(
-              mkdir -p "$PWD/subprojects"
-              cd "$PWD/subprojects"
-              cp -R --no-preserve=mode,ownership ${wlroots_0_17.src} wlroots
-            )'';
+            # Copy the nix version of wlroots into the project
+            shellHook = with pkgs; ''
+              (
+                mkdir -p "$PWD/subprojects" && cd "$PWD/subprojects"
+                cp -R --no-preserve=mode,ownership ${wlroots_0_16.src} wlroots
+              )'';
           };
-        });
+        }
+      );
+
+      formatter = nixpkgs.lib.genAttrs targetSystems (system: (pkgsFor system).nixfmt-rfc-style);
     };
 }
