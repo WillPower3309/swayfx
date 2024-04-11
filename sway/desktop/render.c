@@ -237,8 +237,6 @@ void render_box_shadow(struct fx_render_context *ctx, const struct wlr_box *_box
 	struct wlr_output *wlr_output = ctx->output->wlr_output;
 
 	struct wlr_box box = *_box;
-	box.x -= ctx->output->lx * wlr_output->scale;
-	box.y -= ctx->output->ly * wlr_output->scale;
 
 	// Extend the size of the box while also considering the shadow offset
 	struct wlr_box shadow_box = box;
