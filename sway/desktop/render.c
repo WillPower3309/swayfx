@@ -212,7 +212,6 @@ void render_blur(struct fx_render_context *ctx, struct wlr_texture *texture,
 				.clip = &damage,
 				.filter_mode = WLR_SCALE_FILTER_BILINEAR,
 			},
-			.scale = output->wlr_output->scale,
 			.clip_box = &proj_box,
 			.corner_radius = deco_data.corner_radius,
 			.discard_transparent = false,
@@ -318,7 +317,6 @@ void render_rounded_border_corner(struct fx_render_context *ctx, const struct wl
 			},
 			.clip = &damage, // Render with the original extended clip region
 		},
-		.scale = wlr_output->scale,// TODO: remove?
 		.corner_radius = corner_radius,
 		.border_thickness = border_thickness,
 		.corner_location = location
@@ -1772,7 +1770,6 @@ void output_render(struct fx_render_context *ctx) {
 						.alpha = &opacity,
 						.blend_mode = WLR_RENDER_BLEND_MODE_NONE,
 					},
-					.scale = wlr_output->scale,
 					.corner_radius = 0,
 					.discard_transparent = false,
 				},
