@@ -409,7 +409,9 @@ static void render_layer_iterator(struct sway_output *output,
 	// render shadow
 	if (deco_data.shadow && config_should_parameters_shadow()) {
 		float output_scale = output->wlr_output->scale;
-		render_box_shadow(data->ctx, _box, config->shadow_color, config->shadow_blur_sigma * output_scale,
+		struct wlr_box box = *_box;
+		scale_box(&box, output_scale);
+		render_box_shadow(data->ctx, &box, config->shadow_color, config->shadow_blur_sigma * output_scale,
 			deco_data.corner_radius * output_scale, config->shadow_offset_x * output_scale, config->shadow_offset_y * output_scale);
 	}
 }
