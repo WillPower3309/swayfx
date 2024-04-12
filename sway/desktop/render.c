@@ -235,10 +235,12 @@ void render_box_shadow(struct fx_render_context *ctx, const struct wlr_box *_box
 		float offset_x, float offset_y) {
 	struct wlr_output *wlr_output = ctx->output->wlr_output;
 
-	struct wlr_box box = *_box;
+	struct wlr_box box;
+	memcpy(&box, _box, sizeof(struct wlr_box));
 
 	// Extend the size of the box while also considering the shadow offset
-	struct wlr_box shadow_box = box;
+	struct wlr_box shadow_box;
+	memcpy(&shadow_box, _box, sizeof(struct wlr_box));
 	shadow_box.x -= blur_sigma - offset_x;
 	shadow_box.y -= blur_sigma - offset_y;
 	shadow_box.width += blur_sigma * 2;
@@ -724,12 +726,13 @@ static void render_view(struct fx_render_context *ctx, struct sway_container *co
 		box.width = state->width;
 		box.height = state->height;
 		scale_box(&box, output_scale);
-		int scaled_corner_radius = corner_radius == 0 ? 0 :
-				(corner_radius + state->border_thickness) * output_scale;
+		int shadow_corner_radius = corner_radius == 0 ? 0 : corner_radius + state->border_thickness;
 		float* shadow_color = view_is_urgent(view) || state->focused ?
-				config->shadow_color : config->shadow_inactive_color;
+			config->shadow_color : config->shadow_inactive_color;
+
 		render_box_shadow(ctx, &box, shadow_color, config->shadow_blur_sigma * output_scale,
-				scaled_corner_radius, config->shadow_offset_x * output_scale, config->shadow_offset_y * output_scale);
+			shadow_corner_radius * output_scale, config->shadow_offset_x * output_scale,
+			config->shadow_offset_y * output_scale);
 	}
 
 	if (state->border == B_NONE || state->border == B_CSD) {
