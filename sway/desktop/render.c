@@ -798,7 +798,7 @@ static void render_view(struct fx_render_context *ctx, struct sway_container *co
 		scale_box(&box, output_scale);
 		render_rect(ctx, &box, color);
 
-		if (corner_radius) {
+		if (corner_radius && state->border_thickness > 0) {
 			int size = 2 * (corner_radius + state->border_thickness);
 			int scaled_corner_radius = corner_radius * output_scale;
 			int scaled_border_thickness = state->border_thickness * output_scale;
@@ -1160,7 +1160,7 @@ static void render_top_border(struct fx_render_context *ctx, struct sway_contain
 	scale_box(&box, output_scale);
 	render_rect(ctx, &box, color);
 
-	if (corner_radius) {
+	if (corner_radius && state->border_thickness > 0) {
 		int size = 2 * (corner_radius + state->border_thickness);
 		int scaled_corner_radius = corner_radius * output_scale;
 		int scaled_border_thickness = state->border_thickness * output_scale;
