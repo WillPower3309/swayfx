@@ -881,10 +881,10 @@ void output_damage_whole_container(struct sway_output *output,
 	if (con->shadow_enabled && config_should_parameters_shadow()) {
 		const int shadow_sigma = config->shadow_blur_sigma;
 		struct wlr_box shadow_box = {
-			.x = box.x - shadow_sigma + config->shadow_offset_x,
-			.y = box.y - shadow_sigma + config->shadow_offset_y,
-			.width = box.width + (shadow_sigma * 2),
-			.height = box.height + (shadow_sigma * 2),
+			.x = con->current.x - output->lx - 1 - shadow_sigma + config->shadow_offset_x,
+			.y = con->current.y - output->ly - 1 - shadow_sigma + config->shadow_offset_y,
+			.width = con->current.width + 2 + (shadow_sigma * 2),
+			.height = con->current.height + 2 + (shadow_sigma * 2),
 		};
 		scale_box(&shadow_box, output->wlr_output->scale);
 		if (wlr_damage_ring_add_box(&output->damage_ring, &shadow_box)) {
