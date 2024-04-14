@@ -49,6 +49,7 @@
             nativeBuildInputs = with pkgs; [
               cmake
               wayland-scanner
+              hwdata # for wlroots
             ];
             # Copy the nix version of wlroots into the project
             shellHook = with pkgs; ''
