@@ -1,23 +1,37 @@
 {
   description = "Swayfx development environment";
-  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+  inputs = {
+    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    scenefx.url = "github:ozwaldorf/scenefx";
+  };
   outputs =
-    { self, nixpkgs, ... }:
+    {
+      self,
+      nixpkgs,
+      scenefx,
+      ...
+    }:
     let
-      pkgsFor = system: import nixpkgs { inherit system; };
+      pkgsFor =
+        system:
+        import nixpkgs {
+          inherit system;
+          overlays = [ scenefx.overlays.insert ];
+        };
       targetSystems = [
         "aarch64-linux"
         "x86_64-linux"
       ];
       mkPackage = pkgs: {
         swayfx-unwrapped =
-          (pkgs.swayfx-unwrapped.override {
-            # When the sway 1.9 rebase is finished, this will need to be overridden.
-            # wlroots_0_16 = pkgs.wlroots_0_16;
-          }).overrideAttrs
+          (pkgs.swayfx-unwrapped.override { wlroots_0_16 = pkgs.wlroots_0_17; }).overrideAttrs
             (old: {
               version = "0.3.2-git";
               src = pkgs.lib.cleanSource ./.;
+              nativeBuildInputs = old.nativeBuildInputs ++ [
+                pkgs.cmake
+                pkgs.scenefx
+              ];
             });
       };
     in
@@ -47,15 +61,15 @@
               pkgs.wlroots_0_17
             ];
             nativeBuildInputs = with pkgs; [
-              cmake
               wayland-scanner
               hwdata # for wlroots
             ];
             # Copy the nix version of wlroots into the project
-            shellHook = with pkgs; ''
+            shellHook = ''
               (
                 mkdir -p "$PWD/subprojects" && cd "$PWD/subprojects"
-                cp -R --no-preserve=mode,ownership ${wlroots_0_17.src} wlroots
+                cp -R --no-preserve=mode,ownership ${pkgs.wlroots_0_17.src} wlroots
+                cp -R --no-preserve=mode,ownership ${pkgs.scenefx.src} scenefx
               )'';
           };
         }
