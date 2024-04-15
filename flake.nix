@@ -28,10 +28,8 @@
             (old: {
               version = "0.3.2-git";
               src = pkgs.lib.cleanSource ./.;
-              nativeBuildInputs = old.nativeBuildInputs ++ [
-                pkgs.cmake
-                pkgs.scenefx
-              ];
+              nativeBuildInputs = old.nativeBuildInputs ++ [ pkgs.cmake ];
+              buildInputs = old.buildInputs ++ [ pkgs.scenefx ];
             });
       };
     in
