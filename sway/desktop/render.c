@@ -565,13 +565,13 @@ static void render_view_toplevels(struct fx_render_context *ctx,
 	bool smart = config->hide_edge_borders_smart == ESMART_ON ||
 		(config->hide_edge_borders_smart == ESMART_NO_GAPS &&
 		!gaps_to_edge(view));
-	
+
 	if (state.fullscreen_mode == FULLSCREEN_NONE
 			&& (state.border == B_PIXEL || state.border == B_NORMAL)
 			&& !smart) {
 		clip_box.x += state.border_thickness;
 		clip_box.width -= state.border_thickness * 2;
-	
+
 		if (deco_data.has_titlebar) {
 			// Shift the box downward to compensate for the titlebar
 			int titlebar_thickness = container_titlebar_height();
@@ -1359,7 +1359,7 @@ static void render_containers_tabbed(struct fx_render_context *ctx, struct paren
 		}
 
 		render_titlebar(ctx, child, x, parent->box.y, tab_width, colors,
-				corner_radius, corner_location, title_texture, marks_texture);
+			corner_radius, corner_location, title_texture, marks_texture);
 
 		if (child == current) {
 			current_colors = colors;
@@ -1438,7 +1438,7 @@ static void render_containers_stacked(struct fx_render_context *ctx, struct pare
 		int y = parent->box.y + titlebar_height * i;
 		int corner_radius = i != 0 ? 0 : deco_data.corner_radius;
 		render_titlebar(ctx, child, parent->box.x, y, parent->box.width, colors,
-				corner_radius, ALL, title_texture, marks_texture);
+			corner_radius, ALL, title_texture, marks_texture);
 
 		if (child == current) {
 			current_colors = colors;
