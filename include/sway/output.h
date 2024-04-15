@@ -6,23 +6,33 @@
 #include <wlr/types/wlr_damage_ring.h>
 #include <wlr/types/wlr_output.h>
 #include "config.h"
-#include "sway/desktop/fx_renderer/fx_renderer.h"
+#include "scenefx/render/pass.h"
 #include "sway/tree/node.h"
 #include "sway/tree/view.h"
+
+struct decoration_data get_undecorated_decoration_data();
 
 struct sway_server;
 struct sway_container;
 
+struct decoration_data {
+	float alpha;
+	float saturation;
+	int corner_radius;
+	float dim;
+	float *dim_color;
+	bool has_titlebar;
+	bool discard_transparent;
+	bool blur;
+	bool shadow;
+};
+
 struct render_data {
+	struct fx_render_context *ctx;
 	pixman_region32_t *damage;
 	struct wlr_box *clip_box;
 	struct decoration_data deco_data;
-};
-
-struct blur_stencil_data {
-	struct fx_texture *stencil_texture;
-	const struct wlr_fbox *stencil_src_box;
-	float *stencil_matrix;
+	struct sway_view *view;
 };
 
 struct sway_output_state {
@@ -36,8 +46,6 @@ struct sway_output {
 	struct sway_server *server;
 	struct wl_list link;
 
-	struct fx_renderer *renderer;
-
 	struct wl_list layers[4]; // sway_layer_surface::link
 	struct wlr_box usable_area;
 
@@ -48,21 +56,20 @@ struct sway_output {
 	int width, height; // transformed buffer size
 	enum wl_output_subpixel detected_subpixel;
 	enum scale_filter_mode scale_filter;
-	// last applied mode when the output is powered off
-	struct wlr_output_mode *current_mode;
 
 	bool enabling, enabled;
 	list_t *workspaces;
 
 	struct sway_output_state current;
 
+	struct wl_listener layout_destroy;
 	struct wl_listener destroy;
 	struct wl_listener commit;
-	struct wl_listener mode;
 	struct wl_listener present;
 	struct wl_listener damage;
 	struct wl_listener frame;
 	struct wl_listener needs_frame;
+	struct wl_listener request_state;
 
 	struct {
 		struct wl_signal disable;
@@ -72,12 +79,21 @@ struct sway_output {
 	uint32_t refresh_nsec;
 	int max_render_time; // In milliseconds
 	struct wl_event_source *repaint_timer;
+	bool gamma_lut_changed;
 };
 
 struct sway_output_non_desktop {
 	struct wlr_output *wlr_output;
 
 	struct wl_listener destroy;
+};
+
+struct fx_render_context {
+	struct sway_output *output;
+	struct wlr_renderer *renderer;
+	pixman_region32_t *output_damage;
+
+	struct fx_gles_render_pass *pass;
 };
 
 struct sway_output *output_create(struct wlr_output *wlr_output);
@@ -111,6 +127,9 @@ void output_damage_box(struct sway_output *output, struct wlr_box *box);
 void output_damage_whole_container(struct sway_output *output,
 	struct sway_container *con);
 
+bool output_match_name_or_id(struct sway_output *output,
+	const char *name_or_id);
+
 // this ONLY includes the enabled outputs
 struct sway_output *output_by_name_or_id(const char *name_or_id);
 
@@ -127,8 +146,7 @@ bool output_has_opaque_overlay_layer_surface(struct sway_output *output);
 
 struct sway_workspace *output_get_active_workspace(struct sway_output *output);
 
-void output_render(struct sway_output *output, struct timespec *when,
-	pixman_region32_t *damage);
+void output_render(struct fx_render_context *ctx);
 
 void output_surface_for_each_surface(struct sway_output *output,
 		struct wlr_surface *surface, double ox, double oy,
@@ -181,20 +199,16 @@ void output_get_box(struct sway_output *output, struct wlr_box *box);
 enum sway_container_layout output_get_default_layout(
 		struct sway_output *output);
 
-void render_rect(struct sway_output *output,
-		pixman_region32_t *output_damage, const struct wlr_box *_box,
+void render_rect(struct fx_render_context *ctx, const struct wlr_box *_box,
 		float color[static 4]);
 
-void render_rounded_rect(struct sway_output *output,
-		pixman_region32_t *output_damage, const struct wlr_box *_box,
-		float color[static 4], int corner_radius,
-		enum corner_location corner_location);
+void render_rounded_rect(struct fx_render_context *ctx, const struct wlr_box *_box,
+		float color[static 4], int corner_radius, enum corner_location corner_location);
 
-void render_blur(bool optimized, struct sway_output *output,
-		pixman_region32_t *output_damage, const struct wlr_box *dst_box,
-		pixman_region32_t *opaque_region, struct decoration_data *deco_data,
-		struct blur_stencil_data *stencil_data);
-
+void render_blur(struct fx_render_context *ctx, struct wlr_texture *texture,
+		const struct wlr_fbox *src_box, const struct wlr_box *dst_box,
+		bool optimized_blur, pixman_region32_t *opaque_region,
+		struct decoration_data deco_data);
 
 void premultiply_alpha(float color[4], float opacity);
 
@@ -203,6 +217,8 @@ void scale_box(struct wlr_box *box, float scale);
 enum wlr_direction opposite_direction(enum wlr_direction d);
 
 void handle_output_layout_change(struct wl_listener *listener, void *data);
+
+void handle_gamma_control_set_gamma(struct wl_listener *listener, void *data);
 
 void handle_output_manager_apply(struct wl_listener *listener, void *data);
 

@@ -31,20 +31,19 @@ struct seatop_move_tiling_event {
 	bool insert_after_target;
 };
 
-static void handle_render(struct sway_seat *seat,
-		struct sway_output *output, pixman_region32_t *damage) {
+static void handle_render(struct sway_seat *seat, struct fx_render_context *ctx) {
 	struct seatop_move_tiling_event *e = seat->seatop_data;
 	if (!e->threshold_reached) {
 		return;
 	}
-	if (e->target_node && node_get_output(e->target_node) == output) {
+	if (e->target_node && node_get_output(e->target_node) == ctx->output) {
 		float color[4];
 		memcpy(&color, config->border_colors.focused.indicator,
 				sizeof(float) * 4);
 		premultiply_alpha(color, 0.5);
 		struct wlr_box box;
 		memcpy(&box, &e->drop_box, sizeof(struct wlr_box));
-		scale_box(&box, output->wlr_output->scale);
+ 		scale_box(&box, ctx->output->wlr_output->scale);
 
 		// Render blur
 		pixman_region32_t opaque_region;
@@ -52,11 +51,11 @@ static void handle_render(struct sway_seat *seat,
 		struct decoration_data deco_data = get_undecorated_decoration_data();
 		deco_data.blur = e->con->blur_enabled;
 		deco_data.corner_radius = e->con->corner_radius;
-		render_blur(false, output, damage, &box, &opaque_region, &deco_data, NULL);
+		struct wlr_fbox src_box = {0};
+		render_blur(ctx, NULL, &src_box, &box, false, &opaque_region, deco_data);
 		pixman_region32_fini(&opaque_region);
 
-		render_rounded_rect(output, damage, &box, color,
-			e->con->corner_radius * output->wlr_output->scale, ALL);
+		render_rounded_rect(ctx, &box, color, e->con->corner_radius * ctx->output->wlr_output->scale, ALL);
 	}
 }
 

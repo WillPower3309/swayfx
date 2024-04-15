@@ -12,8 +12,10 @@
 #include "../include/config.h"
 #include "gesture.h"
 #include "list.h"
+#include "stringop.h"
 #include "swaynag.h"
 #include "tree/container.h"
+#include "scenefx/types/fx/blur_data.h"
 #include "sway/input/tablet.h"
 #include "sway/tree/root.h"
 #include "wlr-layer-shell-unstable-v1-protocol.h"
@@ -155,10 +157,12 @@ struct input_config {
 	int middle_emulation;
 	int natural_scroll;
 	float pointer_accel;
+	float rotation_angle;
 	float scroll_factor;
 	int repeat_delay;
 	int repeat_rate;
 	int scroll_button;
+	int scroll_button_lock;
 	int scroll_method;
 	int send_events;
 	int tap;
@@ -470,15 +474,6 @@ enum xwayland_mode {
 	XWAYLAND_MODE_IMMEDIATE,
 };
 
-struct blur_parameters {
-	int num_passes;
-	int radius;
-	float noise;
-	float brightness;
-	float contrast;
-	float saturation;
-};
-
 /**
  * The configuration struct. The result of loading a config file.
  */
@@ -501,7 +496,7 @@ struct sway_config {
 
 	bool blur_enabled;
 	bool blur_xray;
-	struct blur_parameters blur_params;
+	struct blur_data blur_params;
 
 	bool titlebar_separator;
 	bool scratchpad_minimize;
@@ -564,6 +559,7 @@ struct sway_config {
 	bool auto_back_and_forth;
 	bool show_marks;
 	enum alignment title_align;
+	bool primary_selection;
 
 	bool tiling_drag;
 	int tiling_drag_threshold;
@@ -657,7 +653,7 @@ void run_deferred_bindings(void);
 /**
  * Adds a warning entry to the swaynag instance used for errors.
  */
-void config_add_swaynag_warning(char *fmt, ...);
+void config_add_swaynag_warning(char *fmt, ...) _SWAY_ATTRIB_PRINTF(1, 2);
 
 /**
  * Free config struct

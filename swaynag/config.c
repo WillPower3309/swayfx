@@ -166,7 +166,7 @@ int swaynag_parse_options(int argc, char **argv, struct swaynag *swaynag,
 					fprintf(stderr, "Missing action for button %s\n", optarg);
 					return EXIT_FAILURE;
 				}
-				struct swaynag_button *button = calloc(sizeof(struct swaynag_button), 1);
+				struct swaynag_button *button = calloc(1, sizeof(struct swaynag_button));
 				if (!button) {
 					perror("calloc");
 					return EXIT_FAILURE;
@@ -226,10 +226,8 @@ int swaynag_parse_options(int argc, char **argv, struct swaynag *swaynag,
 			break;
 		case 'f': // Font
 			if (type) {
-				free(type->font);
 				pango_font_description_free(type->font_description);
-				type->font = strdup(optarg);
-				type->font_description = pango_font_description_from_string(type->font);
+				type->font_description = pango_font_description_from_string(optarg);
 			}
 			break;
 		case 'l': // Detailed Message
@@ -245,8 +243,8 @@ int swaynag_parse_options(int argc, char **argv, struct swaynag *swaynag,
 			break;
 		case 'L': // Detailed Button Text
 			if (swaynag) {
-				free(swaynag->details.button_details.text);
-				swaynag->details.button_details.text = strdup(optarg);
+				free(swaynag->details.details_text);
+				swaynag->details.details_text = strdup(optarg);
 			}
 			break;
 		case 'm': // Message
