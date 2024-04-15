@@ -12,16 +12,6 @@
       ...
     }:
     let
-      pkgsFor =
-        system:
-        import nixpkgs {
-          inherit system;
-          overlays = [ scenefx.overlays.insert ];
-        };
-      targetSystems = [
-        "aarch64-linux"
-        "x86_64-linux"
-      ];
       mkPackage = pkgs: {
         swayfx-unwrapped =
           (pkgs.swayfx-unwrapped.override { wlroots_0_16 = pkgs.wlroots_0_17; }).overrideAttrs
@@ -32,6 +22,18 @@
               buildInputs = old.buildInputs ++ [ pkgs.scenefx ];
             });
       };
+
+      targetSystems = [
+        "aarch64-linux"
+        "x86_64-linux"
+      ];
+      pkgsFor =
+        system:
+        import nixpkgs {
+          inherit system;
+          overlays = [ scenefx.overlays.insert ];
+        };
+      forEachSystem = f: nixpkgs.lib.genAttrs targetSystems (system: f (pkgsFor system));
     in
     {
       overlays = rec {
@@ -43,38 +45,32 @@
         override = _: prev: mkPackage prev;
       };
 
-      packages = nixpkgs.lib.genAttrs targetSystems (
-        system: (mkPackage (pkgsFor system) // { default = self.packages.${system}.swayfx-unwrapped; })
+      packages = forEachSystem (
+        pkgs: (mkPackage pkgs // { default = self.packages.${pkgs.system}.swayfx-unwrapped; })
       );
 
-      devShells = nixpkgs.lib.genAttrs targetSystems (
-        system:
-        let
-          pkgs = pkgsFor system;
-        in
-        {
-          default = pkgs.mkShell {
-            name = "swayfx-shell";
-            inputsFrom = [
-              self.packages.${system}.swayfx-unwrapped
-              pkgs.wlroots_0_17
-              pkgs.scenefx
-            ];
-            nativeBuildInputs = with pkgs; [
-              wayland-scanner
-              hwdata # for wlroots
-            ];
-            # Copy the nix version of wlroots into the project
-            shellHook = ''
-              (
-                mkdir -p "$PWD/subprojects" && cd "$PWD/subprojects"
-                cp -R --no-preserve=mode,ownership ${pkgs.wlroots_0_17.src} wlroots
-                cp -R --no-preserve=mode,ownership ${pkgs.scenefx.src} scenefx
-              )'';
-          };
-        }
-      );
+      devShells = forEachSystem (pkgs: {
+        default = pkgs.mkShell {
+          name = "swayfx-shell";
+          inputsFrom = [
+            self.packages.${pkgs.system}.swayfx-unwrapped
+            pkgs.wlroots_0_17
+            pkgs.scenefx
+          ];
+          nativeBuildInputs = with pkgs; [
+            wayland-scanner
+            hwdata # for wlroots
+          ];
+          # Copy the nix version of wlroots into the project
+          shellHook = ''
+            (
+              mkdir -p "$PWD/subprojects" && cd "$PWD/subprojects"
+              cp -R --no-preserve=mode,ownership ${pkgs.wlroots_0_17.src} wlroots
+              cp -R --no-preserve=mode,ownership ${pkgs.scenefx.src} scenefx
+            )'';
+        };
+      });
 
-      formatter = nixpkgs.lib.genAttrs targetSystems (system: (pkgsFor system).nixfmt-rfc-style);
+      formatter = forEachSystem (pkgs: pkgs.nixfmt-rfc-style);
     };
 }
