@@ -23,7 +23,7 @@
     in
     {
       overlays = rec {
-        default = override;
+        default = insert;
         # Override onto the input nixpkgs
         override = _: prev: mkPackage prev;
         # Insert using the locked nixpkgs
