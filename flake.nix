@@ -57,6 +57,7 @@
             inputsFrom = [
               self.packages.${system}.swayfx-unwrapped
               pkgs.wlroots_0_17
+              pkgs.scenefx
             ];
             nativeBuildInputs = with pkgs; [
               wayland-scanner
