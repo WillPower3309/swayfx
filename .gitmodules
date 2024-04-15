@@ -1,0 +1,3 @@
+[submodule "subprojects/scenefx"]
+	path = subprojects/scenefx
+	url = https://github.com/wlrfx/scenefx.git
