@@ -43,11 +43,11 @@
         "nixpkgs": "nixpkgs_2"
       },
       "locked": {
-        "lastModified": 1713201995,
-        "narHash": "sha256-QQ2YwWEMQyf9g8HpiQWjS28xR1m/oPHOgJELf24eYVI=",
+        "lastModified": 1713204871,
+        "narHash": "sha256-6cZnJ9FkrPlVis68fx6rbYu2liEe6RtUdI0uvRjlWYc=",
         "owner": "ozwaldorf",
         "repo": "scenefx",
-        "rev": "b75d2570841b21cf1abf8c4780941505432f0562",
+        "rev": "ae83e053505cdf59477460718da2ea599d656f44",
         "type": "github"
       },
       "original": {
