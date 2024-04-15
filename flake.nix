@@ -36,10 +36,11 @@
     {
       overlays = rec {
         default = insert;
-        # Override onto the input nixpkgs
-        override = _: prev: mkPackage prev;
-        # Insert using the locked nixpkgs
+        # Insert using the locked nixpkgs. Can be used with any nixpkgs version.
         insert = _: prev: mkPackage (pkgsFor prev.system);
+        # Override onto the input nixpkgs. Users *MUST* have a scenefx overlay
+        # used before this overlay, otherwise pkgs.scenefx will be unavailable
+        override = _: prev: mkPackage prev;
       };
 
       packages = nixpkgs.lib.genAttrs targetSystems (
