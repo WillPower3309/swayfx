@@ -187,7 +187,7 @@ if git.found()
 	endif
 endif
 add_project_arguments('-DSWAY_VERSION=@0@'.format(version), language: 'c')
-add_project_arguments('-DSWAY_ORIGINAL_VERSION="1.8.1"', language: 'c')
+add_project_arguments('-DSWAY_ORIGINAL_VERSION="1.9.0"', language: 'c')
 
 # Compute the relative path used by compiler invocations.
 source_root = meson.current_source_dir().split('/')
