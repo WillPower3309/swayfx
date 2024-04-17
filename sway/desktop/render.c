@@ -1593,7 +1593,6 @@ void output_render(struct fx_render_context *ctx) {
 	pixman_region32_t *damage = ctx->output_damage;
 
 	struct fx_effect_framebuffers *effect_fbos = ctx->pass->fx_effect_framebuffers;
-	struct fx_renderer *renderer = fx_get_renderer(ctx->renderer);
 
 	struct sway_workspace *workspace = output->current.active_workspace;
 	if (workspace == NULL) {
@@ -1737,15 +1736,15 @@ void output_render(struct fx_render_context *ctx) {
 						0, 0, output_width, output_height);
 
 				// capture the padding pixels around the blur where artifacts will be drawn
-				pixman_region32_subtract(&renderer->blur_padding_region,
+				pixman_region32_subtract(&effect_fbos->blur_padding_region,
 						&extended_damage, damage);
 				// Combine into the surface damage (we need to redraw the padding area as well)
 				pixman_region32_union(damage, damage, &extended_damage);
 				pixman_region32_fini(&extended_damage);
 
 				// Capture the padding pixels before blur for later use
-				fx_renderer_read_to_buffer(ctx->pass, &renderer->blur_padding_region,
-						ctx->pass->fx_effect_framebuffers->blur_saved_pixels_buffer,
+				fx_renderer_read_to_buffer(ctx->pass, &effect_fbos->blur_padding_region,
+						effect_fbos->blur_saved_pixels_buffer,
 						ctx->pass->buffer, true);
 			}
 		}
@@ -1831,9 +1830,8 @@ renderer_end:
 	// Not needed if we damaged the whole viewport
 	if (!effect_fbos->blur_buffer_dirty) {
 		// Render the saved pixels over the blur artifacts
-		fx_renderer_read_to_buffer(ctx->pass, &renderer->blur_padding_region,
-				ctx->pass->buffer,
-				ctx->pass->fx_effect_framebuffers->blur_saved_pixels_buffer, true);
+		fx_renderer_read_to_buffer(ctx->pass, &effect_fbos->blur_padding_region,
+				ctx->pass->buffer, effect_fbos->blur_saved_pixels_buffer, true);
 	}
 
 	pixman_region32_fini(&transformed_damage);
