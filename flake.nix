@@ -58,6 +58,7 @@
             pkgs.scenefx
           ];
           nativeBuildInputs = with pkgs; [
+            gdb # for debugging
             wayland-scanner
             hwdata # for wlroots
           ];
