@@ -1592,6 +1592,9 @@ void output_render(struct fx_render_context *ctx) {
 	struct sway_output *output = ctx->output;
 	pixman_region32_t *damage = ctx->output_damage;
 
+	pixman_region32_t transformed_damage;
+	pixman_region32_init(&transformed_damage);
+
 	struct fx_effect_framebuffers *effect_fbos = ctx->pass->fx_effect_framebuffers;
 
 	struct sway_workspace *workspace = output->current.active_workspace;
@@ -1617,8 +1620,6 @@ void output_render(struct fx_render_context *ctx) {
 			},
 		});
 	}
-	pixman_region32_t transformed_damage;
-	pixman_region32_init(&transformed_damage);
 	pixman_region32_copy(&transformed_damage, damage);
 	transform_output_damage(&transformed_damage, wlr_output);
 
