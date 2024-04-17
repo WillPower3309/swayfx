@@ -1592,6 +1592,9 @@ void output_render(struct fx_render_context *ctx) {
 	struct sway_output *output = ctx->output;
 	pixman_region32_t *damage = ctx->output_damage;
 
+	pixman_region32_t transformed_damage;
+	pixman_region32_init(&transformed_damage);
+
 	struct fx_effect_framebuffers *effect_fbos = ctx->pass->fx_effect_framebuffers;
 
 	struct sway_workspace *workspace = output->current.active_workspace;
@@ -1617,8 +1620,6 @@ void output_render(struct fx_render_context *ctx) {
 			},
 		});
 	}
-	pixman_region32_t transformed_damage;
-	pixman_region32_init(&transformed_damage);
 	pixman_region32_copy(&transformed_damage, damage);
 	transform_output_damage(&transformed_damage, wlr_output);
 
@@ -1704,7 +1705,7 @@ void output_render(struct fx_render_context *ctx) {
 		pixman_region32_init(&blur_region);
 		bool workspace_has_blur = workspace_get_blur_info(workspace, &blur_region);
 		// Expand the damage to compensate for blur
-		if (workspace_has_blur) {
+		if (effect_fbos && workspace_has_blur) {
 			// Skip the blur artifact prevention if damaging the whole viewport
 			if (effect_fbos->blur_buffer_dirty) {
 				// Needs to be extended before clearing
@@ -1765,7 +1766,7 @@ void output_render(struct fx_render_context *ctx) {
 
 		// Check if the background needs to be blurred.
 		// Render optimized/x-ray blur
-		if (workspace_has_blur && effect_fbos->blur_buffer_dirty) {
+		if (effect_fbos && workspace_has_blur && effect_fbos->blur_buffer_dirty) {
 			const float opacity = 1.0f;
 			struct fx_render_blur_pass_options blur_options = {
 				.tex_options = {
@@ -1828,7 +1829,7 @@ render_overlay:
 
 renderer_end:
 	// Not needed if we damaged the whole viewport
-	if (!effect_fbos->blur_buffer_dirty) {
+	if (effect_fbos && !effect_fbos->blur_buffer_dirty) {
 		// Render the saved pixels over the blur artifacts
 		fx_renderer_read_to_buffer(ctx->pass, &effect_fbos->blur_padding_region,
 				ctx->pass->buffer, effect_fbos->blur_saved_pixels_buffer, true);
