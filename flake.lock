@@ -2,11 +2,11 @@
   "nodes": {
     "nixpkgs": {
       "locked": {
-        "lastModified": 1713128889,
-        "narHash": "sha256-aB90ZqzosyRDpBh+rILIcyP5lao8SKz8Sr2PSWvZrzk=",
+        "lastModified": 1713254108,
+        "narHash": "sha256-0TZIsfDbHG5zibtlw6x0yOp3jkInIGaJ35B7Y4G8Pec=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "2748d22b45a99fb2deafa5f11c7531c212b2cefa",
+        "rev": "2fd19c8be2551a61c1ddc3d9f86d748f4db94f00",
         "type": "github"
       },
       "original": {
@@ -43,11 +43,11 @@
         "nixpkgs": "nixpkgs_2"
       },
       "locked": {
-        "lastModified": 1713204871,
-        "narHash": "sha256-6cZnJ9FkrPlVis68fx6rbYu2liEe6RtUdI0uvRjlWYc=",
+        "lastModified": 1713362054,
+        "narHash": "sha256-qJ1ahbYBIU36lmpW0XhMj1SQgJ81yec0swp+W7laIzw=",
         "owner": "ozwaldorf",
         "repo": "scenefx",
-        "rev": "ae83e053505cdf59477460718da2ea599d656f44",
+        "rev": "8ccf8f7226b1e59c8481e8251b05e6ac1638da6c",
         "type": "github"
       },
       "original": {
