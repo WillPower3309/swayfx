@@ -178,22 +178,16 @@ void workspace_consider_destroy(struct sway_workspace *ws) {
 static bool workspace_valid_on_output(const char *output_name,
 		const char *ws_name) {
 	struct workspace_config *wsc = workspace_find_config(ws_name);
-	char identifier[128];
 	struct sway_output *output = output_by_name_or_id(output_name);
 	if (!output) {
 		return false;
 	}
-	output_name = output->wlr_output->name;
-	output_get_identifier(identifier, sizeof(identifier), output);
-
 	if (!wsc) {
 		return true;
 	}
 
 	for (int i = 0; i < wsc->outputs->length; i++) {
-		if (strcmp(wsc->outputs->items[i], "*") == 0 ||
-				strcmp(wsc->outputs->items[i], output_name) == 0 ||
-				strcmp(wsc->outputs->items[i], identifier) == 0) {
+		if (output_match_name_or_id(output, wsc->outputs->items[i])) {
 			return true;
 		}
 	}
@@ -288,13 +282,10 @@ char *workspace_next_name(const char *output_name) {
 	// assignments primarily, falling back to bindings and numbers.
 	struct sway_mode *mode = config->current_mode;
 
-	char identifier[128];
 	struct sway_output *output = output_by_name_or_id(output_name);
 	if (!output) {
 		return NULL;
 	}
-	output_name = output->wlr_output->name;
-	output_get_identifier(identifier, sizeof(identifier), output);
 
 	int order = INT_MAX;
 	char *target = NULL;
@@ -314,9 +305,7 @@ char *workspace_next_name(const char *output_name) {
 		}
 		bool found = false;
 		for (int j = 0; j < wsc->outputs->length; ++j) {
-			if (strcmp(wsc->outputs->items[j], "*") == 0 ||
-					strcmp(wsc->outputs->items[j], output_name) == 0 ||
-					strcmp(wsc->outputs->items[j], identifier) == 0) {
+			if (output_match_name_or_id(output, wsc->outputs->items[j])) {
 				found = true;
 				free(target);
 				target = strdup(wsc->workspace);
@@ -656,15 +645,9 @@ void workspace_output_add_priority(struct sway_workspace *workspace,
 
 struct sway_output *workspace_output_get_highest_available(
 		struct sway_workspace *ws, struct sway_output *exclude) {
-	char exclude_id[128] = {'\0'};
-	if (exclude) {
-		output_get_identifier(exclude_id, sizeof(exclude_id), exclude);
-	}
-
 	for (int i = 0; i < ws->output_priority->length; i++) {
-		char *name = ws->output_priority->items[i];
-		if (exclude && (strcmp(name, exclude->wlr_output->name) == 0
-					|| strcmp(name, exclude_id) == 0)) {
+		const char *name = ws->output_priority->items[i];
+		if (exclude && output_match_name_or_id(exclude, name)) {
 			continue;
 		}
 
@@ -709,10 +692,15 @@ static void find_blurred_region_iterator(struct sway_container *con, void *data)
 	pixman_region32_t *blur_region = region_data->blur_region;
 
 	if (con->blur_enabled && !view->surface->opaque) {
+		struct wlr_box region = {
+			.x = floor(con->current.x) - ws->output->lx,
+			.y = floor(con->current.y) - ws->output->ly,
+			.width = con->current.width,
+			.height = con->current.height,
+		};
+		scale_box(&region, ws->output->wlr_output->scale);
 		pixman_region32_union_rect(blur_region, blur_region,
-				floor(con->current.x) - ws->output->lx,
-				floor(con->current.y) - ws->output->ly,
-				con->current.width, con->current.height);
+				region.x, region.y, region.width, region.height);
 	}
 }
 
@@ -733,9 +721,10 @@ bool workspace_get_blur_info(struct sway_workspace *ws, pixman_region32_t *blur_
 		wl_list_for_each(lsurface, &sway_output->layers[i], link) {
 			if (lsurface->has_blur && !lsurface->layer_surface->surface->opaque
 					&& lsurface->layer != ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND) {
-				struct wlr_box *geo = &lsurface->geo;
+				struct wlr_box geo = lsurface->geo;
+				scale_box(&geo, sway_output->wlr_output->scale);
 				pixman_region32_union_rect(blur_region, blur_region,
-						geo->x, geo->y, geo->width, geo->height);
+						geo.x, geo.y, geo.width, geo.height);
 			}
 		}
 	}

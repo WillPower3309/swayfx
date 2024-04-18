@@ -38,12 +38,18 @@ Sway is an incredible window manager, and certainly one of the most well establi
     - `blur_xray enable|disable`: this will set floating windows to blur based on the background, not the windows below. You probably want to set this to `disable` :)
     - `blur_passes <integer value 0 - 10>`
     - `blur_radius <integer value 0 - 10>`
+    - `blur_noise <float value 0 - 1>` (**Note**: git only, percentage of noise to add)
+    - `blur_brightness <float value 0 - 2>` (**Note**: git only, percentage of original brightness to adjust)
+    - `blur_contrast <float value 0 - 2>` (**Note**: git only, percentage of original contrast to adjust)
+    - `blur_saturation <float value 0 - 2>` (**Note**: git only, percentage of original saturation to adjust)
 + Corner radius: `corner_radius <val>`
 + Window shadows:
     - `shadows enable|disable`
     - `shadows_on_csd enable|disable` (**Note**: The shadow might not fit some windows)
     - `shadow_blur_radius <integer value 0 - 100>`
     - `shadow_color <hex color with alpha> ex, #0000007F`
+    - `shadow_offset <x offset> <y offset>`  (**Note**: git only)
+    - `shadow_inactive_color <hex color with alpha> ex, #0000007F`
 + LayerShell effects (to blur panels / notifications etc):
     - `layer_effects <layer namespace> <effects>`
     - The current layer namespaces can be shown with `swaymsg -r -t get_outputs | jq '.[0].layer_shell_surfaces | .[] | .namespace'`
@@ -84,6 +90,9 @@ You can also bring up a development shell and follow the build instructions belo
 ```
 nix develop
 ```
+### Debian
+Check [INSTALL-deb.md](/INSTALL-deb.md)
+
 
 ### Manual Steps
 
@@ -97,7 +106,8 @@ Install dependencies:
 * json-c
 * pango
 * cairo
-* gdk-pixbuf2 (optional: system tray)
+* gdk-pixbuf2 (optional: additional image formats for system tray)
+* [swaybg] (optional: wallpaper)
 * [scdoc] (optional: man pages) \*
 * git (optional: version info) \*
 
@@ -122,8 +132,8 @@ SwayFX would love to receive any new features that you're willing to build! Gene
 Here's a quick outline of where most of our changes lie vs the main sway repository:
 
 + `sway/desktop/render.c`: the file that handles calling `fx_renderer` to render to the screen, handles damage tracking and scaling
-+ `sway/desktop/fx_renderer.c`: the meat and potatoes of this project, structured as similarly to wlr_renderer as possible
-+ `sway/desktop/shaders`: where all of the shaders that fx_renderer uses live
++ `sway/desktop/fx_renderer/fx_renderer.c`: the meat and potatoes of this project, structured as similarly to wlr_renderer as possible
++ `sway/desktop/fx_renderer/shaders`: where all of the shaders that fx_renderer uses live
 
 ## Acknowledgements
 

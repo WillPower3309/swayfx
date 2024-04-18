@@ -60,7 +60,7 @@ static void pretty_print_cmd(json_object *r) {
 	if (!success_object(r)) {
 		json_object *error;
 		if (!json_object_object_get_ex(r, "error", &error)) {
-			printf("An unknkown error occurred");
+			printf("An unknown error occurred");
 		} else {
 			printf("Error: %s\n", json_object_get_string(error));
 		}
@@ -185,11 +185,12 @@ static void pretty_print_seat(json_object *i) {
 }
 
 static void pretty_print_output(json_object *o) {
-	json_object *name, *rect, *focused, *active, *ws, *current_mode, *non_desktop;
+	json_object *name, *rect, *focused, *active, *power, *ws, *current_mode, *non_desktop;
 	json_object_object_get_ex(o, "name", &name);
 	json_object_object_get_ex(o, "rect", &rect);
 	json_object_object_get_ex(o, "focused", &focused);
 	json_object_object_get_ex(o, "active", &active);
+	json_object_object_get_ex(o, "power", &power);
 	json_object_object_get_ex(o, "current_workspace", &ws);
 	json_object_object_get_ex(o, "non_desktop", &non_desktop);
 	json_object *make, *model, *serial, *scale, *scale_filter, *subpixel,
@@ -226,6 +227,7 @@ static void pretty_print_output(json_object *o) {
 		printf(
 			"Output %s '%s %s %s'%s\n"
 			"  Current mode: %dx%d @ %.3f Hz\n"
+			"  Power: %s\n"
 			"  Position: %d,%d\n"
 			"  Scale factor: %f\n"
 			"  Scale filter: %s\n"
@@ -240,6 +242,7 @@ static void pretty_print_output(json_object *o) {
 			json_object_get_int(width),
 			json_object_get_int(height),
 			(double)json_object_get_int(refresh) / 1000,
+			json_object_get_boolean(power) ? "on" : "off",
 			json_object_get_int(x), json_object_get_int(y),
 			json_object_get_double(scale),
 			json_object_get_string(scale_filter),
@@ -256,7 +259,7 @@ static void pretty_print_output(json_object *o) {
 			json_object_get_string(adaptive_sync_status));
 	} else {
 		printf(
-			"Output %s '%s %s %s' (inactive)\n",
+			"Output %s '%s %s %s' (disabled)\n",
 			json_object_get_string(name),
 			json_object_get_string(make),
 			json_object_get_string(model),
@@ -294,9 +297,12 @@ static void pretty_print_output(json_object *o) {
 }
 
 static void pretty_print_version(json_object *v) {
-	json_object *ver;
-	json_object_object_get_ex(v, "human_readable", &ver);
-	printf("sway version %s\n", json_object_get_string(ver));
+	json_object *swayfx_ver;
+	json_object *sway_ver;
+	json_object_object_get_ex(v, "human_readable", &swayfx_ver);
+	json_object_object_get_ex(v, "sway_original_version", &sway_ver);
+	printf("swayfx version %s (based on sway %s)\n",
+			json_object_get_string(swayfx_ver), json_object_get_string(sway_ver));
 }
 
 static void pretty_print_config(json_object *c) {
@@ -470,7 +476,7 @@ int main(int argc, char **argv) {
 			cmdtype = strdup(optarg);
 			break;
 		case 'v':
-			printf("swaymsg version " SWAY_VERSION "\n");
+			printf("swaymsg version " SWAY_VERSION " (based on sway " SWAY_ORIGINAL_VERSION ")\n");
 			exit(EXIT_SUCCESS);
 			break;
 		default:

@@ -2,11 +2,11 @@ install_manifest.txt
 *.swp
 *.o
 *.a
-.cache/
 bin/
 test/
 build/
 build-*/
+.cache/
 !build-scripts
 !build-scripts/*
 .lvimrc

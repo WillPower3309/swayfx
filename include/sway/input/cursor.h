@@ -35,7 +35,6 @@ struct sway_cursor {
 	pixman_region32_t confine; // invalid if active_constraint == NULL
 	bool active_confine_requires_warp;
 
-	struct wlr_pointer_gestures_v1 *pointer_gestures;
 	struct wl_listener hold_begin;
 	struct wl_listener hold_end;
 	struct wl_listener pinch_begin;
@@ -53,6 +52,7 @@ struct sway_cursor {
 
 	struct wl_listener touch_down;
 	struct wl_listener touch_up;
+	struct wl_listener touch_cancel;
 	struct wl_listener touch_motion;
 	struct wl_listener touch_frame;
 	bool simulating_pointer_from_touch;
@@ -64,6 +64,7 @@ struct sway_cursor {
 	struct wl_listener tool_proximity;
 	struct wl_listener tool_button;
 	bool simulating_pointer_from_tool_tip;
+	bool simulating_pointer_from_tool_button;
 	uint32_t tool_buttons;
 
 	struct wl_listener request_set_cursor;
@@ -107,6 +108,10 @@ void cursor_unhide(struct sway_cursor *cursor);
 int cursor_get_timeout(struct sway_cursor *cursor);
 void cursor_notify_key_press(struct sway_cursor *cursor);
 
+void pointer_motion(struct sway_cursor *cursor, uint32_t time_msec,
+		struct wlr_input_device *device, double dx, double dy,
+		double dx_unaccel, double dy_unaccel);
+
 void dispatch_cursor_button(struct sway_cursor *cursor,
 	struct wlr_input_device *device, uint32_t time_msec, uint32_t button,
 	enum wlr_button_state state);
@@ -139,5 +144,7 @@ uint32_t get_mouse_bindcode(const char *name, char **error);
 uint32_t get_mouse_button(const char *name, char **error);
 
 const char *get_mouse_button_name(uint32_t button);
+
+void handle_request_set_cursor_shape(struct wl_listener *listener, void *data);
 
 #endif

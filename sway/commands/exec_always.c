@@ -9,7 +9,6 @@
 #include "sway/config.h"
 #include "sway/server.h"
 #include "sway/desktop/launcher.h"
-#include "sway/server.h"
 #include "sway/tree/container.h"
 #include "sway/tree/root.h"
 #include "sway/tree/workspace.h"
@@ -64,7 +63,7 @@ struct cmd_results *cmd_exec_process(int argc, char **argv) {
 	}
 
 	pid_t pid, child;
-	struct launcher_ctx *ctx = launcher_ctx_create();
+	struct launcher_ctx *ctx = launcher_ctx_create_internal();
 	// Fork process
 	if ((pid = fork()) == 0) {
 		// Fork child process again

@@ -15,11 +15,6 @@ sway_sources = files(
 	'xdg_decoration.c',
 
 	'desktop/desktop.c',
-	'desktop/fx_renderer/fx_framebuffer.c',
-	'desktop/fx_renderer/fx_renderer.c',
-	'desktop/fx_renderer/fx_stencilbuffer.c',
-	'desktop/fx_renderer/fx_texture.c',
-	'desktop/fx_renderer/matrix.c',
 	'desktop/idle_inhibit_v1.c',
 	'desktop/layer_shell.c',
 	'desktop/output.c',
@@ -32,7 +27,6 @@ sway_sources = files(
 	'input/input-manager.c',
 	'input/cursor.c',
 	'input/keyboard.c',
-	'input/libinput.c',
 	'input/seat.c',
 	'input/seatop_default.c',
 	'input/seatop_down.c',
@@ -54,9 +48,13 @@ sway_sources = files(
 	'commands/bar.c',
 	'commands/bind.c',
 	'commands/blur.c',
+	'commands/blur_brightness.c',
+	'commands/blur_contrast.c',
 	'commands/blur_passes.c',
 	'commands/blur_radius.c',
 	'commands/blur_xray.c',
+	'commands/blur_noise.c',
+	'commands/blur_saturation.c',
 	'commands/border.c',
 	'commands/client.c',
 	'commands/corner_radius.c',
@@ -104,6 +102,7 @@ sway_sources = files(
 	'commands/nop.c',
 	'commands/output.c',
 	'commands/popup_during_fullscreen.c',
+	'commands/primary_selection.c',
 	'commands/reload.c',
 	'commands/rename.c',
 	'commands/resize.c',
@@ -124,6 +123,8 @@ sway_sources = files(
 	'commands/set.c',
 	'commands/shadow_blur_radius.c',
 	'commands/shadow_color.c',
+    'commands/shadow_offset.c',
+	'commands/shadow_inactive_color.c',
 	'commands/shadows.c',
 	'commands/shadows_on_csd.c',
 	'commands/show_marks.c',
@@ -191,9 +192,11 @@ sway_sources = files(
 	'commands/input/middle_emulation.c',
 	'commands/input/natural_scroll.c',
 	'commands/input/pointer_accel.c',
+        'commands/input/rotation_angle.c',
 	'commands/input/repeat_delay.c',
 	'commands/input/repeat_rate.c',
 	'commands/input/scroll_button.c',
+	'commands/input/scroll_button_lock.c',
 	'commands/input/scroll_factor.c',
 	'commands/input/scroll_method.c',
 	'commands/input/tap.c',
@@ -235,8 +238,6 @@ sway_sources = files(
 	'tree/output.c',
 )
 
-subdir('desktop/fx_renderer/shaders')
-
 sway_deps = [
 	cairo,
 	drm,
@@ -247,19 +248,23 @@ sway_deps = [
 	math,
 	pango,
 	pcre2,
-	glesv2,
 	pixman,
+	scenefx,
 	threads,
 	wayland_server,
 	wlroots,
 	xkbcommon,
+	xcb,
 	xcb_icccm,
 	egl,
 ]
 
 if have_xwayland
 	sway_sources += 'desktop/xwayland.c'
-	sway_deps += xcb
+endif
+
+if wlroots_features['libinput_backend']
+	sway_sources += 'input/libinput.c'
 endif
 
 executable(
