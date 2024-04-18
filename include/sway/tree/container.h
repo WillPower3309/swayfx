@@ -4,7 +4,6 @@
 #include <sys/types.h>
 #include <wlr/types/wlr_compositor.h>
 #include "list.h"
-#include "sway/desktop/fx_renderer/fx_framebuffer.h"
 #include "sway/tree/node.h"
 
 struct sway_view;
