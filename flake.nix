@@ -57,14 +57,12 @@
             pkgs.wlroots_0_17
             pkgs.scenefx
           ];
-          nativeBuildInputs = with pkgs; [
+          packages = with pkgs; [
             gdb # for debugging
-            wayland-scanner
-            hwdata # for wlroots
           ];
-          # Copy the nix version of wlroots into the project
           shellHook = ''
             (
+              # Copy the nix version of wlroots and scenefx into the project
               mkdir -p "$PWD/subprojects" && cd "$PWD/subprojects"
               cp -R --no-preserve=mode,ownership ${pkgs.wlroots_0_17.src} wlroots
               cp -R --no-preserve=mode,ownership ${pkgs.scenefx.src} scenefx
