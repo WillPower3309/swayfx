@@ -2,7 +2,7 @@
   description = "Swayfx development environment";
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
-    scenefx.url = "github:ozwaldorf/scenefx";
+    scenefx.url = "github:wlrfx/scenefx";
   };
   outputs =
     {
@@ -16,7 +16,7 @@
         swayfx-unwrapped =
           (pkgs.swayfx-unwrapped.override { wlroots_0_16 = pkgs.wlroots_0_17; }).overrideAttrs
             (old: {
-              version = "0.3.2-git";
+              version = "0.4.0-git";
               src = pkgs.lib.cleanSource ./.;
               nativeBuildInputs = old.nativeBuildInputs ++ [ pkgs.cmake ];
               buildInputs = old.buildInputs ++ [ pkgs.scenefx ];
