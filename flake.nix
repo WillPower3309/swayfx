@@ -1,66 +1,75 @@
 {
   description = "Swayfx development environment";
-  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+  inputs = {
+    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    scenefx.url = "github:wlrfx/scenefx";
+  };
   outputs =
-    { self, nixpkgs, ... }:
+    {
+      self,
+      nixpkgs,
+      scenefx,
+      ...
+    }:
     let
-      pkgsFor = system: import nixpkgs { inherit system; };
+      mkPackage = pkgs: {
+        swayfx-unwrapped =
+          (pkgs.swayfx-unwrapped.override { wlroots_0_16 = pkgs.wlroots_0_17; }).overrideAttrs
+            (old: {
+              version = "0.4.0-git";
+              src = pkgs.lib.cleanSource ./.;
+              nativeBuildInputs = old.nativeBuildInputs ++ [ pkgs.cmake ];
+              buildInputs = old.buildInputs ++ [ pkgs.scenefx ];
+            });
+      };
+
       targetSystems = [
         "aarch64-linux"
         "x86_64-linux"
       ];
-      mkPackage = pkgs: {
-        swayfx-unwrapped =
-          (pkgs.swayfx-unwrapped.override {
-            # When the sway 1.9 rebase is finished, this will need to be overridden.
-            # wlroots_0_16 = pkgs.wlroots_0_16;
-          }).overrideAttrs
-            (old: {
-              version = "0.3.2-git";
-              src = pkgs.lib.cleanSource ./.;
-            });
-      };
+      pkgsFor =
+        system:
+        import nixpkgs {
+          inherit system;
+          overlays = [ scenefx.overlays.insert ];
+        };
+      forEachSystem = f: nixpkgs.lib.genAttrs targetSystems (system: f (pkgsFor system));
     in
     {
       overlays = rec {
         default = insert;
-        # Override onto the input nixpkgs
-        override = _: prev: mkPackage prev;
-        # Insert using the locked nixpkgs
+        # Insert using the locked nixpkgs. Can be used with any nixpkgs version.
         insert = _: prev: mkPackage (pkgsFor prev.system);
+        # Override onto the input nixpkgs. Users *MUST* have a scenefx overlay
+        # used before this overlay, otherwise pkgs.scenefx will be unavailable
+        override = _: prev: mkPackage prev;
       };
 
-      packages = nixpkgs.lib.genAttrs targetSystems (
-        system: (mkPackage (pkgsFor system) // { default = self.packages.${system}.swayfx-unwrapped; })
+      packages = forEachSystem (
+        pkgs: (mkPackage pkgs // { default = self.packages.${pkgs.system}.swayfx-unwrapped; })
       );
 
-      devShells = nixpkgs.lib.genAttrs targetSystems (
-        system:
-        let
-          pkgs = pkgsFor system;
-        in
-        {
-          default = pkgs.mkShell {
-            name = "swayfx-shell";
-            inputsFrom = [
-              self.packages.${system}.swayfx-unwrapped
-              pkgs.wlroots_0_17
-            ];
-            nativeBuildInputs = with pkgs; [
-              cmake
-              wayland-scanner
-              hwdata # for wlroots
-            ];
-            # Copy the nix version of wlroots into the project
-            shellHook = with pkgs; ''
-              (
-                mkdir -p "$PWD/subprojects" && cd "$PWD/subprojects"
-                cp -R --no-preserve=mode,ownership ${wlroots_0_17.src} wlroots
-              )'';
-          };
-        }
-      );
+      devShells = forEachSystem (pkgs: {
+        default = pkgs.mkShell {
+          name = "swayfx-shell";
+          inputsFrom = [
+            self.packages.${pkgs.system}.swayfx-unwrapped
+            pkgs.wlroots_0_17
+            pkgs.scenefx
+          ];
+          packages = with pkgs; [
+            gdb # for debugging
+          ];
+          shellHook = ''
+            (
+              # Copy the nix version of wlroots and scenefx into the project
+              mkdir -p "$PWD/subprojects" && cd "$PWD/subprojects"
+              cp -R --no-preserve=mode,ownership ${pkgs.wlroots_0_17.src} wlroots
+              cp -R --no-preserve=mode,ownership ${pkgs.scenefx.src} scenefx
+            )'';
+        };
+      });
 
-      formatter = nixpkgs.lib.genAttrs targetSystems (system: (pkgsFor system).nixfmt-rfc-style);
+      formatter = forEachSystem (pkgs: pkgs.nixfmt-rfc-style);
     };
 }
