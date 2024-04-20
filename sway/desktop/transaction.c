@@ -526,7 +526,6 @@ void transaction_notify_view_ready_by_geometry(struct sway_view *view,
 
 static void _transaction_commit_dirty(bool server_request) {
 	if (!server.dirty_nodes->length) {
-		printf("no dirty nodes\n");
 		return;
 	}
 
@@ -544,7 +543,6 @@ static void _transaction_commit_dirty(bool server_request) {
 	}
 	server.dirty_nodes->length = 0;
 
-	printf("committing pending transaction\n");
 	transaction_commit_pending();
 }
 
