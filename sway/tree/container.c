@@ -48,6 +48,8 @@ struct sway_container *container_create(struct sway_view *view) {
 	if (!view) {
 		c->pending.children = create_list();
 		c->current.children = create_list();
+	} else {
+		list_add(server.animated_containers, c);
 	}
 	c->marks = create_list();
 	c->outputs = create_list();
@@ -55,7 +57,6 @@ struct sway_container *container_create(struct sway_view *view) {
 	wl_signal_init(&c->events.destroy);
 
 	wl_signal_emit_mutable(&root->events.new_node, &c->node);
-	list_add(server.animated_containers, c);
 
 	return c;
 }

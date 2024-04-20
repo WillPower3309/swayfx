@@ -97,6 +97,10 @@ static int animation_timer(void *data) {
 
 	int num_containers;
 	memcpy(&num_containers, &server->animated_containers->length, sizeof(int));
+	if (num_containers == 0) {
+		return 1;
+	}
+
 	int num_animations_complete = 0;
 	int completed_animation_indices[100]; // TODO: this can be better
 	bool is_container_close_animation_complete = false;
@@ -105,6 +109,8 @@ static int animation_timer(void *data) {
 	// update state
 	for (int i = 0; i < num_containers; i++) {
 		struct sway_container *con = server->animated_containers->items[i];
+		sway_assert(con->view, "container being animated is not a view container");
+
 		bool is_closing = con->alpha > con->target_alpha;
 		float alpha_step = config->animation_duration ?
 			(con->max_alpha * fastest_output_refresh_s) / config->animation_duration : con->max_alpha;
@@ -130,15 +136,14 @@ static int animation_timer(void *data) {
 	} else {
 		for (int i = 0; i < num_containers; i++) {
 			struct sway_container *con = server->animated_containers->items[i];
-			// TODO: remove add assertion for con->view & investigate what happens when split h containers are spawned
-			if (con->view && view_is_visible(con->view)) {
+			if (view_is_visible(con->view)) {
 				container_damage_whole(con);
 			}
 		}
 	}
 
-	// clean up list
-	for (int i = 0; i < num_animations_complete; i++) {
+	// clean up list: del containers that are done animating from last to first in order prevent later indices being incorrect
+	for (int i = num_animations_complete - 1; i >= 0; i--) {
 		int container_index = completed_animation_indices[i];
 		list_del(server->animated_containers, container_index);
 	}
