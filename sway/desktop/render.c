@@ -1743,6 +1743,10 @@ void output_render(struct fx_render_context *ctx) {
 				pixman_region32_union(damage, damage, &extended_damage);
 				pixman_region32_fini(&extended_damage);
 
+				// Copy the new extended damage into the transformed damage
+				pixman_region32_copy(&transformed_damage, damage);
+				transform_output_damage(&transformed_damage, wlr_output);
+
 				// Capture the padding pixels before blur for later use
 				fx_renderer_read_to_buffer(ctx->pass, &effect_fbos->blur_padding_region,
 						effect_fbos->blur_saved_pixels_buffer,
