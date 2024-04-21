@@ -1715,17 +1715,9 @@ void output_render(struct fx_render_context *ctx) {
 				// copy the surrounding content where the blur would display artifacts
 				// and draw it above the artifacts
 
-				// ensure that the damage isn't expanding past the output's size
-				int32_t damage_width = damage->extents.x2 - damage->extents.x1;
-				int32_t damage_height = damage->extents.y2 - damage->extents.y1;
-				if (damage_width > output_width || damage_height > output_height) {
-					pixman_region32_intersect_rect(damage, damage,
-							0, 0, output_width, output_height);
-				} else {
-					// Expand the original damage to compensate for surrounding
-					// blurred views to avoid sharp edges between damage regions
-					wlr_region_expand(damage, damage, config_get_blur_size());
-				}
+				// Expand the original damage to compensate for surrounding
+				// blurred views to avoid sharp edges between damage regions
+				wlr_region_expand(damage, damage, config_get_blur_size());
 
 				pixman_region32_t extended_damage;
 				pixman_region32_init(&extended_damage);
