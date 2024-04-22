@@ -98,16 +98,15 @@ static int animation_timer(void *data) {
 	int num_containers;
 	memcpy(&num_containers, &server->animated_containers->length, sizeof(int));
 	if (num_containers == 0) {
-		return 1;
+		return 0;
 	}
 
-	int num_animations_complete = 0;
-	int completed_animation_indices[100]; // TODO: this can be better
 	bool is_container_close_animation_complete = false;
 	bool should_delay_transaction_commit = false;
 
-	// update state
-	for (int i = 0; i < num_containers; i++) {
+	// update state from end to start of list: this ensures removing containers from the list won't
+	// impact indices of later list members that are iterated through
+	for (int i = num_containers - 1; i >= 0; i--) {
 		struct sway_container *con = server->animated_containers->items[i];
 		sway_assert(con->view, "container being animated is not a view container");
 
@@ -119,8 +118,7 @@ static int animation_timer(void *data) {
 			MIN(con->alpha + alpha_step, con->target_alpha);
 
 		if (con->alpha == con->target_alpha) {
-			completed_animation_indices[num_animations_complete] = i;
-			num_animations_complete++;
+			list_del(server->animated_containers, i);
 			if (con->alpha == 0) {
 				view_remove_container(con);
 				is_container_close_animation_complete = true;
@@ -128,24 +126,15 @@ static int animation_timer(void *data) {
 		} else if (is_closing) {
 			should_delay_transaction_commit = true;
 		}
+
+		if (view_is_visible(con->view)) {
+			container_damage_whole(con);
+		}
 	}
 
 	// damage track
 	if (is_container_close_animation_complete && !should_delay_transaction_commit) {
 		transaction_commit_dirty();
-	} else {
-		for (int i = 0; i < num_containers; i++) {
-			struct sway_container *con = server->animated_containers->items[i];
-			if (view_is_visible(con->view)) {
-				container_damage_whole(con);
-			}
-		}
-	}
-
-	// clean up list: del containers that are done animating from last to first in order prevent later indices being incorrect
-	for (int i = num_animations_complete - 1; i >= 0; i--) {
-		int container_index = completed_animation_indices[i];
-		list_del(server->animated_containers, container_index);
 	}
 
 	return 0;

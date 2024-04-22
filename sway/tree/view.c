@@ -78,6 +78,10 @@ void view_destroy(struct sway_view *view) {
 }
 
 void view_remove_container(struct sway_container *container) {
+	if (!wl_list_empty(&container->view->saved_buffers)) {
+		view_remove_saved_buffer(container->view);
+	}
+
 	struct sway_container *parent = container->pending.parent;
 	struct sway_workspace *ws = container->pending.workspace;
 	container_begin_destroy(container);
@@ -960,7 +964,9 @@ void view_unmap(struct sway_view *view) {
 		transaction_commit_dirty();
 	} else {*/
 		wl_signal_emit_mutable(&view->container->node.events.destroy, &view->container->node);
-		view_save_buffer(view);
+		if (wl_list_empty(&view->saved_buffers)) {
+			view_save_buffer(view);
+		}
 		view->container->target_alpha = 0;
 		list_add(server.animated_containers, view->container);
 	//}
@@ -1384,6 +1390,9 @@ void view_update_title(struct sway_view *view, bool force) {
 }
 
 bool view_is_visible(struct sway_view *view) {
+	if (!view->container) {
+		return false;
+	}
 	if (view->container->node.destroying) {
 		return false;
 	}
