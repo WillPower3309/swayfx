@@ -91,14 +91,14 @@ float get_fastest_output_refresh_s() {
 // TODO: animation struct with callback on completion
 // TODO: fix new window placement when a container is fading out
 static int animation_timer(void *data) {
+	clock_t start = clock();
 	struct sway_server *server = data;
 	float fastest_output_refresh_s = get_fastest_output_refresh_s();
-	wl_event_source_timer_update(server->animation_tick, fastest_output_refresh_s * 1000);
 
 	int num_containers;
 	memcpy(&num_containers, &server->animated_containers->length, sizeof(int));
 	if (num_containers == 0) {
-		return 0;
+		goto animation_timer_queue_next;
 	}
 
 	bool is_container_close_animation_complete = false;
@@ -137,6 +137,10 @@ static int animation_timer(void *data) {
 		transaction_commit_dirty();
 	}
 
+animation_timer_queue_next:
+	float seconds_to_complete_animation_frame = (float)(clock() - start) / CLOCKS_PER_SEC;
+	float time_delta_s = MAX(fastest_output_refresh_s - seconds_to_complete_animation_frame, 0.001);
+	wl_event_source_timer_update(server->animation_tick, time_delta_s * 1000);
 	return 0;
 }
 
