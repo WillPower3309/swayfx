@@ -1,6 +1,6 @@
 #include <math.h>
 
-#include "sway/desktop/fx_renderer/animation_utils.h"
+#include "sway/fx_util/animation_utils.h"
 
 double lerp (double a, double b, double t) {
 	return a * (1.0 - t) + b * t;

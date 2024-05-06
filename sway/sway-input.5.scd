@@ -121,11 +121,16 @@ The following commands may only be used in the configuration file.
 
 *input* <identifier> map_from_region <X1xY1> <X2xY2>
 	Ignores inputs from this device that do not occur within the specified
-	region. Can be in millimeters (e.g. 10x20mm 20x40mm) or in terms of 0..1
-	(e.g. 0.5x0.5 0.7x0.7). Not all devices support millimeters. Only meaningful
-	if the device is not a keyboard and provides events in absolute terms (such
-	as a drawing tablet or touch screen - most pointers provide events relative
-	to the previous frame).
+	region. Can be in millimeters (e.g. 10x20mm 20x40mm) or the fraction of the
+	full available space in terms of 0..1 (e.g. 0.5x0.5 0.7x0.7). Not all
+	devices support millimeters. Only meaningful if the device is not a
+	keyboard and provides events in absolute terms (such as a drawing tablet
+	or touch screen - most pointers provide events relative to the previous
+	frame).
+
+	Commonly used to maintain the aspect ratio of the input device and screen.
+	Cropping a 16:10 input region to match a 16:9 display can use 0x0 1x0.9 as
+	the argument.
 
 ## LIBINPUT CONFIGURATION
 
@@ -175,11 +180,18 @@ The following commands may only be used in the configuration file.
 *input* <identifier> pointer_accel [<-1|1>]
 	Changes the pointer acceleration for the specified input device.
 
+*input* <identifier> rotation_angle <angle>
+	Sets the rotation angle of the device to the given clockwise angle in
+	degrees. The angle must be between 0.0 (inclusive) and 360.0 (exclusive).
+
 *input* <identifier> scroll_button disable|button[1-3,8,9]|<event-code-or-name>
 	Sets the button used for scroll_method on_button_down. The button can
 	be given as an event name or code, which can be obtained from *libinput
 	debug-events*, or as a x11 mouse button (button[1-3,8,9]). If set to
 	_disable_, it disables the scroll_method on_button_down.
+
+*input* <identifier> scroll_button_lock enabled|disabled
+	Enables or disables scroll button lock for specified input device.
 
 *input* <identifier> scroll_factor <floating point value>
 	Changes the scroll factor for the specified input device. Scroll speed will
@@ -224,6 +236,8 @@ correct seat.
 	absolute coordinates (with respect to the global coordinate space).
 	Specifying either value as 0 will not update that coordinate.
 
+	Deprecated: use the virtual-pointer Wayland protocol instead.
+
 *seat* <seat> cursor press|release button[1-9]|<event-name-or-code>
 	Simulate pressing (or releasing) the specified mouse button on the
 	specified seat. The button can either be provided as a button event name or
@@ -231,6 +245,8 @@ correct seat.
 	mouse button (button[1-9]). If using button[4-7], which map to axes, an axis
 	event will be simulated, however _press_ and _release_ will be ignored and
 	both will occur.
+
+	Deprecated: use the virtual-pointer Wayland protocol instead.
 
 *seat* <name> fallback true|false
 	Set this seat as the fallback seat. A fallback seat will attach any device
@@ -247,17 +263,15 @@ correct seat.
 	If _when-typing_ is enabled, then the cursor will be hidden whenever a key
 	is pressed.
 
+	Be aware that this setting can interfere with input handling in games and
+	certain types of software (Gimp, Blender etc) that rely on simultaneous
+	input from mouse and keyboard.
+
 *seat* <name> idle_inhibit <sources...>
 	Sets the set of input event sources which can prevent the seat from
 	becoming idle, as a space separated list of source names. Valid names are
 	"keyboard", "pointer", "touchpad", "touch", "tablet_pad", "tablet_tool",
 	and "switch". The default behavior is to prevent idle on any event.
-
-*seat* <name> idle_wake <sources...>
-	Sets the set of input event sources which can wake the seat from
-	its idle state, as a space separated list of source names. Valid names are
-	"keyboard", "pointer", "touchpad", "touch", "tablet_pad", "tablet_tool",
-	and "switch". The default behavior is to wake from idle on any event.
 
 *seat* <name> keyboard_grouping none|smart
 	Set how the keyboards in the seat are grouped together. Currently, there

@@ -132,6 +132,7 @@ static const struct cmd_handler config_handlers[] = {
 	{ "default_orientation", cmd_default_orientation },
 	{ "include", cmd_include },
 	{ "scratchpad_minimize", cmd_scratchpad_minimize },
+	{ "primary_selection", cmd_primary_selection },
 	{ "swaybg_command", cmd_swaybg_command },
 	{ "swaynag_command", cmd_swaynag_command },
 	{ "workspace_layout", cmd_workspace_layout },
@@ -176,7 +177,7 @@ static int handler_compare(const void *_a, const void *_b) {
 	return strcasecmp(a->command, b->command);
 }
 
-const struct cmd_handler *find_handler(char *line,
+const struct cmd_handler *find_handler(const char *line,
 		const struct cmd_handler *handlers, size_t handlers_size) {
 	if (!handlers || !handlers_size) {
 		return NULL;
@@ -409,10 +410,13 @@ struct cmd_results *config_command(char *exec, char **new_block) {
 	sway_log(SWAY_INFO, "Config command: %s", exec);
 	const struct cmd_handler *handler = find_core_handler(argv[0]);
 	if (!handler || !handler->handle) {
-		const char *error = handler
-			? "Command '%s' is shimmed, but unimplemented"
-			: "Unknown/invalid command '%s'";
-		results = cmd_results_new(CMD_INVALID, error, argv[0]);
+		if (handler) {
+			results = cmd_results_new(CMD_INVALID,
+				"Command '%s' is shimmed, but unimplemented", argv[0]);
+		} else {
+			results = cmd_results_new(CMD_INVALID,
+				"Unknown/invalid command '%s'", argv[0]);
+		}
 		goto cleanup;
 	}
 
@@ -514,20 +518,10 @@ struct cmd_results *cmd_results_new(enum cmd_status status,
 	}
 	results->status = status;
 	if (format) {
-		char *error = NULL;
 		va_list args;
 		va_start(args, format);
-		int slen = vsnprintf(NULL, 0, format, args);
+		results->error = vformat_str(format, args);
 		va_end(args);
-		if (slen > 0) {
-			error = malloc(slen + 1);
-			if (error != NULL) {
-				va_start(args, format);
-				vsnprintf(error, slen + 1, format, args);
-				va_end(args);
-			}
-		}
-		results->error = error;
 	} else {
 		results->error = NULL;
 	}
