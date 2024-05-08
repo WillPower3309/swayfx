@@ -209,11 +209,6 @@ bool server_init(struct sway_server *server) {
 		return false;
 	}
 
-	if (!server->backend) {
-		sway_log(SWAY_ERROR, "Unable to create backend");
-		return false;
-	}
-
 	server->renderer = fx_renderer_create(server->backend);
 	if (!server->renderer) {
 		sway_log(SWAY_ERROR, "Failed to create fx_renderer");

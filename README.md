@@ -38,17 +38,17 @@ Sway is an incredible window manager, and certainly one of the most well establi
     - `blur_xray enable|disable`: this will set floating windows to blur based on the background, not the windows below. You probably want to set this to `disable` :)
     - `blur_passes <integer value 0 - 10>`
     - `blur_radius <integer value 0 - 10>`
-    - `blur_noise <float value 0 - 1>` (**Note**: git only, percentage of noise to add)
-    - `blur_brightness <float value 0 - 2>` (**Note**: git only, percentage of original brightness to adjust)
-    - `blur_contrast <float value 0 - 2>` (**Note**: git only, percentage of original contrast to adjust)
-    - `blur_saturation <float value 0 - 2>` (**Note**: git only, percentage of original saturation to adjust)
+    - `blur_noise <float value 0 - 1>`
+    - `blur_brightness <float value 0 - 2>`
+    - `blur_contrast <float value 0 - 2>`
+    - `blur_saturation <float value 0 - 2>`
 + Corner radius: `corner_radius <val>`
 + Window shadows:
     - `shadows enable|disable`
     - `shadows_on_csd enable|disable` (**Note**: The shadow might not fit some windows)
     - `shadow_blur_radius <integer value 0 - 100>`
     - `shadow_color <hex color with alpha> ex, #0000007F`
-    - `shadow_offset <x offset> <y offset>`  (**Note**: git only)
+    - `shadow_offset <x offset> <y offset>`
     - `shadow_inactive_color <hex color with alpha> ex, #0000007F`
 + LayerShell effects (to blur panels / notifications etc):
     - `layer_effects <layer namespace> <effects>`
