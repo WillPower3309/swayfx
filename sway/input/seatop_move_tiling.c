@@ -45,17 +45,27 @@ static void handle_render(struct sway_seat *seat, struct fx_render_context *ctx)
 		memcpy(&box, &e->drop_box, sizeof(struct wlr_box));
  		scale_box(&box, ctx->output->wlr_output->scale);
 
-		// Render blur
-		pixman_region32_t opaque_region;
-		pixman_region32_init(&opaque_region);
 		struct decoration_data deco_data = get_undecorated_decoration_data();
 		deco_data.blur = e->con->blur_enabled;
-		deco_data.corner_radius = e->con->corner_radius;
-		struct wlr_fbox src_box = {0};
-		render_blur(ctx, NULL, &src_box, &box, false, &opaque_region, deco_data);
-		pixman_region32_fini(&opaque_region);
+		deco_data.corner_radius = e->con->corner_radius * ctx->output->wlr_output->scale;
 
-		render_rounded_rect(ctx, &box, color, e->con->corner_radius * ctx->output->wlr_output->scale, ALL);
+		// Render blur
+		if (deco_data.blur && color[3] < 1.0f) {
+			pixman_region32_t opaque_region;
+			pixman_region32_init(&opaque_region);
+			struct wlr_fbox src_box = {0};
+			struct wlr_box blur_box;
+			memcpy(&blur_box, &e->drop_box, sizeof(struct wlr_box));
+			// The render_blur function doesn't use root-relative coordinates
+			blur_box.x -= ctx->output->lx;
+			blur_box.y -= ctx->output->ly;
+			scale_box(&blur_box, ctx->output->wlr_output->scale);
+
+			render_blur(ctx, NULL, &src_box, &blur_box, false, &opaque_region, deco_data);
+			pixman_region32_fini(&opaque_region);
+		}
+
+		render_rounded_rect(ctx, &box, color, deco_data.corner_radius, ALL);
 	}
 }
 
