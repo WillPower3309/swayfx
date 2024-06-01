@@ -18,6 +18,7 @@
 #include <wlr/types/wlr_output.h>
 #include <wlr/types/wlr_presentation_time.h>
 #include <wlr/types/wlr_compositor.h>
+#include <wlr/types/wlr_fractional_scale_v1.h>
 #include <wlr/util/region.h>
 #include "config.h"
 #include "log.h"
@@ -27,6 +28,7 @@
 #include "sway/input/input-manager.h"
 #include "sway/input/seat.h"
 #include "sway/ipc-server.h"
+#include "sway/input/text_input.h"
 #include "sway/layers.h"
 #include "sway/output.h"
 #include "sway/server.h"
@@ -270,6 +272,31 @@ void output_unmanaged_for_each_surface(struct sway_output *output,
 }
 #endif
 
+void output_input_popups_for_each_surface(struct sway_output *output,
+		struct wl_list *input_popups, sway_surface_iterator_func_t iterator,
+		void *user_data) {
+	struct sway_input_popup *popup;
+	wl_list_for_each(popup, input_popups, link) {
+		int lx, ly;
+		if (!sway_input_popup_get_position(popup, &lx, &ly)) {
+			continue;
+		}
+		if (!popup->popup_surface->surface->mapped || !popup->visible) {
+			continue;
+		}
+
+		// damage the popup if surface is updated
+		sway_input_popup_damage(popup);
+
+		double ox = lx - output->lx;
+		double oy = ly - output->ly;
+
+		output_surface_for_each_surface(output,
+			popup->popup_surface->surface, ox, oy,
+			iterator, user_data);
+	}
+}
+
 void output_drag_icons_for_each_surface(struct sway_output *output,
 		struct wl_list *drag_icons, sway_surface_iterator_func_t iterator,
 		void *user_data) {
@@ -379,6 +406,9 @@ static void output_for_each_surface(struct sway_output *output,
 overlay:
 	output_layer_for_each_surface(output,
 		&output->layers[ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY],
+		iterator, user_data);
+	output_input_popups_for_each_surface(
+		output, &input_manager_current_seat()->im_relay.input_popups,
 		iterator, user_data);
 	output_drag_icons_for_each_surface(output, &root->drag_icons,
 		iterator, user_data);
@@ -976,6 +1006,27 @@ static void update_output_scale_iterator(struct sway_output *output,
 	surface_update_outputs(surface);
 }
 
+static void update_im_scale(struct sway_output *output) {
+	struct sway_seat* im_seat = input_manager_current_seat();
+	if (im_seat == NULL) {
+		return;
+	}
+	struct sway_input_method_relay* relay = &im_seat->im_relay;
+	struct sway_input_popup *popup;
+	wl_list_for_each(popup, &relay->input_popups, link) {
+		struct wl_list current_outputs = popup->popup_surface->surface->current_outputs;
+		struct wlr_surface_output *current_output;
+		wl_list_for_each(current_output, &current_outputs, link) {
+			if (current_output->output == output->wlr_output) {
+				double scale = current_output->output->scale;
+				wlr_fractional_scale_v1_notify_scale(popup->popup_surface->surface, scale);
+				wlr_surface_set_preferred_buffer_scale(popup->popup_surface->surface, ceil(scale));
+				break;
+			}
+		}
+	}
+}
+
 static void handle_commit(struct wl_listener *listener, void *data) {
 	struct sway_output *output = wl_container_of(listener, output, commit);
 	struct wlr_output_event_commit *event = data;
@@ -987,6 +1038,7 @@ static void handle_commit(struct wl_listener *listener, void *data) {
 	if (event->state->committed & WLR_OUTPUT_STATE_SCALE) {
 		output_for_each_container(output, update_textures, NULL);
 		output_for_each_surface(output, update_output_scale_iterator, NULL);
+		update_im_scale(output);
 	}
 
 	if (event->state->committed & (

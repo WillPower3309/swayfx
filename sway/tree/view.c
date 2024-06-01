@@ -1248,6 +1248,9 @@ struct sway_view *view_from_wlr_surface(struct wlr_surface *wlr_surface) {
 	if (wlr_layer_surface_v1_try_from_wlr_surface(wlr_surface) != NULL) {
 		return NULL;
 	}
+	if (wlr_input_popup_surface_v2_try_from_wlr_surface(wlr_surface) != NULL) {
+		return NULL;
+	}
 
 	const char *role = wlr_surface->role ? wlr_surface->role->name : NULL;
 	sway_log(SWAY_DEBUG, "Surface of unknown type (role %s): %p",
