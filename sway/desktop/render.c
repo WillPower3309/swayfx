@@ -92,6 +92,83 @@ struct decoration_data get_undecorated_decoration_data() {
 	};
 }
 
+// Adjust the box position when switching the workspace
+static void adjust_box_to_workspace_offset(struct wlr_box *box,
+		bool on_focused_workspace, struct sway_output *output) {
+	float scroll_percent = output->workspace_scroll.percent;
+
+	int ws_dimen;
+	int *box_coord = NULL;
+	switch (output->workspace_scroll.direction) {
+	case SWIPE_GESTURE_DIRECTION_NONE:
+		return;
+	case SWIPE_GESTURE_DIRECTION_HORIZONTAL:
+		ws_dimen = output->width;
+		box_coord = &box->x;
+		break;
+	case SWIPE_GESTURE_DIRECTION_VERTICAL:
+		ws_dimen = output->height;
+		box_coord = &box->y;
+		break;
+	}
+
+	if (box_coord == NULL || ws_dimen == 0) {
+		return;
+	}
+
+	*box_coord -= ws_dimen * scroll_percent;
+	if (!on_focused_workspace) {
+		if (scroll_percent > 0) {
+			*box_coord += ws_dimen;
+		} else if (scroll_percent < 0) {
+			*box_coord -= ws_dimen;
+		}
+	}
+}
+
+// Clips the rendered damage to the workspace region.
+// Fixes containers being rendered across workspaces while switching.
+static void adjust_damage_to_workspace_bounds(pixman_region32_t *damage,
+		bool on_focused_workspace, struct sway_output *output) {
+	float scale = output->wlr_output->scale;
+	float scroll_percent = output->workspace_scroll.percent;
+	int x = 0, y = 0;
+
+	int ws_dimen = 0;
+	int *coord = NULL;
+	switch (output->workspace_scroll.direction) {
+	case SWIPE_GESTURE_DIRECTION_NONE:
+		return;
+	case SWIPE_GESTURE_DIRECTION_HORIZONTAL:
+		ws_dimen = output->width;
+		coord = &x;
+		break;
+	case SWIPE_GESTURE_DIRECTION_VERTICAL:
+		ws_dimen = output->height;
+		coord = &y;
+		break;
+	}
+
+	if (coord == NULL || ws_dimen == 0) {
+		return;
+	}
+
+	*coord = round(-ws_dimen * scroll_percent);
+	if (!on_focused_workspace) {
+		if (scroll_percent > 0) {
+			*coord += ws_dimen;
+		} else if (scroll_percent < 0) {
+			*coord -= ws_dimen;
+		}
+	}
+
+	int width, height;
+	wlr_output_transformed_resolution(output->wlr_output, &width, &height);
+	pixman_region32_intersect_rect(damage, damage,
+			0, 0, width, height);
+	pixman_region32_translate(damage, x * scale, y * scale);
+}
+
 /**
  * Apply scale to a width or height.
  *
@@ -351,6 +428,12 @@ static void render_surface_iterator(struct sway_output *output,
 		clip_box.x = fmax(dst_box.x, data->clip_box->x);
 		clip_box.y = fmax(dst_box.y, data->clip_box->y);
  	}
+
+	if (data->view) {
+		adjust_box_to_workspace_offset(&dst_box, data->on_focused_workspace, output);
+		adjust_box_to_workspace_offset(&clip_box, data->on_focused_workspace, output);
+	}
+
 	scale_box(&dst_box, wlr_output->scale);
 	scale_box(&clip_box, wlr_output->scale);
 
@@ -421,6 +504,7 @@ static void render_layer_iterator(struct sway_output *output,
 static void render_layer_toplevel(struct fx_render_context *ctx, struct wl_list *layer_surfaces) {
 	struct render_data data = {
 		.deco_data = get_undecorated_decoration_data(),
+		.on_focused_workspace = true,
  		.ctx = ctx,
 	};
 	output_layer_for_each_toplevel_surface(ctx->output, layer_surfaces,
@@ -430,6 +514,7 @@ static void render_layer_toplevel(struct fx_render_context *ctx, struct wl_list 
  static void render_layer_popups(struct fx_render_context *ctx, struct wl_list *layer_surfaces) {
 	struct render_data data = {
 		.deco_data = get_undecorated_decoration_data(),
+		.on_focused_workspace = true,
 		.ctx = ctx,
 	};
 	output_layer_for_each_popup_surface(ctx->output, layer_surfaces,
@@ -440,6 +525,7 @@ static void render_layer_toplevel(struct fx_render_context *ctx, struct wl_list 
 static void render_unmanaged(struct fx_render_context *ctx, struct wl_list *unmanaged) {
 	struct render_data data = {
 		.deco_data = get_undecorated_decoration_data(),
+		.on_focused_workspace = true,
 		.ctx = ctx,
 	};
 	output_unmanaged_for_each_surface(ctx->output, unmanaged,
@@ -450,6 +536,7 @@ static void render_unmanaged(struct fx_render_context *ctx, struct wl_list *unma
 static void render_drag_icons(struct fx_render_context *ctx, struct wl_list *drag_icons) {
 	struct render_data data = {
 		.deco_data = get_undecorated_decoration_data(),
+		.on_focused_workspace = true,
 		.ctx = ctx,
 	};
  	output_drag_icons_for_each_surface(ctx->output, drag_icons,
@@ -548,9 +635,10 @@ void premultiply_alpha(float color[4], float opacity) {
 }
 
 static void render_view_toplevels(struct fx_render_context *ctx,
-		struct sway_view *view, struct decoration_data deco_data) {
+		struct sway_view *view, struct decoration_data deco_data, bool on_focused_workspace) {
 	struct render_data data = {
 		.deco_data = deco_data,
+		.on_focused_workspace = on_focused_workspace,
 		.view = view,
 		.ctx = ctx,
 	};
@@ -598,6 +686,7 @@ static void render_view_popups(struct fx_render_context *ctx, struct sway_view *
 		struct decoration_data deco_data) {
 	struct render_data data = {
 		.deco_data = deco_data,
+		.on_focused_workspace = true,
 		.view = view,
 		.ctx = ctx,
 	};
@@ -700,13 +789,14 @@ static void render_saved_view(struct fx_render_context *ctx, struct sway_view *v
  * Render a view's surface, shadow, and left/bottom/right borders.
  */
 static void render_view(struct fx_render_context *ctx, struct sway_container *con,
-		struct border_colors *colors, struct decoration_data deco_data) {
+		struct border_colors *colors, struct decoration_data deco_data,
+		bool on_focused_workspace) {
 	struct sway_view *view = con->view;
 
 	if (!wl_list_empty(&view->saved_buffers)) {
 		render_saved_view(ctx, view, deco_data);
 	} else if (view->surface) {
-		render_view_toplevels(ctx, view, deco_data);
+		render_view_toplevels(ctx, view, deco_data, on_focused_workspace);
 	}
 
 	struct sway_container_state *state = &con->current;
@@ -725,6 +815,7 @@ static void render_view(struct fx_render_context *ctx, struct sway_container *co
 		box.y = floor(state->y) - ctx->output->ly;
 		box.width = state->width;
 		box.height = state->height;
+		adjust_box_to_workspace_offset(&box, on_focused_workspace, ctx->output);
 		scale_box(&box, output_scale);
 		int shadow_corner_radius = corner_radius == 0 ? 0 : corner_radius + state->border_thickness;
 		float* shadow_color = view_is_urgent(view) || state->focused ?
@@ -748,6 +839,7 @@ static void render_view(struct fx_render_context *ctx, struct sway_container *co
 		box.y = floor(state->content_y);
 		box.width = state->border_thickness;
 		box.height = state->content_height - corner_radius;
+		adjust_box_to_workspace_offset(&box, on_focused_workspace, ctx->output);
 		if (corner_radius && !deco_data.has_titlebar) {
 			box.y += corner_radius;
 			box.height -= corner_radius;
@@ -771,6 +863,7 @@ static void render_view(struct fx_render_context *ctx, struct sway_container *co
 		box.y = floor(state->content_y);
 		box.width = state->border_thickness;
 		box.height = state->content_height - corner_radius;
+		adjust_box_to_workspace_offset(&box, on_focused_workspace, ctx->output);
 		if (corner_radius && !deco_data.has_titlebar) {
 			box.y += corner_radius;
 			box.height -= corner_radius;
@@ -790,6 +883,8 @@ static void render_view(struct fx_render_context *ctx, struct sway_container *co
 		box.y = floor(state->content_y + state->content_height);
 		box.width = state->width;
 		box.height = state->border_thickness;
+		adjust_box_to_workspace_offset(&box, on_focused_workspace, ctx->output);
+
 		// adjust sizing for rounded border corners
 		if (deco_data.corner_radius) {
 			box.x += corner_radius + state->border_thickness;
@@ -805,6 +900,7 @@ static void render_view(struct fx_render_context *ctx, struct sway_container *co
 			if (state->border_left) {
 				box.x = floor(state->x);
 				box.y = floor(state->y + state->height - size);
+				adjust_box_to_workspace_offset(&box, on_focused_workspace, ctx->output);
 				box.width = size;
 				box.height = size;
 				scale_box(&box, output_scale);
@@ -814,8 +910,7 @@ static void render_view(struct fx_render_context *ctx, struct sway_container *co
 			if (state->border_right) {
 				box.x = floor(state->x + state->width - size);
 				box.y = floor(state->y + state->height - size);
-				box.width = size;
-				box.height = size;
+				adjust_box_to_workspace_offset(&box, on_focused_workspace, ctx->output);
 				scale_box(&box, output_scale);
 				render_rounded_border_corner(ctx, &box, color, scaled_corner_radius,
 					scaled_border_thickness, BOTTOM_RIGHT);
@@ -836,7 +931,7 @@ static void render_view(struct fx_render_context *ctx, struct sway_container *co
 static void render_titlebar(struct fx_render_context *ctx, struct sway_container *con,
 		int x, int y, int width, struct border_colors *colors, int corner_radius,
 		enum corner_location corner_location, struct wlr_texture *title_texture,
-		struct wlr_texture *marks_texture) {
+		struct wlr_texture *marks_texture, bool on_focused_workspace) {
 	struct wlr_box box;
 	float color[4];
 	struct sway_output *output = ctx->output;
@@ -868,6 +963,7 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 			box.width -= corner_radius;
 		}
 	}
+	adjust_box_to_workspace_offset(&box, on_focused_workspace, output);
 	scale_box(&box, output_scale);
 	render_rect(ctx, &box, color);
 
@@ -877,6 +973,7 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 		box.y = y + container_titlebar_height() - titlebar_border_thickness;
 		box.width = width;
 		box.height = titlebar_border_thickness;
+		adjust_box_to_workspace_offset(&box, on_focused_workspace, output);
 		scale_box(&box, output_scale);
 		render_rect(ctx, &box, color);
 	}
@@ -890,6 +987,7 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 		box.height -= corner_radius;
 		box.y += corner_radius;
 	}
+	adjust_box_to_workspace_offset(&box, on_focused_workspace, output);
 	scale_box(&box, output_scale);
 	render_rect(ctx, &box, color);
 
@@ -902,6 +1000,7 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 		box.height -= corner_radius;
 		box.y += corner_radius;
 	}
+	adjust_box_to_workspace_offset(&box, on_focused_workspace, output);
 	scale_box(&box, output_scale);
 	render_rect(ctx, &box, color);
 
@@ -913,6 +1012,7 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 			box.y = y;
 			box.width = corner_radius * 2;
 			box.height = corner_radius * 2;
+			adjust_box_to_workspace_offset(&box, on_focused_workspace, output);
 			scale_box(&box, output_scale);
 			render_rounded_border_corner(ctx, &box, color, corner_radius,
 					titlebar_border_thickness * output_scale, TOP_LEFT);
@@ -924,6 +1024,7 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 			box.y = y;
 			box.width = corner_radius * 2;
 			box.height = corner_radius * 2;
+			adjust_box_to_workspace_offset(&box, on_focused_workspace, output);
 			scale_box(&box, output_scale);
 			render_rounded_border_corner(ctx, &box, color, corner_radius,
 					titlebar_border_thickness * output_scale, TOP_RIGHT);
@@ -977,6 +1078,7 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 		if (ob_inner_width < clip_box.width) {
 			clip_box.width = ob_inner_width;
 		}
+		adjust_box_to_workspace_offset(&texture_box, on_focused_workspace, output);
 		render_texture(ctx, marks_texture,
 			NULL, &texture_box, &clip_box, WL_OUTPUT_TRANSFORM_NORMAL, deco_data);
 
@@ -987,11 +1089,13 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 		box.y = roundf((y + titlebar_border_thickness) * output_scale);
 		box.width = clip_box.width;
 		box.height = ob_padding_above;
+		adjust_box_to_workspace_offset(&box, on_focused_workspace, output);
 		render_rect(ctx, &box, color);
 
 		// Padding below
 		box.y += ob_padding_above + clip_box.height;
 		box.height = ob_padding_below + bottom_border_compensation;
+		adjust_box_to_workspace_offset(&box, on_focused_workspace, output);
 		render_rect(ctx, &box, color);
 	}
 
@@ -1049,6 +1153,8 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 			clip_box.width = ob_inner_width - ob_marks_width;
 		}
 
+		adjust_box_to_workspace_offset(&texture_box, on_focused_workspace, output);
+		adjust_box_to_workspace_offset(&clip_box, on_focused_workspace, output);
 		render_texture(ctx, title_texture,
 			NULL, &texture_box, &clip_box, WL_OUTPUT_TRANSFORM_NORMAL, deco_data);
 
@@ -1059,6 +1165,7 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 		box.y = roundf((y + titlebar_border_thickness) * output_scale);
 		box.width = clip_box.width;
 		box.height = ob_padding_above;
+		// adjust_box_to_workspace_offset(&box, on_focused_workspace, output);
 		render_rect(ctx, &box, color);
 
 		// Padding below
@@ -1098,6 +1205,7 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 		box.x = ob_left_x + ob_left_width + round(output_x * output_scale);
 		box.y = roundf(bg_y * output_scale);
 		box.height = ob_bg_height + bottom_border_compensation;
+		adjust_box_to_workspace_offset(&box, on_focused_workspace, output);
 		render_rect(ctx, &box, color);
 	}
 
@@ -1112,6 +1220,7 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 	if (box.x + box.width < left_x) {
 		box.width += left_x - box.x - box.width;
 	}
+	adjust_box_to_workspace_offset(&box, on_focused_workspace, output);
 	if (corner_radius && (corner_location == TOP_LEFT || corner_location == ALL)) {
 		render_rounded_rect(ctx, &box, color, corner_radius, TOP_LEFT);
 	} else {
@@ -1130,6 +1239,7 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
 		box.width += box.x - right_rx;
 		box.x = right_rx;
 	}
+	adjust_box_to_workspace_offset(&box, on_focused_workspace, output);
 	if (corner_radius && (corner_location == TOP_RIGHT || corner_location == ALL)) {
 		render_rounded_rect(ctx, &box, color, corner_radius, TOP_RIGHT);
 	} else {
@@ -1141,7 +1251,7 @@ static void render_titlebar(struct fx_render_context *ctx, struct sway_container
  * Render the top border line for a view using "border pixel".
  */
 static void render_top_border(struct fx_render_context *ctx, struct sway_container *con,
-		struct border_colors *colors, int corner_radius) {
+		struct border_colors *colors, int corner_radius, bool on_focused_workspace) {
 	struct sway_container_state *state = &con->current;
 	if (!state->border_top) {
 		return;
@@ -1157,6 +1267,7 @@ static void render_top_border(struct fx_render_context *ctx, struct sway_contain
 	box.y = floor(state->y);
 	box.width = state->width - (2 * corner_radius);
 	box.height = state->border_thickness;
+	adjust_box_to_workspace_offset(&box, on_focused_workspace, ctx->output);
 	scale_box(&box, output_scale);
 	render_rect(ctx, &box, color);
 
@@ -1167,6 +1278,7 @@ static void render_top_border(struct fx_render_context *ctx, struct sway_contain
 		if (state->border_left) {
 			box.x = floor(state->x);
 			box.y = floor(state->y);
+			adjust_box_to_workspace_offset(&box, on_focused_workspace, ctx->output);
 			box.width = size;
 			box.height = size;
 			scale_box(&box, output_scale);
@@ -1176,6 +1288,7 @@ static void render_top_border(struct fx_render_context *ctx, struct sway_contain
 		if (state->border_right) {
 			box.x = floor(state->x + state->width - size);
 			box.y = floor(state->y);
+			adjust_box_to_workspace_offset(&box, on_focused_workspace, ctx->output);
 			box.width = size;
 			box.height = size;
 			scale_box(&box, output_scale);
@@ -1191,10 +1304,13 @@ struct parent_data {
 	list_t *children;
 	bool focused;
 	struct sway_container *active_child;
+
+	// Indicates whether the target is on the focused workspace or not.
+	bool on_focused_workspace;
 };
 
 static void render_container(struct fx_render_context *ctx,
-	struct sway_container *con, bool parent_focused);
+	struct sway_container *con, bool parent_focused, bool is_current_ws);
 
 // TODO: no rounding top corners when rendering with titlebar
 /**
@@ -1254,17 +1370,18 @@ static void render_containers_linear(struct fx_render_context *ctx, struct paren
 				.discard_transparent = false,
 				.shadow = child->shadow_enabled,
 			};
-			render_view(ctx, child, colors, deco_data);
+			render_view(ctx, child, colors, deco_data, parent->on_focused_workspace);
 			if (has_titlebar) {
 				render_titlebar(ctx, child, floor(state->x), floor(state->y),
 						state->width, colors, deco_data.corner_radius,
-						ALL, title_texture, marks_texture);
+						ALL, title_texture, marks_texture, parent->on_focused_workspace);
 			} else if (state->border == B_PIXEL) {
-				render_top_border(ctx, child, colors, deco_data.corner_radius);
+				render_top_border(ctx, child, colors, deco_data.corner_radius, parent->on_focused_workspace);
 			}
 		} else {
 			render_container(ctx, child,
-					parent->focused || child->current.focused);
+					parent->focused || child->current.focused,
+					parent->on_focused_workspace);
 		}
 	}
 }
@@ -1359,7 +1476,8 @@ static void render_containers_tabbed(struct fx_render_context *ctx, struct paren
 		}
 
 		render_titlebar(ctx, child, x, parent->box.y, tab_width, colors,
-			corner_radius, corner_location, title_texture, marks_texture);
+			corner_radius, corner_location, title_texture, marks_texture,
+			parent->on_focused_workspace);
 
 		if (child == current) {
 			current_colors = colors;
@@ -1368,10 +1486,12 @@ static void render_containers_tabbed(struct fx_render_context *ctx, struct paren
 
 	// Render surface and left/right/bottom borders
 	if (current->view) {
-		render_view(ctx, current, current_colors, deco_data);
+		render_view(ctx, current, current_colors, deco_data,
+				parent->on_focused_workspace);
 	} else {
 		render_container(ctx, current,
-				parent->focused || current->current.focused);
+				parent->focused || current->current.focused,
+				parent->on_focused_workspace);
 	}
 }
 
@@ -1438,7 +1558,7 @@ static void render_containers_stacked(struct fx_render_context *ctx, struct pare
 		int y = parent->box.y + titlebar_height * i;
 		int corner_radius = i != 0 ? 0 : deco_data.corner_radius;
 		render_titlebar(ctx, child, parent->box.x, y, parent->box.width, colors,
-			corner_radius, ALL, title_texture, marks_texture);
+			corner_radius, ALL, title_texture, marks_texture, parent->on_focused_workspace);
 
 		if (child == current) {
 			current_colors = colors;
@@ -1447,10 +1567,12 @@ static void render_containers_stacked(struct fx_render_context *ctx, struct pare
 
 	// Render surface and left/right/bottom borders
 	if (current->view) {
-		render_view(ctx, current, current_colors, deco_data);
+		render_view(ctx, current, current_colors, deco_data,
+				parent->on_focused_workspace);
 	} else {
 		render_container(ctx, current,
-				parent->focused || current->current.focused);
+				parent->focused || current->current.focused,
+				parent->on_focused_workspace);
 	}
 }
 
@@ -1479,7 +1601,7 @@ static void render_containers(struct fx_render_context *ctx, struct parent_data 
 }
 
 static void render_container(struct fx_render_context *ctx,
-		struct sway_container *con, bool focused) {
+		struct sway_container *con, bool focused, bool is_focused_ws) {
 	struct parent_data data = {
 		.layout = con->current.layout,
 		.box = {
@@ -1491,12 +1613,13 @@ static void render_container(struct fx_render_context *ctx,
 		.children = con->current.children,
 		.focused = focused,
 		.active_child = con->current.focused_inactive_child,
+		.on_focused_workspace = is_focused_ws,
 	};
 	render_containers(ctx, &data);
 }
 
 static void render_workspace(struct fx_render_context *ctx,
-		struct sway_workspace *ws, bool focused) {
+		struct sway_workspace *ws, bool focused, bool on_focused_workspace) {
 	struct parent_data data = {
 		.layout = ws->current.layout,
 		.box = {
@@ -1508,12 +1631,13 @@ static void render_workspace(struct fx_render_context *ctx,
 		.children = ws->current.tiling,
 		.focused = focused,
 		.active_child = ws->current.focused_inactive_child,
+		.on_focused_workspace = on_focused_workspace,
 	};
 	render_containers(ctx, &data);
 }
 
 static void render_floating_container(struct fx_render_context *ctx,
-		struct sway_container *con) {
+		struct sway_container *con, bool is_focused_ws) {
 	struct sway_container_state *state = &con->current;
 	if (con->view) {
 		struct sway_view *view = con->view;
@@ -1549,32 +1673,44 @@ static void render_floating_container(struct fx_render_context *ctx,
 			.discard_transparent = false,
 			.shadow = con->shadow_enabled,
 		};
-		render_view(ctx, con, colors, deco_data);
+		render_view(ctx, con, colors, deco_data, is_focused_ws);
 		if (has_titlebar) {
 			render_titlebar(ctx, con, floor(con->current.x), floor(con->current.y), con->current.width,
-					colors, deco_data.corner_radius, ALL, title_texture, marks_texture);
+					colors, deco_data.corner_radius, ALL, title_texture, marks_texture, is_focused_ws);
 		} else if (state->border == B_PIXEL) {
-			render_top_border(ctx, con, colors, deco_data.corner_radius);
+			render_top_border(ctx, con, colors, deco_data.corner_radius, is_focused_ws);
 		}
 	} else {
-		render_container(ctx, con, state->focused);
+		render_container(ctx, con, state->focused, is_focused_ws);
 	}
 }
 
-static void render_floating(struct fx_render_context *ctx) {
+static void render_floating(struct fx_render_context *ctx,
+		struct sway_workspace *other_ws, bool has_fullscreen) {
 	for (int i = 0; i < root->outputs->length; ++i) {
 		struct sway_output *output = root->outputs->items[i];
+
+		// Don't render floating windows across outputs when switching workspaces
+		if (output->workspace_scroll.percent != 0 && output != ctx->output) {
+			continue;
+		}
+
+		struct sway_workspace *visible_ws = output->current.active_workspace;
 		for (int j = 0; j < output->current.workspaces->length; ++j) {
 			struct sway_workspace *ws = output->current.workspaces->items[j];
-			if (!workspace_is_visible(ws)) {
+
+			// Only render affected workspaces
+			if ((ws != other_ws && ws != visible_ws) || 
+					(workspace_is_visible(ws) && has_fullscreen)) {
 				continue;
 			}
+
 			for (int k = 0; k < ws->current.floating->length; ++k) {
 				struct sway_container *floater = ws->current.floating->items[k];
 				if (floater->current.fullscreen_mode != FULLSCREEN_NONE) {
 					continue;
 				}
-				render_floating_container(ctx, floater);
+				render_floating_container(ctx, floater, ws == visible_ws);
 			}
 		}
 	}
@@ -1585,6 +1721,57 @@ static void render_seatops(struct fx_render_context *ctx) {
 	wl_list_for_each(seat, &server.input->seats, link) {
 		seatop_render(seat, ctx);
 	}
+}
+
+static void render_fullscreen_con(struct fx_render_context *ctx,
+		pixman_region32_t *transformed_damage, struct sway_container *fullscreen_con,
+		struct sway_workspace *workspace, bool clear_whole_screen) {
+	struct wlr_output *wlr_output = ctx->output->wlr_output;
+
+	bool on_focused_workspace = workspace == ctx->output->current.active_workspace;
+
+	// Only clear the transformed fullscreen bounds
+	pixman_region32_t dmg;
+	pixman_region32_init(&dmg);
+	if (!clear_whole_screen) {
+		pixman_region32_copy(&dmg, transformed_damage);
+		adjust_damage_to_workspace_bounds(&dmg, on_focused_workspace, ctx->output);
+		transformed_damage = &dmg;
+	}
+
+
+	fx_render_pass_add_rect(ctx->pass, &(struct fx_render_rect_options){
+		.base = {
+			.box = { .width = wlr_output->width, .height = wlr_output->height },
+			.color = { .r = 0, .g = 0, .b = 0, .a = 1 },
+			.clip = transformed_damage,
+		},
+	});
+
+	if (fullscreen_con->view) {
+		struct decoration_data deco_data = get_undecorated_decoration_data();
+		deco_data.saturation = fullscreen_con->saturation;
+		if (!wl_list_empty(&fullscreen_con->view->saved_buffers)) {
+			render_saved_view(ctx, fullscreen_con->view, deco_data);
+		} else if (fullscreen_con->view->surface) {
+			render_view_toplevels(ctx, fullscreen_con->view, deco_data, on_focused_workspace);
+		}
+	} else {
+		render_container(ctx, fullscreen_con, fullscreen_con->current.focused, on_focused_workspace);
+	}
+
+	for (int i = 0; i < workspace->current.floating->length; ++i) {
+		struct sway_container *floater =
+			workspace->current.floating->items[i];
+		if (container_is_transient_for(floater, fullscreen_con)) {
+			render_floating_container(ctx, floater, on_focused_workspace);
+		}
+	}
+#if HAVE_XWAYLAND
+	render_unmanaged(ctx, &root->xwayland_unmanaged);
+#endif
+
+	pixman_region32_fini(&dmg);
 }
 
 void output_render(struct fx_render_context *ctx) {
@@ -1599,9 +1786,28 @@ void output_render(struct fx_render_context *ctx) {
 		return;
 	}
 
+	// Get the sibling workspaces
+	struct sway_workspace *other_ws = NULL;
+	if (output->workspace_scroll.percent < 0) {
+		other_ws = workspace_output_prev(workspace,
+				config->workspace_gesture_wrap_around);
+	} else if (output->workspace_scroll.percent > 0) {
+		other_ws = workspace_output_next(workspace,
+				config->workspace_gesture_wrap_around);
+	}
+
 	struct sway_container *fullscreen_con = root->fullscreen_global;
 	if (!fullscreen_con) {
 		fullscreen_con = workspace->current.fullscreen;
+	}
+	// Also check if the sibling workspace has a fullscreen container
+	bool has_fullscreen = fullscreen_con != NULL;
+	bool other_ws_has_fullscreen = false;
+	if (other_ws) {
+		other_ws_has_fullscreen = other_ws->current.fullscreen;
+		if (!has_fullscreen) {
+			has_fullscreen = other_ws_has_fullscreen;
+		}
 	}
 
 	if (!pixman_region32_not_empty(damage)) {
@@ -1643,6 +1849,7 @@ void output_render(struct fx_render_context *ctx) {
 		if (server.session_lock.lock != NULL) {
 			struct render_data data = {
 				.deco_data = get_undecorated_decoration_data(),
+				.on_focused_workspace = true,
 				.ctx = ctx,
 			};
 
@@ -1666,37 +1873,9 @@ void output_render(struct fx_render_context *ctx) {
 		goto render_overlay;
 	}
 
-	if (fullscreen_con) {
-		fx_render_pass_add_rect(ctx->pass, &(struct fx_render_rect_options){
-			.base = {
-				.box = { .width = wlr_output->width, .height = wlr_output->height },
-				.color = { .r = 0, .g = 0, .b = 0, .a = 1 },
-				.clip = &transformed_damage,
-			},
-		});
-
-		if (fullscreen_con->view) {
-			struct decoration_data deco_data = get_undecorated_decoration_data();
-			deco_data.saturation = fullscreen_con->saturation;
-			if (!wl_list_empty(&fullscreen_con->view->saved_buffers)) {
-				render_saved_view(ctx, fullscreen_con->view, deco_data);
-			} else if (fullscreen_con->view->surface) {
-				render_view_toplevels(ctx, fullscreen_con->view, deco_data);
-			}
-		} else {
-			render_container(ctx, fullscreen_con, fullscreen_con->current.focused);
-		}
-
-		for (int i = 0; i < workspace->current.floating->length; ++i) {
-			struct sway_container *floater =
-				workspace->current.floating->items[i];
-			if (container_is_transient_for(floater, fullscreen_con)) {
-				render_floating_container(ctx, floater);
-			}
-		}
-#if HAVE_XWAYLAND
-		render_unmanaged(ctx, &root->xwayland_unmanaged);
-#endif
+	if (fullscreen_con && output->workspace_scroll.percent == 0) {
+		// Only draw fullscreen con if not transitioning between workspaces
+		render_fullscreen_con(ctx, &transformed_damage, fullscreen_con, workspace, true);
 	} else {
 		int output_width, output_height;
 		wlr_output_transformed_resolution(wlr_output, &output_width, &output_height);
@@ -1779,8 +1958,16 @@ void output_render(struct fx_render_context *ctx) {
 			fx_render_pass_add_optimized_blur(ctx->pass, &blur_options);
 		}
 
-		render_workspace(ctx, workspace, workspace->current.focused);
-		render_floating(ctx);
+		// Render both workspaces
+		if (!other_ws_has_fullscreen && other_ws) {
+			render_workspace(ctx, other_ws, false, false);
+		}
+		if (!fullscreen_con) {
+			render_workspace(ctx, workspace, workspace->current.focused, true);
+		}
+		render_floating(ctx,
+				!other_ws_has_fullscreen ? other_ws : NULL,
+				fullscreen_con != NULL);
 #if HAVE_XWAYLAND
 		render_unmanaged(ctx, &root->xwayland_unmanaged);
 #endif
@@ -1793,6 +1980,43 @@ void output_render(struct fx_render_context *ctx) {
 			&output->layers[ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM]);
 		render_layer_popups(ctx,
 			&output->layers[ZWLR_LAYER_SHELL_V1_LAYER_TOP]);
+
+		// Render the fullscreen containers on top
+		if (has_fullscreen) {
+			float clear_color[] = {0.25f, 0.25f, 0.25f, 1.0f};
+			// Render a blank rect next to the fullscreen container if
+			// there's no sibling workspace in the swipes direction
+			if (!other_ws) {
+				struct wlr_box mon_box = { 0, 0, output->width, output->height };
+				adjust_box_to_workspace_offset(&mon_box, false, output);
+				scale_box(&mon_box, output->wlr_output->scale);
+				render_rect(ctx, &mon_box, clear_color);
+
+				// Render a shadow to separate the edge and the fullscreen
+				// container
+				if (config_should_parameters_shadow()) {
+					struct wlr_box shadow_box = { 0, 0, output->width, output->height };
+					adjust_box_to_workspace_offset(&shadow_box, true, output);
+					scale_box(&shadow_box, output->wlr_output->scale);
+					// Render rect to fix minor pixel gaps between fullscreen
+					// container and shadow
+					render_rect(ctx, &shadow_box, clear_color);
+					render_box_shadow(ctx, &shadow_box,
+							config->shadow_color, config->shadow_blur_sigma, 0,
+							0, 0);
+				}
+			} else {
+				// Render sibling fullscreen container
+				struct sway_container *f_con = other_ws->current.fullscreen;
+				if (other_ws->current.fullscreen) {
+					render_fullscreen_con(ctx, &transformed_damage, f_con, other_ws, false);
+				}
+			}
+			// Render focused fullscreen container
+			if (fullscreen_con) {
+				render_fullscreen_con(ctx, &transformed_damage, fullscreen_con, workspace, false);
+			}
+		}
 	}
 
 	render_seatops(ctx);

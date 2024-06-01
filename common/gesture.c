@@ -90,6 +90,60 @@ char *gesture_parse(const char *input, struct gesture *output) {
 	return NULL;
 }
 
+// Similar to gesture_parse but with fewer checks to match the different
+// workspace_gesture syntax
+char *workspace_gesture_parse(const char *input, struct gesture *output) {
+	// Clear output in case of failure
+	output->type = GESTURE_TYPE_NONE;
+	output->fingers = GESTURE_FINGERS_ANY;
+	output->directions = GESTURE_DIRECTION_NONE;
+
+	// Split input type, fingers and directions
+	list_t *split = split_string(input, ":");
+	if (split->length < 1 || split->length > 2) {
+		return format_str(
+				"expected [:<fingers>][:direction], got %s",
+				input);
+	}
+
+	// Parse optional arguments
+	if (split->length > 1) {
+		char *next = split->items[0];
+
+		// Try to parse as finger count (1-9)
+		if (strlen(next) == 1 && '1' <= next[0] && next[0] <= '9') {
+			output->fingers = atoi(next);
+
+			// Move to next if available
+			next = split->length == 2 ? split->items[1] : NULL;
+		} else if (split->length == 2) {
+			// Fail here if argument can only be finger count
+			return format_str("expected 1-9, got %s", next);
+		}
+
+		// If there is an argument left, try to parse as direction
+		if (next) {
+			list_t *directions = split_string(next, "+");
+
+			for (int i = 0; i < directions->length; ++i) {
+				const char *item = directions->items[i];
+				if (strcmp(item, "horizontal") == 0) {
+					output->type = GESTURE_TYPE_WORKSPACE_SWIPE_HORIZONTAL;
+				} else if (strcmp(item, "vertical") == 0) {
+					output->type = GESTURE_TYPE_WORKSPACE_SWIPE_VERTICAL;
+				} else {
+					return format_str("expected direction, got %s", item);
+				}
+			}
+			list_free_items_and_destroy(directions);
+		}
+	} // if optional args
+
+	list_free_items_and_destroy(split);
+
+	return NULL;
+}
+
 const char *gesture_type_string(enum gesture_type type) {
 	switch (type) {
 	case GESTURE_TYPE_NONE:
@@ -100,6 +154,10 @@ const char *gesture_type_string(enum gesture_type type) {
 		return "pinch";
 	case GESTURE_TYPE_SWIPE:
 		return "swipe";
+	case GESTURE_TYPE_WORKSPACE_SWIPE_HORIZONTAL:
+		return "workspace_swipe_horizontal";
+	case GESTURE_TYPE_WORKSPACE_SWIPE_VERTICAL:
+		return "workspace_swipe_vertical";
 	}
 
 	return NULL;
@@ -313,6 +371,8 @@ struct gesture *gesture_tracker_end(struct gesture_tracker *tracker) {
 		}
 	// Gesture without any direction
 	case GESTURE_TYPE_HOLD:
+	case GESTURE_TYPE_WORKSPACE_SWIPE_HORIZONTAL:
+	case GESTURE_TYPE_WORKSPACE_SWIPE_VERTICAL:
 		break;
 	// Not tracking any gesture
 	case GESTURE_TYPE_NONE:
