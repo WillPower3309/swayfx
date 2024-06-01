@@ -124,10 +124,13 @@ struct sway_container {
 	// Unused for non-scratchpad windows.
 	struct wlr_box transform;
 
+	// TODO: move alpha to state?
 	float alpha;
+	float target_alpha;
+	float max_alpha;
 
 	int corner_radius;
-	
+
 	float dim;
 
 	struct wlr_texture *title_focused;
