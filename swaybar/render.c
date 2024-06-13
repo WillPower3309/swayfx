@@ -22,7 +22,6 @@
 
 static const int WS_HORIZONTAL_PADDING = 5;
 static const double WS_VERTICAL_PADDING = 1.5;
-static const double BORDER_WIDTH = 1;
 
 struct render_context {
 	cairo_t *cairo;
@@ -431,7 +430,7 @@ static uint32_t predict_workspace_button_length(cairo_t *cairo,
 
 	int ws_vertical_padding = WS_VERTICAL_PADDING;
 	int ws_horizontal_padding = WS_HORIZONTAL_PADDING;
-	int border_width = BORDER_WIDTH;
+	int border_width = config->border_size;
 
 	uint32_t ideal_height = ws_vertical_padding * 2 + text_height
 		+ border_width * 2;
@@ -480,7 +479,7 @@ static uint32_t predict_binding_mode_indicator_length(cairo_t *cairo,
 
 	int ws_vertical_padding = WS_VERTICAL_PADDING;
 	int ws_horizontal_padding = WS_HORIZONTAL_PADDING;
-	int border_width = BORDER_WIDTH;
+	int border_width = config->border_size;
 
 	uint32_t ideal_height = text_height + ws_vertical_padding * 2
 		+ border_width * 2;
@@ -557,7 +556,7 @@ static uint32_t render_binding_mode_indicator(struct render_context *ctx,
 
 	int ws_vertical_padding = WS_VERTICAL_PADDING;
 	int ws_horizontal_padding = WS_HORIZONTAL_PADDING;
-	int border_width = BORDER_WIDTH;
+	int border_width = config->border_size;
 
 	uint32_t ideal_height = text_height + ws_vertical_padding * 2
 		+ border_width * 2;
@@ -636,7 +635,7 @@ static uint32_t render_workspace_button(struct render_context *ctx,
 
 	int ws_vertical_padding = WS_VERTICAL_PADDING;
 	int ws_horizontal_padding = WS_HORIZONTAL_PADDING;
-	int border_width = BORDER_WIDTH;
+	int border_width = config->border_size;
 
 	uint32_t ideal_height = ws_vertical_padding * 2 + text_height
 		+ border_width * 2;
