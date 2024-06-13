@@ -95,6 +95,7 @@ struct bar_config *default_bar_config(void) {
 	bar->swaybar_command = NULL;
 	bar->font = NULL;
 	bar->height = 0;
+	bar->border_size = 1;
 	bar->workspace_buttons = true;
 	bar->wrap_scroll = false;
 	bar->separator_symbol = NULL;
