@@ -20,6 +20,7 @@
               src = pkgs.lib.cleanSource ./.;
               nativeBuildInputs = old.nativeBuildInputs ++ [ pkgs.cmake ];
               buildInputs = old.buildInputs ++ [ pkgs.scenefx ];
+              providedSessions = [ pkgs.swayfx-unwrapped.meta.mainProgram ];
             });
       };
 
