@@ -51,7 +51,11 @@ subproject(
 	required: false,
 	version: wlroots_version,
 )
-wlroots = dependency('wlroots', version: wlroots_version)
+wlroots = dependency('wlroots', version: wlroots_version, required: false)
+
+if not wlroots.found()
+    wlroots = dependency('wlroots-0.17', version: wlroots_version, required: true)
+endif
 wlroots_features = {
 	'xwayland': false,
 	'libinput_backend': false,
