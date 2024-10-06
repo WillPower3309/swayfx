@@ -99,6 +99,7 @@ Install dependencies:
 * json-c
 * pango
 * cairo
+* [scenefx](https://github.com/wlrfx/scenefx)
 * gdk-pixbuf2 (optional: additional image formats for system tray)
 * [swaybg] (optional: wallpaper)
 * [scdoc] (optional: man pages) \*
