@@ -1161,9 +1161,9 @@ static void render_top_border(struct fx_render_context *ctx, struct sway_contain
 	// Child border - top edge
 	memcpy(&color, colors->child_border, sizeof(float) * 4);
 	premultiply_alpha(color, con->alpha);
-	box.x = floor(state->x) + corner_radius;
+	box.x = floor(state->x) + state->border_thickness;
 	box.y = floor(state->y);
-	box.width = state->width - (2 * corner_radius);
+	box.width = state->width - (2 * state->border_thickness);
 	box.height = state->border_thickness;
 	scale_box(&box, output_scale);
 	render_rect(ctx, &box, color);
