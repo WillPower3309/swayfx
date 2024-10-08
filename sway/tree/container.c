@@ -3,6 +3,7 @@
 #include <drm_fourcc.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <math.h>
 #include <wayland-server-core.h>
 #include <wlr/types/wlr_linux_dmabuf_v1.h>
 #include <wlr/types/wlr_output_layout.h>
@@ -437,6 +438,86 @@ struct sway_container *container_at(struct sway_workspace *workspace,
 	}
 	return NULL;
 }
+
+
+static struct sway_container *closest_view_container_at(struct sway_node *parent,
+		double lx, double ly,
+		struct wlr_surface **surface, double *sx, double *sy, double *distanceSquared) {
+	if (!sway_assert(node_is_view(parent), "Expected a view")) {
+		return NULL;
+	}
+
+	struct sway_container* container = parent->sway_container;
+	struct wlr_box box = {
+		.x = container->pending.content_x,
+		.y = container->pending.content_y,
+		.width = container->pending.content_width,
+		.height = container->pending.content_height,
+	};
+
+	double closest_x, closest_y;
+	wlr_box_closest_point(&box, lx, ly, &closest_x, &closest_y);
+
+	double dx = fabs(closest_x - lx);
+	double dy = fabs(closest_y - ly);
+	*distanceSquared = dx * dx + dy * dy;
+
+	if (surface_at_view(container, closest_x, closest_y, surface, sx, sy)) {
+		return container;
+	}
+
+	return NULL;
+}
+
+static struct sway_container *closest_container_at_linear(struct sway_node *parent,
+		double lx, double ly,
+		struct wlr_surface **surface, double *sx, double *sy, double *distanceSquared) {
+	list_t *children = node_get_children(parent);
+
+	*distanceSquared = DBL_MAX;
+	struct sway_container *closestContainer = NULL;
+
+	for (int i = 0; i < children->length; ++i) {
+		struct sway_container *child = children->items[i];
+
+		double containerDistance, containerSx, containerSy;
+		struct wlr_surface *containerSurface = NULL;
+		struct sway_container *container = closest_tiling_container_at(&child->node, lx, ly, &containerSurface, &containerSx, &containerSy, &containerDistance);
+		if (container && containerDistance < *distanceSquared) {
+			*distanceSquared = containerDistance;
+			*sx = containerSx;
+			*sy = containerSy;
+			*surface = containerSurface;
+			closestContainer = container;
+		}
+	}
+
+	return closestContainer;
+}
+
+struct sway_container *closest_tiling_container_at(struct sway_node *parent,
+		double lx, double ly,
+		struct wlr_surface **surface, double *sx, double *sy, double *distanceSquared) {
+	if (node_is_view(parent)) {
+		return closest_view_container_at(parent, lx, ly, surface, sx, sy, distanceSquared);
+	}
+	if (!node_get_children(parent)) {
+		return NULL;
+	}
+
+	switch (node_get_layout(parent)) {
+	case L_HORIZ:
+	case L_VERT:
+		return closest_container_at_linear(parent, lx, ly, surface, sx, sy, distanceSquared);
+	case L_TABBED:
+	case L_STACKED:
+	case L_NONE:
+		return NULL;
+	}
+
+	return NULL;
+}
+
 
 void container_for_each_child(struct sway_container *container,
 		void (*f)(struct sway_container *container, void *data),

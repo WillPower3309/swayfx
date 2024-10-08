@@ -174,6 +174,10 @@ struct sway_container *tiling_container_at(
 		struct sway_node *parent, double lx, double ly,
 		struct wlr_surface **surface, double *sx, double *sy);
 
+struct sway_container *closest_tiling_container_at(
+		struct sway_node *parent, double lx, double ly,
+		struct wlr_surface **surface, double *sx, double *sy, double *distanceSquared);
+
 void container_for_each_child(struct sway_container *container,
 		void (*f)(struct sway_container *container, void *data), void *data);
 
