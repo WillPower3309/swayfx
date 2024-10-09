@@ -92,6 +92,14 @@ struct decoration_data get_undecorated_decoration_data() {
 	};
 }
 
+// TODO: don't need pointer
+float get_animation_completion_percentage(struct sway_container *con) {
+	if (con->alpha == 1.0f) {
+		return 1.0f;
+	}
+	return con->alpha < con->target_alpha ? con->alpha / con->target_alpha : con->alpha / con->max_alpha;
+}
+
 /**
  * Apply scale to a width or height.
  *
@@ -374,10 +382,11 @@ static void render_surface_iterator(struct sway_output *output,
 
 		if (has_alpha) {
 			bool should_optimize_blur = view ?
-				!container_is_floating_or_child(view->container) || config->blur_xray
-				: false;
+				!container_is_floating_or_child(view->container) || config->blur_xray : false;
+			struct decoration_data blur_deco_data = deco_data;
+			blur_deco_data.alpha = view ? get_animation_completion_percentage(view->container) : 1.0f;
 			render_blur(data->ctx, texture, &src_box, &clip_box,
-					should_optimize_blur, &opaque_region, deco_data);
+					should_optimize_blur, &opaque_region, blur_deco_data);
 		}
 
 		pixman_region32_fini(&opaque_region);
@@ -685,9 +694,11 @@ static void render_saved_view(struct fx_render_context *ctx, struct sway_view *v
 				pixman_region32_union_rect(&opaque_region, &opaque_region, 0, 0, 0, 0);
 
 				bool should_optimize_blur = !container_is_floating_or_child(view->container) || config->blur_xray;
-				render_blur(ctx, saved_buf->buffer->texture,
-						&saved_buf->source_box, &clip_box, should_optimize_blur,
-						&opaque_region, deco_data);
+				struct decoration_data blur_deco_data = deco_data;
+				blur_deco_data.alpha = get_animation_completion_percentage(view->container);
+
+				render_blur(ctx, saved_buf->buffer->texture, &saved_buf->source_box, &clip_box,
+					should_optimize_blur, &opaque_region, blur_deco_data);
 
 				pixman_region32_fini(&opaque_region);
 			}
@@ -737,6 +748,7 @@ static void render_view(struct fx_render_context *ctx, struct sway_container *co
 		int shadow_corner_radius = corner_radius == 0 ? 0 : corner_radius + state->border_thickness;
 		float* shadow_color = view_is_urgent(view) || state->focused ?
 			config->shadow_color : config->shadow_inactive_color;
+		shadow_color[3] *= get_animation_completion_percentage(con);
 
 		render_box_shadow(ctx, &box, shadow_color, config->shadow_blur_sigma * output_scale,
 			shadow_corner_radius * output_scale, config->shadow_offset_x * output_scale,

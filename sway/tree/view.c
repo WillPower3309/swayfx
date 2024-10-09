@@ -47,6 +47,7 @@ void view_init(struct sway_view *view, enum sway_view_type type,
 }
 
 void view_destroy(struct sway_view *view) {
+	printf("view destroy\n");
 	if (!sway_assert(view->surface == NULL, "Tried to free mapped view")) {
 		return;
 	}
@@ -76,7 +77,31 @@ void view_destroy(struct sway_view *view) {
 	}
 }
 
+void view_remove_container(struct sway_container *container) {
+	if (!wl_list_empty(&container->view->saved_buffers)) {
+		view_remove_saved_buffer(container->view);
+	}
+
+	struct sway_container *parent = container->pending.parent;
+	struct sway_workspace *ws = container->pending.workspace;
+	container_begin_destroy(container);
+	if (parent) {
+		container_reap_empty(parent);
+	} else if (ws) {
+		workspace_consider_destroy(ws);
+	}
+
+	if (root->fullscreen_global) {
+		// Container may have been a child of the root fullscreen container
+		arrange_root();
+	} else if (ws && !ws->node.destroying) {
+		arrange_workspace(ws);
+		workspace_detect_urgent(ws);
+	}
+}
+
 void view_begin_destroy(struct sway_view *view) {
+	printf("view begin destroy\n");
 	if (!sway_assert(view->surface == NULL, "Tried to destroy a mapped view")) {
 		return;
 	}
@@ -170,7 +195,7 @@ void view_get_constraints(struct sway_view *view, double *min_width,
 
 uint32_t view_configure(struct sway_view *view, double lx, double ly, int width,
 		int height) {
-	if (view->impl->configure) {
+	if (view->impl->configure && view->surface) {
 		return view->impl->configure(view, lx, ly, width, height);
 	}
 	return 0;
@@ -438,7 +463,7 @@ void view_set_tiled(struct sway_view *view, bool tiled) {
 }
 
 void view_close(struct sway_view *view) {
-	if (view->impl->close) {
+	if (view->impl->close && view->surface) {
 		view->impl->close(view);
 	}
 }
@@ -916,6 +941,7 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 }
 
 void view_unmap(struct sway_view *view) {
+	printf("unmapping view\n");
 	wl_signal_emit_mutable(&view->events.unmap, view);
 
 	wl_list_remove(&view->surface_new_subsurface.link);
@@ -932,22 +958,18 @@ void view_unmap(struct sway_view *view) {
 		view->foreign_toplevel = NULL;
 	}
 
-	struct sway_container *parent = view->container->pending.parent;
-	struct sway_workspace *ws = view->container->pending.workspace;
-	container_begin_destroy(view->container);
-	if (parent) {
-		container_reap_empty(parent);
-	} else if (ws) {
-		workspace_consider_destroy(ws);
-	}
-
-	if (root->fullscreen_global) {
-		// Container may have been a child of the root fullscreen container
-		arrange_root();
-	} else if (ws && !ws->node.destroying) {
-		arrange_workspace(ws);
-		workspace_detect_urgent(ws);
-	}
+	/*
+	if (!config->animation_duration) {
+		view_remove_container(view);
+		transaction_commit_dirty();
+	} else {*/
+		wl_signal_emit_mutable(&view->container->node.events.destroy, &view->container->node);
+		if (wl_list_empty(&view->saved_buffers)) {
+			view_save_buffer(view);
+		}
+		view->container->target_alpha = 0;
+		list_add(server.animated_containers, view->container);
+	//}
 
 	struct sway_seat *seat;
 	wl_list_for_each(seat, &server.input->seats, link) {
@@ -962,7 +984,6 @@ void view_unmap(struct sway_view *view) {
 		seat_consider_warp_to_focus(seat);
 	}
 
-	transaction_commit_dirty();
 	view->surface = NULL;
 }
 
@@ -1372,6 +1393,9 @@ void view_update_title(struct sway_view *view, bool force) {
 }
 
 bool view_is_visible(struct sway_view *view) {
+	if (!view->container) {
+		return false;
+	}
 	if (view->container->node.destroying) {
 		return false;
 	}

@@ -25,6 +25,14 @@ Sway is an incredible window manager, and certainly one of the most well establi
 
 ## New Configuration Options
 
++ Fade in / out animations: `animation_duration <val>`: specifies the length of the animation in seconds
++ Corner radius: `corner_radius <val>`
++ Smart corner radius: `smart_corner_radius enable|disable`
++ Window shadows:
+    - `shadows enable|disable`
+    - `shadows_on_csd enable|disable` (**Note**: The shadow might not fit some windows)
+    - `shadow_blur_radius <integer value 0 - 100>`
+    - `shadow_color <hex color with alpha> ex, #0000007F`
 + Window blur:
     - `blur enable|disable`
     - `blur_xray enable|disable`: this will set floating windows to blur based on the background, not the windows below. You probably want to set this to `disable` :)
@@ -64,7 +72,6 @@ Sway is an incredible window manager, and certainly one of the most well establi
 
 ## Roadmap
 
-+ fade in / out animations
 + window movement animations
 
 ## Compiling From Source
@@ -138,4 +145,3 @@ We would also like to thank the talented artists in our community for contibutin
 + spooky_skeleton for the swayfx logo, and [Basil](https://basil.cafe) for making some fine adjustments to it
 
 Lastly, we would like to thank you, the community, for enjoying and using window manager that we have spent so much time maintaining.
-

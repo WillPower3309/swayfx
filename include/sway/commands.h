@@ -109,6 +109,7 @@ bool cmd_corner_radius_parse_value(char *arg, int* result);
 sway_cmd cmd_exec_validate;
 sway_cmd cmd_exec_process;
 
+sway_cmd cmd_animation_duration;
 sway_cmd cmd_assign;
 sway_cmd cmd_bar;
 sway_cmd cmd_bindcode;

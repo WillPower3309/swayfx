@@ -525,6 +525,7 @@ static void handle_map(struct wl_listener *listener, void *data) {
 }
 
 static void handle_destroy(struct wl_listener *listener, void *data) {
+	/*
 	struct sway_xdg_shell_view *xdg_shell_view =
 		wl_container_of(listener, xdg_shell_view, destroy);
 	struct sway_view *view = &xdg_shell_view->view;
@@ -539,6 +540,7 @@ static void handle_destroy(struct wl_listener *listener, void *data) {
 		view->xdg_decoration->view = NULL;
 	}
 	view_begin_destroy(view);
+*/
 }
 
 struct sway_view *view_from_wlr_xdg_surface(

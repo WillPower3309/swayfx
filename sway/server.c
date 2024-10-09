@@ -44,6 +44,7 @@
 #include "log.h"
 #include "sway/config.h"
 #include "sway/desktop/idle_inhibit_v1.h"
+#include "sway/desktop/transaction.h"
 #include "sway/input/input-manager.h"
 #include "sway/output.h"
 #include "sway/server.h"
@@ -76,6 +77,74 @@ static void handle_drm_lease_request(struct wl_listener *listener, void *data) {
 }
 #endif
 
+float get_fastest_output_refresh_s() {
+	float fastest_output_refresh_s = 0.0166667; // fallback to 60 Hz
+	for (int i = 0; i < root->outputs->length; ++i) {
+		struct sway_output *output = root->outputs->items[i];
+		if (output->refresh_nsec > 0) {
+			fastest_output_refresh_s = MIN(fastest_output_refresh_s, output->refresh_sec);
+		}
+	}
+	return fastest_output_refresh_s;
+}
+
+// TODO: animation struct with callback on completion
+// TODO: fix new window placement when a container is fading out
+static int animation_timer(void *data) {
+	clock_t start = clock();
+	struct sway_server *server = data;
+	float fastest_output_refresh_s = get_fastest_output_refresh_s();
+
+	int num_containers;
+	memcpy(&num_containers, &server->animated_containers->length, sizeof(int));
+	if (num_containers == 0) {
+		goto animation_timer_queue_next;
+	}
+
+	bool is_container_close_animation_complete = false;
+	bool should_delay_transaction_commit = false;
+
+	// update state from end to start of list: this ensures removing containers from the list won't
+	// impact indices of later list members that are iterated through
+	for (int i = num_containers - 1; i >= 0; i--) {
+		struct sway_container *con = server->animated_containers->items[i];
+		sway_assert(con->view, "container being animated is not a view container");
+
+		bool is_closing = con->alpha > con->target_alpha;
+		float alpha_step = config->animation_duration ?
+			(con->max_alpha * fastest_output_refresh_s) / config->animation_duration : con->max_alpha;
+
+		con->alpha = is_closing ? MAX(con->alpha - alpha_step, con->target_alpha) :
+			MIN(con->alpha + alpha_step, con->target_alpha);
+
+		if (con->alpha == con->target_alpha) {
+			list_del(server->animated_containers, i);
+			if (con->alpha == 0) {
+				view_remove_container(con);
+				is_container_close_animation_complete = true;
+			}
+		} else if (is_closing) {
+			should_delay_transaction_commit = true;
+		}
+
+		if (view_is_visible(con->view)) {
+			container_damage_whole(con);
+		}
+	}
+
+	// damage track
+	if (is_container_close_animation_complete && !should_delay_transaction_commit) {
+		transaction_commit_dirty();
+	}
+
+animation_timer_queue_next:
+	float seconds_to_complete_animation_frame = (float)(clock() - start) / CLOCKS_PER_SEC;
+	float time_delta_s = MAX(fastest_output_refresh_s - seconds_to_complete_animation_frame, 0.001);
+	wl_event_source_timer_update(server->animation_tick, time_delta_s * 1000);
+	return 0;
+}
+
+#define SWAY_XDG_SHELL_VERSION	2
 static bool is_privileged(const struct wl_global *global) {
 #if WLR_HAS_DRM_BACKEND
 	if (server.drm_lease_manager != NULL) {
@@ -340,6 +409,10 @@ bool server_init(struct sway_server *server) {
 	server->input = input_manager_create(server);
 	input_manager_get_default_seat(); // create seat0
 
+	server->animated_containers = create_list();
+	server->animation_tick = wl_event_loop_add_timer(server->wl_event_loop, animation_timer, server);
+	wl_event_source_timer_update(server->animation_tick, 1);
+
 	return true;
 }
 
@@ -351,6 +424,8 @@ void server_fini(struct sway_server *server) {
 	wl_display_destroy_clients(server->wl_display);
 	wl_display_destroy(server->wl_display);
 	list_free(server->dirty_nodes);
+	list_free(server->animated_containers);
+	wl_event_source_remove(server->animation_tick);
 }
 
 bool server_start(struct sway_server *server) {

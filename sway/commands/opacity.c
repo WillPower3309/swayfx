@@ -24,9 +24,9 @@ struct cmd_results *cmd_opacity(int argc, char **argv) {
 	}
 
 	if (!strcasecmp(argv[0], "plus")) {
-		val = con->alpha + val;
+		val = con->max_alpha + val;
 	} else if (!strcasecmp(argv[0], "minus")) {
-		val = con->alpha - val;
+		val = con->max_alpha - val;
 	} else if (argc > 1 && strcasecmp(argv[0], "set")) {
 		return cmd_results_new(CMD_INVALID,
 				"Expected: set|plus|minus <0..1>: %s", argv[0]);
@@ -36,7 +36,8 @@ struct cmd_results *cmd_opacity(int argc, char **argv) {
 		return cmd_results_new(CMD_FAILURE, "opacity value out of bounds");
 	}
 
-	con->alpha = val;
+	con->max_alpha = val;
+	con->target_alpha = val;
 	container_damage_whole(con);
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }

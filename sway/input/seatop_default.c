@@ -583,7 +583,7 @@ static void check_focus_follows_mouse(struct sway_seat *seat,
 
 	// This is where we handle the common case. We don't want to focus inactive
 	// tabs, hence the view_is_visible check.
-	if (node_is_view(hovered_node) &&
+	if (node_is_view(hovered_node) && hovered_node->sway_container->view->surface &&
 			view_is_visible(hovered_node->sway_container->view)) {
 		// e->previous_node is the node which the cursor was over previously.
 		// If focus_follows_mouse is yes and the cursor got over the view due

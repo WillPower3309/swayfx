@@ -36,7 +36,9 @@ struct sway_container *container_create(struct sway_view *view) {
 	node_init(&c->node, N_CONTAINER, c);
 	c->pending.layout = L_NONE;
 	c->view = view;
-	c->alpha = 1.0f;
+	c->alpha = 0.0f;
+	c->target_alpha = 1.0f;
+	c->max_alpha = 1.0f;
 	c->saturation = 1.0f;
 	c->dim = config->default_dim_inactive;
 	c->shadow_enabled = config->shadow_enabled;
@@ -46,17 +48,21 @@ struct sway_container *container_create(struct sway_view *view) {
 	if (!view) {
 		c->pending.children = create_list();
 		c->current.children = create_list();
+	} else {
+		list_add(server.animated_containers, c);
 	}
 	c->marks = create_list();
 	c->outputs = create_list();
 
 	wl_signal_init(&c->events.destroy);
+
 	wl_signal_emit_mutable(&root->events.new_node, &c->node);
 
 	return c;
 }
 
 void container_destroy(struct sway_container *con) {
+	printf("destroying container\n");
 	if (!sway_assert(con->node.destroying,
 				"Tried to free container which wasn't marked as destroying")) {
 		return;
@@ -94,6 +100,7 @@ void container_destroy(struct sway_container *con) {
 }
 
 void container_begin_destroy(struct sway_container *con) {
+	printf("container begin destroy\n");
 	if (con->view) {
 		ipc_event_window(con, "close");
 	}
@@ -182,6 +189,9 @@ static struct sway_container *surface_at_view(struct sway_container *con, double
 		return NULL;
 	}
 	struct sway_view *view = con->view;
+	if (!view->surface) {
+		return NULL;
+	}
 	double view_sx = lx - con->surface_x + view->geometry.x;
 	double view_sy = ly - con->surface_y + view->geometry.y;
 
@@ -635,7 +645,7 @@ size_t container_build_representation(enum sway_container_layout layout,
 		}
 		struct sway_container *child = children->items[i];
 		const char *identifier = NULL;
-		if (child->view) {
+		if (child->view && child->view->surface) {
 			identifier = view_get_class(child->view);
 			if (!identifier) {
 				identifier = view_get_app_id(child->view);

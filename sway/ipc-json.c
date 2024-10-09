@@ -792,7 +792,8 @@ static void ipc_json_describe_container(struct sway_container *c, json_object *o
 
 	json_object_object_add(object, "marks", marks);
 
-	if (c->view) {
+	// check if view exists and if it has not been unmapped
+	if (c->view && c->view->surface) {
 		ipc_json_describe_view(c, object);
 	}
 }

@@ -682,7 +682,8 @@ struct blur_region_data {
 
 static void find_blurred_region_iterator(struct sway_container *con, void *data) {
 	struct sway_view *view = con->view;
-	if (!view) {
+	// TODO: proper view cleanup
+	if (!view || !view->surface) {
 		return;
 	}
 
