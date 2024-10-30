@@ -257,10 +257,11 @@ void render_box_shadow(struct fx_render_context *ctx, const struct wlr_box *_box
 	transform_output_box(&box, wlr_output);
 	transform_output_box(&shadow_box, wlr_output);
 
-	struct shadow_data shadow_data = {
-		.enabled = true,
-		.offset_x = offset_x,
-		.offset_y = offset_y,
+	struct fx_render_box_shadow_options shadow_options = {
+		.box = shadow_box,
+		.window_box = box,
+		.clip = &damage,
+		.corner_radius = corner_radius,
 		.color = {
 			.r = color[0],
 			.g = color[1],
@@ -268,13 +269,6 @@ void render_box_shadow(struct fx_render_context *ctx, const struct wlr_box *_box
 			.a = color[3],
 		},
 		.blur_sigma = blur_sigma,
-	};
-	struct fx_render_box_shadow_options shadow_options = {
-		.shadow_box = shadow_box,
-		.clip_box = box,
-		.clip = &damage,
-		.shadow_data = &shadow_data,
-		.corner_radius = corner_radius,
 	};
 	fx_render_pass_add_box_shadow(ctx->pass, &shadow_options);
 
