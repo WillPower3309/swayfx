@@ -38,7 +38,7 @@ Sway is an incredible window manager, and certainly one of the most well establi
 + Window shadows:
     - `shadows enable|disable`
     - `shadows_on_csd enable|disable` (**Note**: The shadow might not fit some windows)
-    - `shadow_blur_radius <integer value 0 - 100>`
+    - `shadow_blur_radius <integer value 0 - 99>`
     - `shadow_color <hex color with alpha> ex, #0000007F`
     - `shadow_offset <x offset> <y offset>`
     - `shadow_inactive_color <hex color with alpha> ex, #0000007F`
