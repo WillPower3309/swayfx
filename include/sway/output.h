@@ -15,6 +15,19 @@ struct decoration_data get_undecorated_decoration_data();
 struct sway_server;
 struct sway_container;
 
+enum swipe_gesture_direction {
+	SWIPE_GESTURE_DIRECTION_NONE,
+	SWIPE_GESTURE_DIRECTION_HORIZONTAL,
+	SWIPE_GESTURE_DIRECTION_VERTICAL,
+};
+
+struct workspace_scroll {
+	double percent;
+	double avg_velocity;
+	int num_updates;
+	enum swipe_gesture_direction direction;
+};
+
 struct decoration_data {
 	float alpha;
 	float saturation;
@@ -32,6 +45,7 @@ struct render_data {
 	pixman_region32_t *damage;
 	struct wlr_box *clip_box;
 	struct decoration_data deco_data;
+	bool on_focused_workspace;
 	struct sway_view *view;
 };
 
@@ -70,6 +84,8 @@ struct sway_output {
 	struct wl_listener frame;
 	struct wl_listener needs_frame;
 	struct wl_listener request_state;
+
+	struct workspace_scroll workspace_scroll;
 
 	struct {
 		struct wl_signal disable;
@@ -230,6 +246,20 @@ void handle_output_manager_test(struct wl_listener *listener, void *data);
 
 void handle_output_power_manager_set_mode(struct wl_listener *listener,
 	void *data);
+
+struct workspace_scroll workspace_scroll_get_default();
+
+bool workspace_scroll_equal(struct workspace_scroll *a, struct workspace_scroll *b);
+
+void workspace_scroll_begin(struct sway_seat *seat,
+		enum swipe_gesture_direction direction);
+
+void workspace_scroll_update(struct sway_seat *seat, struct gesture_tracker *tracker,
+		struct wlr_pointer_swipe_update_event *event, int invert);
+
+void workspace_scroll_end(struct sway_seat *seat);
+
+void workspace_scroll_reset(struct sway_seat *seat, struct sway_workspace *ws);
 
 struct sway_output_non_desktop *output_non_desktop_create(struct wlr_output *wlr_output);
 

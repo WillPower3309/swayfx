@@ -49,6 +49,7 @@ static const struct cmd_handler handlers[] = {
 	{ "bindgesture", cmd_bindgesture },
 	{ "bindswitch", cmd_bindswitch },
 	{ "bindsym", cmd_bindsym },
+	{ "bindworkspacegesture", cmd_bindworkspacegesture },
 	{ "blur", cmd_blur },
     { "blur_brightness", cmd_blur_brightness },
 	{ "blur_contrast", cmd_blur_contrast },
@@ -118,8 +119,12 @@ static const struct cmd_handler handlers[] = {
 	{ "unbindgesture", cmd_unbindgesture },
 	{ "unbindswitch", cmd_unbindswitch },
 	{ "unbindsym", cmd_unbindsym },
+	{ "unbindworkspacegesture", cmd_unbindworkspacegesture },
 	{ "workspace", cmd_workspace },
 	{ "workspace_auto_back_and_forth", cmd_ws_auto_back_and_forth },
+	{ "workspace_gesture_spring_size", cmd_ws_gesture_spring_size },
+	{ "workspace_gesture_threshold", cmd_ws_gesture_threshold },
+	{ "workspace_gesture_wrap_around", cmd_ws_gesture_wrap_around },
 };
 
 /* Config-time only commands. Keep alphabetized */

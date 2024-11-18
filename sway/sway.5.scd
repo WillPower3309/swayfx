@@ -548,6 +548,61 @@ runtime.
 
 ```
 
+*bindworkspacegesture* [--input-device=<device>] [--no-warn] \
+[--inverted] [<fingers>][:direction]
+	Binds the swipe to switch workspaces in a 1:1 fashion, but only when
+	detected. Optionally can be limited to bind to a certain number of
+	_fingers_ or to certain _directions_.
+
+[[ *type*
+:[ *fingers*
+:< *direction*
+|  swipe
+:  3 - 5
+:  horizontal, vertical
+
+	The _fingers_ can be limited to any sensible number or left empty to accept
+	any finger counts.
+	Valid directions are _horizontal_ and _vertical_.
+
+	If a _input-device_ is given, the binding will only be executed for
+	that input device and will be executed instead of any binding that is
+	generic to all devices. By default, if you overwrite a binding,
+	swaynag will give you a warning. To silence this, use the _--no-warn_ flag.
+
+	If _inverted_ is given, the swipe direction will be reversed.
+
+	The priority for matching bindings is as follows: input device, then
+	exact matches.
+
+	Gestures executed while the pointer is above a bar are not handled by sway.
+	See the respective documentation, e.g. *bindgesture* in *sway-bar*(5).
+
+	Example:
+```
+		# Allow switching between workspaces with left and right swipes
+		bindworkspacegesture 4:horizontal
+		# Allow switching between workspaces with up and down swipes
+		bindworkspacegesture 3:vertical
+		# Allow switching between workspaces with up and down swipes but inverted
+		bindworkspacegesture --inverted 3:vertical
+
+```
+
+*workspace_gesture_spring_size* <value>
+	Adjusts the workspace gestures spring size. Can use values between
+	0 (disabled) and 100 while 50 is the default value.
+
+*workspace_gesture_wrap_around* <enable|disable>
+	Sets whether or not the workspace gesture should wrap around when trying to
+	swipe past the first/last workspace. Disables the
+	_workspace_gesture_spring_size_ config option. Disabled by default.
+
+*workspace_gesture_threshold* <value>
+	Adjusts the swipe threshold of switching workspaces. A lower value makes it
+	easier to switch workspaces. Accepts values between 0.1 (small swipes) and
+	0.9 (large swipes). The default value is set to 0.5.
+
 *client.background* <color>
 	This command is ignored and is only present for i3 compatibility.
 

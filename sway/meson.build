@@ -24,6 +24,8 @@ sway_sources = files(
 	'desktop/xdg_shell.c',
 	'desktop/launcher.c',
 
+	'fx_util/animation_utils.c',
+
 	'input/input-manager.c',
 	'input/cursor.c',
 	'input/keyboard.c',
@@ -122,7 +124,7 @@ sway_sources = files(
 	'commands/set.c',
 	'commands/shadow_blur_radius.c',
 	'commands/shadow_color.c',
-    'commands/shadow_offset.c',
+	'commands/shadow_offset.c',
 	'commands/shadow_inactive_color.c',
 	'commands/shadows.c',
 	'commands/shadows_on_csd.c',
@@ -144,6 +146,7 @@ sway_sources = files(
 	'commands/unmark.c',
 	'commands/urgent.c',
 	'commands/workspace.c',
+	'commands/workspace_gesture.c',
 	'commands/workspace_layout.c',
 	'commands/ws_auto_back_and_forth.c',
 	'commands/xwayland.c',

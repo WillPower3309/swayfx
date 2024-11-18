@@ -6,10 +6,12 @@
 #include "sway/commands.h"
 #include "sway/config.h"
 #include "sway/input/seat.h"
+#include "sway/output.h"
 #include "sway/tree/workspace.h"
 #include "list.h"
 #include "log.h"
 #include "stringop.h"
+#include "util.h"
 
 static struct workspace_config *workspace_config_find_or_create(char *ws_name) {
 	struct workspace_config *wsc = workspace_find_config(ws_name);
