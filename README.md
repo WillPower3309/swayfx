@@ -123,12 +123,6 @@ SwayFX will drop root permissions shortly after startup.
 
 SwayFX would love to receive any new features that you're willing to build! Generally, we'd like to focus on eye-candy type improvements to keep our scope appropriate. If you'd like to build something that you think may be out of that focus, please raise an issue and we can discuss whether or not it will fit within this project.
 
-Here's a quick outline of where most of our changes lie vs the main sway repository:
-
-+ `sway/desktop/render.c`: the file that handles calling `fx_renderer` to render to the screen, handles damage tracking and scaling
-+ `sway/desktop/fx_renderer/fx_renderer.c`: the meat and potatoes of this project, structured as similarly to wlr_renderer as possible
-+ `sway/desktop/fx_renderer/shaders`: where all of the shaders that fx_renderer uses live
-
 ## Acknowledgements
 
 The SwayFX team would like to first and foremost thank the maintainers and contributors of the Sway window manager. We are but a humble group of Sway enthusiasts who wanted to expand upon your creation.
