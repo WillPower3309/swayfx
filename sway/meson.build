@@ -228,6 +228,7 @@ sway_deps = [
 	pango,
 	pcre2,
 	pixman,
+	scenefx,
 	threads,
 	wayland_server,
 	wlroots,
