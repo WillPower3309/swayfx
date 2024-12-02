@@ -1,8 +1,8 @@
 #ifndef _SWAY_WORKSPACE_H
 #define _SWAY_WORKSPACE_H
 
+#include <scenefx/types/wlr_scene.h>
 #include <stdbool.h>
-#include <wlr/types/wlr_scene.h>
 #include "sway/config.h"
 #include "sway/tree/container.h"
 #include "sway/tree/node.h"

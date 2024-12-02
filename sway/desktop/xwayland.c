@@ -1,11 +1,11 @@
 #include <float.h>
+#include <scenefx/types/wlr_scene.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <wayland-server-core.h>
 #include <wlr/types/wlr_output_layout.h>
 #include <wlr/types/wlr_output.h>
 #include <wlr/types/wlr_xdg_activation_v1.h>
-#include <wlr/types/wlr_scene.h>
 #include <wlr/xwayland.h>
 #include <xcb/xcb_icccm.h>
 #include "log.h"

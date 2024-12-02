@@ -1,8 +1,8 @@
 #ifndef _SWAY_TRANSACTION_H
 #define _SWAY_TRANSACTION_H
+#include <scenefx/types/wlr_scene.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <wlr/types/wlr_scene.h>
 
 /**
  * Transactions enable us to perform atomic layout updates.

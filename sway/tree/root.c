@@ -1,8 +1,8 @@
+#include <scenefx/types/wlr_scene.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <wlr/types/wlr_output_layout.h>
-#include <wlr/types/wlr_scene.h>
 #include <wlr/util/transform.h>
 #include "sway/desktop/transaction.h"
 #include "sway/input/seat.h"

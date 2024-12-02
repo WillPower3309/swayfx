@@ -6,7 +6,6 @@
 #include <wlr/config.h>
 #include <wlr/backend/headless.h>
 #include <wlr/render/swapchain.h>
-#include <wlr/render/wlr_renderer.h>
 #include <wlr/types/wlr_buffer.h>
 #include <wlr/types/wlr_alpha_modifier_v1.h>
 #include <wlr/types/wlr_gamma_control_v1.h>

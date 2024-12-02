@@ -1,9 +1,9 @@
 #ifndef _SWAY_VIEW_H
 #define _SWAY_VIEW_H
+#include <scenefx/types/wlr_scene.h>
 #include <wayland-server-core.h>
 #include <wlr/config.h>
 #include <wlr/types/wlr_compositor.h>
-#include <wlr/types/wlr_scene.h>
 #include <wlr/types/wlr_tearing_control_v1.h>
 #include "sway/config.h"
 #if WLR_HAS_XWAYLAND

@@ -1,3 +1,4 @@
+#include <scenefx/types/wlr_scene.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5,7 +6,6 @@
 #include <wlr/types/wlr_fractional_scale_v1.h>
 #include <wlr/types/wlr_layer_shell_v1.h>
 #include <wlr/types/wlr_output.h>
-#include <wlr/types/wlr_scene.h>
 #include <wlr/types/wlr_subcompositor.h>
 #include <wlr/types/wlr_xdg_shell.h>
 #include "log.h"

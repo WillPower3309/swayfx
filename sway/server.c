@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <scenefx/render/fx_renderer/fx_renderer.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,7 +9,6 @@
 #include <wlr/backend/multi.h>
 #include <wlr/config.h>
 #include <wlr/render/allocator.h>
-#include <wlr/render/wlr_renderer.h>
 #include <wlr/types/wlr_alpha_modifier_v1.h>
 #include <wlr/types/wlr_compositor.h>
 #include <wlr/types/wlr_content_type_v1.h>
@@ -180,7 +180,7 @@ static void handle_renderer_lost(struct wl_listener *listener, void *data) {
 
 	sway_log(SWAY_INFO, "Re-creating renderer after GPU reset");
 
-	struct wlr_renderer *renderer = wlr_renderer_autocreate(server->backend);
+	struct wlr_renderer *renderer = fx_renderer_create(server->backend);
 	if (renderer == NULL) {
 		sway_log(SWAY_ERROR, "Unable to create renderer");
 		return;
@@ -231,7 +231,7 @@ bool server_init(struct sway_server *server) {
 
 	wlr_multi_for_each_backend(server->backend, detect_proprietary, NULL);
 
-	server->renderer = wlr_renderer_autocreate(server->backend);
+	server->renderer = fx_renderer_create(server->backend);
 	if (!server->renderer) {
 		sway_log(SWAY_ERROR, "Failed to create renderer");
 		return false;
