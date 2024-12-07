@@ -241,6 +241,14 @@ struct sway_node *node_at_coords(
 		return NULL;
 	}
 
+	if(config->gap_click_redirect) {
+		double distanceSquared;
+		struct sway_container *closest_container = closest_tiling_container_at(&ws->node, lx, ly, surface, sx, sy, &distanceSquared);
+		if(closest_container) {
+			return &closest_container->node;
+		}
+	}
+
 	return &ws->node;
 }
 

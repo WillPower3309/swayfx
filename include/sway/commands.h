@@ -191,6 +191,7 @@ sway_cmd cmd_rename;
 sway_cmd cmd_resize;
 sway_cmd cmd_scratchpad;
 sway_cmd cmd_scratchpad_minimize;
+sway_cmd cmd_gap_click_redirect;
 sway_cmd cmd_seamless_mouse;
 sway_cmd cmd_set;
 sway_cmd cmd_shortcuts_inhibitor;

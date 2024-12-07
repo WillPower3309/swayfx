@@ -108,6 +108,7 @@ sway_sources = files(
 	'commands/saturation.c',
 	'commands/scratchpad.c',
 	'commands/scratchpad_minimize.c',
+	'commands/gap_click_redirect.c',
 	'commands/seat.c',
 	'commands/seat/attach.c',
 	'commands/seat/cursor.c',

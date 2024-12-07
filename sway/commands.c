@@ -85,6 +85,7 @@ static const struct cmd_handler handlers[] = {
 	{ "force_display_urgency_hint", cmd_force_display_urgency_hint },
 	{ "force_focus_wrapping", cmd_force_focus_wrapping },
 	{ "fullscreen", cmd_fullscreen },
+	{ "gap_click_redirect", cmd_gap_click_redirect },
 	{ "gaps", cmd_gaps },
 	{ "hide_edge_borders", cmd_hide_edge_borders },
 	{ "input", cmd_input },
