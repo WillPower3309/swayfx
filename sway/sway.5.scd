@@ -57,6 +57,7 @@ which you may only select one. *[...]* is used for optional arguments, and
 This section only lists general commands. For input and output commands, refer
 to *sway-input*(5) and *sway-output*(5).
 
+## Config only commands
 The following commands may only be used in the configuration file.
 
 *bar* [<bar-id>] <bar-subcommands...>
@@ -70,10 +71,6 @@ The following commands may only be used in the configuration file.
 	path relative to the parent config, and expands shell syntax (see
 	*wordexp*(3) for details). The same include file can only be included once;
 	subsequent attempts will be ignored.
-
-*scratchpad_minimize* enable|disable
-	Adjusts if minimized windows should be moved into the scratchpad.
-	Must be set at config-time (when starting sway).
 
 *swaybg_command* <command>
 	Executes custom background _command_. Default is _swaybg_. Refer to
@@ -102,6 +99,7 @@ The following commands may only be used in the configuration file.
 	machines, it may be desirable to have Xwayland started immediately by
 	using _force_ instead of _enable_.
 
+## Runtime only commands
 The following commands cannot be used directly in the configuration file.
 They are expected to be used with *bindsym* or at runtime through *swaymsg*(1).
 
@@ -218,6 +216,20 @@ set|plus|minus|toggle <amount>
 	This setting only has an effect if a per-output *max_render_time* is in
 	effect on the output the window is currently on. See *sway-output*(5) for
 	further details.
+
+*allow_tearing* yes|no
+	Allows or disallows screen tearing as a result of immediate page flips
+	for a fullscreen application.
+
+	When this option is not set, the tearing hints provided by the application
+	determine whether tearing is allowed. When _yes_ is specified,
+	the application allows tearing regardless of the tearing hints.
+	When _no_ is specified, tearing will never be allowed on the application,
+	regardless of the tearing hints.
+
+	This setting only has an effect if tearing is allowed on the output through
+	the per-output *allow_tearing* setting. See *sway-output*(5) 
+	for further details.
 
 *move* left|right|up|down [<px> px]
 	Moves the focused container in the direction specified. The optional _px_
@@ -375,6 +387,7 @@ set|plus|minus|toggle <amount>
 
 	The default format is "%title".
 
+## Config or runtime commands
 The following commands may be used either in the configuration file or at
 runtime.
 
@@ -403,6 +416,12 @@ runtime.
 	generic to all devices. If a group number is given, then the binding will
 	only be available for that group. By default, if you overwrite a binding,
 	swaynag will give you a warning. To silence this, use the _--no-warn_ flag.
+
+	For specifying modifier keys, you can use the XKB modifier names _Shift_,
+	_Lock_ (for Caps Lock), _Control_, _Mod1_ (for Alt), _Mod2_ (for Num Lock),
+	_Mod3_ (for XKB modifier Mod3), _Mod4_ (for the Logo key), and _Mod5_ (for
+	AltGr). In addition, you can use the aliases  _Ctrl_ (for Control), _Alt_
+	(for Alt), and _Super_ (for the Logo key).
 
 	Unless the flag _--locked_ is set, the command will not be run when a
 	screen locking program is active. If there is a matching binding with
@@ -654,76 +673,6 @@ The default colors are:
 *corner_radius* <radius>
 	Set corner radius for new windows.
 
-*smart_corner_radius* enable|disable
-	Set corner radius only if there are gaps around the window.
-
-*default_dim_inactive* <value>
-	Adjusts the dimming of inactive windows between 0.0 (no dimming) and 1.0
-	(fully dimmed) while 0.0 is the default value.
-
-*dim_inactive* <value>
-	This can only be used with a *for_window* rule.
-	Adjusts the dimming of a window, matching the rule, between 0.0 (no dimming) 
-	and 1.0 (fully dimmed). Default value: *default_dim_inactive*
-
-*dim_inactive_colors.unfocused* <hex color>
-	The color to dim inactive windows with. Example color: #000000FF
-
-*dim_inactive_colors.urgent* <hex color>
-	The color to dim inactive urgent windows with. Example color: #900000FF
-
-*shadows* enable|disable
-	Sets whether or not shadows should be drawn. Can also be set per
-	window with *for_window*.
-
-*shadows_on_csd* enable|disable
-	Adjusts if shadows should be drawn on windows that draw their own
-	decorations. *Note:* The shadow might not fit some windows.
-
-*shadow_blur_radius* <value>
-	Adjusts the shadow blur radius of windows between 0 (disabled) and 100
-	while 20 is the default value.
-
-*shadow_color* <hex color with alpha>
-	The shadow color. Default color: #0000007F
-
-*shadow_inactive_color* <hex color with alpha>
-	The shadow color for inactive windows. Default value: *shadow_color*
-
-*shadow_offset* <x offset> <y offset>
-	Offset all box shadows by the given value.
-
-*blur* enable|disable
-	Sets whether blur should be drawn. Can also be set per window with
-	*for_window*.
-
-*blur_xray* enable|disable
-	Sets whether blur should only display the background.
-
-*blur_passes* <value>
-	Adjusts the blur passes of windows between 0 (disabled) and 10
-	while 2 is the default value.
-
-*blur_radius* <value>
-	Adjusts the blur radius of windows between 0 (disabled) and 10
-	while 5 is the default value.
-
-*blur_noise* <value>
-	Adjusts the percentage of noise applied to the blur between 0 and 1 
-	while 0.02 (2%) is the default value.
-
-*blur_brightness* <value>
-	Adjusts the percentage of brightness for the blur between 0 and 2
-	while 0.9 (90%) is the default value.
-
-*blur_contrast* <value>
-	Adjusts the percentage of contrast for the blur between 0 and 2
-	while 0.9 (90%) is the default value.
-
-*blur_saturation* <value>
-	Adjusts the percentage of saturation for the blur between 0 and 2
-	while 1.1 (110%) is the default value.
-
 *default_border* normal|none|pixel [<n>]
 	Set default border style for new tiled windows. Config reload won't affect
 	existing windows, only newly created ones after the reload.
@@ -800,36 +749,11 @@ The default colors are:
 	padding of the text while _vertical_ value affects vertical padding (space
 	above and below text). Padding includes titlebar borders so their value
 	should be greater than titlebar_border_thickness. If _vertical_ value is
-	not specified it is set to the _horizontal_ value. If _corner_radius_ is set
-	to be greater than the _horizontal_ or _vertical_ value, the value will be
-	treated as that of _corner_radius_.
-
-*titlebar_separator* enable|disable
-	Allows to remove the border between titlebar and window content.
+	not specified it is set to the _horizontal_ value.
 
 *for_window* <criteria> <command>
 	Whenever a window that matches _criteria_ appears, run list of commands.
 	See *CRITERIA* for more details.
-
-*layer_effects* <layer-namespace> <effects>
-	Apply effects on specific layer shell surfaces, eg "waybar" or "rofi".
-	At least one effect needs to be provided. The <layer-namespace> can be
-	gotten through *sway-ipc*. Note: Surfaces in the _bottom_ layer cannot
-	use these effects.
-
-	Effects:
-	- *blur* <enable|disable>
-	- *blur_ignore_transparent* <enable|disable>
-	- *shadows* <enable|disable>
-	- *corner_radius* <integer>
-
-	Example:
-
-		layer_effects "waybar" blur enable; shadows enable; corner_radius 6
-
-	SwayIPC Example:
-
-		swaymsg "layer_effects 'waybar' 'blur enable; shadows enable'"
 
 *gaps* inner|outer|horizontal|vertical|top|right|bottom|left <amount>
 	Sets default _amount_ pixels of _inner_ or _outer_ gap, where the inner
@@ -930,11 +854,6 @@ The default colors are:
 *opacity* [set|plus|minus] <value>
 	Adjusts the opacity of the window between 0 (completely transparent) and
 	1 (completely opaque). If the operation is omitted, _set_ will be used.
-
-*saturation* [set|plus|minus] <value>
-	Adjusts the saturation (Digital Vibrance) of the window between 0 (black and
-	white) and 2 (over saturated which is suited for some FPS games) while 1 is
-	the default saturation. If the operation is omitted, _set_ will be used.
 
 *tiling_drag*  enable|disable|toggle
 	Sets whether or not tiling containers can be dragged with the mouse. If
@@ -1144,4 +1063,3 @@ The following attributes may be matched with:
 # SEE ALSO
 
 *sway*(1) *sway-input*(5) *sway-output*(5) *sway-bar*(5) *sway-ipc*(7)
-

@@ -18,9 +18,9 @@ struct cmd_handler {
  * Indicates the result of a command's execution.
  */
 enum cmd_status {
-	CMD_SUCCESS,		/**< The command was successful */
+	CMD_SUCCESS, 		/**< The command was successful */
 	CMD_FAILURE,		/**< The command resulted in an error */
-	CMD_INVALID,		/**< Unknown command or parser error */
+	CMD_INVALID, 		/**< Unknown command or parser error */
 	CMD_DEFER,		/**< Command execution deferred */
 	CMD_BLOCK,
 	CMD_BLOCK_COMMANDS,
@@ -99,30 +99,18 @@ struct sway_container *container_find_resize_parent(struct sway_container *con,
 		uint32_t edge);
 
 /**
- * Effect handlers value parsers
- */
-bool cmd_corner_radius_parse_value(char *arg, int* result);
-
-/**
  * Handlers shared by exec and exec_always.
  */
 sway_cmd cmd_exec_validate;
 sway_cmd cmd_exec_process;
 
+sway_cmd cmd_allow_tearing;
 sway_cmd cmd_assign;
 sway_cmd cmd_bar;
 sway_cmd cmd_bindcode;
 sway_cmd cmd_bindgesture;
 sway_cmd cmd_bindswitch;
 sway_cmd cmd_bindsym;
-sway_cmd cmd_blur;
-sway_cmd cmd_blur_brightness;
-sway_cmd cmd_blur_contrast;
-sway_cmd cmd_blur_noise;
-sway_cmd cmd_blur_passes;
-sway_cmd cmd_blur_radius;
-sway_cmd cmd_blur_saturation;
-sway_cmd cmd_blur_xray;
 sway_cmd cmd_border;
 sway_cmd cmd_client_noop;
 sway_cmd cmd_client_focused;
@@ -136,12 +124,8 @@ sway_cmd cmd_commands;
 sway_cmd cmd_corner_radius;
 sway_cmd cmd_create_output;
 sway_cmd cmd_default_border;
-sway_cmd cmd_default_dim_inactive;
 sway_cmd cmd_default_floating_border;
 sway_cmd cmd_default_orientation;
-sway_cmd cmd_dim_inactive;
-sway_cmd cmd_dim_inactive_colors_unfocused;
-sway_cmd cmd_dim_inactive_colors_urgent;
 sway_cmd cmd_exec;
 sway_cmd cmd_exec_always;
 sway_cmd cmd_exit;
@@ -167,7 +151,6 @@ sway_cmd cmd_input;
 sway_cmd cmd_seat;
 sway_cmd cmd_ipc;
 sway_cmd cmd_kill;
-sway_cmd cmd_layer_effects;
 sway_cmd cmd_layout;
 sway_cmd cmd_log_colors;
 sway_cmd cmd_mark;
@@ -175,11 +158,10 @@ sway_cmd cmd_max_render_time;
 sway_cmd cmd_mode;
 sway_cmd cmd_mouse_warping;
 sway_cmd cmd_move;
-sway_cmd cmd_nop;
-sway_cmd cmd_opacity;
-sway_cmd cmd_saturation;
 sway_cmd cmd_new_float;
 sway_cmd cmd_new_window;
+sway_cmd cmd_nop;
+sway_cmd cmd_opacity;
 sway_cmd cmd_no_focus;
 sway_cmd cmd_output;
 sway_cmd cmd_permit;
@@ -190,19 +172,11 @@ sway_cmd cmd_reload;
 sway_cmd cmd_rename;
 sway_cmd cmd_resize;
 sway_cmd cmd_scratchpad;
-sway_cmd cmd_scratchpad_minimize;
 sway_cmd cmd_seamless_mouse;
 sway_cmd cmd_set;
 sway_cmd cmd_shortcuts_inhibitor;
-sway_cmd cmd_shadow_blur_radius;
-sway_cmd cmd_shadow_color;
-sway_cmd cmd_shadow_offset;
-sway_cmd cmd_shadow_inactive_color;
-sway_cmd cmd_shadows;
-sway_cmd cmd_shadows_on_csd;
 sway_cmd cmd_show_marks;
 sway_cmd cmd_smart_borders;
-sway_cmd cmd_smart_corner_radius;
 sway_cmd cmd_smart_gaps;
 sway_cmd cmd_split;
 sway_cmd cmd_splith;
@@ -218,7 +192,6 @@ sway_cmd cmd_title_align;
 sway_cmd cmd_title_format;
 sway_cmd cmd_titlebar_border_thickness;
 sway_cmd cmd_titlebar_padding;
-sway_cmd cmd_titlebar_separator;
 sway_cmd cmd_unbindcode;
 sway_cmd cmd_unbindswitch;
 sway_cmd cmd_unbindgesture;
@@ -278,6 +251,7 @@ sway_cmd input_cmd_seat;
 sway_cmd input_cmd_accel_profile;
 sway_cmd input_cmd_calibration_matrix;
 sway_cmd input_cmd_click_method;
+sway_cmd input_cmd_clickfinger_button_map;
 sway_cmd input_cmd_drag;
 sway_cmd input_cmd_drag_lock;
 sway_cmd input_cmd_dwt;
@@ -311,7 +285,9 @@ sway_cmd input_cmd_xkb_switch_layout;
 sway_cmd input_cmd_xkb_variant;
 
 sway_cmd output_cmd_adaptive_sync;
+sway_cmd output_cmd_allow_tearing;
 sway_cmd output_cmd_background;
+sway_cmd output_cmd_color_profile;
 sway_cmd output_cmd_disable;
 sway_cmd output_cmd_dpms;
 sway_cmd output_cmd_enable;

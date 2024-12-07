@@ -11,7 +11,7 @@
 #include "log.h"
 #include "sway/config.h"
 #include "sway/ipc-json.h"
-#include "sway/layers.h"
+#include "sway/server.h"
 #include "sway/tree/container.h"
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
@@ -155,7 +155,7 @@ static json_object *ipc_json_output_mode_description(
 	return mode_object;
 }
 
-#if HAVE_XWAYLAND
+#if WLR_HAS_XWAYLAND
 static const char *ipc_json_xwindow_type_description(struct sway_view *view) {
 	struct wlr_xwayland_surface *surface = view->wlr_xwayland_surface;
 	struct sway_xwayland *xwayland = &server.xwayland;
@@ -228,7 +228,6 @@ json_object *ipc_json_get_version(void) {
 	sscanf(SWAY_VERSION, "%d.%d.%d", &major, &minor, &patch);
 
 	json_object_object_add(version, "human_readable", json_object_new_string(SWAY_VERSION));
-	json_object_object_add(version, "sway_original_version", json_object_new_string(SWAY_ORIGINAL_VERSION));
 	json_object_object_add(version, "variant", json_object_new_string("sway"));
 	json_object_object_add(version, "major", json_object_new_int(major));
 	json_object_object_add(version, "minor", json_object_new_int(minor));
@@ -290,12 +289,13 @@ static json_object *ipc_json_create_node(int id, const char* type, char *name,
 	json_object_object_add(object, "focus", focus);
 	json_object_object_add(object, "fullscreen_mode", json_object_new_int(0));
 	json_object_object_add(object, "sticky", json_object_new_boolean(false));
+	json_object_object_add(object, "floating", NULL);
+	json_object_object_add(object, "scratchpad_state", NULL);
 
 	return object;
 }
 
-static void ipc_json_describe_wlr_output(struct wlr_output *wlr_output,
-		struct sway_output *output, json_object *object) {
+static void ipc_json_describe_wlr_output(struct wlr_output *wlr_output, json_object *object) {
 	json_object_object_add(object, "primary", json_object_new_boolean(false));
 	json_object_object_add(object, "make",
 			json_object_new_string(wlr_output->make ? wlr_output->make : "Unknown"));
@@ -321,7 +321,7 @@ static void ipc_json_describe_wlr_output(struct wlr_output *wlr_output,
 
 static void ipc_json_describe_output(struct sway_output *output,
 		json_object *object) {
-	ipc_json_describe_wlr_output(output->wlr_output, output, object);
+	ipc_json_describe_wlr_output(output->wlr_output, object);
 }
 
 static void ipc_json_describe_enabled_output(struct sway_output *output,
@@ -352,67 +352,6 @@ static void ipc_json_describe_enabled_output(struct sway_output *output,
 			wlr_output->adaptive_sync_status);
 	json_object_object_add(object, "adaptive_sync_status",
 		json_object_new_string(adaptive_sync_status));
-
-	struct json_object *layers = json_object_new_array();
-	size_t len = sizeof(output->layers) / sizeof(output->layers[0]);
-	for (size_t i = 0; i < len; ++i) {
-		struct sway_layer_surface *lsurface;
-		wl_list_for_each(lsurface, &output->layers[i], link) {
-			json_object *layer = json_object_new_object();
-
-			json_object_object_add(layer, "namespace",
-				json_object_new_string(lsurface->layer_surface->namespace));
-
-			char *layer_name = NULL;
-			switch (lsurface->layer) {
-				case ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND:
-					layer_name = "background";
-					break;
-				case ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM:
-					layer_name = "bottom";
-					break;
-				case ZWLR_LAYER_SHELL_V1_LAYER_TOP:
-					layer_name = "top";
-					break;
-				case ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY:
-					layer_name = "overlay";
-					break;
-			}
-
-			json_object_object_add(layer, "layer",
-				json_object_new_string(layer_name));
-
-			json_object *extent = json_object_new_object();
-			json_object_object_add(extent, "width",
-					json_object_new_int(lsurface->extent.width));
-			json_object_object_add(extent, "height",
-					json_object_new_int(lsurface->extent.height));
-			json_object_object_add(extent, "x",
-					json_object_new_int(lsurface->extent.x));
-			json_object_object_add(extent, "y",
-					json_object_new_int(lsurface->extent.y));
-			json_object_object_add(layer, "extent", extent);
-
-			json_object *effects = json_object_new_array();
-			if (lsurface->has_blur) {
-				json_object_array_add(effects, json_object_new_string("blur"));
-			}
-			if (lsurface->blur_ignore_transparent) {
-				json_object_array_add(effects,
-						json_object_new_string("blur_ignore_transparent"));
-			}
-			if (lsurface->has_shadow) {
-				json_object_array_add(effects, json_object_new_string("shadows"));
-			}
-			if (lsurface->corner_radius > 0) {
-				json_object_array_add(effects, json_object_new_string("corner_radius"));
-			}
-			json_object_object_add(layer, "effects", effects);
-
-			json_object_array_add(layers, layer);
-		}
-	}
-	json_object_object_add(object, "layer_shell_surfaces", layers);
 
 	struct sway_workspace *ws = output_get_active_workspace(output);
 	if (!sway_assert(ws, "Expected output to have a workspace")) {
@@ -460,6 +399,8 @@ static void ipc_json_describe_enabled_output(struct sway_output *output,
 	}
 
 	json_object_object_add(object, "max_render_time", json_object_new_int(output->max_render_time));
+
+	json_object_object_add(object, "allow_tearing", json_object_new_boolean(output->allow_tearing));
 }
 
 json_object *ipc_json_describe_disabled_output(struct sway_output *output) {
@@ -496,7 +437,7 @@ json_object *ipc_json_describe_non_desktop_output(struct sway_output_non_desktop
 
 	json_object *object = json_object_new_object();
 
-	ipc_json_describe_wlr_output(wlr_output, NULL, object);
+	ipc_json_describe_wlr_output(wlr_output, object);
 
 	json_object_object_add(object, "non_desktop", json_object_new_boolean(true));
 	json_object_object_add(object, "type", json_object_new_string("output"));
@@ -639,9 +580,10 @@ static void ipc_json_describe_view(struct sway_container *c, json_object *object
 	bool visible = view_is_visible(c->view);
 	json_object_object_add(object, "visible", json_object_new_boolean(visible));
 
+	bool has_titlebar = c->title_bar.tree->node.enabled;
 	struct wlr_box window_box = {
 		c->pending.content_x - c->pending.x,
-		(c->current.border == B_PIXEL) ? c->pending.content_y - c->pending.y : 0,
+		has_titlebar ? 0 : c->pending.content_y - c->pending.y,
 		c->pending.content_width,
 		c->pending.content_height
 	};
@@ -652,6 +594,8 @@ static void ipc_json_describe_view(struct sway_container *c, json_object *object
 	json_object_object_add(object, "geometry", ipc_json_create_rect(&geometry));
 
 	json_object_object_add(object, "max_render_time", json_object_new_int(c->view->max_render_time));
+
+	json_object_object_add(object, "allow_tearing", json_object_new_boolean(view_can_tear(c->view)));
 
 	json_object_object_add(object, "shell", json_object_new_string(view_get_shell(c->view)));
 
@@ -695,7 +639,7 @@ static void ipc_json_describe_view(struct sway_container *c, json_object *object
 			json_object_new_string(ipc_json_content_type_description(content_type)));
 	}
 
-#if HAVE_XWAYLAND
+#if WLR_HAS_XWAYLAND
 	if (c->view->type == SWAY_VIEW_XWAYLAND) {
 		json_object_object_add(object, "window",
 				json_object_new_int(view_get_x11_window_id(c->view)));
@@ -739,7 +683,8 @@ static void ipc_json_describe_view(struct sway_container *c, json_object *object
 static void ipc_json_describe_container(struct sway_container *c, json_object *object) {
 	json_object_object_add(object, "name",
 			c->title ? json_object_new_string(c->title) : NULL);
-	if (container_is_floating(c)) {
+	bool floating = container_is_floating(c);
+	if (floating) {
 		json_object_object_add(object, "type",
 				json_object_new_string("floating_con"));
 	}
@@ -757,8 +702,16 @@ static void ipc_json_describe_container(struct sway_container *c, json_object *o
 	json_object_object_add(object, "urgent", json_object_new_boolean(urgent));
 	json_object_object_add(object, "sticky", json_object_new_boolean(c->is_sticky));
 
+	// sway doesn't track the floating reason, so we can't use "auto_on" or "user_off"
+	json_object_object_add(object, "floating",
+			json_object_new_string(floating ? "user_on" : "auto_off"));
+
 	json_object_object_add(object, "fullscreen_mode",
 			json_object_new_int(c->pending.fullscreen_mode));
+
+	// sway doesn't track if window was resized in scratchpad, so we can't use "changed"
+	json_object_object_add(object, "scratchpad_state",
+			json_object_new_string(!c->scratchpad ? "none" : "fresh"));
 
 	struct sway_node *parent = node_get_parent(&c->node);
 	struct wlr_box parent_box = {0, 0, 0, 0};
@@ -1043,6 +996,18 @@ static json_object *describe_libinput_device(struct libinput_device *device) {
 		}
 		json_object_object_add(object, "click_method",
 				json_object_new_string(click_method));
+
+		const char *button_map = "unknown";
+		switch (libinput_device_config_click_get_clickfinger_button_map(device)) {
+		case LIBINPUT_CONFIG_CLICKFINGER_MAP_LRM:
+			button_map = "lrm";
+			break;
+		case LIBINPUT_CONFIG_CLICKFINGER_MAP_LMR:
+			button_map = "lmr";
+			break;
+		}
+		json_object_object_add(object, "clickfinger_button_map",
+				json_object_new_string(button_map));
 	}
 
 	if (libinput_device_config_middle_emulation_is_available(device)) {
@@ -1150,10 +1115,6 @@ json_object *ipc_json_describe_input(struct sway_input_device *device) {
 		json_object_new_string(device->identifier));
 	json_object_object_add(object, "name",
 		json_object_new_string(device->wlr_device->name));
-	json_object_object_add(object, "vendor",
-		json_object_new_int(device->wlr_device->vendor));
-	json_object_object_add(object, "product",
-		json_object_new_int(device->wlr_device->product));
 	json_object_object_add(object, "type",
 		json_object_new_string(
 			input_device_get_type(device)));
@@ -1172,7 +1133,9 @@ json_object *ipc_json_describe_input(struct sway_input_device *device) {
 		json_object *layouts_arr = json_object_new_array();
 		json_object_object_add(object, "xkb_layout_names", layouts_arr);
 
-		xkb_layout_index_t num_layouts = xkb_keymap_num_layouts(keymap);
+		xkb_layout_index_t num_layouts =
+			keymap ? xkb_keymap_num_layouts(keymap) : 0;
+		// Virtual keyboards might have null keymap
 		xkb_layout_index_t layout_idx;
 		for (layout_idx = 0; layout_idx < num_layouts; layout_idx++) {
 			const char *layout = xkb_keymap_layout_get_name(keymap, layout_idx);
@@ -1207,6 +1170,10 @@ json_object *ipc_json_describe_input(struct sway_input_device *device) {
 		libinput_dev = wlr_libinput_get_device_handle(device->wlr_device);
 		json_object_object_add(object, "libinput",
 				describe_libinput_device(libinput_dev));
+		json_object_object_add(object, "vendor",
+			json_object_new_int(libinput_device_get_id_vendor(libinput_dev)));
+		json_object_object_add(object, "product",
+			json_object_new_int(libinput_device_get_id_product(libinput_dev)));
 	}
 #endif
 
