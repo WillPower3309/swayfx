@@ -368,6 +368,7 @@ static void config_defaults(struct sway_config *config) {
 
 	config->titlebar_separator = true;
 	config->scratchpad_minimize = false;
+	config->gap_click_redirect = false;
 
 	if (!(config->layer_criteria = create_list())) goto cleanup;
 

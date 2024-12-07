@@ -500,6 +500,7 @@ struct sway_config {
 
 	bool titlebar_separator;
 	bool scratchpad_minimize;
+	bool gap_click_redirect;
 
 	list_t *layer_criteria;
 
