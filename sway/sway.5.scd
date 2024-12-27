@@ -677,6 +677,33 @@ The default colors are:
 	Sets whether blur should be drawn. Can also be set per window with
 	*for_window*.
 
+*blur_xray* enable|disable
+	Sets whether blur should only display the background.
+
+*blur_passes* <value>
+	Adjusts the blur passes of windows between 0 (disabled) and 10
+	while 2 is the default value.
+
+*blur_radius* <value>
+	Adjusts the blur radius of windows between 0 (disabled) and 10
+	while 5 is the default value.
+
+*blur_noise* <value>
+	Adjusts the percentage of noise applied to the blur between 0 and 1
+	while 0.02 (2%) is the default value.
+
+*blur_brightness* <value>
+	Adjusts the percentage of brightness for the blur between 0 and 2
+	while 0.9 (90%) is the default value.
+
+*blur_contrast* <value>
+	Adjusts the percentage of contrast for the blur between 0 and 2
+	while 0.9 (90%) is the default value.
+
+*blur_saturation* <value>
+	Adjusts the percentage of saturation for the blur between 0 and 2
+	while 1.1 (110%) is the default value.
+
 *default_border* normal|none|pixel [<n>]
 	Set default border style for new tiled windows. Config reload won't affect
 	existing windows, only newly created ones after the reload.
