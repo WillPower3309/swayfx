@@ -34,7 +34,6 @@
 #include "sway/tree/workspace.h"
 #include "sway/config.h"
 #include "sway/xdg_decoration.h"
-#include "stringop.h"
 
 bool view_init(struct sway_view *view, enum sway_view_type type,
 		const struct sway_view_impl *impl) {
@@ -711,6 +710,23 @@ static void handle_foreign_destroy(
 	wl_list_remove(&view->foreign_destroy.link);
 }
 
+// TODO: do in scenefx?
+void scene_node_apply_effects_rec(struct wlr_scene_node *node, int corner_radius, bool should_blur) {
+	if (node->type == WLR_SCENE_NODE_TREE) {
+		struct wlr_scene_tree *tree = wlr_scene_tree_from_node(node);
+		struct wlr_scene_node *child_node;
+		wl_list_for_each(child_node, &tree->children, link) {
+			scene_node_apply_effects_rec(child_node, corner_radius, should_blur);
+		}
+	}
+	else if (node->type == WLR_SCENE_NODE_BUFFER) {
+		struct wlr_scene_buffer *buffer = wlr_scene_buffer_from_node(node);
+		wlr_scene_buffer_set_corner_radius(buffer, corner_radius, CORNER_LOCATION_ALL);
+		wlr_scene_buffer_set_backdrop_blur(buffer, should_blur);
+	}
+}
+
+
 void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 			  bool fullscreen, struct wlr_output *fullscreen_output,
 			  bool decoration) {
@@ -868,6 +884,11 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 	} else if ((class = view_get_class(view)) != NULL) {
 		wlr_foreign_toplevel_handle_v1_set_app_id(view->foreign_toplevel, class);
 	}
+
+	// TODO: fix fullscreen issues
+	// TODO: better place for this?
+	// TODO: move earlier in the chain (non blurred for a frame)
+	scene_node_apply_effects_rec(&view->content_tree->node, 20, true);
 }
 
 void view_unmap(struct sway_view *view) {

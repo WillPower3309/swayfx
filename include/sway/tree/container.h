@@ -143,6 +143,8 @@ struct sway_container {
 
 	float alpha;
 
+	int corner_radius;
+
 	list_t *marks; // char *
 
 	struct {
