@@ -20,6 +20,7 @@
 #include <wlr/util/transform.h>
 #include "config.h"
 #include "log.h"
+#include "scenefx/types/fx/corner_location.h"
 #include "sway/config.h"
 #include "sway/desktop/transaction.h"
 #include "sway/input/input-manager.h"
@@ -203,7 +204,8 @@ static enum wlr_scale_filter_mode get_scale_filter(struct sway_output *output,
 }
 
 static void output_configure_scene(struct sway_output *output,
-		struct wlr_scene_node *node, float opacity) {
+		struct wlr_scene_node *node, float opacity, int corner_radius,
+		bool blur_enabled, bool has_titlebar) {
 	if (!node->enabled) {
 		return;
 	}
@@ -212,6 +214,9 @@ static void output_configure_scene(struct sway_output *output,
 		scene_descriptor_try_get(node, SWAY_SCENE_DESC_CONTAINER);
 	if (con) {
 		opacity = con->alpha;
+		corner_radius = con->corner_radius;
+		blur_enabled = con->blur_enabled;
+		has_titlebar = con->current.border == B_NORMAL;
 	}
 
 	if (node->type == WLR_SCENE_NODE_BUFFER) {
@@ -232,11 +237,14 @@ static void output_configure_scene(struct sway_output *output,
 		buffer->filter_mode = get_scale_filter(output, buffer);
 
 		wlr_scene_buffer_set_opacity(buffer, opacity);
+		wlr_scene_buffer_set_corner_radius(buffer, corner_radius,
+				has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL);
+		wlr_scene_buffer_set_backdrop_blur(buffer, blur_enabled);
 	} else if (node->type == WLR_SCENE_NODE_TREE) {
 		struct wlr_scene_tree *tree = wlr_scene_tree_from_node(node);
 		struct wlr_scene_node *node;
 		wl_list_for_each(node, &tree->children, link) {
-			output_configure_scene(output, node, opacity);
+			output_configure_scene(output, node, opacity, corner_radius, blur_enabled, has_titlebar);
 		}
 	}
 }
@@ -267,7 +275,8 @@ static int output_repaint_timer_handler(void *data) {
 
 	output->wlr_output->frame_pending = false;
 
-	output_configure_scene(output, &root->root_scene->tree.node, 1.0f);
+	output_configure_scene(output, &root->root_scene->tree.node, 1.0f,
+			0, false, false);
 
 	struct wlr_scene_output_state_options opts = {
 		.color_transform = output->color_transform,
