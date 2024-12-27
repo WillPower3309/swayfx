@@ -344,7 +344,10 @@ static void config_defaults(struct sway_config *config) {
 	color_to_rgba(config->border_colors.background, 0xFFFFFFFF);
 
 	config->corner_radius = 0;
+
 	config->blur_enabled = false;
+	config->blur_xray = false;
+	config->blur_data = blur_data_get_default();
 
 	// The keysym to keycode translation
 	struct xkb_rule_names rules = {0};

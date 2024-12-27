@@ -111,6 +111,8 @@ sway_cmd cmd_bindcode;
 sway_cmd cmd_bindgesture;
 sway_cmd cmd_bindswitch;
 sway_cmd cmd_bindsym;
+sway_cmd cmd_blur;
+sway_cmd cmd_blur_brightness;
 sway_cmd cmd_border;
 sway_cmd cmd_client_noop;
 sway_cmd cmd_client_focused;

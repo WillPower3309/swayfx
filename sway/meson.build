@@ -47,6 +47,7 @@ sway_sources = files(
 	'commands/bar.c',
 	'commands/bind.c',
 	'commands/blur.c',
+    'commands/blur_brightness.c',
 	'commands/border.c',
 	'commands/client.c',
 	'commands/corner_radius.c',

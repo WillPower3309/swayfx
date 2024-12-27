@@ -1,6 +1,7 @@
 #ifndef _SWAY_CONFIG_H
 #define _SWAY_CONFIG_H
 #include <libinput.h>
+#include <scenefx/types/fx/blur_data.h>
 #include <stdint.h>
 #include <string.h>
 #include <time.h>
@@ -484,7 +485,10 @@ enum xwayland_mode {
  */
 struct sway_config {
 	int corner_radius;
+
 	bool blur_enabled;
+	bool blur_xray;
+	struct blur_data blur_data;
 
 	char *swaynag_command;
 	struct swaynag_instance swaynag_config_errors;
