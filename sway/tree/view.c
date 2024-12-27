@@ -940,7 +940,10 @@ void view_center_and_clip_surface(struct sway_view *view) {
 		// geometry immediately affects the currently active rendering.
 		int x = (int) fmax(0, (con->current.content_width - view->geometry.width) / 2);
 		int y = (int) fmax(0, (con->current.content_height - view->geometry.height) / 2);
-		clip_to_geometry = !view->using_csd;
+		clip_to_geometry = !view->using_csd
+			// TODO: Add more conditions
+			|| con->blur_enabled
+			|| con->corner_radius > 0;
 
 		wlr_scene_node_set_position(&view->content_tree->node, x, y);
 	} else {
