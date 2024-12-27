@@ -737,6 +737,12 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 	view_populate_pid(view);
 	view->container = container_create(view);
 
+	// TODO: fix fullscreen issues
+	// TODO: better place for this?
+	// TODO: move earlier in the chain (non blurred for a frame)
+	scene_node_apply_effects_rec(&view->content_tree->node,
+			view->container->corner_radius, view->container->blur_enabled);
+
 	if (view->ctx == NULL) {
 		struct launcher_ctx *ctx = launcher_ctx_find_pid(view->pid);
 		if (ctx != NULL) {
@@ -884,11 +890,6 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 	} else if ((class = view_get_class(view)) != NULL) {
 		wlr_foreign_toplevel_handle_v1_set_app_id(view->foreign_toplevel, class);
 	}
-
-	// TODO: fix fullscreen issues
-	// TODO: better place for this?
-	// TODO: move earlier in the chain (non blurred for a frame)
-	scene_node_apply_effects_rec(&view->content_tree->node, 20, true);
 }
 
 void view_unmap(struct sway_view *view) {

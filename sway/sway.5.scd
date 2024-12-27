@@ -673,6 +673,10 @@ The default colors are:
 *corner_radius* <radius>
 	Set corner radius for new windows.
 
+*blur* enable|disable
+	Sets whether blur should be drawn. Can also be set per window with
+	*for_window*.
+
 *default_border* normal|none|pixel [<n>]
 	Set default border style for new tiled windows. Config reload won't affect
 	existing windows, only newly created ones after the reload.

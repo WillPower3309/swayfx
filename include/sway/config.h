@@ -484,6 +484,7 @@ enum xwayland_mode {
  */
 struct sway_config {
 	int corner_radius;
+	bool blur_enabled;
 
 	char *swaynag_command;
 	struct swaynag_instance swaynag_config_errors;
