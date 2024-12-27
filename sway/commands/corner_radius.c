@@ -14,6 +14,7 @@ bool cmd_corner_radius_parse_value(char *arg, int* result) {
 	return true;
 }
 
+// TODO: handle setting per container
 struct cmd_results *cmd_corner_radius(int argc, char **argv) {
 	struct cmd_results *error = NULL;
 	if ((error = checkarg(argc, "corner_radius", EXPECTED_EQUAL_TO, 1))) {

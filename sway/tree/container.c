@@ -245,6 +245,7 @@ static void scene_rect_set_color(struct wlr_scene_rect *rect,
 	wlr_scene_rect_set_color(rect, premultiplied);
 }
 
+// TODO: handle corner radius, blur, and shadow
 void container_update(struct sway_container *con) {
 	struct border_colors *colors = container_get_current_colors(con);
 	list_t *siblings = NULL;

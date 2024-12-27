@@ -17,6 +17,7 @@ struct cmd_results *cmd_blur(int argc, char **argv) {
 		config->blur_enabled = result;
 	} else {
 		con->blur_enabled = result;
+		container_update(con);
 	}
 
     /* TODO
