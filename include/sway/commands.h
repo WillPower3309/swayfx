@@ -118,7 +118,7 @@ sway_cmd cmd_blur_noise;
 sway_cmd cmd_blur_passes;
 sway_cmd cmd_blur_radius;
 sway_cmd cmd_blur_saturation;
-//sway_cmd cmd_blur_xray;
+sway_cmd cmd_blur_xray;
 sway_cmd cmd_border;
 sway_cmd cmd_client_noop;
 sway_cmd cmd_client_focused;
