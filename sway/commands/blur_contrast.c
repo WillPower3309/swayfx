@@ -9,7 +9,7 @@ struct cmd_results *cmd_blur_contrast(int argc, char **argv) {
 	char *inv;
 	float value = strtof(argv[0], &inv);
 	if (*inv != '\0' || value < 0 || value > 2) {
-		return cmd_results_new(CMD_FAILURE, "Invalid brightness specified");
+		return cmd_results_new(CMD_FAILURE, "Invalid contrast specified");
 	}
 
     struct wlr_scene *root_scene = root->root_scene;

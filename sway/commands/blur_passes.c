@@ -9,7 +9,7 @@ struct cmd_results *cmd_blur_passes(int argc, char **argv) {
 	char *inv;
 	int value = strtol(argv[0], &inv, 10);
 	if (*inv != '\0' || value < 0 || value > 10) {
-		return cmd_results_new(CMD_FAILURE, "Invalid size specified");
+		return cmd_results_new(CMD_FAILURE, "Invalid number of passes specified");
 	}
 
     struct wlr_scene *root_scene = root->root_scene;
