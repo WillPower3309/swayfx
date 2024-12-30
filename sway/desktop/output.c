@@ -269,11 +269,10 @@ static bool output_can_tear(struct sway_output *output) {
 static int output_repaint_timer_handler(void *data) {
 	struct sway_output *output = data;
 
+	output->wlr_output->frame_pending = false;
 	if (!output->enabled) {
 		return 0;
 	}
-
-	output->wlr_output->frame_pending = false;
 
 	output_configure_scene(output, &root->root_scene->tree.node, 1.0f,
 			0, false, false);
@@ -292,6 +291,7 @@ static int output_repaint_timer_handler(void *data) {
 	struct wlr_output_state pending;
 	wlr_output_state_init(&pending);
 	if (!wlr_scene_output_build_state(output->scene_output, &pending, &opts)) {
+		wlr_output_state_finish(&pending);
 		return 0;
 	}
 
@@ -434,6 +434,18 @@ void request_modeset(void) {
 	}
 }
 
+bool modeset_is_pending(void) {
+	return server.delayed_modeset != NULL;
+}
+
+void force_modeset(void) {
+	if (server.delayed_modeset != NULL) {
+		wl_event_source_remove(server.delayed_modeset);
+		server.delayed_modeset = NULL;
+	}
+	apply_stored_output_configs();
+}
+
 static void begin_destroy(struct sway_output *output) {
 	if (output->enabled) {
 		output_disable(output);
@@ -454,6 +466,9 @@ static void begin_destroy(struct sway_output *output) {
 	output->scene_output = NULL;
 	output->wlr_output->data = NULL;
 	output->wlr_output = NULL;
+
+	wl_event_source_remove(output->repaint_timer);
+	output->repaint_timer = NULL;
 
 	request_modeset();
 }
@@ -498,20 +513,44 @@ static void handle_request_state(struct wl_listener *listener, void *data) {
 	struct sway_output *output =
 		wl_container_of(listener, output, request_state);
 	const struct wlr_output_event_request_state *event = data;
+	const struct wlr_output_state *state = event->state;
 
-	uint32_t committed = event->state->committed;
-	wlr_output_commit_state(output->wlr_output, event->state);
-
-	if (committed & (
-			WLR_OUTPUT_STATE_MODE |
-			WLR_OUTPUT_STATE_TRANSFORM |
-			WLR_OUTPUT_STATE_SCALE)) {
-		arrange_layers(output);
-		arrange_output(output);
-		transaction_commit_dirty();
-
-		update_output_manager_config(output->server);
+	// Store the requested changes so that the active configuration is
+	// consistent with the current state, and to avoid duplicate logic to apply
+	// the changes.
+	struct output_config *oc = new_output_config(output->wlr_output->name);
+	if (!oc) {
+		sway_log(SWAY_ERROR, "Allocation failed");
+		return;
 	}
+
+	int committed = state->committed;
+	if (committed & WLR_OUTPUT_STATE_MODE) {
+		if (state->mode != NULL) {
+			oc->width = state->mode->width;
+			oc->height = state->mode->height;
+			oc->refresh_rate = state->mode->refresh / 1000.f;
+		} else {
+			oc->width = state->custom_mode.width;
+			oc->height = state->custom_mode.height;
+			oc->refresh_rate = state->custom_mode.refresh / 1000.f;
+		}
+		committed &= ~WLR_OUTPUT_STATE_MODE;
+	}
+	if (committed & WLR_OUTPUT_STATE_SCALE) {
+		oc->scale = state->scale;
+		committed &= ~WLR_OUTPUT_STATE_SCALE;
+	}
+	if (committed & WLR_OUTPUT_STATE_TRANSFORM) {
+		oc->transform = state->transform;
+		committed &= ~WLR_OUTPUT_STATE_TRANSFORM;
+	}
+
+	// We do not expect or support any other changes here
+	assert(committed == 0);
+	store_output_config(oc);
+
+	force_modeset();
 }
 
 static unsigned int last_headless_num = 0;
@@ -612,6 +651,10 @@ void handle_gamma_control_set_gamma(struct wl_listener *listener, void *data) {
 static struct output_config *output_config_for_config_head(
 		struct wlr_output_configuration_head_v1 *config_head) {
 	struct output_config *oc = new_output_config(config_head->state.output->name);
+	if (!oc) {
+		return NULL;
+	}
+
 	oc->enabled = config_head->state.enabled;
 	if (!oc->enabled) {
 		return oc;
@@ -642,7 +685,8 @@ static void output_manager_apply(struct sway_server *server,
 	size_t configs_len = config->output_configs->length + wl_list_length(&cfg->heads);
 	struct output_config **configs = calloc(configs_len, sizeof(*configs));
 	if (!configs) {
-		goto done;
+		sway_log(SWAY_ERROR, "Allocation failed");
+		goto error;
 	}
 	size_t start_new_configs = config->output_configs->length;
 	for (size_t idx = 0; idx < start_new_configs; idx++) {
@@ -655,6 +699,10 @@ static void output_manager_apply(struct sway_server *server,
 		// Generate the configuration and store it as a temporary
 		// config. We keep a record of it so we can remove it later.
 		struct output_config *oc = output_config_for_config_head(config_head);
+		if (!oc) {
+			sway_log(SWAY_ERROR, "Allocation failed");
+			goto error_config;
+		}
 		configs[config_idx++] = oc;
 	}
 
@@ -662,6 +710,8 @@ static void output_manager_apply(struct sway_server *server,
 	// if any output configured for enablement fails to be enabled, even if it
 	// was not part of the config heads we were asked to configure.
 	ok = apply_output_configs(configs, configs_len, test_only, false);
+
+error_config:
 	for (size_t idx = start_new_configs; idx < configs_len; idx++) {
 		struct output_config *cfg = configs[idx];
 		if (!test_only && ok) {
@@ -672,7 +722,7 @@ static void output_manager_apply(struct sway_server *server,
 	}
 	free(configs);
 
-done:
+error:
 	if (ok) {
 		wlr_output_configuration_v1_send_succeeded(cfg);
 		if (server->delayed_modeset != NULL) {
@@ -707,6 +757,11 @@ void handle_output_power_manager_set_mode(struct wl_listener *listener,
 	struct sway_output *output = event->output->data;
 
 	struct output_config *oc = new_output_config(output->wlr_output->name);
+	if (!oc) {
+		sway_log(SWAY_ERROR, "Allocation failed");
+		return;
+	}
+
 	switch (event->mode) {
 	case ZWLR_OUTPUT_POWER_V1_MODE_OFF:
 		oc->power = 0;
