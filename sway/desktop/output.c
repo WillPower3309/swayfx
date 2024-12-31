@@ -240,6 +240,8 @@ static void output_configure_scene(struct sway_output *output,
 		wlr_scene_buffer_set_corner_radius(buffer, corner_radius,
 				has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL);
 		wlr_scene_buffer_set_backdrop_blur(buffer, blur_enabled);
+		// TODO: optimized blur doesn't really work
+		wlr_scene_buffer_set_backdrop_blur_optimized(buffer, config->blur_xray);// TODO: fix segfault from adding this: || !container_is_floating(con));
 	} else if (node->type == WLR_SCENE_NODE_TREE) {
 		struct wlr_scene_tree *tree = wlr_scene_tree_from_node(node);
 		struct wlr_scene_node *node;
@@ -549,6 +551,9 @@ static void handle_request_state(struct wl_listener *listener, void *data) {
 	// We do not expect or support any other changes here
 	assert(committed == 0);
 	store_output_config(oc);
+
+	wlr_scene_optimized_blur_set_size(output->layers.blur_layer,
+			output->wlr_output->width, output->wlr_output->height);
 
 	force_modeset();
 }
