@@ -41,6 +41,8 @@ bool view_init(struct sway_view *view, enum sway_view_type type,
 	bool failed = false;
 	view->scene_tree = alloc_scene_tree(root->staging, &failed);
 	view->content_tree = alloc_scene_tree(view->scene_tree, &failed);
+	view->shadow_node = alloc_scene_shadow(view->content_tree, 0, 0,
+			0, config->shadow_blur_sigma, config->shadow_color, &failed);
 
 	if (!failed && !scene_descriptor_assign(&view->scene_tree->node,
 			SWAY_SCENE_DESC_VIEW, view)) {
@@ -944,6 +946,7 @@ void view_center_and_clip_surface(struct sway_view *view) {
 		clip_to_geometry = !view->using_csd
 			// TODO: Add more conditions
 			|| con->blur_enabled
+			|| con->shadow_enabled
 			|| con->corner_radius > 0;
 
 		wlr_scene_node_set_position(&view->content_tree->node, x, y);

@@ -490,6 +490,10 @@ struct sway_config {
 	bool blur_xray;
 	struct blur_data blur_data;
 
+	bool shadow_enabled;
+	int shadow_blur_sigma;
+	float shadow_color[4];
+	float shadow_inactive_color[4];
 	char *swaynag_command;
 	struct swaynag_instance swaynag_config_errors;
 	list_t *symbols;

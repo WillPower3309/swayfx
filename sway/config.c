@@ -349,6 +349,10 @@ static void config_defaults(struct sway_config *config) {
 	config->blur_xray = false;
 	config->blur_data = blur_data_get_default();
 
+	config->shadow_enabled = false;
+	config->shadow_blur_sigma = 20.0f;
+	color_to_rgba(config->shadow_color, 0x0000007F);
+	color_to_rgba(config->shadow_inactive_color, 0x0000007F);
 	// The keysym to keycode translation
 	struct xkb_rule_names rules = {0};
 	config->keysym_translation_state = keysym_translation_state_create(rules, 0);

@@ -145,6 +145,7 @@ struct sway_container {
 
 	int corner_radius;
 	bool blur_enabled;
+	bool shadow_enabled;
 
 	list_t *marks; // char *
 
