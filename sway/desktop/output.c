@@ -205,14 +205,15 @@ static enum wlr_scale_filter_mode get_scale_filter(struct sway_output *output,
 
 static void output_configure_scene(struct sway_output *output,
 		struct wlr_scene_node *node, float opacity, int corner_radius,
-		bool blur_enabled, bool has_titlebar) {
+		bool blur_enabled, bool has_titlebar, struct sway_container *con) {
 	if (!node->enabled) {
 		return;
 	}
 
-	struct sway_container *con =
+	struct sway_container *node_con =
 		scene_descriptor_try_get(node, SWAY_SCENE_DESC_CONTAINER);
-	if (con) {
+	if (node_con) {
+		con = node_con;
 		opacity = con->alpha;
 		corner_radius = con->corner_radius;
 		blur_enabled = con->blur_enabled;
@@ -240,13 +241,17 @@ static void output_configure_scene(struct sway_output *output,
 		wlr_scene_buffer_set_corner_radius(buffer, corner_radius,
 				has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL);
 		wlr_scene_buffer_set_backdrop_blur(buffer, blur_enabled);
-		// TODO: optimized blur doesn't really work
-		wlr_scene_buffer_set_backdrop_blur_optimized(buffer, config->blur_xray);// TODO: fix segfault from adding this: || !container_is_floating(con));
+		// Only enable xray blur if tiled or when xray is explicitly enabled
+		bool should_optimize_blur = con && con->view ?
+			!container_is_floating_or_child(con) || config->blur_xray :
+			false;
+		wlr_scene_buffer_set_backdrop_blur_optimized(buffer, should_optimize_blur);
 	} else if (node->type == WLR_SCENE_NODE_TREE) {
 		struct wlr_scene_tree *tree = wlr_scene_tree_from_node(node);
 		struct wlr_scene_node *node;
 		wl_list_for_each(node, &tree->children, link) {
-			output_configure_scene(output, node, opacity, corner_radius, blur_enabled, has_titlebar);
+			output_configure_scene(output, node, opacity,
+					corner_radius, blur_enabled, has_titlebar, con);
 		}
 	}
 }
@@ -277,7 +282,7 @@ static int output_repaint_timer_handler(void *data) {
 	}
 
 	output_configure_scene(output, &root->root_scene->tree.node, 1.0f,
-			0, false, false);
+			0, false, false, NULL);
 
 	struct wlr_scene_output_state_options opts = {
 		.color_transform = output->color_transform,
