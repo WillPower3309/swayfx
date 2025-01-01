@@ -1146,23 +1146,94 @@ void view_remove_saved_buffer(struct sway_view *view) {
 	wlr_scene_node_set_enabled(&view->content_tree->node, true);
 }
 
-static void view_save_buffer_iterator(struct wlr_scene_buffer *buffer,
-		int sx, int sy, void *data) {
-	struct wlr_scene_tree *tree = data;
-
-	struct wlr_scene_buffer *sbuf = wlr_scene_buffer_create(tree, NULL);
-	if (!sbuf) {
-		sway_log(SWAY_ERROR, "Could not allocate a scene buffer when saving a surface");
-		return;
+static bool view_save_buffer_iter(struct wlr_scene_node *node, int lx, int ly,
+								struct wlr_scene_tree *snapshot_tree) {
+	if (!node->enabled) {
+		return true;
 	}
 
-	wlr_scene_buffer_set_dest_size(sbuf,
-		buffer->dst_width, buffer->dst_height);
-	wlr_scene_buffer_set_opaque_region(sbuf, &buffer->opaque_region);
-	wlr_scene_buffer_set_source_box(sbuf, &buffer->src_box);
-	wlr_scene_node_set_position(&sbuf->node, sx, sy);
-	wlr_scene_buffer_set_transform(sbuf, buffer->transform);
-	wlr_scene_buffer_set_buffer(sbuf, buffer->buffer);
+	lx += node->x;
+	ly += node->y;
+
+	struct wlr_scene_node *snapshot_node = NULL;
+	switch (node->type) {
+	case WLR_SCENE_NODE_TREE:;
+		struct wlr_scene_tree *scene_tree = wlr_scene_tree_from_node(node);
+
+		struct wlr_scene_node *child;
+		wl_list_for_each(child, &scene_tree->children, link) {
+			view_save_buffer_iter(child, lx, ly, snapshot_tree);
+		}
+		break;
+	case WLR_SCENE_NODE_RECT:;
+	case WLR_SCENE_NODE_OPTIMIZED_BLUR:
+		break;
+
+	case WLR_SCENE_NODE_BUFFER:;
+		struct wlr_scene_buffer *scene_buffer =
+			wlr_scene_buffer_from_node(node);
+
+		struct wlr_scene_buffer *snapshot_buffer =
+			wlr_scene_buffer_create(snapshot_tree, NULL);
+		if (snapshot_buffer == NULL) {
+			return false;
+		}
+		snapshot_node = &snapshot_buffer->node;
+		snapshot_buffer->node.data = scene_buffer->node.data;
+
+		wlr_scene_buffer_set_dest_size(snapshot_buffer, scene_buffer->dst_width,
+									   scene_buffer->dst_height);
+		wlr_scene_buffer_set_opaque_region(snapshot_buffer,
+										   &scene_buffer->opaque_region);
+		wlr_scene_buffer_set_source_box(snapshot_buffer,
+										&scene_buffer->src_box);
+		wlr_scene_buffer_set_transform(snapshot_buffer,
+									   scene_buffer->transform);
+		wlr_scene_buffer_set_filter_mode(snapshot_buffer,
+										 scene_buffer->filter_mode);
+
+		// Effects
+		wlr_scene_buffer_set_opacity(snapshot_buffer, scene_buffer->opacity);
+		wlr_scene_buffer_set_corner_radius(snapshot_buffer,
+										   scene_buffer->corner_radius,
+										   scene_buffer->corners);
+		wlr_scene_buffer_set_opacity(snapshot_buffer, scene_buffer->opacity);
+
+		wlr_scene_buffer_set_backdrop_blur_optimized(
+			snapshot_buffer, scene_buffer->backdrop_blur_optimized);
+		wlr_scene_buffer_set_backdrop_blur_ignore_transparent(
+			snapshot_buffer, scene_buffer->backdrop_blur_ignore_transparent);
+		wlr_scene_buffer_set_backdrop_blur(snapshot_buffer,
+										   scene_buffer->backdrop_blur);
+
+		wlr_scene_buffer_set_buffer(snapshot_buffer, scene_buffer->buffer);
+
+		snapshot_buffer->node.data = scene_buffer->node.data;
+		break;
+
+	case WLR_SCENE_NODE_SHADOW:;
+		struct wlr_scene_shadow *scene_shadow =
+			wlr_scene_shadow_from_node(node);
+
+		struct wlr_scene_shadow *snapshot_shadow = wlr_scene_shadow_create(
+			snapshot_tree, scene_shadow->width, scene_shadow->height,
+			scene_shadow->corner_radius, scene_shadow->blur_sigma,
+			scene_shadow->color);
+		if (snapshot_shadow == NULL) {
+			return false;
+		}
+		snapshot_node = &snapshot_shadow->node;
+
+		snapshot_shadow->node.data = scene_shadow->node.data;
+
+		break;
+	}
+
+	if (snapshot_node != NULL) {
+		wlr_scene_node_set_position(snapshot_node, lx, ly);
+	}
+
+	return true;
 }
 
 void view_save_buffer(struct sway_view *view) {
@@ -1180,8 +1251,7 @@ void view_save_buffer(struct sway_view *view) {
 	// the tree. This will prevent over damaging or other weirdness.
 	wlr_scene_node_set_enabled(&view->saved_surface_tree->node, false);
 
-	wlr_scene_node_for_each_buffer(&view->content_tree->node,
-		view_save_buffer_iterator, view->saved_surface_tree);
+	view_save_buffer_iter(&view->content_tree->node, 0, 0, view->saved_surface_tree);
 
 	wlr_scene_node_set_enabled(&view->content_tree->node, false);
 	wlr_scene_node_set_enabled(&view->saved_surface_tree->node, true);
