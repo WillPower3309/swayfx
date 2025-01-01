@@ -580,6 +580,7 @@ static void arrange_output(struct sway_output *output, int width, int height) {
 
 			wlr_scene_node_set_enabled(&output->layers.shell_background->node, !fs);
 			wlr_scene_node_set_enabled(&output->layers.shell_bottom->node, !fs);
+			wlr_scene_node_set_enabled(&output->layers.blur_layer->node, !fs);
 			wlr_scene_node_set_enabled(&output->layers.fullscreen->node, fs);
 
 			if (fs) {
@@ -626,6 +627,7 @@ static void arrange_root(struct sway_root *root) {
 
 	wlr_scene_node_set_enabled(&root->layers.shell_background->node, !fs);
 	wlr_scene_node_set_enabled(&root->layers.shell_bottom->node, !fs);
+	wlr_scene_node_set_enabled(&root->layers.blur_tree->node, !fs);
 	wlr_scene_node_set_enabled(&root->layers.tiling->node, !fs);
 	wlr_scene_node_set_enabled(&root->layers.floating->node, !fs);
 	wlr_scene_node_set_enabled(&root->layers.shell_top->node, !fs);
@@ -667,6 +669,7 @@ static void arrange_root(struct sway_root *root) {
 
 			wlr_scene_node_reparent(&output->layers.shell_background->node, root->layers.shell_background);
 			wlr_scene_node_reparent(&output->layers.shell_bottom->node, root->layers.shell_bottom);
+			wlr_scene_node_reparent(&output->layers.blur_layer->node, root->layers.blur_tree);
 			wlr_scene_node_reparent(&output->layers.tiling->node, root->layers.tiling);
 			wlr_scene_node_reparent(&output->layers.shell_top->node, root->layers.shell_top);
 			wlr_scene_node_reparent(&output->layers.shell_overlay->node, root->layers.shell_overlay);
@@ -674,7 +677,7 @@ static void arrange_root(struct sway_root *root) {
 			wlr_scene_node_reparent(&output->layers.session_lock->node, root->layers.session_lock);
 
 			wlr_scene_node_set_position(&output->layers.shell_background->node, output->lx, output->ly);
-			wlr_scene_node_set_position(&output->layers.shell_bottom->node, output->lx, output->ly);
+			wlr_scene_node_set_position(&output->layers.blur_layer->node, output->lx, output->ly);
 			wlr_scene_node_set_position(&output->layers.tiling->node, output->lx, output->ly);
 			wlr_scene_node_set_position(&output->layers.fullscreen->node, output->lx, output->ly);
 			wlr_scene_node_set_position(&output->layers.shell_top->node, output->lx, output->ly);
