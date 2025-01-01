@@ -245,6 +245,17 @@ static void handle_node_destroy(struct wl_listener *listener, void *data) {
 		}
 	}
 
+	struct wlr_layer_surface_v1 *wlr_layer_surface = layer->layer_surface;
+	if (wlr_layer_surface->current.layer ==
+			ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND ||
+		wlr_layer_surface->current.layer == ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM) {
+		if (layer->output) {
+			wlr_scene_optimized_blur_mark_dirty(root->root_scene,
+					layer->output->layers.blur_layer,
+					layer->output->wlr_output);
+		}
+	}
+
 	if (layer->output) {
 		arrange_layers(layer->output);
 		transaction_commit_dirty();
@@ -270,6 +281,17 @@ static void handle_surface_commit(struct wl_listener *listener, void *data) {
 	struct wlr_layer_surface_v1 *layer_surface = surface->layer_surface;
 	if (!layer_surface->initialized) {
 		return;
+	}
+
+	struct wlr_layer_surface_v1 *wlr_layer_surface = surface->layer_surface;
+	if (wlr_layer_surface->current.layer ==
+			ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND ||
+		wlr_layer_surface->current.layer == ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM) {
+		if (surface->output) {
+			wlr_scene_optimized_blur_mark_dirty(root->root_scene,
+					surface->output->layers.blur_layer,
+					surface->output->wlr_output);
+		}
 	}
 
 	uint32_t committed = layer_surface->current.committed;
