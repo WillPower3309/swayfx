@@ -450,7 +450,7 @@ static void arrange_container(struct sway_container *con,
 			int y = config->shadow_offset_y - config->shadow_blur_sigma;
 			wlr_scene_node_set_position(&con->shadow->node, x, y);
 
-			float* shadow_color = (con->view && view_is_urgent(con->view)) || con->current.focused ?
+			float* shadow_color = view_is_urgent(con->view) || con->current.focused ?
 					config->shadow_color : config->shadow_inactive_color;
 			wlr_scene_shadow_set_color(con->shadow, shadow_color);
 			wlr_scene_shadow_set_blur_sigma(con->shadow, config->shadow_blur_sigma);
