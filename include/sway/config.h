@@ -494,6 +494,7 @@ struct sway_config {
 	int shadow_blur_sigma;
 	float shadow_color[4];
 	float shadow_inactive_color[4];
+	float shadow_offset_x, shadow_offset_y;
 	char *swaynag_command;
 	struct swaynag_instance swaynag_config_errors;
 	list_t *symbols;

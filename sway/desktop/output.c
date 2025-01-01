@@ -273,8 +273,8 @@ static void output_configure_scene(struct sway_output *output,
 					width + config->shadow_blur_sigma * 2,
 					height + config->shadow_blur_sigma * 2);
 
-			int x = con->view->geometry.x - config->shadow_blur_sigma;
-			int y = con->view->geometry.y - config->shadow_blur_sigma;
+			int x = -config->shadow_blur_sigma + config->shadow_offset_x;
+			int y = -config->shadow_blur_sigma + config->shadow_offset_y;
 			wlr_scene_node_set_position(&shadow->node, x, y);
 
 			wlr_scene_shadow_set_blur_sigma(shadow, config->shadow_blur_sigma);
