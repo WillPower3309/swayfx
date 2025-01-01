@@ -266,6 +266,9 @@ static void output_configure_scene(struct sway_output *output,
 		bool enabled = false;
 		if (view) {
 			enabled = con->shadow_enabled;
+			if (con->current.border == B_CSD && !config->shadows_on_csd_enabled) {
+				enabled = false;
+			}
 
 			int width = con->current.content_width;
 			int height = con->current.content_height;
