@@ -12,8 +12,8 @@ struct cmd_results *cmd_blur_contrast(int argc, char **argv) {
 		return cmd_results_new(CMD_FAILURE, "Invalid contrast specified");
 	}
 
-    struct wlr_scene *root_scene = root->root_scene;
-    struct blur_data blur_data = root_scene->blur_data;
+	struct wlr_scene *root_scene = root->root_scene;
+	struct blur_data blur_data = root_scene->blur_data;
 	blur_data.contrast = value;
 	wlr_scene_set_blur_data(root_scene, blur_data);
 

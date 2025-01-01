@@ -12,8 +12,8 @@ struct cmd_results *cmd_blur_radius(int argc, char **argv) {
 		return cmd_results_new(CMD_FAILURE, "Invalid size specified");
 	}
 
-    struct wlr_scene *root_scene = root->root_scene;
-    struct blur_data blur_data = root_scene->blur_data;
+	struct wlr_scene *root_scene = root->root_scene;
+	struct blur_data blur_data = root_scene->blur_data;
 	blur_data.radius = value;
 	wlr_scene_set_blur_data(root_scene, blur_data);
 
