@@ -441,6 +441,24 @@ static void arrange_container(struct sway_container *con,
 		wlr_scene_node_set_position(&con->border.right->node,
 			width - border_right, border_top);
 
+		if (con->shadow_enabled && (con->current.border != B_CSD || config->shadows_on_csd_enabled)) {
+			wlr_scene_shadow_set_size(con->shadow,
+					width + config->shadow_blur_sigma * 2,
+					height + config->shadow_blur_sigma * 2);
+
+			int x = config->shadow_offset_x - config->shadow_blur_sigma;
+			int y = config->shadow_offset_y - config->shadow_blur_sigma;
+			wlr_scene_node_set_position(&con->shadow->node, x, y);
+
+			float* shadow_color = (con->view && view_is_urgent(con->view)) || con->current.focused ?
+					config->shadow_color : config->shadow_inactive_color;
+			wlr_scene_shadow_set_color(con->shadow, shadow_color);
+			wlr_scene_shadow_set_blur_sigma(con->shadow, config->shadow_blur_sigma);
+			wlr_scene_shadow_set_corner_radius(con->shadow, con->corner_radius); // TODO: plus border radius
+
+			// TODO: put shadow behind surface
+		}
+
 		// make sure to reparent, it's possible that the client just came out of
 		// fullscreen mode where the parent of the surface is not the container
 		wlr_scene_node_reparent(&con->view->scene_tree->node, con->content_tree);

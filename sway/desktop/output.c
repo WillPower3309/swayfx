@@ -203,33 +203,19 @@ static enum wlr_scale_filter_mode get_scale_filter(struct sway_output *output,
 	}
 }
 
-struct configure_params {
-	float opacity;
-	int corner_radius;
-	bool blur_enabled;
-	bool shadow_enabled;
-	bool has_titlebar;
-	struct sway_container *con;
-};
-
-static void output_configure_scene(struct sway_output *output,
-		struct wlr_scene_node *node, struct configure_params params) {
+static void output_configure_scene(struct sway_output *output, struct wlr_scene_node *node, float opacity,
+		int corner_radius, bool blur_enabled, bool has_titlebar) {
 	if (!node->enabled) {
 		return;
 	}
 
-	struct sway_container *node_con =
+	struct sway_container *con =
 		scene_descriptor_try_get(node, SWAY_SCENE_DESC_CONTAINER);
-	if (node_con) {
-		// TODO: Simplify to just opacity and con instead of a whole struct?
-		params = (struct configure_params) {
-			.con = node_con,
-			.opacity = node_con->alpha,
-			.corner_radius = node_con->corner_radius,
-			.blur_enabled = node_con->blur_enabled,
-			.shadow_enabled = node_con->shadow_enabled,
-			.has_titlebar = node_con->current.border == B_NORMAL,
-		};
+	if (con) {
+		opacity = con->alpha;
+		corner_radius = con->corner_radius;
+		blur_enabled = con->blur_enabled;
+		has_titlebar = con->current.border == B_NORMAL;
 	}
 
 	if (node->type == WLR_SCENE_NODE_BUFFER) {
@@ -240,7 +226,7 @@ static void output_configure_scene(struct sway_output *output,
 			const struct wlr_alpha_modifier_surface_v1_state *alpha_modifier_state =
 				wlr_alpha_modifier_v1_get_surface_state(surface->surface);
 			if (alpha_modifier_state != NULL) {
-				params.opacity *= (float)alpha_modifier_state->multiplier;
+				opacity *= (float)alpha_modifier_state->multiplier;
 			}
 		}
 
@@ -249,51 +235,19 @@ static void output_configure_scene(struct sway_output *output,
 		// we're configuring
 		buffer->filter_mode = get_scale_filter(output, buffer);
 
-		wlr_scene_buffer_set_opacity(buffer, params.opacity);
-		wlr_scene_buffer_set_corner_radius(buffer, params.corner_radius,
-				params.has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL);
-		wlr_scene_buffer_set_backdrop_blur(buffer, params.blur_enabled);
+		wlr_scene_buffer_set_opacity(buffer, opacity);
+		wlr_scene_buffer_set_corner_radius(buffer, corner_radius,
+				has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL);
+		wlr_scene_buffer_set_backdrop_blur(buffer, blur_enabled);
 		// Only enable xray blur if tiled or when xray is explicitly enabled
-		bool should_optimize_blur = params.con && params.con->view ?
-			!container_is_floating_or_child(params.con) || config->blur_xray :
-			false;
+		bool should_optimize_blur = (con && !container_is_floating_or_child(con)) || config->blur_xray;
 		wlr_scene_buffer_set_backdrop_blur_optimized(buffer, should_optimize_blur);
-	} else if (node->type == WLR_SCENE_NODE_SHADOW) {
-		struct wlr_scene_shadow *shadow = wlr_scene_shadow_from_node(node);
-		struct sway_container *con = params.con;
-		struct sway_view *view = con ? con->view : NULL;
 
-		bool enabled = false;
-		if (view) {
-			enabled = con->shadow_enabled;
-			if (con->current.border == B_CSD && !config->shadows_on_csd_enabled) {
-				enabled = false;
-			}
-
-			int width = con->current.content_width;
-			int height = con->current.content_height;
-			wlr_scene_shadow_set_size(shadow,
-					width + config->shadow_blur_sigma * 2,
-					height + config->shadow_blur_sigma * 2);
-
-			int x = -config->shadow_blur_sigma + config->shadow_offset_x;
-			int y = -config->shadow_blur_sigma + config->shadow_offset_y;
-			wlr_scene_node_set_position(&shadow->node, x, y);
-
-			wlr_scene_shadow_set_blur_sigma(shadow, config->shadow_blur_sigma);
-			wlr_scene_shadow_set_corner_radius(shadow, params.corner_radius);
-
-			float* shadow_color = view_is_urgent(view) || con->current.focused ?
-				config->shadow_color : config->shadow_inactive_color;
-			wlr_scene_shadow_set_color(shadow, shadow_color);
-		}
-
-		wlr_scene_node_set_enabled(&shadow->node, enabled);
 	} else if (node->type == WLR_SCENE_NODE_TREE) {
 		struct wlr_scene_tree *tree = wlr_scene_tree_from_node(node);
 		struct wlr_scene_node *node;
 		wl_list_for_each(node, &tree->children, link) {
-			output_configure_scene(output, node, params);
+			output_configure_scene(output, node, opacity, corner_radius, blur_enabled, has_titlebar);
 		}
 	}
 }
@@ -322,10 +276,8 @@ static int output_repaint_timer_handler(void *data) {
 	if (!output->enabled) {
 		return 0;
 	}
-	struct configure_params configure_params = {0};
-	configure_params.opacity = 1.0;
-	output_configure_scene(output, &root->root_scene->tree.node,
-			configure_params);
+	output_configure_scene(output, &root->root_scene->tree.node, 1.0f,
+			0, false, false);
 
 	struct wlr_scene_output_state_options opts = {
 		.color_transform = output->color_transform,

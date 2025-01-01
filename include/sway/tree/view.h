@@ -69,8 +69,6 @@ struct sway_view {
 	struct wlr_scene_tree *content_tree;
 	struct wlr_scene_tree *saved_surface_tree;
 
-	struct wlr_scene_shadow *shadow_node;
-
 	struct sway_container *container; // NULL if unmapped and transactions finished
 	struct wlr_surface *surface; // NULL for unmapped views
 	struct sway_xdg_decoration *xdg_decoration;

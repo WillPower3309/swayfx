@@ -1,3 +1,4 @@
+#include "sway/tree/container.h"
 #include <assert.h>
 #include <drm_fourcc.h>
 #include <stdint.h>
@@ -82,6 +83,7 @@ struct sway_container *container_create(struct sway_view *view) {
 	}
 	node_init(&c->node, N_CONTAINER, c);
 
+	// TODO: add shadow to below
 	// Container tree structure
 	// - scene tree
 	//   - title bar
@@ -99,8 +101,6 @@ struct sway_container *container_create(struct sway_view *view) {
 	c->scene_tree = alloc_scene_tree(root->staging, &failed);
 
 	c->title_bar.tree = alloc_scene_tree(c->scene_tree, &failed);
-	c->title_bar.border = alloc_rect_node(c->title_bar.tree, &failed);
-	c->title_bar.background = alloc_rect_node(c->title_bar.tree, &failed);
 
 	c->border.tree = alloc_scene_tree(c->scene_tree, &failed);
 	c->content_tree = alloc_scene_tree(c->border.tree, &failed);
@@ -111,6 +111,12 @@ struct sway_container *container_create(struct sway_view *view) {
 		c->border.bottom = alloc_rect_node(c->border.tree, &failed);
 		c->border.left = alloc_rect_node(c->border.tree, &failed);
 		c->border.right = alloc_rect_node(c->border.tree, &failed);
+
+		c->title_bar.border = alloc_rect_node(c->title_bar.tree, &failed);
+		c->title_bar.background = alloc_rect_node(c->title_bar.tree, &failed);
+
+		c->shadow = alloc_scene_shadow(c->scene_tree, 0, 0,
+				0, config->shadow_blur_sigma, config->shadow_color, &failed);
 
 		c->output_handler = wlr_scene_buffer_create(c->border.tree, NULL);
 		if (!c->output_handler) {
@@ -359,17 +365,18 @@ void container_arrange_title_bar(struct sway_container *con) {
 	}
 
 	int thickness = config->titlebar_border_thickness;
+	enum corner_location corners = CORNER_LOCATION_TOP;
+	// TODO: look at transaction.c to detect where corners should be rounded
 
 	wlr_scene_node_set_position(&con->title_bar.background->node, thickness, thickness);
 	wlr_scene_rect_set_size(con->title_bar.background, width - thickness * 2, height - thickness * 2);
 	wlr_scene_rect_set_corner_radius(con->title_bar.background,
-			con->corner_radius + con->current.border_thickness - thickness, CORNER_LOCATION_TOP);
+			con->corner_radius + con->current.border_thickness - thickness, corners);
 	// TODO: additional clip_area for title text (similar to how we do for buffer to clip csd decos?)
 
-	//wlr_scene_node_set_position(&con->title_bar.border->node, 0, 0);
 	wlr_scene_rect_set_size(con->title_bar.border, width, height);
 	wlr_scene_rect_set_corner_radius(con->title_bar.border,
-			con->corner_radius + con->current.border_thickness, CORNER_LOCATION_TOP);
+			con->corner_radius + con->current.border_thickness, corners);
 	// TODO: remove pixman dependency?
 
 	container_update(con);
