@@ -117,6 +117,7 @@ struct sway_container *container_create(struct sway_view *view) {
 
 		c->shadow = alloc_scene_shadow(c->scene_tree, 0, 0,
 				0, config->shadow_blur_sigma, config->shadow_color, &failed);
+		wlr_scene_node_lower_to_bottom(&c->shadow->node);
 
 		c->output_handler = wlr_scene_buffer_create(c->border.tree, NULL);
 		if (!c->output_handler) {
