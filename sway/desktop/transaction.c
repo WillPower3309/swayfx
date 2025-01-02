@@ -442,6 +442,8 @@ static void arrange_container(struct sway_container *con,
 			width - border_right, border_top);
 
 		if (con->shadow_enabled && (con->current.border != B_CSD || config->shadows_on_csd_enabled)) {
+			wlr_scene_node_set_enabled(&con->shadow->node, true);
+
 			wlr_scene_shadow_set_size(con->shadow,
 					width + config->shadow_blur_sigma * 2,
 					height + config->shadow_blur_sigma * 2);
@@ -457,6 +459,8 @@ static void arrange_container(struct sway_container *con,
 			wlr_scene_shadow_set_corner_radius(con->shadow, con->corner_radius); // TODO: plus border radius
 
 			// TODO: put shadow behind surface
+		} else {
+			wlr_scene_node_set_enabled(&con->shadow->node, false);
 		}
 
 		// make sure to reparent, it's possible that the client just came out of
