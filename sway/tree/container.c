@@ -105,15 +105,15 @@ struct sway_container *container_create(struct sway_view *view) {
 	c->border.tree = alloc_scene_tree(c->scene_tree, &failed);
 	c->content_tree = alloc_scene_tree(c->border.tree, &failed);
 
+	c->title_bar.border = alloc_rect_node(c->title_bar.tree, &failed);
+	c->title_bar.background = alloc_rect_node(c->title_bar.tree, &failed);
+
 	if (view) {
 		// only containers with views can have borders
 		c->border.top = alloc_rect_node(c->border.tree, &failed);
 		c->border.bottom = alloc_rect_node(c->border.tree, &failed);
 		c->border.left = alloc_rect_node(c->border.tree, &failed);
 		c->border.right = alloc_rect_node(c->border.tree, &failed);
-
-		c->title_bar.border = alloc_rect_node(c->title_bar.tree, &failed);
-		c->title_bar.background = alloc_rect_node(c->title_bar.tree, &failed);
 
 		c->shadow = alloc_scene_shadow(c->scene_tree, 0, 0,
 				0, config->shadow_blur_sigma, config->shadow_color, &failed);
