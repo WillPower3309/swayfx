@@ -355,7 +355,21 @@ void container_arrange_title_bar(struct sway_container *con) {
 	}
 
 	enum corner_location corners = CORNER_LOCATION_TOP;
-	// TODO: look at transaction.c to detect where corners should be rounded
+	if (con->current.parent) {
+		list_t *siblings = con->current.parent->current.children;
+		if (con->current.parent->current.layout == L_TABBED) {
+			if (siblings->items[0] == con) {
+				corners = CORNER_LOCATION_TOP_LEFT;
+			} else if (siblings->items[siblings->length - 1] == con) {
+				corners = CORNER_LOCATION_TOP_RIGHT;
+			} else {
+				corners = CORNER_LOCATION_NONE;
+			}
+		} else if (con->current.parent->current.layout == L_STACKED &&
+				siblings->items[0] != con) {
+			corners = CORNER_LOCATION_NONE;
+		}
+	}
 
 	int thickness = config->titlebar_border_thickness;
 	wlr_scene_node_set_position(&con->title_bar.background->node, thickness, thickness);
