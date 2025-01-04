@@ -305,9 +305,6 @@ void container_arrange_title_bar(struct sway_container *con) {
 	int width = con->title_width;
 	int height = container_titlebar_height();
 
-	pixman_region32_t text_area;
-	pixman_region32_init(&text_area);
-
 	if (con->title_bar.marks_text) {
 		struct sway_text_node *node = con->title_bar.marks_text;
 		marks_buffer_width = node->width;
@@ -328,9 +325,6 @@ void container_arrange_title_bar(struct sway_container *con) {
 		sway_text_node_set_max_width(node, alloc_width);
 		wlr_scene_node_set_position(node->node,
 			h_padding, (height - node->height) >> 1);
-
-		pixman_region32_union_rect(&text_area, &text_area,
-			node->node->x, node->node->y, alloc_width, node->height);
 	}
 
 	if (con->title_bar.title_text) {
@@ -354,21 +348,16 @@ void container_arrange_title_bar(struct sway_container *con) {
 		sway_text_node_set_max_width(node, alloc_width);
 		wlr_scene_node_set_position(node->node,
 			h_padding, (height - node->height) >> 1);
-
-		pixman_region32_union_rect(&text_area, &text_area,
-			node->node->x, node->node->y, alloc_width, node->height);
 	}
 
-	// silence pixman errors
 	if (width <= 0 || height <= 0) {
-		pixman_region32_fini(&text_area);
 		return;
 	}
 
-	int thickness = config->titlebar_border_thickness;
 	enum corner_location corners = CORNER_LOCATION_TOP;
 	// TODO: look at transaction.c to detect where corners should be rounded
 
+	int thickness = config->titlebar_border_thickness;
 	wlr_scene_node_set_position(&con->title_bar.background->node, thickness, thickness);
 	wlr_scene_rect_set_size(con->title_bar.background, width - thickness * 2, height - thickness * 2);
 	wlr_scene_rect_set_corner_radius(con->title_bar.background,
@@ -378,7 +367,6 @@ void container_arrange_title_bar(struct sway_container *con) {
 	wlr_scene_rect_set_size(con->title_bar.border, width, height);
 	wlr_scene_rect_set_corner_radius(con->title_bar.border,
 			con->corner_radius + con->current.border_thickness, corners);
-	// TODO: remove pixman dependency?
 
 	container_update(con);
 }
