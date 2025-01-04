@@ -457,8 +457,6 @@ static void arrange_container(struct sway_container *con,
 			wlr_scene_shadow_set_color(con->shadow, shadow_color);
 			wlr_scene_shadow_set_blur_sigma(con->shadow, config->shadow_blur_sigma);
 			wlr_scene_shadow_set_corner_radius(con->shadow, con->corner_radius); // TODO: plus border radius
-
-			// TODO: put shadow behind surface
 		} else {
 			wlr_scene_node_set_enabled(&con->shadow->node, false);
 		}
