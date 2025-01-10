@@ -3,6 +3,7 @@
 #include <string.h>
 #include <time.h>
 #include <wlr/types/wlr_buffer.h>
+#include "scenefx/types/fx/corner_location.h"
 #include "sway/config.h"
 #include "sway/scene_descriptor.h"
 #include "sway/desktop/idle_inhibit_v1.h"
@@ -421,7 +422,7 @@ static void arrange_container(struct sway_container *con,
 			sway_assert(false, "unreachable");
 		}
 
-		int border_bottom = con->current.border_bottom ? border_width : 0;
+		int border_bottom = con->current.border_bottom ? border_width + con->corner_radius: 0;
 		int border_left = con->current.border_left ? border_width : 0;
 		int border_right = con->current.border_right ? border_width : 0;
 		int vert_border_height = MAX(0, height - border_top - border_bottom);
@@ -432,6 +433,9 @@ static void arrange_container(struct sway_container *con,
 			border_left, vert_border_height);
 		wlr_scene_rect_set_size(con->border.right,
 			border_right, vert_border_height);
+
+		wlr_scene_rect_set_corner_radius(con->border.bottom,
+			con->corner_radius + border_width, CORNER_LOCATION_BOTTOM);
 
 		wlr_scene_node_set_position(&con->border.top->node, 0, 0);
 		wlr_scene_node_set_position(&con->border.bottom->node,
@@ -456,7 +460,7 @@ static void arrange_container(struct sway_container *con,
 					config->shadow_color : config->shadow_inactive_color;
 			wlr_scene_shadow_set_color(con->shadow, shadow_color);
 			wlr_scene_shadow_set_blur_sigma(con->shadow, config->shadow_blur_sigma);
-			wlr_scene_shadow_set_corner_radius(con->shadow, con->corner_radius); // TODO: plus border radius
+			wlr_scene_shadow_set_corner_radius(con->shadow, con->corner_radius + border_width);
 		} else {
 			wlr_scene_node_set_enabled(&con->shadow->node, false);
 		}
