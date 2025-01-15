@@ -4,6 +4,7 @@
 #include <time.h>
 #include <wlr/types/wlr_buffer.h>
 #include "scenefx/types/fx/corner_location.h"
+#include "scenefx/types/fx/hole_data.h"
 #include "sway/config.h"
 #include "sway/scene_descriptor.h"
 #include "sway/desktop/idle_inhibit_v1.h"
@@ -410,7 +411,7 @@ static void arrange_container(struct sway_container *con,
 			}
 		} else if (con->current.border == B_PIXEL) {
 			container_update(con);
-			border_top = title_bar && con->current.border_top ? border_width : 0;
+			border_top = title_bar && con->current.border_top ? border_width + con->corner_radius : 0;
 		} else if (con->current.border == B_NONE) {
 			container_update(con);
 			border_top = 0;
@@ -422,20 +423,30 @@ static void arrange_container(struct sway_container *con,
 			sway_assert(false, "unreachable");
 		}
 
-		int border_bottom = con->current.border_bottom ? border_width + con->corner_radius: 0;
+		int border_bottom = con->current.border_bottom ? border_width + con->corner_radius : 0;
 		int border_left = con->current.border_left ? border_width : 0;
 		int border_right = con->current.border_right ? border_width : 0;
 		int vert_border_height = MAX(0, height - border_top - border_bottom);
 
 		wlr_scene_rect_set_size(con->border.top, width, border_top);
 		wlr_scene_rect_set_size(con->border.bottom, width, border_bottom);
-		wlr_scene_rect_set_size(con->border.left,
-			border_left, vert_border_height);
-		wlr_scene_rect_set_size(con->border.right,
-			border_right, vert_border_height);
+		wlr_scene_rect_set_size(con->border.left, border_left, vert_border_height);
+		wlr_scene_rect_set_size(con->border.right, border_right, vert_border_height);
 
+		wlr_scene_rect_set_corner_radius(con->border.top,
+			con->corner_radius + border_width, CORNER_LOCATION_TOP);
 		wlr_scene_rect_set_corner_radius(con->border.bottom,
 			con->corner_radius + border_width, CORNER_LOCATION_BOTTOM);
+
+		wlr_scene_rect_set_hole_data(con->border.top, (struct hole_data) {
+			.corner_radius = con->corner_radius,
+			.size = {
+				.x = border_width,
+				.y = border_width,
+				.width = width - 2 * border_width,
+				.height = border_top + con->corner_radius
+			}
+		});
 
 		wlr_scene_node_set_position(&con->border.top->node, 0, 0);
 		wlr_scene_node_set_position(&con->border.bottom->node,
@@ -468,8 +479,8 @@ static void arrange_container(struct sway_container *con,
 		// make sure to reparent, it's possible that the client just came out of
 		// fullscreen mode where the parent of the surface is not the container
 		wlr_scene_node_reparent(&con->view->scene_tree->node, con->content_tree);
-		wlr_scene_node_set_position(&con->view->scene_tree->node,
-			border_left, border_top);
+		wlr_scene_node_set_position(&con->view->scene_tree->node, border_left,
+			border_top != (int)container_titlebar_height() ? border_top - con->corner_radius : border_top);
 	} else {
 		// make sure to disable the title bar if the parent is not managing it
 		if (title_bar) {
