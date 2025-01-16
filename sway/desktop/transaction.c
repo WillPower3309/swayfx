@@ -447,6 +447,15 @@ static void arrange_container(struct sway_container *con,
 				.height = border_top + con->corner_radius
 			}
 		});
+		wlr_scene_rect_set_hole_data(con->border.bottom, (struct hole_data) {
+			.corner_radius = con->corner_radius,
+			.size = {
+				.x = border_width,
+				.y = vert_border_height + border_top,
+				.width = width - 2 * border_width,
+				.height = border_bottom - border_width,
+			}
+		});
 
 		wlr_scene_node_set_position(&con->border.top->node, 0, 0);
 		wlr_scene_node_set_position(&con->border.bottom->node,
