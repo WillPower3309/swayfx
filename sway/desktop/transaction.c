@@ -476,6 +476,15 @@ static void arrange_container(struct sway_container *con,
 			int y = config->shadow_offset_y - config->shadow_blur_sigma;
 			wlr_scene_node_set_position(&con->shadow->node, x, y);
 
+			wlr_scene_shadow_set_hole_data(con->shadow, (struct hole_data) {
+				.corner_radius = con->corner_radius + border_width,
+				.size = {
+					.x = 0, .y = 0,
+					.width = width,
+					.height = height,
+				}
+			});
+
 			float* shadow_color = view_is_urgent(con->view) || con->current.focused ?
 					config->shadow_color : config->shadow_inactive_color;
 			wlr_scene_shadow_set_color(con->shadow, shadow_color);
