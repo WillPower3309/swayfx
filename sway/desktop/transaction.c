@@ -440,6 +440,7 @@ static void arrange_container(struct sway_container *con,
 
 		wlr_scene_rect_set_hole_data(con->border.top, (struct hole_data) {
 			.corner_radius = con->corner_radius,
+			.corners = CORNER_LOCATION_TOP,
 			.size = {
 				.x = border_width,
 				.y = border_width,
@@ -449,6 +450,7 @@ static void arrange_container(struct sway_container *con,
 		});
 		wlr_scene_rect_set_hole_data(con->border.bottom, (struct hole_data) {
 			.corner_radius = con->corner_radius,
+			.corners = CORNER_LOCATION_BOTTOM,
 			.size = {
 				.x = border_width,
 				.y = vert_border_height + border_top,
@@ -478,6 +480,7 @@ static void arrange_container(struct sway_container *con,
 
 			wlr_scene_shadow_set_hole_data(con->shadow, (struct hole_data) {
 				.corner_radius = con->corner_radius + border_width,
+				.corners = CORNER_LOCATION_ALL,
 				.size = {
 					.x = 0, .y = 0,
 					.width = width,
