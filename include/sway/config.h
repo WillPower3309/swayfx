@@ -497,6 +497,8 @@ struct sway_config {
 	float shadow_inactive_color[4];
 	float shadow_offset_x, shadow_offset_y;
 
+	bool scratchpad_minimize;
+
 	char *swaynag_command;
 	struct swaynag_instance swaynag_config_errors;
 	list_t *symbols;

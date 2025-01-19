@@ -357,6 +357,8 @@ static void config_defaults(struct sway_config *config) {
 	color_to_rgba(config->shadow_color, 0x0000007F);
 	color_to_rgba(config->shadow_inactive_color, 0x0000007F);
 
+	config->scratchpad_minimize = false;
+
 	// The keysym to keycode translation
 	struct xkb_rule_names rules = {0};
 	config->keysym_translation_state = keysym_translation_state_create(rules, 0);

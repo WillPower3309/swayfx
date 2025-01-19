@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <wlr/types/wlr_foreign_toplevel_management_v1.h>
 #include <wlr/types/wlr_output_layout.h>
 #include <wlr/util/transform.h>
 #include "sway/desktop/transaction.h"
@@ -87,6 +88,23 @@ void root_destroy(struct sway_root *root) {
 	free(root);
 }
 
+/* Set minimized state from scratchpad container `show` state */
+static void root_scratchpad_set_minimize(struct sway_container *con, bool minimize) {
+	if (con->view) {
+#if WLR_HAS_XWAYLAND
+		struct wlr_xwayland_surface *xsurface;
+		if ((xsurface = wlr_xwayland_surface_try_from_wlr_surface(con->view->surface))) {
+			wlr_xwayland_surface_set_minimized(xsurface, minimize);
+			return;
+		}
+#endif
+		struct wlr_foreign_toplevel_handle_v1 *foreign_toplevel = NULL;
+		if ((foreign_toplevel = con->view->foreign_toplevel)) {
+			wlr_foreign_toplevel_handle_v1_set_minimized(foreign_toplevel, minimize);
+		}
+	}
+}
+
 static void set_container_transform(struct sway_workspace *ws,
 			struct sway_container *con) {
 	struct sway_output *output = ws->output;
@@ -140,6 +158,11 @@ void root_scratchpad_add_container(struct sway_container *con, struct sway_works
 		seat_set_focus(seat, new_focus);
 	}
 
+	// Set minimize state to minimized
+	if (config->scratchpad_minimize) {
+		root_scratchpad_set_minimize(con, true);
+	}
+
 	ipc_event_window(con, "move");
 }
 
@@ -188,6 +211,11 @@ void root_scratchpad_show(struct sway_container *con) {
 	}
 	workspace_add_floating(new_ws, con);
 
+	// Set minimize state to normalized
+	if (config->scratchpad_minimize) {
+		root_scratchpad_set_minimize(con, false);
+	}
+
 	if (new_ws->output) {
 		struct wlr_box output_box;
 		output_get_box(new_ws->output, &output_box);
@@ -217,6 +245,11 @@ void root_scratchpad_hide(struct sway_container *con) {
 		// If the container was made fullscreen global while in the scratchpad,
 		// it should be shown until fullscreen has been disabled
 		return;
+	}
+
+	// Set minimize state to minimized
+	if (config->scratchpad_minimize) {
+		root_scratchpad_set_minimize(con, true);
 	}
 
 	set_container_transform(con->pending.workspace, con);
