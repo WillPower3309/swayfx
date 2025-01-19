@@ -204,7 +204,7 @@ static enum wlr_scale_filter_mode get_scale_filter(struct sway_output *output,
 }
 
 static void output_configure_scene(struct sway_output *output, struct wlr_scene_node *node, float opacity,
-		int corner_radius, bool blur_enabled, bool has_titlebar) {
+		int corner_radius, bool blur_enabled, enum sway_container_layout layout, bool has_titlebar) {
 	if (!node->enabled) {
 		return;
 	}
@@ -215,7 +215,11 @@ static void output_configure_scene(struct sway_output *output, struct wlr_scene_
 		opacity = con->alpha;
 		corner_radius = con->corner_radius;
 		blur_enabled = con->blur_enabled;
-		has_titlebar = con->current.border == B_NORMAL;
+
+		if (con->current.layout != L_NONE) {
+			layout = con->current.layout;
+		}
+		has_titlebar = con->current.border == B_NORMAL || layout == L_STACKED || layout == L_TABBED;
 	}
 
 	if (node->type == WLR_SCENE_NODE_BUFFER) {
@@ -248,7 +252,7 @@ static void output_configure_scene(struct sway_output *output, struct wlr_scene_
 		struct wlr_scene_tree *tree = wlr_scene_tree_from_node(node);
 		struct wlr_scene_node *node;
 		wl_list_for_each(node, &tree->children, link) {
-			output_configure_scene(output, node, opacity, corner_radius, blur_enabled, has_titlebar);
+			output_configure_scene(output, node, opacity, corner_radius, blur_enabled, layout, has_titlebar);
 		}
 	}
 }
@@ -278,7 +282,7 @@ static int output_repaint_timer_handler(void *data) {
 		return 0;
 	}
 	output_configure_scene(output, &root->root_scene->tree.node, 1.0f,
-			0, false, false);
+			0, false, L_NONE, false);
 
 	struct wlr_scene_output_state_options opts = {
 		.color_transform = output->color_transform,
