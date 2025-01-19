@@ -311,6 +311,7 @@ static void arrange_children(enum sway_container_layout layout, list_t *children
 			arrange_title_bar(child, title_offset, -title_bar_height,
 				next_title_offset - title_offset, title_bar_height);
 			wlr_scene_node_set_enabled(&child->border.tree->node, activated);
+			wlr_scene_node_set_enabled(&child->shadow->node, false);
 			wlr_scene_node_set_position(&child->scene_tree->node, 0, title_bar_height);
 			wlr_scene_node_reparent(&child->scene_tree->node, content);
 
@@ -340,6 +341,7 @@ static void arrange_children(enum sway_container_layout layout, list_t *children
 
 			arrange_title_bar(child, 0, y - title_height, width, title_bar_height);
 			wlr_scene_node_set_enabled(&child->border.tree->node, activated);
+			wlr_scene_node_set_enabled(&child->shadow->node, false);
 			wlr_scene_node_set_position(&child->scene_tree->node, 0, title_height);
 			wlr_scene_node_reparent(&child->scene_tree->node, content);
 
@@ -359,6 +361,7 @@ static void arrange_children(enum sway_container_layout layout, list_t *children
 			int cheight = child->current.height;
 
 			wlr_scene_node_set_enabled(&child->border.tree->node, true);
+			wlr_scene_node_set_enabled(&child->shadow->node, container_has_shadow(child));
 			wlr_scene_node_set_position(&child->scene_tree->node, 0, off);
 			wlr_scene_node_reparent(&child->scene_tree->node, content);
 			arrange_container(child, width, cheight, true, gaps);
@@ -371,6 +374,7 @@ static void arrange_children(enum sway_container_layout layout, list_t *children
 			int cwidth = child->current.width;
 
 			wlr_scene_node_set_enabled(&child->border.tree->node, true);
+			wlr_scene_node_set_enabled(&child->shadow->node, container_has_shadow(child));
 			wlr_scene_node_set_position(&child->scene_tree->node, off, 0);
 			wlr_scene_node_reparent(&child->scene_tree->node, content);
 			arrange_container(child, cwidth, height, true, gaps);
@@ -389,6 +393,40 @@ static void arrange_container(struct sway_container *con,
 
 	if (con->output_handler) {
 		wlr_scene_buffer_set_dest_size(con->output_handler, width, height);
+	}
+
+	if (container_has_shadow(con)) {
+		int corner_radius = con->corner_radius + con->current.border_thickness;
+		if (!con->view && title_bar) {
+			// Stacking/Tabbed containers don't have a border_thickness, so we
+			// use the config default
+			corner_radius = con->corner_radius + config->border_thickness;
+		}
+
+		wlr_scene_shadow_set_size(con->shadow,
+				width + config->shadow_blur_sigma * 2,
+				height + config->shadow_blur_sigma * 2);
+
+		int x = config->shadow_offset_x - config->shadow_blur_sigma;
+		int y = config->shadow_offset_y - config->shadow_blur_sigma;
+		wlr_scene_node_set_position(&con->shadow->node, x, y);
+
+		wlr_scene_shadow_set_hole_data(con->shadow, (struct hole_data) {
+			.corner_radius = corner_radius,
+			.corners = CORNER_LOCATION_ALL,
+			.size = {
+				.x = 0, .y = 0,
+				.width = width,
+				.height = height,
+			}
+		});
+
+		bool is_urgent = con->view && view_is_urgent(con->view);
+		float* shadow_color = is_urgent || con->current.focused ?
+				config->shadow_color : config->shadow_inactive_color;
+		wlr_scene_shadow_set_color(con->shadow, shadow_color);
+		wlr_scene_shadow_set_blur_sigma(con->shadow, config->shadow_blur_sigma);
+		wlr_scene_shadow_set_corner_radius(con->shadow, corner_radius);
 	}
 
 	if (con->view) {
@@ -474,36 +512,6 @@ static void arrange_container(struct sway_container *con,
 		wlr_scene_node_set_position(&con->border.right->node,
 			width - border_right, border_top + vert_border_offset);
 
-		if (con->shadow_enabled && (con->current.border != B_CSD || config->shadows_on_csd_enabled)) {
-			wlr_scene_node_set_enabled(&con->shadow->node, true);
-
-			wlr_scene_shadow_set_size(con->shadow,
-					width + config->shadow_blur_sigma * 2,
-					height + config->shadow_blur_sigma * 2);
-
-			int x = config->shadow_offset_x - config->shadow_blur_sigma;
-			int y = config->shadow_offset_y - config->shadow_blur_sigma;
-			wlr_scene_node_set_position(&con->shadow->node, x, y);
-
-			wlr_scene_shadow_set_hole_data(con->shadow, (struct hole_data) {
-				.corner_radius = con->corner_radius + border_width,
-				.corners = CORNER_LOCATION_ALL,
-				.size = {
-					.x = 0, .y = 0,
-					.width = width,
-					.height = height,
-				}
-			});
-
-			float* shadow_color = view_is_urgent(con->view) || con->current.focused ?
-					config->shadow_color : config->shadow_inactive_color;
-			wlr_scene_shadow_set_color(con->shadow, shadow_color);
-			wlr_scene_shadow_set_blur_sigma(con->shadow, config->shadow_blur_sigma);
-			wlr_scene_shadow_set_corner_radius(con->shadow, con->corner_radius + border_width);
-		} else {
-			wlr_scene_node_set_enabled(&con->shadow->node, false);
-		}
-
 		// make sure to reparent, it's possible that the client just came out of
 		// fullscreen mode where the parent of the surface is not the container
 		wlr_scene_node_reparent(&con->view->scene_tree->node, con->content_tree);
@@ -586,6 +594,7 @@ static void arrange_workspace_floating(struct sway_workspace *ws) {
 		wlr_scene_node_set_position(&floater->scene_tree->node,
 			floater->current.x, floater->current.y);
 		wlr_scene_node_set_enabled(&floater->scene_tree->node, true);
+		wlr_scene_node_set_enabled(&floater->shadow->node, container_has_shadow(floater));
 
 		arrange_container(floater, floater->current.width, floater->current.height,
 			true, ws->gaps_inner);

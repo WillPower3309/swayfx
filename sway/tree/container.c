@@ -83,9 +83,9 @@ struct sway_container *container_create(struct sway_view *view) {
 	}
 	node_init(&c->node, N_CONTAINER, c);
 
-	// TODO: add shadow to below
 	// Container tree structure
 	// - scene tree
+	//   - shadow
 	//   - title bar
 	//     - border
 	//     - background
@@ -99,6 +99,9 @@ struct sway_container *container_create(struct sway_view *view) {
 	//     - buffer used for output enter/leave events for foreign_toplevel
 	bool failed = false;
 	c->scene_tree = alloc_scene_tree(root->staging, &failed);
+
+	c->shadow = alloc_scene_shadow(c->scene_tree, 0, 0,
+			0, config->shadow_blur_sigma, config->shadow_color, &failed);
 
 	c->title_bar.tree = alloc_scene_tree(c->scene_tree, &failed);
 
@@ -114,10 +117,6 @@ struct sway_container *container_create(struct sway_view *view) {
 		c->border.bottom = alloc_rect_node(c->border.tree, &failed);
 		c->border.left = alloc_rect_node(c->border.tree, &failed);
 		c->border.right = alloc_rect_node(c->border.tree, &failed);
-
-		c->shadow = alloc_scene_shadow(c->scene_tree, 0, 0,
-				0, config->shadow_blur_sigma, config->shadow_color, &failed);
-		wlr_scene_node_lower_to_bottom(&c->shadow->node);
 
 		c->output_handler = wlr_scene_buffer_create(c->border.tree, NULL);
 		if (!c->output_handler) {
@@ -1894,4 +1893,9 @@ void container_swap(struct sway_container *con1, struct sway_container *con2) {
 	if (fs2) {
 		container_set_fullscreen(con1, fs2);
 	}
+}
+
+bool container_has_shadow(struct sway_container *con) {
+	return con->shadow_enabled
+		&& (con->current.border != B_CSD || config->shadows_on_csd_enabled);
 }

@@ -371,4 +371,6 @@ void container_update(struct sway_container *con);
 
 void container_update_itself_and_parents(struct sway_container *con);
 
+bool container_has_shadow(struct sway_container *con);
+
 #endif
