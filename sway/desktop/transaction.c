@@ -361,7 +361,8 @@ static void arrange_children(enum sway_container_layout layout, list_t *children
 			int cheight = child->current.height;
 
 			wlr_scene_node_set_enabled(&child->border.tree->node, true);
-			wlr_scene_node_set_enabled(&child->shadow->node, container_has_shadow(child));
+			wlr_scene_node_set_enabled(&child->shadow->node,
+					container_has_shadow(child) && child->view);
 			wlr_scene_node_set_position(&child->scene_tree->node, 0, off);
 			wlr_scene_node_reparent(&child->scene_tree->node, content);
 			arrange_container(child, width, cheight, true, gaps);
@@ -374,7 +375,8 @@ static void arrange_children(enum sway_container_layout layout, list_t *children
 			int cwidth = child->current.width;
 
 			wlr_scene_node_set_enabled(&child->border.tree->node, true);
-			wlr_scene_node_set_enabled(&child->shadow->node, container_has_shadow(child));
+			wlr_scene_node_set_enabled(&child->shadow->node,
+					container_has_shadow(child) && child->view);
 			wlr_scene_node_set_position(&child->scene_tree->node, off, 0);
 			wlr_scene_node_reparent(&child->scene_tree->node, content);
 			arrange_container(child, cwidth, height, true, gaps);
@@ -522,6 +524,10 @@ static void arrange_container(struct sway_container *con,
 			wlr_scene_node_set_enabled(&con->title_bar.tree->node, false);
 		}
 
+		wlr_scene_node_set_enabled(&con->shadow->node,
+				container_has_shadow(con) &&
+				(con->current.layout == L_TABBED || con->current.layout == L_STACKED));
+
 		arrange_children(con->current.layout, con->current.children,
 			con->current.focused_inactive_child, con->content_tree,
 			width, height, gaps);
@@ -594,7 +600,7 @@ static void arrange_workspace_floating(struct sway_workspace *ws) {
 		wlr_scene_node_set_position(&floater->scene_tree->node,
 			floater->current.x, floater->current.y);
 		wlr_scene_node_set_enabled(&floater->scene_tree->node, true);
-		wlr_scene_node_set_enabled(&floater->shadow->node, container_has_shadow(floater));
+		wlr_scene_node_set_enabled(&floater->shadow->node, container_has_shadow(floater) && floater->view);
 
 		arrange_container(floater, floater->current.width, floater->current.height,
 			true, ws->gaps_inner);
