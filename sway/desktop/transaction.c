@@ -404,9 +404,9 @@ static void arrange_container(struct sway_container *con,
 		}
 
 		if (con->current.border == B_NORMAL) {
+			vert_border_offset = 0;
 			if (title_bar) {
 				arrange_title_bar(con, 0, 0, width, border_top);
-				vert_border_offset = 0;
 			} else {
 				border_top = 0;
 				// should be handled by the parent container
@@ -414,6 +414,9 @@ static void arrange_container(struct sway_container *con,
 		} else if (con->current.border == B_PIXEL) {
 			container_update(con);
 			border_top = title_bar && con->current.border_top ? border_width : 0;
+			if (!title_bar && !con->current.border_top) {
+				vert_border_offset = 0;
+			}
 		} else if (con->current.border == B_NONE) {
 			container_update(con);
 			border_top = 0;
