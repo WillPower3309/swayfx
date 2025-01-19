@@ -394,6 +394,7 @@ static void arrange_container(struct sway_container *con,
 	if (con->view) {
 		int border_top = container_titlebar_height();
 		int border_width = con->current.border_thickness;
+		int vert_border_offset = con->corner_radius;
 
 		if (title_bar && con->current.border != B_NORMAL) {
 			wlr_scene_node_set_enabled(&con->title_bar.tree->node, false);
@@ -405,13 +406,14 @@ static void arrange_container(struct sway_container *con,
 		if (con->current.border == B_NORMAL) {
 			if (title_bar) {
 				arrange_title_bar(con, 0, 0, width, border_top);
+				vert_border_offset = 0;
 			} else {
 				border_top = 0;
 				// should be handled by the parent container
 			}
 		} else if (con->current.border == B_PIXEL) {
 			container_update(con);
-			border_top = title_bar && con->current.border_top ? border_width + con->corner_radius : 0;
+			border_top = title_bar && con->current.border_top ? border_width : 0;
 		} else if (con->current.border == B_NONE) {
 			container_update(con);
 			border_top = 0;
@@ -423,15 +425,17 @@ static void arrange_container(struct sway_container *con,
 			sway_assert(false, "unreachable");
 		}
 
-		int border_bottom = con->current.border_bottom ? border_width + con->corner_radius : 0;
+		int border_bottom = con->current.border_bottom ? border_width : 0;
 		int border_left = con->current.border_left ? border_width : 0;
 		int border_right = con->current.border_right ? border_width : 0;
 		int vert_border_height = MAX(0, height - border_top - border_bottom);
 
-		wlr_scene_rect_set_size(con->border.top, width, border_top);
-		wlr_scene_rect_set_size(con->border.bottom, width, border_bottom);
-		wlr_scene_rect_set_size(con->border.left, border_left, vert_border_height);
-		wlr_scene_rect_set_size(con->border.right, border_right, vert_border_height);
+		wlr_scene_rect_set_size(con->border.top, width, border_top + con->corner_radius);
+		wlr_scene_rect_set_size(con->border.bottom, width, border_bottom + con->corner_radius);
+		wlr_scene_rect_set_size(con->border.left,
+				border_left, vert_border_height - vert_border_offset - con->corner_radius);
+		wlr_scene_rect_set_size(con->border.right,
+				border_right, vert_border_height - vert_border_offset - con->corner_radius);
 
 		wlr_scene_rect_set_corner_radius(con->border.top,
 			con->corner_radius + border_width, CORNER_LOCATION_TOP);
@@ -453,19 +457,19 @@ static void arrange_container(struct sway_container *con,
 			.corners = CORNER_LOCATION_BOTTOM,
 			.size = {
 				.x = border_width,
-				.y = vert_border_height + border_top,
+				.y = vert_border_height + border_top - con->corner_radius,
 				.width = width - 2 * border_width,
-				.height = border_bottom - border_width,
+				.height = border_bottom - border_width + con->corner_radius,
 			}
 		});
 
 		wlr_scene_node_set_position(&con->border.top->node, 0, 0);
 		wlr_scene_node_set_position(&con->border.bottom->node,
-			0, height - border_bottom);
+			0, height - border_bottom - con->corner_radius);
 		wlr_scene_node_set_position(&con->border.left->node,
-			0, border_top);
+			0, border_top + vert_border_offset);
 		wlr_scene_node_set_position(&con->border.right->node,
-			width - border_right, border_top);
+			width - border_right, border_top + vert_border_offset);
 
 		if (con->shadow_enabled && (con->current.border != B_CSD || config->shadows_on_csd_enabled)) {
 			wlr_scene_node_set_enabled(&con->shadow->node, true);
@@ -500,8 +504,7 @@ static void arrange_container(struct sway_container *con,
 		// make sure to reparent, it's possible that the client just came out of
 		// fullscreen mode where the parent of the surface is not the container
 		wlr_scene_node_reparent(&con->view->scene_tree->node, con->content_tree);
-		wlr_scene_node_set_position(&con->view->scene_tree->node, border_left,
-			border_top != (int)container_titlebar_height() ? border_top - con->corner_radius : border_top);
+		wlr_scene_node_set_position(&con->view->scene_tree->node, border_left, border_top);
 	} else {
 		// make sure to disable the title bar if the parent is not managing it
 		if (title_bar) {
