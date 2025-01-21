@@ -217,7 +217,7 @@ static void output_configure_scene(struct sway_output *output, struct wlr_scene_
 		blur_enabled = con->blur_enabled;
 
 		enum sway_container_layout layout = con->current.layout;
-		has_titlebar = con->current.border == B_NORMAL || layout == L_STACKED || layout == L_TABBED;
+		has_titlebar |= con->current.border == B_NORMAL || layout == L_STACKED || layout == L_TABBED;
 	}
 
 	if (node->type == WLR_SCENE_NODE_BUFFER) {
