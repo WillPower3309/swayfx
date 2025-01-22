@@ -251,6 +251,7 @@ static void output_configure_scene(struct sway_output *output, struct wlr_scene_
 			wlr_scene_buffer_set_corner_radius(buffer, corner_radius,
 					has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL);
 			wlr_scene_buffer_set_backdrop_blur(buffer, blur_enabled);
+			wlr_scene_buffer_set_backdrop_blur_ignore_transparent(buffer, false);
 			// Only enable xray blur if tiled or when xray is explicitly enabled
 			// TODO: this probably does nothing for tiled cons since it can't associate the buffer w a con
 			bool should_optimize_blur = (con && !container_is_floating_or_child(con)) || config->blur_xray;
