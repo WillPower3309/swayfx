@@ -375,7 +375,13 @@ void container_arrange_title_bar(struct sway_container *con) {
 	wlr_scene_rect_set_size(con->title_bar.background, width - thickness * 2, height - thickness * 2);
 	wlr_scene_rect_set_corner_radius(con->title_bar.background,
 			con->corner_radius + con->current.border_thickness - thickness, corners);
-	// TODO: additional clip_area for title text (similar to how we do for buffer to clip csd decos?)
+
+	// TODO: for title and marks
+	wlr_scene_rect_set_hole_data(con->title_bar.background, (struct hole_data) {
+			.corner_radius = 0,
+			.corners = CORNER_LOCATION_NONE,
+			.size = { 0, 0, 0, 0 },
+	});
 
 	wlr_scene_rect_set_size(con->title_bar.border, width, height);
 	wlr_scene_rect_set_corner_radius(con->title_bar.border,
