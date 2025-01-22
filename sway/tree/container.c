@@ -377,7 +377,7 @@ void container_arrange_title_bar(struct sway_container *con) {
 			con->corner_radius + con->current.border_thickness - thickness, corners);
 
 	// TODO: for title and marks
-	wlr_scene_rect_set_hole_data(con->title_bar.background, (struct hole_data) {
+	wlr_scene_rect_set_clipped_region(con->title_bar.background, (struct clipped_region) {
 			.corner_radius = 0,
 			.corners = CORNER_LOCATION_NONE,
 			.size = { 0, 0, 0, 0 },

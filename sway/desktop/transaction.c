@@ -3,8 +3,8 @@
 #include <string.h>
 #include <time.h>
 #include <wlr/types/wlr_buffer.h>
+#include "scenefx/types/fx/clipped_region.h"
 #include "scenefx/types/fx/corner_location.h"
-#include "scenefx/types/fx/hole_data.h"
 #include "sway/config.h"
 #include "sway/scene_descriptor.h"
 #include "sway/desktop/idle_inhibit_v1.h"
@@ -413,7 +413,7 @@ static void arrange_container(struct sway_container *con,
 		int y = config->shadow_offset_y - config->shadow_blur_sigma;
 		wlr_scene_node_set_position(&con->shadow->node, x, y);
 
-		wlr_scene_shadow_set_hole_data(con->shadow, (struct hole_data) {
+		wlr_scene_shadow_set_clipped_region(con->shadow, (struct clipped_region) {
 			.corner_radius = corner_radius,
 			.corners = CORNER_LOCATION_ALL,
 			.size = {
@@ -485,7 +485,7 @@ static void arrange_container(struct sway_container *con,
 		wlr_scene_rect_set_corner_radius(con->border.bottom,
 			con->corner_radius + border_width, CORNER_LOCATION_BOTTOM);
 
-		wlr_scene_rect_set_hole_data(con->border.top, (struct hole_data) {
+		wlr_scene_rect_set_clipped_region(con->border.top, (struct clipped_region) {
 			.corner_radius = con->corner_radius,
 			.corners = CORNER_LOCATION_TOP,
 			.size = {
@@ -495,7 +495,7 @@ static void arrange_container(struct sway_container *con,
 				.height = border_top + con->corner_radius
 			}
 		});
-		wlr_scene_rect_set_hole_data(con->border.bottom, (struct hole_data) {
+		wlr_scene_rect_set_clipped_region(con->border.bottom, (struct clipped_region) {
 			.corner_radius = con->corner_radius,
 			.corners = CORNER_LOCATION_BOTTOM,
 			.size = {
