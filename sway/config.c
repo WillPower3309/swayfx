@@ -357,6 +357,7 @@ static void config_defaults(struct sway_config *config) {
 	color_to_rgba(config->shadow_color, 0x0000007F);
 	color_to_rgba(config->shadow_inactive_color, 0x0000007F);
 
+	config->titlebar_separator = true;
 	config->scratchpad_minimize = false;
 
 	// The keysym to keycode translation

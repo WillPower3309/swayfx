@@ -497,6 +497,7 @@ struct sway_config {
 	float shadow_inactive_color[4];
 	float shadow_offset_x, shadow_offset_y;
 
+	bool titlebar_separator;
 	bool scratchpad_minimize;
 
 	char *swaynag_command;

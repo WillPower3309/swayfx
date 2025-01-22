@@ -372,7 +372,8 @@ void container_arrange_title_bar(struct sway_container *con) {
 
 	int thickness = config->titlebar_border_thickness;
 	wlr_scene_node_set_position(&con->title_bar.background->node, thickness, thickness);
-	wlr_scene_rect_set_size(con->title_bar.background, width - thickness * 2, height - thickness * 2);
+	wlr_scene_rect_set_size(con->title_bar.background, width - thickness * 2,
+			height - thickness * (config->titlebar_separator ? 2 : 0));
 	wlr_scene_rect_set_corner_radius(con->title_bar.background,
 			con->corner_radius + con->current.border_thickness - thickness, corners);
 
