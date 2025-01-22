@@ -16,6 +16,7 @@
 #include <wlr/types/wlr_output.h>
 #include <wlr/types/wlr_presentation_time.h>
 #include <wlr/types/wlr_compositor.h>
+#include <wlr/types/wlr_xdg_shell.h>
 #include <wlr/util/region.h>
 #include <wlr/util/transform.h>
 #include "config.h"
@@ -238,14 +239,25 @@ static void output_configure_scene(struct sway_output *output, struct wlr_scene_
 		buffer->filter_mode = get_scale_filter(output, buffer);
 
 		wlr_scene_buffer_set_opacity(buffer, opacity);
-		wlr_scene_buffer_set_corner_radius(buffer, corner_radius,
-				has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL);
-		wlr_scene_buffer_set_backdrop_blur(buffer, blur_enabled);
-		// Only enable xray blur if tiled or when xray is explicitly enabled
-		// TODO: this probably does nothing for tiled cons since it can't associate the buffer w a con
-		bool should_optimize_blur = (con && !container_is_floating_or_child(con)) || config->blur_xray;
-		wlr_scene_buffer_set_backdrop_blur_optimized(buffer, should_optimize_blur);
 
+		if (!surface || !surface->surface) {
+			return;
+		}
+		// Other buffers should set their own effects manually, like the
+		// text buffer and saved views
+		struct wlr_layer_surface_v1 *layer_surface = NULL;
+		if (wlr_xdg_surface_try_from_wlr_surface(surface->surface)
+				|| wlr_xwayland_surface_try_from_wlr_surface(surface->surface)) {
+			wlr_scene_buffer_set_corner_radius(buffer, corner_radius,
+					has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL);
+			wlr_scene_buffer_set_backdrop_blur(buffer, blur_enabled);
+			// Only enable xray blur if tiled or when xray is explicitly enabled
+			// TODO: this probably does nothing for tiled cons since it can't associate the buffer w a con
+			bool should_optimize_blur = (con && !container_is_floating_or_child(con)) || config->blur_xray;
+			wlr_scene_buffer_set_backdrop_blur_optimized(buffer, should_optimize_blur);
+		} else if ((layer_surface = wlr_layer_surface_v1_try_from_wlr_surface(surface->surface))) {
+			// TODO: Layer effects
+		}
 	} else if (node->type == WLR_SCENE_NODE_TREE) {
 		struct wlr_scene_tree *tree = wlr_scene_tree_from_node(node);
 		struct wlr_scene_node *node;

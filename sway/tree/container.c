@@ -388,6 +388,12 @@ void container_arrange_title_bar(struct sway_container *con) {
 	wlr_scene_rect_set_corner_radius(con->title_bar.border,
 			con->corner_radius + con->current.border_thickness, corners);
 
+	struct wlr_scene_buffer *text_buffer
+		= wl_container_of(con->title_bar.title_text->node, text_buffer, node);
+	if (text_buffer) {
+		wlr_scene_buffer_set_corner_radius(text_buffer, 0, CORNER_LOCATION_NONE);
+	}
+
 	container_update(con);
 }
 
