@@ -205,7 +205,7 @@ static enum wlr_scale_filter_mode get_scale_filter(struct sway_output *output,
 }
 
 static void output_configure_scene(struct sway_output *output, struct wlr_scene_node *node, float opacity,
-		int corner_radius, bool blur_enabled, bool has_titlebar) {
+		int corner_radius, bool blur_enabled, bool has_titlebar, struct sway_container *closest_con) {
 	if (!node->enabled) {
 		return;
 	}
@@ -213,6 +213,7 @@ static void output_configure_scene(struct sway_output *output, struct wlr_scene_
 	struct sway_container *con =
 		scene_descriptor_try_get(node, SWAY_SCENE_DESC_CONTAINER);
 	if (con) {
+		closest_con = con;
 		opacity = con->alpha;
 		corner_radius = con->corner_radius;
 		blur_enabled = con->blur_enabled;
@@ -253,8 +254,7 @@ static void output_configure_scene(struct sway_output *output, struct wlr_scene_
 			wlr_scene_buffer_set_backdrop_blur(buffer, blur_enabled);
 			wlr_scene_buffer_set_backdrop_blur_ignore_transparent(buffer, false);
 			// Only enable xray blur if tiled or when xray is explicitly enabled
-			// TODO: this probably does nothing for tiled cons since it can't associate the buffer w a con
-			bool should_optimize_blur = (con && !container_is_floating_or_child(con)) || config->blur_xray;
+			bool should_optimize_blur = (closest_con && !container_is_floating_or_child(closest_con)) || config->blur_xray;
 			wlr_scene_buffer_set_backdrop_blur_optimized(buffer, should_optimize_blur);
 		} else if ((layer_surface = wlr_layer_surface_v1_try_from_wlr_surface(surface->surface))) {
 			// TODO: Layer effects
@@ -263,7 +263,7 @@ static void output_configure_scene(struct sway_output *output, struct wlr_scene_
 		struct wlr_scene_tree *tree = wlr_scene_tree_from_node(node);
 		struct wlr_scene_node *node;
 		wl_list_for_each(node, &tree->children, link) {
-			output_configure_scene(output, node, opacity, corner_radius, blur_enabled, has_titlebar);
+			output_configure_scene(output, node, opacity, corner_radius, blur_enabled, has_titlebar, closest_con);
 		}
 	}
 }
@@ -293,7 +293,7 @@ static int output_repaint_timer_handler(void *data) {
 		return 0;
 	}
 	output_configure_scene(output, &root->root_scene->tree.node, 1.0f,
-			0, false, false);
+			0, false, false, NULL);
 
 	struct wlr_scene_output_state_options opts = {
 		.color_transform = output->color_transform,
