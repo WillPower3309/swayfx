@@ -257,8 +257,16 @@ static void output_configure_scene(struct sway_output *output, struct wlr_scene_
 			// Only enable xray blur if tiled or when xray is explicitly enabled
 			bool should_optimize_blur = (closest_con && !container_is_floating_or_child(closest_con)) || config->blur_xray;
 			wlr_scene_buffer_set_backdrop_blur_optimized(buffer, should_optimize_blur);
-		} else if ((layer_surface = wlr_layer_surface_v1_try_from_wlr_surface(surface->surface))) {
-			// TODO: Layer effects
+		} else if ((layer_surface = wlr_layer_surface_v1_try_from_wlr_surface(surface->surface))
+				&& layer_surface->data) {
+			// Layer effects
+			struct sway_layer_surface *surface = layer_surface->data;
+			wlr_scene_buffer_set_corner_radius(buffer, surface->corner_radius, CORNER_LOCATION_ALL);
+			wlr_scene_shadow_set_blur_sigma(surface->shadow_node, config->shadow_blur_sigma);
+			wlr_scene_shadow_set_corner_radius(surface->shadow_node, surface->corner_radius);
+			wlr_scene_buffer_set_backdrop_blur(buffer, surface->blur_enabled);
+			wlr_scene_buffer_set_backdrop_blur_ignore_transparent(buffer, surface->blur_ignore_transparent);
+			wlr_scene_buffer_set_backdrop_blur_optimized(buffer, surface->blur_xray);
 		}
 	} else if (node->type == WLR_SCENE_NODE_TREE) {
 		struct wlr_scene_tree *tree = wlr_scene_tree_from_node(node);

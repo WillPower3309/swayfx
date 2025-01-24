@@ -501,6 +501,8 @@ struct sway_config {
 	bool titlebar_separator;
 	bool scratchpad_minimize;
 
+	list_t *layer_criteria;
+
 	char *swaynag_command;
 	struct swaynag_instance swaynag_config_errors;
 	list_t *symbols;

@@ -22,6 +22,7 @@
 #include "sway/commands.h"
 #include "sway/config.h"
 #include "sway/criteria.h"
+#include "sway/layer_criteria.h"
 #include "sway/desktop/transaction.h"
 #include "sway/server.h"
 #include "sway/swaynag.h"
@@ -165,6 +166,12 @@ void free_config(struct sway_config *config) {
 			criteria_destroy(config->criteria->items[i]);
 		}
 		list_free(config->criteria);
+	}
+	if (config->layer_criteria) {
+		for (int i = 0; i < config->layer_criteria->length; ++i) {
+			layer_criteria_destroy(config->layer_criteria->items[i]);
+		}
+		list_free(config->layer_criteria);
 	}
 	list_free(config->no_focus);
 	list_free(config->active_bar_modifiers);
@@ -360,6 +367,10 @@ static void config_defaults(struct sway_config *config) {
 
 	config->titlebar_separator = true;
 	config->scratchpad_minimize = false;
+
+	if (!(config->layer_criteria = create_list())) {
+		goto cleanup;
+	}
 
 	// The keysym to keycode translation
 	struct xkb_rule_names rules = {0};

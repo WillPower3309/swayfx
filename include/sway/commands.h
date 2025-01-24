@@ -97,6 +97,10 @@ void container_resize_tiled(struct sway_container *parent, uint32_t axis,
 
 struct sway_container *container_find_resize_parent(struct sway_container *con,
 		uint32_t edge);
+/**
+ * Effect handlers value parsers
+ */
+bool cmd_corner_radius_parse_value(char *arg, int* result);
 
 /**
  * Handlers shared by exec and exec_always.
@@ -159,6 +163,7 @@ sway_cmd cmd_input;
 sway_cmd cmd_seat;
 sway_cmd cmd_ipc;
 sway_cmd cmd_kill;
+sway_cmd cmd_layer_effects;
 sway_cmd cmd_layout;
 sway_cmd cmd_log_colors;
 sway_cmd cmd_mark;

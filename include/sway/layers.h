@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <wlr/types/wlr_compositor.h>
 #include <wlr/types/wlr_layer_shell_v1.h>
+#include "sway/layer_criteria.h"
 #include "sway/tree/view.h"
 
 struct sway_layer_surface {
@@ -21,7 +22,14 @@ struct sway_layer_surface {
 	struct sway_output *output;
 	struct wlr_scene_layer_surface_v1 *scene;
 	struct wlr_scene_tree *tree;
+	struct wlr_scene_shadow *shadow_node;
 	struct wlr_layer_surface_v1 *layer_surface;
+
+	bool shadow_enabled;
+	bool blur_enabled;
+	bool blur_xray;
+	bool blur_ignore_transparent;
+	int corner_radius;
 };
 
 struct sway_layer_popup {
@@ -40,5 +48,7 @@ struct wlr_layer_surface_v1 *toplevel_layer_surface_from_surface(
 		struct wlr_surface *surface);
 
 void arrange_layers(struct sway_output *output);
+
+void layer_apply_criteria(struct sway_layer_surface *surface, struct layer_criteria *criteria);
 
 #endif
