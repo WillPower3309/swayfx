@@ -47,12 +47,24 @@ Sway is an incredible window manager, and certainly one of the most well establi
     - The current layer namespaces can be shown with `swaymsg -r -t get_outputs | jq '.[0].layer_shell_surfaces | .[] | .namespace'`
     - Example: `layer_effects "waybar" blur enable; shadows enable; corner_radius 6`
       - Note: If an application uses gtk, its namespace is likely to be "gtk-layer-shell"
-    - SwayIPC Example: `swaymsg "layer_effects 'waybar' 'blur enable; shadows enable; corner_radius 6'"`
+    - SwayIPC Example: `swaymsg layer_effects "waybar" "blur enable"` (you can only set one effect at a time through `swaymsg`)
+    - Config Example:
+        ```
+        layer_effects "waybar" {
+            blur enable;
+            blur_xray enable;
+            blur_ignore_transparent enable;
+            shadows enable;
+            corner_radius 20;
+        }
+        ```
     - Available Effects:
         - `blur <enable|disable>`
+        - `blur_xray <enable|disable>`
         - `blur_ignore_transparent <enable|disable>`
         - `shadows <enable|disable>`
         - `corner_radius <int>`
+        - `reset`: To reset/disable all previously applied effects to the layer application
 + Dim unfocused windows:
     - `default_dim_inactive <float value 0.0 - 1.0>`
     - `for_window [CRITERIA_HERE] dim_inactive <float value 0.0 - 1.0>`
