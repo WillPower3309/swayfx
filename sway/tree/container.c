@@ -118,6 +118,10 @@ struct sway_container *container_create(struct sway_view *view) {
 		c->border.left = alloc_rect_node(c->border.tree, &failed);
 		c->border.right = alloc_rect_node(c->border.tree, &failed);
 
+		c->dim_rect = alloc_rect_node(c->border.tree, &failed);
+		// Disable rect input
+		c->dim_rect->accepts_input = false;
+
 		c->output_handler = wlr_scene_buffer_create(c->border.tree, NULL);
 		if (!c->output_handler) {
 			sway_log(SWAY_ERROR, "Failed to allocate a scene node");
@@ -158,6 +162,7 @@ struct sway_container *container_create(struct sway_view *view) {
 	c->corner_radius = config->corner_radius;
 	c->blur_enabled = config->blur_enabled;
 	c->shadow_enabled = config->shadow_enabled;
+	c->dim = config->default_dim_inactive;
 
 	wl_signal_init(&c->events.destroy);
 	wl_signal_emit_mutable(&root->events.new_node, &c->node);
@@ -287,6 +292,27 @@ void container_update(struct sway_container *con) {
 	if (con->title_bar.marks_text) {
 		sway_text_node_set_color(con->title_bar.marks_text, colors->text);
 		sway_text_node_set_background(con->title_bar.marks_text, colors->background);
+	}
+
+	if (con->dim_rect) {
+		float *color = config->dim_inactive_colors.unfocused;
+
+		// Urgency
+		if (con->view && view_is_urgent(con->view)) {
+			color = config->dim_inactive_colors.urgent;
+		}
+		// Focused
+		struct sway_container *active_child;
+		if (con->current.parent) {
+			active_child = con->current.parent->current.focused_inactive_child;
+		} else if (con->current.workspace) {
+			active_child = con->current.workspace->current.focused_inactive_child;
+		} else {
+			active_child = NULL;
+		}
+		bool focused = con->current.focused || container_is_current_parent_focused(con) || con == active_child;
+
+		scene_rect_set_color(con->dim_rect, color, focused ? 0.0 : con->dim);
 	}
 }
 

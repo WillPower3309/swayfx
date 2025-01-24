@@ -518,6 +518,16 @@ static void arrange_container(struct sway_container *con,
 		wlr_scene_node_set_position(&con->border.right->node,
 			width - border_right, border_top + vert_border_offset);
 
+		// Dim
+		if (con->dim_rect) {
+			wlr_scene_node_set_position(&con->dim_rect->node, border_left, border_top);
+			wlr_scene_rect_set_size(con->dim_rect, con->current.content_width,
+					con->current.content_height);
+			bool has_titlebar = title_bar || con->current.border == B_NORMAL;
+			wlr_scene_rect_set_corner_radius(con->dim_rect, con->corner_radius,
+					has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL);
+		}
+
 		// make sure to reparent, it's possible that the client just came out of
 		// fullscreen mode where the parent of the surface is not the container
 		wlr_scene_node_reparent(&con->view->scene_tree->node, con->content_tree);

@@ -93,6 +93,7 @@ struct sway_container {
 	struct wlr_scene_shadow *shadow;
 
 	struct wlr_scene_tree *content_tree;
+	struct wlr_scene_rect *dim_rect;
 	struct wlr_scene_buffer *output_handler;
 
 	struct wl_listener output_enter;
@@ -148,6 +149,7 @@ struct sway_container {
 	int corner_radius;
 	bool blur_enabled;
 	bool shadow_enabled;
+	float dim;
 
 	list_t *marks; // char *
 

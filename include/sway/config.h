@@ -487,6 +487,12 @@ struct sway_config {
 	int corner_radius;
 	bool smart_corner_radius;
 
+	float default_dim_inactive;
+	struct {
+		float unfocused[4];
+		float urgent[4];
+	} dim_inactive_colors;
+
 	bool blur_enabled;
 	bool blur_xray;
 	struct blur_data blur_data;
