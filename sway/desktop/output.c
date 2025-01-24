@@ -570,7 +570,7 @@ static void handle_request_state(struct wl_listener *listener, void *data) {
 	store_output_config(oc);
 
 	wlr_scene_optimized_blur_set_size(output->layers.blur_layer,
-			output->wlr_output->width, output->wlr_output->height);
+			oc->width, oc->height);
 
 	force_modeset();
 }
