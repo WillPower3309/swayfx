@@ -41,9 +41,9 @@ struct cmd_results *cmd_layer_effects(int argc, char **argv) {
 					}
 				}
 			}
-		}
 
-		arrange_root();
+			arrange_layers(output);
+		}
 	}
 
 	return cmd_results_new(CMD_SUCCESS, NULL);
