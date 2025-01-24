@@ -397,8 +397,10 @@ static void arrange_container(struct sway_container *con,
 		wlr_scene_buffer_set_dest_size(con->output_handler, width, height);
 	}
 
+	bool has_corner_radius = container_has_corner_radius(con);
+
 	if (container_has_shadow(con)) {
-		int corner_radius = con->corner_radius + con->current.border_thickness;
+		int corner_radius = has_corner_radius ? con->corner_radius + con->current.border_thickness : 0;
 		if (!con->view && title_bar) {
 			// Stacking/Tabbed containers don't have a border_thickness, so we
 			// use the config default
@@ -428,13 +430,15 @@ static void arrange_container(struct sway_container *con,
 				config->shadow_color : config->shadow_inactive_color;
 		wlr_scene_shadow_set_color(con->shadow, shadow_color);
 		wlr_scene_shadow_set_blur_sigma(con->shadow, config->shadow_blur_sigma);
-		wlr_scene_shadow_set_corner_radius(con->shadow, corner_radius);
+		wlr_scene_shadow_set_corner_radius(con->shadow,
+				!has_corner_radius ? 0 : corner_radius);
 	}
 
 	if (con->view) {
+		int corner_radius = has_corner_radius ? con->corner_radius : 0;
 		int border_top = container_titlebar_height();
 		int border_width = con->current.border_thickness;
-		int vert_border_offset = con->corner_radius;
+		int vert_border_offset = corner_radius;
 
 		if (title_bar && con->current.border != B_NORMAL) {
 			wlr_scene_node_set_enabled(&con->title_bar.tree->node, false);
@@ -473,42 +477,42 @@ static void arrange_container(struct sway_container *con,
 		int border_right = con->current.border_right ? border_width : 0;
 		int vert_border_height = MAX(0, height - border_top - border_bottom);
 
-		wlr_scene_rect_set_size(con->border.top, width, border_top + con->corner_radius);
-		wlr_scene_rect_set_size(con->border.bottom, width, border_bottom + con->corner_radius);
+		wlr_scene_rect_set_size(con->border.top, width, border_top + corner_radius);
+		wlr_scene_rect_set_size(con->border.bottom, width, border_bottom + corner_radius);
 		wlr_scene_rect_set_size(con->border.left,
-				border_left, vert_border_height - vert_border_offset - con->corner_radius);
+				border_left, vert_border_height - vert_border_offset - corner_radius);
 		wlr_scene_rect_set_size(con->border.right,
-				border_right, vert_border_height - vert_border_offset - con->corner_radius);
+				border_right, vert_border_height - vert_border_offset - corner_radius);
 
-		wlr_scene_rect_set_corner_radius(con->border.top,
-			con->corner_radius + border_width, CORNER_LOCATION_TOP);
-		wlr_scene_rect_set_corner_radius(con->border.bottom,
-			con->corner_radius + border_width, CORNER_LOCATION_BOTTOM);
+		wlr_scene_rect_set_corner_radius(con->border.top, !has_corner_radius ? 0 :
+				corner_radius + border_width, CORNER_LOCATION_TOP);
+		wlr_scene_rect_set_corner_radius(con->border.bottom, !has_corner_radius ? 0 :
+				corner_radius + border_width, CORNER_LOCATION_BOTTOM);
 
 		wlr_scene_rect_set_clipped_region(con->border.top, (struct clipped_region) {
-			.corner_radius = con->corner_radius,
+			.corner_radius = corner_radius,
 			.corners = CORNER_LOCATION_TOP,
 			.size = {
 				.x = border_width,
 				.y = border_width,
 				.width = width - 2 * border_width,
-				.height = border_top + con->corner_radius
+				.height = border_top + corner_radius
 			}
 		});
 		wlr_scene_rect_set_clipped_region(con->border.bottom, (struct clipped_region) {
-			.corner_radius = con->corner_radius,
+			.corner_radius = corner_radius,
 			.corners = CORNER_LOCATION_BOTTOM,
 			.size = {
 				.x = border_width,
-				.y = vert_border_height + border_top - con->corner_radius,
+				.y = vert_border_height + border_top - corner_radius,
 				.width = width - 2 * border_width,
-				.height = border_bottom - border_width + con->corner_radius,
+				.height = border_bottom - border_width + corner_radius,
 			}
 		});
 
 		wlr_scene_node_set_position(&con->border.top->node, 0, 0);
 		wlr_scene_node_set_position(&con->border.bottom->node,
-			0, height - border_bottom - con->corner_radius);
+			0, height - border_bottom - corner_radius);
 		wlr_scene_node_set_position(&con->border.left->node,
 			0, border_top + vert_border_offset);
 		wlr_scene_node_set_position(&con->border.right->node,

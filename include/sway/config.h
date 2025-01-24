@@ -485,6 +485,7 @@ enum xwayland_mode {
  */
 struct sway_config {
 	int corner_radius;
+	bool smart_corner_radius;
 
 	bool blur_enabled;
 	bool blur_xray;

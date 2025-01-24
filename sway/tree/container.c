@@ -370,11 +370,12 @@ void container_arrange_title_bar(struct sway_container *con) {
 		}
 	}
 
+	bool has_corner_radius = container_has_corner_radius(con);
 	int thickness = config->titlebar_border_thickness;
 	wlr_scene_node_set_position(&con->title_bar.background->node, thickness, thickness);
 	wlr_scene_rect_set_size(con->title_bar.background, width - thickness * 2,
 			height - thickness * (config->titlebar_separator ? 2 : 1));
-	wlr_scene_rect_set_corner_radius(con->title_bar.background,
+	wlr_scene_rect_set_corner_radius(con->title_bar.background, !has_corner_radius ? 0 :
 			con->corner_radius + con->current.border_thickness - thickness, corners);
 
 	// TODO: for title and marks
@@ -385,7 +386,7 @@ void container_arrange_title_bar(struct sway_container *con) {
 	});
 
 	wlr_scene_rect_set_size(con->title_bar.border, width, height);
-	wlr_scene_rect_set_corner_radius(con->title_bar.border,
+	wlr_scene_rect_set_corner_radius(con->title_bar.border, !has_corner_radius ? 0 :
 			con->corner_radius + con->current.border_thickness, corners);
 
 	container_update(con);
@@ -1905,4 +1906,12 @@ void container_swap(struct sway_container *con1, struct sway_container *con2) {
 bool container_has_shadow(struct sway_container *con) {
 	return con->shadow_enabled
 		&& (con->current.border != B_CSD || config->shadows_on_csd_enabled);
+}
+
+bool container_has_corner_radius(struct sway_container *con) {
+	if (!con) {
+		return false;
+	}
+	return container_is_floating_or_child(con)
+			|| !(config->smart_corner_radius && con->current.workspace->current_gaps.top == 0);
 }

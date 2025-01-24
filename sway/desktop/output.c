@@ -249,7 +249,8 @@ static void output_configure_scene(struct sway_output *output, struct wlr_scene_
 		struct wlr_layer_surface_v1 *layer_surface = NULL;
 		if (wlr_xdg_surface_try_from_wlr_surface(surface->surface)
 				|| wlr_xwayland_surface_try_from_wlr_surface(surface->surface)) {
-			wlr_scene_buffer_set_corner_radius(buffer, corner_radius,
+			wlr_scene_buffer_set_corner_radius(buffer,
+					container_has_corner_radius(closest_con) ? corner_radius : 0,
 					has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL);
 			wlr_scene_buffer_set_backdrop_blur(buffer, blur_enabled);
 			wlr_scene_buffer_set_backdrop_blur_ignore_transparent(buffer, false);

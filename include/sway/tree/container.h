@@ -373,4 +373,6 @@ void container_update_itself_and_parents(struct sway_container *con);
 
 bool container_has_shadow(struct sway_container *con);
 
+bool container_has_corner_radius(struct sway_container *con);
+
 #endif
