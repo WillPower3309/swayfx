@@ -8,11 +8,15 @@
 #include <wlr/types/wlr_output.h>
 #include <xkbcommon/xkbcommon.h>
 #include "config.h"
+#include "json_object.h"
 #include "log.h"
 #include "sway/config.h"
 #include "sway/ipc-json.h"
+#include "sway/layers.h"
+#include "sway/scene_descriptor.h"
 #include "sway/server.h"
 #include "sway/tree/container.h"
+#include "sway/tree/root.h"
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
 #include "sway/output.h"
@@ -353,6 +357,83 @@ static void ipc_json_describe_enabled_output(struct sway_output *output,
 			wlr_output->adaptive_sync_status);
 	json_object_object_add(object, "adaptive_sync_status",
 		json_object_new_string(adaptive_sync_status));
+
+	// Layer effects
+	struct json_object *layers = json_object_new_array();
+	struct wlr_scene_tree *scene_layers[] = {
+		output->layers.shell_background,
+		output->layers.shell_bottom,
+		output->layers.shell_overlay,
+		output->layers.shell_top,
+	};
+	size_t nlayers = sizeof(scene_layers) / sizeof(scene_layers[0]);
+	struct wlr_scene_node *node;
+	for (size_t i = 0; i < nlayers; ++i) {
+		wl_list_for_each_reverse(node, &scene_layers[i]->children, link) {
+			struct sway_layer_surface *surface = scene_descriptor_try_get(node,
+				SWAY_SCENE_DESC_LAYER_SHELL);
+			if (!surface || !surface->layer_surface) {
+				continue;
+			}
+			struct wlr_layer_surface_v1 *lsurface = surface->layer_surface;
+
+			// Get the node coordinates
+			int layer_x, layer_y;
+			if (wlr_scene_node_coords(&surface->tree->node, &layer_x, &layer_y)) {
+				// Transform the root-local coordinates to output-local
+				double lx = layer_x, ly = layer_y;
+				wlr_output_layout_output_coords(root->output_layout,
+						output->wlr_output, &lx, &ly);
+				layer_x = lx;
+				layer_y = ly;
+			} else {
+				// The surface is not visible
+				continue;
+			}
+
+			json_object *layer = json_object_new_object();
+			json_object_object_add(layer, "namespace",
+				json_object_new_string(surface->layer_surface->namespace));
+
+			struct json_object *layer_name = NULL;
+			switch (lsurface->current.layer) {
+				case ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND:
+					layer_name = json_object_new_string("background");
+					break;
+				case ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM:
+					layer_name = json_object_new_string("bottom");
+					break;
+				case ZWLR_LAYER_SHELL_V1_LAYER_TOP:
+					layer_name = json_object_new_string("top");
+					break;
+				case ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY:
+					layer_name = json_object_new_string("overlay");
+					break;
+			}
+			json_object_object_add(layer, "layer", layer_name);
+
+			json_object *extent = json_object_new_object();
+			json_object_object_add(extent, "width",
+					json_object_new_int(lsurface->current.actual_width));
+			json_object_object_add(extent, "height",
+					json_object_new_int(lsurface->current.actual_height));
+			json_object_object_add(extent, "x", json_object_new_int(layer_x));
+			json_object_object_add(extent, "y", json_object_new_int(layer_y));
+			json_object_object_add(layer, "extent", extent);
+
+			json_object *effects = json_object_new_object();
+			json_object_object_add(effects, "blur", json_object_new_boolean(surface->blur_enabled));
+			json_object_object_add(effects, "blur_xray", json_object_new_boolean(surface->blur_xray));
+			json_object_object_add(effects, "blur_ignore_transparent",
+					json_object_new_boolean(surface->blur_ignore_transparent));
+			json_object_object_add(effects, "shadows", json_object_new_boolean(surface->shadow_enabled));
+			json_object_object_add(effects, "corner_radius", json_object_new_int(surface->corner_radius));
+			json_object_object_add(layer, "effects", effects);
+
+			json_object_array_add(layers, layer);
+		}
+	}
+	json_object_object_add(object, "layer_shell_surfaces", layers);
 
 	struct sway_workspace *ws = output_get_active_workspace(output);
 	if (!sway_assert(ws, "Expected output to have a workspace")) {

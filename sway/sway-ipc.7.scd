@@ -259,6 +259,37 @@ following properties:
 		"scale": 1.0,
 		"subpixel_hinting": "rgb",
 		"transform": "normal",
+		"layer_shell_surfaces": [
+			{
+				"namespace": "wallpaper",
+				"layer": "background",
+				"extent": {
+					"width": 2560,
+					"height": 1440,
+					"x": 0,
+					"y": 0
+				},
+				"effects": {
+				}
+			},
+			{
+				"namespace": "waybar",
+				"layer": "top",
+				"extent": {
+					"width": 2548,
+					"height": 31,
+					"x": 6,
+					"y": 6
+				},
+				"effects": {
+					"blur": true,
+					"blur_xray": false,
+					"blur_ignore_transparent": false,
+					"shadows": true,
+					"corner_radius": 20
+				}
+			}
+		],
 		"current_workspace": "1",
 		"modes": [
 			{
