@@ -462,7 +462,6 @@ void seatop_begin_move_tiling_threshold(struct sway_seat *seat,
 	}
 	wlr_scene_rect_set_corner_radius(e->indicator_rect, config->corner_radius, CORNER_LOCATION_ALL);
 	wlr_scene_rect_set_backdrop_blur(e->indicator_rect, true);
-	wlr_scene_rect_set_backdrop_blur_optimized(e->indicator_rect, true);
 
 	e->con = con;
 	e->ref_lx = seat->cursor->cursor->x;
