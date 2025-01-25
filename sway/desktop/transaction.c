@@ -418,7 +418,7 @@ static void arrange_container(struct sway_container *con,
 		wlr_scene_shadow_set_clipped_region(con->shadow, (struct clipped_region) {
 			.corner_radius = corner_radius,
 			.corners = CORNER_LOCATION_ALL,
-			.size = {
+			.area = {
 				.x = 0, .y = 0,
 				.width = width,
 				.height = height,
@@ -492,7 +492,7 @@ static void arrange_container(struct sway_container *con,
 		wlr_scene_rect_set_clipped_region(con->border.top, (struct clipped_region) {
 			.corner_radius = corner_radius,
 			.corners = CORNER_LOCATION_TOP,
-			.size = {
+			.area = {
 				.x = border_width,
 				.y = border_width,
 				.width = width - 2 * border_width,
@@ -502,7 +502,7 @@ static void arrange_container(struct sway_container *con,
 		wlr_scene_rect_set_clipped_region(con->border.bottom, (struct clipped_region) {
 			.corner_radius = corner_radius,
 			.corners = CORNER_LOCATION_BOTTOM,
-			.size = {
+			.area = {
 				.x = border_width,
 				.y = vert_border_height + border_top - corner_radius,
 				.width = width - 2 * border_width,
