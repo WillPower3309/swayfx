@@ -476,7 +476,7 @@ int main(int argc, char **argv) {
 			cmdtype = strdup(optarg);
 			break;
 		case 'v':
-			printf("swaymsg version " SWAY_VERSION "\n");
+			printf("swaymsg version " SWAY_VERSION " (based on sway " SWAY_ORIGINAL_VERSION ")\n");
 			exit(EXIT_SUCCESS);
 			break;
 		default:

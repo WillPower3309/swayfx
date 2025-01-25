@@ -245,7 +245,7 @@ int main(int argc, char **argv) {
 			allow_unsupported_gpu = true;
 			break;
 		case 'v': // version
-			printf("sway version " SWAY_VERSION "\n");
+			printf("swayfx version " SWAY_VERSION " (based on sway " SWAY_ORIGINAL_VERSION ")\n");
 			exit(EXIT_SUCCESS);
 			break;
 		case 'V': // verbose
@@ -292,7 +292,7 @@ int main(int argc, char **argv) {
 		wlr_log_init(WLR_ERROR, handle_wlr_log);
 	}
 
-	sway_log(SWAY_INFO, "Sway version " SWAY_VERSION);
+	sway_log(SWAY_INFO, "swayfx version " SWAY_VERSION " (based on sway version " SWAY_ORIGINAL_VERSION ")");
 	sway_log(SWAY_INFO, "wlroots version " WLR_VERSION_STR);
 	log_kernel();
 	log_distro();
@@ -329,7 +329,8 @@ int main(int argc, char **argv) {
 	// prevent ipc from crashing sway
 	signal(SIGPIPE, SIG_IGN);
 
-	sway_log(SWAY_INFO, "Starting sway version " SWAY_VERSION);
+	sway_log(SWAY_INFO, "Starting swayfx version " SWAY_VERSION
+			" (based on sway version " SWAY_ORIGINAL_VERSION ")");
 
 	if (!server_init(&server)) {
 		return 1;
