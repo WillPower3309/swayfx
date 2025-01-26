@@ -842,17 +842,26 @@ The default colors are:
 
 	Effects:
 	- *blur* <enable|disable>
+	- *blur_xray* <enable|disable>
 	- *blur_ignore_transparent* <enable|disable>
 	- *shadows* <enable|disable>
 	- *corner_radius* <integer>
+	- *reset* Resets all previously applied effects
+	- *reset* To reset/disable all previously applied effects to the layer application
 
 	Example:
 
-		layer_effects "waybar" blur enable; shadows enable; corner_radius 6
+		layer_effects "waybar" {
+			blur enable;
+			blur_xray enable;
+			blur_ignore_transparent enable;
+			shadows enable;
+			corner_radius 6;
+		}
 
-	SwayIPC Example:
+	SwayIPC Example (you can only set one effect at a time through `swaymsg`):
 
-		swaymsg "layer_effects 'waybar' 'blur enable; shadows enable'"
+		swaymsg layer_effects "waybar" "blur enable"
 
 *gaps* inner|outer|horizontal|vertical|top|right|bottom|left <amount>
 	Sets default _amount_ pixels of _inner_ or _outer_ gap, where the inner
