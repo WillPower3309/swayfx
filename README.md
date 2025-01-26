@@ -10,7 +10,6 @@ Sway is an incredible window manager, and certainly one of the most well establi
 + **Anti-aliased rounded corners, borders, and titlebars**
 + **Shadows**
 + **Dim unfocused windows**
-+ **Per application saturation control**: Allows the user to set the saturation (Digital Vibrance) for specific applications. Great for some FPS games!
 + **Scratchpad treated as minimize**: Allows docks, or panels with a taskbar, to correctly interpret minimize / unminimize requests ([thanks to LCBCrion](https://github.com/swaywm/sway/issues/6457))
 + **nixify the repo**: Allows nixos users to easily contribute to and test this project
 
@@ -70,7 +69,6 @@ Sway is an incredible window manager, and certainly one of the most well establi
     - `for_window [CRITERIA_HERE] dim_inactive <float value 0.0 - 1.0>`
     - `dim_inactive_colors.unfocused <hex color> ex, #000000FF`
     - `dim_inactive_colors.urgent <hex color> ex, #900000FF`
-+ Application saturation: `for_window [CRITERIA HERE] saturation <set|plus|minus> <val 0.0 <-> 2.0>`
 + Keep/remove separator border between titlebar and content: `titlebar_separator enable|disable`
 + Treat Scratchpad as minimized: `scratchpad_minimize enable|disable`: **we recommend keeping this setting off, as there are many kinks to iron out here**
 
