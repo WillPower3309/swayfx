@@ -156,6 +156,9 @@ static bool split_titlebar(struct sway_node *node, struct sway_container *avoid,
 static void update_indicator(struct seatop_move_tiling_event *e, struct wlr_box *box) {
 	wlr_scene_node_set_position(&e->indicator_rect->node, box->x, box->y);
 	wlr_scene_rect_set_size(e->indicator_rect, box->width, box->height);
+	wlr_scene_rect_set_corner_radius(e->indicator_rect,
+			MIN(config->corner_radius, MIN(box->width / 2, box->height / 2)),
+			CORNER_LOCATION_ALL);
 }
 
 static void handle_motion_postthreshold(struct sway_seat *seat) {
@@ -460,7 +463,6 @@ void seatop_begin_move_tiling_threshold(struct sway_seat *seat,
 		free(e);
 		return;
 	}
-	wlr_scene_rect_set_corner_radius(e->indicator_rect, config->corner_radius, CORNER_LOCATION_ALL);
 	wlr_scene_rect_set_backdrop_blur(e->indicator_rect, true);
 
 	e->con = con;
