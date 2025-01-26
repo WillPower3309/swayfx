@@ -72,6 +72,10 @@ The following commands may only be used in the configuration file.
 	*wordexp*(3) for details). The same include file can only be included once;
 	subsequent attempts will be ignored.
 
+*scratchpad_minimize* enable|disable
+	Adjusts if minimized windows should be moved into the scratchpad.
+	Must be set at config-time (when starting sway).
+
 *swaybg_command* <command>
 	Executes custom background _command_. Default is _swaybg_. Refer to
 	*sway-output*(5) for more information.
@@ -673,6 +677,45 @@ The default colors are:
 *corner_radius* <radius>
 	Set corner radius for new windows.
 
+*smart_corner_radius* enable|disable
+	Set corner radius only if there are gaps around the window.
+
+*default_dim_inactive* <value>
+	Adjusts the dimming of inactive windows between 0.0 (no dimming) and 1.0
+	(fully dimmed) while 0.0 is the default value.
+
+*dim_inactive* <value>
+	This can only be used with a *for_window* rule.
+	Adjusts the dimming of a window, matching the rule, between 0.0 (no dimming) 
+	and 1.0 (fully dimmed). Default value: *default_dim_inactive*
+
+*dim_inactive_colors.unfocused* <hex color>
+	The color to dim inactive windows with. Example color: #000000FF
+
+*dim_inactive_colors.urgent* <hex color>
+	The color to dim inactive urgent windows with. Example color: #900000FF
+
+*shadows* enable|disable
+	Sets whether or not shadows should be drawn. Can also be set per
+	window with *for_window*.
+
+*shadows_on_csd* enable|disable
+	Adjusts if shadows should be drawn on windows that draw their own
+	decorations. *Note:* The shadow might not fit some windows.
+
+*shadow_blur_radius* <value>
+	Adjusts the shadow blur radius of windows between 0 (disabled) and 100
+	while 20 is the default value.
+
+*shadow_color* <hex color with alpha>
+	The shadow color. Default color: #0000007F
+
+*shadow_inactive_color* <hex color with alpha>
+	The shadow color for inactive windows. Default value: *shadow_color*
+
+*shadow_offset* <x offset> <y offset>
+	Offset all box shadows by the given value.
+
 *blur* enable|disable
 	Sets whether blur should be drawn. Can also be set per window with
 	*for_window*.
@@ -780,11 +823,36 @@ The default colors are:
 	padding of the text while _vertical_ value affects vertical padding (space
 	above and below text). Padding includes titlebar borders so their value
 	should be greater than titlebar_border_thickness. If _vertical_ value is
-	not specified it is set to the _horizontal_ value.
+	not specified it is set to the _horizontal_ value. If _corner_radius_ is set
+	to be greater than the _horizontal_ or _vertical_ value, the value will be
+	treated as that of _corner_radius_.
+
+*titlebar_separator* enable|disable
+	Allows to remove the border between titlebar and window content.
 
 *for_window* <criteria> <command>
 	Whenever a window that matches _criteria_ appears, run list of commands.
 	See *CRITERIA* for more details.
+
+*layer_effects* <layer-namespace> <effects>
+	Apply effects on specific layer shell surfaces, eg "waybar" or "rofi".
+	At least one effect needs to be provided. The <layer-namespace> can be
+	gotten through *sway-ipc*. Note: Surfaces in the _bottom_ layer cannot
+	use these effects.
+
+	Effects:
+	- *blur* <enable|disable>
+	- *blur_ignore_transparent* <enable|disable>
+	- *shadows* <enable|disable>
+	- *corner_radius* <integer>
+
+	Example:
+
+		layer_effects "waybar" blur enable; shadows enable; corner_radius 6
+
+	SwayIPC Example:
+
+		swaymsg "layer_effects 'waybar' 'blur enable; shadows enable'"
 
 *gaps* inner|outer|horizontal|vertical|top|right|bottom|left <amount>
 	Sets default _amount_ pixels of _inner_ or _outer_ gap, where the inner
