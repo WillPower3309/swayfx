@@ -8,6 +8,7 @@
 #include <wlr/types/wlr_linux_dmabuf_v1.h>
 #include <wlr/types/wlr_output_layout.h>
 #include <wlr/types/wlr_subcompositor.h>
+#include <wlr/util/box.h>
 #include "linux-dmabuf-unstable-v1-protocol.h"
 #include "scenefx/types/fx/corner_location.h"
 #include "sway/config.h"
@@ -329,6 +330,9 @@ void container_arrange_title_bar(struct sway_container *con) {
 	int width = con->title_width;
 	int height = container_titlebar_height();
 
+
+	struct wlr_box text_box = { 0, 0, 0, 0 };
+
 	if (con->title_bar.marks_text) {
 		struct sway_text_node *node = con->title_bar.marks_text;
 		marks_buffer_width = node->width;
@@ -349,6 +353,11 @@ void container_arrange_title_bar(struct sway_container *con) {
 		sway_text_node_set_max_width(node, alloc_width);
 		wlr_scene_node_set_position(node->node,
 			h_padding, (height - node->height) >> 1);
+
+		text_box.x = node->node->x;
+		text_box.y = node->node->y;
+		text_box.width = alloc_width;
+		text_box.height = node->height;
 	}
 
 	if (con->title_bar.title_text) {
@@ -372,6 +381,11 @@ void container_arrange_title_bar(struct sway_container *con) {
 		sway_text_node_set_max_width(node, alloc_width);
 		wlr_scene_node_set_position(node->node,
 			h_padding, (height - node->height) >> 1);
+
+		text_box.x = MAX(text_box.x, node->node->x);
+		text_box.y = MAX(text_box.y, node->node->y);
+		text_box.width = MAX(text_box.width, alloc_width);
+		text_box.height = MAX(text_box.height, node->height);
 	}
 
 	if (width <= 0 || height <= 0) {
@@ -403,11 +417,10 @@ void container_arrange_title_bar(struct sway_container *con) {
 	wlr_scene_rect_set_corner_radius(con->title_bar.background, !has_corner_radius ? 0 :
 			con->corner_radius + con->current.border_thickness - thickness, corners);
 
-	// TODO: for title and marks
 	wlr_scene_rect_set_clipped_region(con->title_bar.background, (struct clipped_region) {
 			.corner_radius = 0,
 			.corners = CORNER_LOCATION_NONE,
-			.area = { 0, 0, 0, 0 },
+			.area = text_box,
 	});
 
 	wlr_scene_rect_set_size(con->title_bar.border, width, height);
