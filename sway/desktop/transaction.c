@@ -419,7 +419,8 @@ static void arrange_container(struct sway_container *con,
 			.corner_radius = corner_radius,
 			.corners = CORNER_LOCATION_ALL,
 			.area = {
-				.x = 0, .y = 0,
+				.x = config->shadow_blur_sigma - config->shadow_offset_x,
+				.y = config->shadow_blur_sigma - config->shadow_offset_y,
 				.width = width,
 				.height = height,
 			}
@@ -504,7 +505,7 @@ static void arrange_container(struct sway_container *con,
 			.corners = CORNER_LOCATION_BOTTOM,
 			.area = {
 				.x = border_width,
-				.y = vert_border_height + border_top - corner_radius,
+				.y = 0,
 				.width = width - 2 * border_width,
 				.height = border_bottom - border_width + corner_radius,
 			}
