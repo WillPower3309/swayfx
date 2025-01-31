@@ -321,6 +321,10 @@ void arrange_output(struct sway_output *output) {
 		struct sway_workspace *workspace = output->workspaces->items[i];
 		arrange_workspace(workspace);
 	}
+
+	int output_width, output_height;
+	wlr_output_transformed_resolution(output->wlr_output, &output_width, &output_height);
+	wlr_scene_optimized_blur_set_size(output->layers.blur_layer, output_width, output_height);
 }
 
 void arrange_root(void) {

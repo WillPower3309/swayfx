@@ -578,10 +578,6 @@ static void handle_request_state(struct wl_listener *listener, void *data) {
 	store_output_config(oc);
 
 	force_modeset();
-
-	int output_width, output_height;
-	wlr_output_transformed_resolution(output->wlr_output, &output_width, &output_height);
-	wlr_scene_optimized_blur_set_size(output->layers.blur_layer, output_width, output_height);
 }
 
 static unsigned int last_headless_num = 0;
