@@ -428,6 +428,16 @@ void container_arrange_title_bar(struct sway_container *con) {
 	wlr_scene_rect_set_size(con->title_bar.border, width, height);
 	wlr_scene_rect_set_corner_radius(con->title_bar.border, !has_corner_radius ? 0 :
 			con->corner_radius + con->current.border_thickness, corners);
+	wlr_scene_rect_set_clipped_region(con->title_bar.border, (struct clipped_region) {
+			.corner_radius = !has_corner_radius ? 0 : con->corner_radius + con->current.border_thickness - thickness,
+			.corners = corners,
+			.area = {
+			  .x = thickness,
+			  .y = thickness,
+			  .width = con->title_bar.background->width,
+			  .height = con->title_bar.background->height,
+			},
+	});
 
 	container_update(con);
 }
