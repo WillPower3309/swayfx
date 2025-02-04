@@ -25,8 +25,13 @@ struct cmd_results *cmd_corner_radius(int argc, char **argv) {
 		return cmd_results_new(CMD_FAILURE, "Invalid size specified");
 	}
 
-	config->corner_radius = value;
+	struct sway_container *con = config->handler_context.container;
 
+	if (con == NULL) {
+		config->corner_radius = value;
+	} else {
+		con->corner_radius = value;
+	}
 	/*
 	 titlebar padding depends on corner_radius to
 	 ensure that titlebars are rendered nicely
