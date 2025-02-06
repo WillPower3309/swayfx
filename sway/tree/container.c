@@ -427,7 +427,7 @@ void container_arrange_title_bar(struct sway_container *con) {
 
 	wlr_scene_rect_set_size(con->title_bar.border, width, height);
 	wlr_scene_rect_set_corner_radius(con->title_bar.border, background_corner_radius ?
-			background_corner_radius + con->current.border_thickness : 0, corners);
+			background_corner_radius + thickness : 0, corners);
 	wlr_scene_rect_set_clipped_region(con->title_bar.border, (struct clipped_region) {
 			.corner_radius = background_corner_radius,
 			.corners = corners,
