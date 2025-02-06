@@ -409,13 +409,13 @@ void container_arrange_title_bar(struct sway_container *con) {
 		}
 	}
 
-	bool has_corner_radius = container_has_corner_radius(con);
 	int thickness = config->titlebar_border_thickness;
+	int background_corner_radius = container_has_corner_radius(con) ?
+			con->corner_radius + con->current.border_thickness - thickness : 0;
 	wlr_scene_node_set_position(&con->title_bar.background->node, thickness, thickness);
 	wlr_scene_rect_set_size(con->title_bar.background, width - thickness * 2,
 			height - thickness * (config->titlebar_separator ? 2 : 1));
-	wlr_scene_rect_set_corner_radius(con->title_bar.background, !has_corner_radius ? 0 :
-			con->corner_radius + con->current.border_thickness - thickness, corners);
+	wlr_scene_rect_set_corner_radius(con->title_bar.background, background_corner_radius, corners);
 
 	text_box.x -= thickness;
 	text_box.y -= thickness;
@@ -426,10 +426,10 @@ void container_arrange_title_bar(struct sway_container *con) {
 	});
 
 	wlr_scene_rect_set_size(con->title_bar.border, width, height);
-	wlr_scene_rect_set_corner_radius(con->title_bar.border, !has_corner_radius ? 0 :
-			con->corner_radius + con->current.border_thickness, corners);
+	wlr_scene_rect_set_corner_radius(con->title_bar.border, background_corner_radius ?
+			background_corner_radius + con->current.border_thickness : 0, corners);
 	wlr_scene_rect_set_clipped_region(con->title_bar.border, (struct clipped_region) {
-			.corner_radius = !has_corner_radius ? 0 : con->corner_radius + con->current.border_thickness - thickness,
+			.corner_radius = background_corner_radius,
 			.corners = corners,
 			.area = {
 			  .x = thickness,
@@ -1962,6 +1962,7 @@ bool container_has_corner_radius(struct sway_container *con) {
 	if (!con) {
 		return false;
 	}
-	return container_is_floating_or_child(con)
-			|| !(config->smart_corner_radius && con->current.workspace->current_gaps.top == 0);
+	return (container_is_floating_or_child(con) ||
+			!(config->smart_corner_radius && con->current.workspace->current_gaps.top == 0)) &&
+			con->corner_radius;
 }
