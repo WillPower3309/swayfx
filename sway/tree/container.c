@@ -330,7 +330,6 @@ void container_arrange_title_bar(struct sway_container *con) {
 	int width = con->title_width;
 	int height = container_titlebar_height();
 
-
 	struct wlr_box text_box = { 0, 0, 0, 0 };
 
 	if (con->title_bar.marks_text) {
@@ -392,7 +391,11 @@ void container_arrange_title_bar(struct sway_container *con) {
 		return;
 	}
 
+	int thickness = config->titlebar_border_thickness;
+	int background_corner_radius = container_has_corner_radius(con) ?
+			con->corner_radius + con->current.border_thickness - thickness : 0;
 	enum corner_location corners = CORNER_LOCATION_TOP;
+
 	if (con->current.parent) {
 		list_t *siblings = con->current.parent->current.children;
 		if (con->current.parent->current.layout == L_TABBED && siblings->length > 1) {
@@ -401,17 +404,16 @@ void container_arrange_title_bar(struct sway_container *con) {
 			} else if (siblings->items[siblings->length - 1] == con) {
 				corners = CORNER_LOCATION_TOP_RIGHT;
 			} else {
+				background_corner_radius = 0;
 				corners = CORNER_LOCATION_NONE;
 			}
 		} else if (con->current.parent->current.layout == L_STACKED &&
 				siblings->items[0] != con) {
+			background_corner_radius = 0;
 			corners = CORNER_LOCATION_NONE;
 		}
 	}
 
-	int thickness = config->titlebar_border_thickness;
-	int background_corner_radius = container_has_corner_radius(con) ?
-			con->corner_radius + con->current.border_thickness - thickness : 0;
 	wlr_scene_node_set_position(&con->title_bar.background->node, thickness, thickness);
 	wlr_scene_rect_set_size(con->title_bar.background, width - thickness * 2,
 			height - thickness * (config->titlebar_separator ? 2 : 1));
