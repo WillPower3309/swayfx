@@ -524,7 +524,7 @@ static void arrange_container(struct sway_container *con,
 			wlr_scene_node_set_position(&con->dim_rect->node, border_left, border_top);
 			wlr_scene_rect_set_size(con->dim_rect, con->current.content_width,
 					con->current.content_height);
-			bool has_titlebar = title_bar || con->current.border == B_NORMAL;
+			bool has_titlebar = !title_bar || con->current.border == B_NORMAL;
 			wlr_scene_rect_set_corner_radius(con->dim_rect, con->corner_radius,
 					has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL);
 		}
