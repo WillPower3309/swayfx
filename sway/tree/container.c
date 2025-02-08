@@ -302,15 +302,7 @@ void container_update(struct sway_container *con) {
 			color = config->dim_inactive_colors.urgent;
 		}
 		// Focused
-		struct sway_container *active_child;
-		if (con->current.parent) {
-			active_child = con->current.parent->current.focused_inactive_child;
-		} else if (con->current.workspace) {
-			active_child = con->current.workspace->current.focused_inactive_child;
-		} else {
-			active_child = NULL;
-		}
-		bool focused = con->current.focused || container_is_current_parent_focused(con) || con == active_child;
+		bool focused = con->current.focused || container_is_current_parent_focused(con);
 
 		scene_rect_set_color(con->dim_rect, color, focused ? 0.0 : con->dim);
 	}
