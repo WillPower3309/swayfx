@@ -421,7 +421,6 @@ void container_arrange_title_bar(struct sway_container *con) {
 
 	text_box.x -= thickness;
 	text_box.y -= thickness;
-	printf("setting clipped region: (%d, %d), %dx%d\n", text_box.x, text_box.y, text_box.width, text_box.height);
 	wlr_scene_rect_set_clipped_region(con->title_bar.background, (struct clipped_region) {
 			.corner_radius = 0,
 			.corners = CORNER_LOCATION_NONE,
