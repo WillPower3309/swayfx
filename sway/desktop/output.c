@@ -17,6 +17,7 @@
 #include <wlr/types/wlr_presentation_time.h>
 #include <wlr/types/wlr_compositor.h>
 #include <wlr/types/wlr_xdg_shell.h>
+#include <wlr/types/wlr_subcompositor.h>
 #include <wlr/util/region.h>
 #include <wlr/util/transform.h>
 #include "config.h"
@@ -257,6 +258,10 @@ static void output_configure_scene(struct sway_output *output, struct wlr_scene_
 			// Only enable xray blur if tiled or when xray is explicitly enabled
 			bool should_optimize_blur = (closest_con && !container_is_floating_or_child(closest_con)) || config->blur_xray;
 			wlr_scene_buffer_set_backdrop_blur_optimized(buffer, should_optimize_blur);
+		} else if (wlr_subsurface_try_from_wlr_surface(surface->surface)) {
+			wlr_scene_buffer_set_corner_radius(buffer,
+					container_has_corner_radius(closest_con) ? corner_radius : 0,
+					CORNER_LOCATION_ALL);
 		} else if ((layer_surface = wlr_layer_surface_v1_try_from_wlr_surface(surface->surface))
 				&& layer_surface->data) {
 			// Layer effects
