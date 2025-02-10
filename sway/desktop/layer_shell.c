@@ -241,7 +241,7 @@ static struct sway_layer_surface *sway_layer_surface_create(
 	surface->blur_ignore_transparent = false;
 	surface->shadow_enabled = false;
 
-	bool failed;
+	bool failed = false;
 	surface->shadow_node = alloc_scene_shadow(surface->tree, 0, 0,
 			0, config->shadow_blur_sigma, config->shadow_color, &failed);
 	if (failed) {
