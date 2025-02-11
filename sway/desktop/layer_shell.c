@@ -72,7 +72,7 @@ void layer_apply_criteria(struct sway_layer_surface *surface, struct layer_crite
 
 static void layer_parse_criteria(struct sway_layer_surface *surface) {
 	if (!surface || !surface->layer_surface
-			|| surface->layer_surface->current.layer == ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM) {
+			|| surface->layer_surface->current.layer < ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM) {
 		return;
 	}
 	struct layer_criteria *criteria = layer_criteria_for_namespace(surface->layer_surface->namespace);
