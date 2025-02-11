@@ -102,8 +102,8 @@ static void arrange_surface(struct sway_output *output, const struct wlr_box *fu
 		if (surface->shadow_enabled) {
 			// Adjust the size and position of the shadow node
 			wlr_scene_shadow_set_size(surface->shadow_node,
-					surface->layer_surface->current.desired_width + config->shadow_blur_sigma * 2,
-					surface->layer_surface->current.desired_height + config->shadow_blur_sigma * 2);
+					surface->layer_surface->surface->current.width + config->shadow_blur_sigma * 2,
+					surface->layer_surface->surface->current.height + config->shadow_blur_sigma * 2);
 			int x = config->shadow_offset_x - config->shadow_blur_sigma;
 			int y = config->shadow_offset_y - config->shadow_blur_sigma;
 			wlr_scene_node_set_position(&surface->shadow_node->node, x, y);
@@ -114,8 +114,8 @@ static void arrange_surface(struct sway_output *output, const struct wlr_box *fu
 					.area = {
 						.x = -x,
 						.y = -y,
-						.width = surface->layer_surface->current.desired_width,
-						.height = surface->layer_surface->current.desired_height,
+						.width = surface->layer_surface->surface->current.width,
+						.height = surface->layer_surface->surface->current.height,
 					},
 			});
 		}
