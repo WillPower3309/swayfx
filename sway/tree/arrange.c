@@ -323,7 +323,7 @@ void arrange_output(struct sway_output *output) {
 	}
 
 	int output_width, output_height;
-	wlr_output_transformed_resolution(output->wlr_output, &output_width, &output_height);
+	wlr_output_effective_resolution(output->wlr_output, &output_width, &output_height);
 	wlr_scene_optimized_blur_set_size(output->layers.blur_layer, output_width, output_height);
 }
 
