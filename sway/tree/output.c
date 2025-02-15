@@ -109,8 +109,8 @@ struct sway_output *output_create(struct wlr_output *wlr_output) {
 	bool failed = false;
 	output->layers.shell_background = alloc_scene_tree(root->staging, &failed);
 	output->layers.shell_bottom = alloc_scene_tree(root->staging, &failed);
-	output->layers.blur_layer = wlr_scene_optimized_blur_create(root->staging,
-			wlr_output->width, wlr_output->height);
+	// Initialize with size 0x0, let the arrange_output set the size
+	output->layers.blur_layer = wlr_scene_optimized_blur_create(root->staging, 0, 0);
 	output->layers.tiling = alloc_scene_tree(root->staging, &failed);
 	output->layers.fullscreen = alloc_scene_tree(root->staging, &failed);
 	output->layers.shell_top = alloc_scene_tree(root->staging, &failed);

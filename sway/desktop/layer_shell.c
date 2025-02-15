@@ -315,9 +315,7 @@ static void handle_node_destroy(struct wl_listener *listener, void *data) {
 			ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND ||
 		wlr_layer_surface->current.layer == ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM) {
 		if (layer->output) {
-			wlr_scene_optimized_blur_mark_dirty(root->root_scene,
-					layer->output->layers.blur_layer,
-					layer->output->wlr_output);
+			wlr_scene_optimized_blur_mark_dirty(layer->output->layers.blur_layer);
 		}
 	}
 
@@ -354,9 +352,7 @@ static void handle_surface_commit(struct wl_listener *listener, void *data) {
 			ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND ||
 		wlr_layer_surface->current.layer == ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM) {
 		if (surface->output) {
-			wlr_scene_optimized_blur_mark_dirty(root->root_scene,
-					surface->output->layers.blur_layer,
-					surface->output->wlr_output);
+			wlr_scene_optimized_blur_mark_dirty(surface->output->layers.blur_layer);
 		}
 	}
 
