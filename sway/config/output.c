@@ -6,6 +6,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <wlr/config.h>
+#include <wlr/render/allocator.h>
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_output_layout.h>
 #include <wlr/types/wlr_output.h>
@@ -773,7 +774,7 @@ static bool search_render_format(struct search_context *ctx, size_t output_idx) 
 	}
 
 	const struct wlr_drm_format_set *primary_formats =
-		wlr_output_get_primary_formats(wlr_output, WLR_BUFFER_CAP_DMABUF);
+		wlr_output_get_primary_formats(wlr_output, server.allocator->buffer_caps);
 	enum render_bit_depth needed_bits = RENDER_BIT_DEPTH_8;
 	if (cfg->config && cfg->config->render_bit_depth != RENDER_BIT_DEPTH_DEFAULT) {
 		needed_bits = cfg->config->render_bit_depth;
@@ -783,7 +784,8 @@ static bool search_render_format(struct search_context *ctx, size_t output_idx) 
 		if (needed_bits < format_bits) {
 			continue;
 		}
-		if (!wlr_drm_format_set_get(primary_formats, fmts[idx])) {
+		// If primary_formats is NULL, all formats are supported
+		if (primary_formats && !wlr_drm_format_set_get(primary_formats, fmts[idx])) {
 			// This is not a supported format for this output
 			continue;
 		}
@@ -1016,6 +1018,7 @@ void free_output_config(struct output_config *oc) {
 	free(oc->name);
 	free(oc->background);
 	free(oc->background_option);
+	free(oc->background_fallback);
 	wlr_color_transform_unref(oc->color_transform);
 	free(oc);
 }
