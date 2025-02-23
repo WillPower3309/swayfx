@@ -478,38 +478,43 @@ static void arrange_container(struct sway_container *con,
 		int border_right = con->current.border_right ? border_width : 0;
 		int vert_border_height = MAX(0, height - border_top - border_bottom);
 
-		wlr_scene_rect_set_size(con->border.top, width, border_top + corner_radius);
-		wlr_scene_rect_set_size(con->border.bottom, width, border_bottom + corner_radius);
 		wlr_scene_rect_set_size(con->border.left,
 				border_left, vert_border_height - vert_border_offset - corner_radius);
 		wlr_scene_rect_set_size(con->border.right,
 				border_right, vert_border_height - vert_border_offset - corner_radius);
 
-		wlr_scene_rect_set_corner_radius(con->border.top, !has_corner_radius ? 0 :
-				corner_radius + border_width, CORNER_LOCATION_TOP);
-		wlr_scene_rect_set_corner_radius(con->border.bottom, !has_corner_radius ? 0 :
-				corner_radius + border_width, CORNER_LOCATION_BOTTOM);
+		if (border_top) {
+			wlr_scene_rect_set_size(con->border.top, width, border_top + corner_radius);
+			wlr_scene_rect_set_corner_radius(con->border.top, !has_corner_radius ? 0 :
+					corner_radius + border_width, CORNER_LOCATION_TOP);
+			wlr_scene_rect_set_clipped_region(con->border.top, (struct clipped_region) {
+				.corner_radius = corner_radius,
+				.corners = CORNER_LOCATION_TOP,
+				.area = {
+					.x = border_width,
+					.y = border_width,
+					.width = width - 2 * border_width,
+					.height = border_top + corner_radius
+				}
+			});
+		}
 
-		wlr_scene_rect_set_clipped_region(con->border.top, (struct clipped_region) {
-			.corner_radius = corner_radius,
-			.corners = CORNER_LOCATION_TOP,
-			.area = {
-				.x = border_width,
-				.y = border_width,
-				.width = width - 2 * border_width,
-				.height = border_top + corner_radius
-			}
-		});
-		wlr_scene_rect_set_clipped_region(con->border.bottom, (struct clipped_region) {
-			.corner_radius = corner_radius,
-			.corners = CORNER_LOCATION_BOTTOM,
-			.area = {
-				.x = border_width,
-				.y = 0,
-				.width = width - 2 * border_width,
-				.height = border_bottom - border_width + corner_radius,
-			}
-		});
+		if (border_bottom) {
+			wlr_scene_rect_set_size(con->border.bottom, width, border_bottom + corner_radius);
+			wlr_scene_rect_set_corner_radius(con->border.bottom, !has_corner_radius ? 0 :
+					corner_radius + border_width, CORNER_LOCATION_BOTTOM);
+
+			wlr_scene_rect_set_clipped_region(con->border.bottom, (struct clipped_region) {
+				.corner_radius = corner_radius,
+				.corners = CORNER_LOCATION_BOTTOM,
+				.area = {
+					.x = border_width,
+					.y = 0,
+					.width = width - 2 * border_width,
+					.height = border_bottom - border_width + corner_radius,
+				}
+			});
+		}
 
 		wlr_scene_node_set_position(&con->border.top->node, 0, 0);
 		wlr_scene_node_set_position(&con->border.bottom->node,
