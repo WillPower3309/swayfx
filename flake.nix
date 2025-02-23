@@ -2,7 +2,10 @@
   description = "Swayfx development environment";
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
-    scenefx.url = "github:wlrfx/scenefx";
+    scenefx = {
+      url = "github:wlrfx/scenefx";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
   outputs =
     {
@@ -14,13 +17,23 @@
     let
       mkPackage = pkgs: {
         swayfx-unwrapped =
-          pkgs.swayfx-unwrapped.overrideAttrs
+          (pkgs.swayfx-unwrapped.override {
+            wlroots_0_17 = pkgs.wlroots_0_18;
+          }).overrideAttrs
             (old: {
               version = "0.4.0-git";
               src = pkgs.lib.cleanSource ./.;
               nativeBuildInputs = old.nativeBuildInputs ++ [ pkgs.cmake ];
               buildInputs = old.buildInputs ++ [ pkgs.scenefx ];
               providedSessions = [ pkgs.swayfx-unwrapped.meta.mainProgram ];
+              patches = []; ## this should probably be fixed properly
+              mesonFlags = let
+                inherit (pkgs.lib.strings) mesonEnable mesonOption;
+              in
+                [
+                  (mesonOption "sd-bus-provider" "libsystemd")
+                  (mesonEnable "tray" true)
+                ];
             });
       };
 
@@ -55,7 +68,7 @@
           name = "swayfx-shell";
           inputsFrom = [
             self.packages.${pkgs.system}.swayfx-unwrapped
-            pkgs.wlroots_0_17
+            pkgs.wlroots_0_18
             pkgs.scenefx
           ];
           packages = with pkgs; [
@@ -65,7 +78,7 @@
             (
               # Copy the nix version of wlroots and scenefx into the project
               mkdir -p "$PWD/subprojects" && cd "$PWD/subprojects"
-              cp -R --no-preserve=mode,ownership ${pkgs.wlroots_0_17.src} wlroots
+              cp -R --no-preserve=mode,ownership ${pkgs.wlroots_0_18.src} wlroots
               cp -R --no-preserve=mode,ownership ${pkgs.scenefx.src} scenefx
             )'';
         };
