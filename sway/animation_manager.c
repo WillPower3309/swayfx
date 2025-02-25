@@ -2,12 +2,10 @@
 #include <stdlib.h>
 #include "log.h"
 #include "sway/animation_manager.h"
+#include "sway/config.h"
 #include "sway/output.h"
 #include "sway/server.h"
 #include "sway/tree/root.h"
-
-// TODO: configurable duration
-float animation_duration_ms = 500; // duration in ms
 
 float get_fastest_output_refresh_ms() {
 	float fastest_output_refresh_ms = 16.6667; // fallback to 60 Hz
@@ -41,13 +39,12 @@ int animation_timer(void *data) {
 		}
 
 		struct sway_container *con = view->container;
-		printf("con alpha: %f\n", con->alpha);
-		float progress_delta = get_fastest_output_refresh_ms() / animation_duration_ms;
+		float progress_delta = get_fastest_output_refresh_ms() / config->animation_duration_ms;
 		view->animation_progress = MIN(view->animation_progress + progress_delta, 1.0f);
-		printf("animation progress: %f\n", view->animation_progress);
 		con->alpha = lerp(0, con->target_alpha, ease_out_cubic(view->animation_progress));
-
 		container_update(con);
+
+		printf("con alpha: %f\n", con->alpha);
 	}
 
 	if (animation_manager->animated_views->length > 0) {
