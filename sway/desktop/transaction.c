@@ -507,11 +507,13 @@ static void arrange_container(struct sway_container *con,
 			wlr_scene_rect_set_clipped_region(con->border.bottom, (struct clipped_region) {
 				.corner_radius = corner_radius,
 				.corners = CORNER_LOCATION_BOTTOM,
+				// shift up one px to fix https://github.com/WillPower3309/swayfx/issues/386
+				// TODO: proper fix
 				.area = {
 					.x = border_width,
-					.y = 0,
+					.y = -1,
 					.width = width - 2 * border_width,
-					.height = border_bottom - border_width + corner_radius,
+					.height = border_bottom - border_width + corner_radius + 1,
 				}
 			});
 		}
