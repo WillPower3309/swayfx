@@ -1,4 +1,5 @@
 sway_sources = files(
+	'animation_manager.c',
 	'commands.c',
 	'config.c',
 	'criteria.c',
