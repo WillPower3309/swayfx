@@ -146,6 +146,7 @@ struct sway_container {
 	struct wlr_box transform;
 
 	float alpha;
+	float target_alpha;
 
 	int corner_radius;
 	bool blur_enabled;

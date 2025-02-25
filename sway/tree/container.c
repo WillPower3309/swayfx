@@ -168,6 +168,7 @@ struct sway_container *container_create(struct sway_view *view) {
 	c->pending.layout = L_NONE;
 	c->view = view;
 	c->alpha = view ? 0.0f : 1.0f;
+	c->target_alpha = 1.0f;
 	c->marks = create_list();
 	c->corner_radius = config->corner_radius;
 	c->blur_enabled = config->blur_enabled;
