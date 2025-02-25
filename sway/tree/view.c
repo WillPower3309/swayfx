@@ -61,7 +61,6 @@ bool view_init(struct sway_view *view, enum sway_view_type type,
 	view->allow_request_urgent = true;
 	view->shortcuts_inhibit = SHORTCUTS_INHIBIT_DEFAULT;
 	view->tearing_mode = TEARING_WINDOW_HINT;
-	view->animation_progress = 0.0f;
 	wl_signal_init(&view->events.unmap);
 	return true;
 }
@@ -785,6 +784,13 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 	view_populate_pid(view);
 	view->container = container_create(view);
 
+	view->animation_state = (struct container_animation_state) {
+		.progress = 0.0f,
+		.from_alpha = 0.0f,
+		.to_alpha = 1.0f, // TODO
+		.container = view->container,
+	};
+
 	if (view->ctx == NULL) {
 		struct launcher_ctx *ctx = launcher_ctx_find_pid(view->pid);
 		if (ctx != NULL) {
@@ -938,12 +944,12 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 		wlr_foreign_toplevel_handle_v1_set_app_id(view->foreign_toplevel, class);
 	}
 
-	add_view_animation(view, server.animation_manager);	
+	add_container_animation(&view->animation_state, server.animation_manager);	
 }
 
 void view_unmap(struct sway_view *view) {
 	wl_signal_emit_mutable(&view->events.unmap, view);
-	view->animation_progress = 1.0f; // end animation, TODO: add close anim
+	view->animation_state.progress = 1.0f; // end animation, TODO: add close anim
 
 	view->executed_criteria->length = 0;
 
