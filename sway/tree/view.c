@@ -750,8 +750,8 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 
 	view->animation_state = (struct container_animation_state) {
 		.progress = 0.0f,
-		.from_alpha = 0.0f,
-		.to_alpha = 1.0f, // TODO
+		.from_alpha = view->container->alpha,
+		.to_alpha = view->container->target_alpha,
 		.container = view->container,
 	};
 
@@ -913,7 +913,11 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 
 void view_unmap(struct sway_view *view) {
 	wl_signal_emit_mutable(&view->events.unmap, view);
-	view->animation_state.progress = 1.0f; // end animation, TODO: add close anim
+
+	// start close animation
+	view->animation_state.from_alpha = view->container->alpha;
+	view->animation_state.to_alpha = 0.0f;
+	view->animation_state.progress = 0.0f;
 
 	view->executed_criteria->length = 0;
 

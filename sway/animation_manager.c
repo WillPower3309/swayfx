@@ -31,19 +31,23 @@ double ease_out_cubic(double t) {
 int animation_timer(void *data) {
 	struct animation_manager *animation_manager = data;
 
+	// remove completed animations
 	for (int i = 0; i < animation_manager->animated_states->length; i++) {
 		struct container_animation_state *animation_state = animation_manager->animated_states->items[i];
 		if (animation_state->progress == 1.0f) {
 			list_del(animation_manager->animated_states, i);
 			continue;
 		}
+	}
+
+	for (int i = 0; i < animation_manager->animated_states->length; i++) {
+		struct container_animation_state *animation_state = animation_manager->animated_states->items[i];
 
 		struct sway_container *con = animation_state->container;
 		float progress_delta = get_fastest_output_refresh_ms() / config->animation_duration_ms;
 		animation_state->progress = MIN(animation_state->progress + progress_delta, 1.0f);
 		con->alpha = lerp(animation_state->from_alpha, animation_state->to_alpha, ease_out_cubic(animation_state->progress));
 		container_update(con);
-
 		printf("con alpha: %f\n", con->alpha);
 	}
 
@@ -72,5 +76,8 @@ struct animation_manager *animation_manager_create(struct sway_server *server) {
 	return animation_manager;
 }
 
-void animation_manager_destroy(); // TODO
+void animation_manager_destroy(struct animation_manager *animation_manager) {
+	// TODO
+	return;
+}
 
