@@ -1351,6 +1351,8 @@ json_object *ipc_json_describe_bar_config(struct bar_config *bar) {
 	}
 	json_object_object_add(json, "bar_height",
 			json_object_new_int(bar->height));
+	json_object_object_add(json, "border_size",
+			json_object_new_int(bar->border_size));
 	json_object_object_add(json, "status_padding",
 			json_object_new_int(bar->status_padding));
 	json_object_object_add(json, "status_edge_padding",

@@ -11,6 +11,7 @@ static const struct cmd_handler bar_handlers[] = {
 	{ "bindcode", bar_cmd_bindcode },
 	{ "binding_mode_indicator", bar_cmd_binding_mode_indicator },
 	{ "bindsym", bar_cmd_bindsym },
+	{ "border_size", bar_cmd_border_size },
 	{ "colors", bar_cmd_colors },
 	{ "font", bar_cmd_font },
 	{ "gaps", bar_cmd_gaps },

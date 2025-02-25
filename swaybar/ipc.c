@@ -110,6 +110,11 @@ static bool ipc_parse_config(
 		config->height = json_object_get_int(bar_height);
 	}
 
+	json_object *border_size = json_object_object_get(bar_config, "border_size");
+	if (border_size) {
+		config->border_size = json_object_get_int(border_size);
+	}
+
 	json_object *binding_mode_indicator =
 		json_object_object_get(bar_config, "binding_mode_indicator");
 	if (binding_mode_indicator) {
