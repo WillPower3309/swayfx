@@ -120,6 +120,8 @@ struct sway_view {
 
 	enum sway_view_tearing_mode tearing_mode;
 	enum wp_tearing_control_v1_presentation_hint tearing_hint;
+
+	float animation_progress;
 };
 
 struct sway_xdg_shell_view {

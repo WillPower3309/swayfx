@@ -18,6 +18,7 @@
 #endif
 #include "list.h"
 #include "log.h"
+#include "sway/animation_manager.h"
 #include "sway/criteria.h"
 #include "sway/commands.h"
 #include "sway/desktop/transaction.h"
@@ -60,6 +61,7 @@ bool view_init(struct sway_view *view, enum sway_view_type type,
 	view->allow_request_urgent = true;
 	view->shortcuts_inhibit = SHORTCUTS_INHIBIT_DEFAULT;
 	view->tearing_mode = TEARING_WINDOW_HINT;
+	view->animation_progress = 0.0f;
 	wl_signal_init(&view->events.unmap);
 	return true;
 }
@@ -935,10 +937,13 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 	} else if ((class = view_get_class(view)) != NULL) {
 		wlr_foreign_toplevel_handle_v1_set_app_id(view->foreign_toplevel, class);
 	}
+
+	add_view_animation(view, server.animation_manager);	
 }
 
 void view_unmap(struct sway_view *view) {
 	wl_signal_emit_mutable(&view->events.unmap, view);
+	view->animation_progress = 1.0f; // end animation, TODO: add close anim
 
 	view->executed_criteria->length = 0;
 

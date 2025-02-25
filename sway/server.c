@@ -64,7 +64,6 @@
 #include <wlr/xwayland/shell.h>
 #include "sway/xwayland.h"
 #endif
-
 #if WLR_HAS_DRM_BACKEND
 #include <wlr/types/wlr_drm_lease_v1.h>
 #endif
@@ -463,6 +462,8 @@ bool server_init(struct sway_server *server) {
 
 	server->input = input_manager_create(server);
 	input_manager_get_default_seat(); // create seat0
+
+	server->animation_manager = animation_manager_create(server);
 
 	return true;
 }
