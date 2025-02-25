@@ -497,6 +497,8 @@ static void arrange_container(struct sway_container *con,
 					.height = border_top + corner_radius
 				}
 			});
+		} else {
+			wlr_scene_rect_set_size(con->border.top, 0, 0);
 		}
 
 		if (border_bottom) {
@@ -516,6 +518,8 @@ static void arrange_container(struct sway_container *con,
 					.height = border_bottom - border_width + corner_radius + 1,
 				}
 			});
+		} else {
+			wlr_scene_rect_set_size(con->border.bottom, 0, 0);
 		}
 
 		wlr_scene_node_set_position(&con->border.top->node, 0, 0);
