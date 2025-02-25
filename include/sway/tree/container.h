@@ -145,6 +145,7 @@ struct sway_container {
 	struct wlr_box transform;
 
 	float alpha;
+	float target_alpha; // used for animations
 
 	int corner_radius;
 	bool blur_enabled;
