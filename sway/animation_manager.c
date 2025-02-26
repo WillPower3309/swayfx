@@ -37,8 +37,8 @@ void finish_animation(struct container_animation_state *animation_state, struct 
 		animation_state->init = false;
 	}
 	animation_state->progress = 1.0f;
-	// only call complete() if anim completed
-	if (animation_state->complete && animation_state->to == *animation_state->current) {
+
+	if (animation_state->complete) {
 		animation_state->complete(animation_state->container);
 	}
 }
@@ -51,7 +51,12 @@ int animation_timer(void *data) {
 	wl_list_for_each_reverse_safe(animation_state, tmp, &animation_manager->animation_states, link) {
 		float progress_delta = tick_time / config->animation_duration_ms;
 		animation_state->progress = MIN(animation_state->progress + progress_delta, 1.0f);
-		*animation_state->current = lerp(animation_state->from, animation_state->to, ease_out_cubic(animation_state->progress));
+
+		// TODO: memory leak, use wl_list?
+		for(int i = 0; i < animation_state->animated_vars->length; i++) {
+			struct animated_var *animated_var = animation_state->animated_vars->items[i];
+			*animated_var->current = lerp(animated_var->from, animated_var->to, ease_out_cubic(animation_state->progress));
+		}
 
 		if (animation_state->update) {
 			animation_state->update(animation_state->container);
@@ -86,30 +91,44 @@ void fadeout_animation_complete(struct sway_container *con) {
 	transaction_commit_dirty();
 }
 
+// TODO: free memory or use wl_list
 struct container_animation_state container_animation_state_create_fadein(struct sway_container *con) {
-	return (struct container_animation_state) {
-		.init = false,
-		.progress = 0.0f,
-		.from = con->alpha,
-		.to = con->target_alpha,
-		.current = &con->alpha,
-		.container = con,
-		.update = container_update,
-		.complete = NULL,
-	};
+	struct container_animation_state animation_state;
+	animation_state.init = false;
+	animation_state.progress = 0.0f;
+	animation_state.container = con;
+	animation_state.update = container_update;
+	animation_state.complete = NULL;
+
+	animation_state.animated_vars = create_list();
+
+	struct animated_var *alpha_animated_var = calloc(1, sizeof(*alpha_animated_var));
+	alpha_animated_var->from = con->alpha;
+	alpha_animated_var->to = con->target_alpha;
+	alpha_animated_var->current = &con->alpha;
+	list_add(animation_state.animated_vars, alpha_animated_var);
+
+	return animation_state;
 }
 
+// TODO: free memory or use wl_list
 struct container_animation_state container_animation_state_create_fadeout(struct sway_container *con) {
-	return (struct container_animation_state) {
-		.init = false,
-		.progress = 0.0f,
-		.from = con->alpha,
-		.to = 0.0,
-		.current = &con->alpha,
-		.container = con,
-		.update = container_update,
-		.complete = fadeout_animation_complete,
-	};
+	struct container_animation_state animation_state;
+	animation_state.init = false;
+	animation_state.progress = 0.0f;
+	animation_state.container = con;
+	animation_state.update = container_update;
+	animation_state.complete = fadeout_animation_complete;
+
+	animation_state.animated_vars = create_list();
+
+	struct animated_var *alpha_animated_var = calloc(1, sizeof(*alpha_animated_var));
+	alpha_animated_var->from = con->alpha;
+	alpha_animated_var->to = 0.0f;
+	alpha_animated_var->current = &con->alpha;
+	list_add(animation_state.animated_vars, alpha_animated_var);
+
+	return animation_state;
 }
 
 struct animation_manager *animation_manager_create(struct sway_server *server) {
