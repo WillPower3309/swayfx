@@ -4,20 +4,16 @@
 #include "list.h"
 #include "sway/tree/container.h"
 
-/* TODO: add an array of the below to the animation state
 struct animated_var {
 	float from;
 	float to;
 	float *current;
 };
- */
 
 struct container_animation_state {
 	struct wl_list link;
 	bool init;
-	float from;
-	float to;
-	float *current;
+	list_t *animated_vars; // struct animated_var
 	float progress;
 	struct sway_container *container;
 	void (*update)(struct sway_container *con);
