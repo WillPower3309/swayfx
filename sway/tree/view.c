@@ -1226,8 +1226,6 @@ void view_remove_saved_buffer(struct sway_view *view) {
 		return;
 	}
 
-	printf("REMOVED SAVED BUFFER\n");
-
 	wlr_scene_node_destroy(&view->saved_surface_tree->node);
 	view->saved_surface_tree = NULL;
 	wlr_scene_node_set_enabled(&view->content_tree->node, true);
