@@ -258,6 +258,20 @@ static void scene_rect_set_color(struct wlr_scene_rect *rect,
 	wlr_scene_rect_set_color(rect, premultiplied);
 }
 
+// scene shadow wants premultiplied colors
+// TODO: make common get_premultiplied_color function
+static void scene_shadow_set_color(struct wlr_scene_shadow *shadow,
+		const float color[4], float opacity) {
+	const float premultiplied[] = {
+		color[0] * color[3] * opacity,
+		color[1] * color[3] * opacity,
+		color[2] * color[3] * opacity,
+		color[3] * opacity,
+	};
+
+	wlr_scene_shadow_set_color(shadow, premultiplied);
+}
+
 void container_update(struct sway_container *con) {
 	struct border_colors *colors = container_get_current_colors(con);
 	list_t *siblings = NULL;
@@ -292,6 +306,10 @@ void container_update(struct sway_container *con) {
 		scene_rect_set_color(con->border.bottom, bottom, alpha);
 		scene_rect_set_color(con->border.left, colors->child_border, alpha);
 		scene_rect_set_color(con->border.right, right, alpha);
+
+		float *shadow_color = view_is_urgent(con->view) || con->current.focused ?
+				config->shadow_color : config->shadow_inactive_color;
+		scene_shadow_set_color(con->shadow, shadow_color, alpha);
 	}
 
 	if (con->title_bar.title_text) {
