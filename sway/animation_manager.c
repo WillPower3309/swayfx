@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <wayland-util.h>
 #include "log.h"
 #include "sway/animation_manager.h"
 #include "sway/config.h"
@@ -20,60 +21,95 @@ float get_fastest_output_refresh_ms() {
 	return fastest_output_refresh_ms;
 }
 
-double lerp(double a, double b, double t) {
+float lerp(float a, float b, float t) {
 	return a * (1.0 - t) + b * t;
 }
 
-double ease_out_cubic(double t) {
-	double p = t - 1;
+float ease_out_cubic(float t) {
+	float p = t - 1;
 	return pow(p, 3) + 1;
+}
+
+void finish_animation(struct container_animation_state *animation_state, struct animation_manager *animation_manager) {
+	// TODO: can I check if the link is in the list?
+	if (animation_state->init) {
+		wl_list_remove(&animation_state->link);
+		animation_state->init = false;
+	}
+	animation_state->progress = 1.0f;
+	// only call complete() if anim completed
+	if (animation_state->complete && animation_state->to == *animation_state->current) {
+		animation_state->complete(animation_state->container);
+	}
 }
 
 int animation_timer(void *data) {
 	struct animation_manager *animation_manager = data;
+	float tick_time = get_fastest_output_refresh_ms();
 
-	// remove completed animations
-	for (int i = 0; i < animation_manager->animated_states->length; i++) {
-		struct container_animation_state *animation_state = animation_manager->animated_states->items[i];
+	struct container_animation_state *animation_state, *tmp;
+	wl_list_for_each_reverse_safe(animation_state, tmp, &animation_manager->animation_states, link) {
+		float progress_delta = tick_time / config->animation_duration_ms;
+		animation_state->progress = MIN(animation_state->progress + progress_delta, 1.0f);
+		*animation_state->current = lerp(animation_state->from, animation_state->to, ease_out_cubic(animation_state->progress));
+
+		if (animation_state->update) {
+			animation_state->update(animation_state->container);
+		}
+
 		if (animation_state->progress == 1.0f) {
-			animation_state->is_being_animated = false; // TODO: ensure this properly catches the race con (view unmapped as animation completes)
-			list_del(animation_manager->animated_states, i);
-
-			// TODO: do this better, anim complete callbacks?
-			if (animation_state->to_alpha == 0.0) {
-				view_cleanup(animation_state->container->view);
-				transaction_commit_dirty();
-			}
-
+			finish_animation(animation_state, animation_manager);
 			continue;
 		}
 	}
 
-	for (int i = 0; i < animation_manager->animated_states->length; i++) {
-		struct container_animation_state *animation_state = animation_manager->animated_states->items[i];
-
-		struct sway_container *con = animation_state->container;
-
-		printf("from: %f, to: %f\n", animation_state->from_alpha, animation_state->to_alpha);
-		printf("con alpha: %f\n", con->alpha);
-
-		float progress_delta = get_fastest_output_refresh_ms() / config->animation_duration_ms;
-		animation_state->progress = MIN(animation_state->progress + progress_delta, 1.0f);
-		con->alpha = lerp(animation_state->from_alpha, animation_state->to_alpha, ease_out_cubic(animation_state->progress));
-		container_update(con);
-	}
-
-	if (animation_manager->animated_states->length > 0) {
-		// TODO: save this val to the animation manager
-		wl_event_source_timer_update(animation_manager->tick, get_fastest_output_refresh_ms());
+	if (!wl_list_empty(&animation_manager->animation_states)) {
+		wl_event_source_timer_update(animation_manager->tick, tick_time);
 	}
 	return 0;
 }
 
+// TODO: is this needed? just calls finish_animation
+void cancel_container_animation(struct container_animation_state *animation_state, struct animation_manager *animation_manager) {
+	finish_animation(animation_state, animation_manager);
+}
+
 void add_container_animation(struct container_animation_state *animation_state, struct animation_manager *animation_manager) {
-	list_add(animation_manager->animated_states, animation_state);
-	animation_state->is_being_animated = true;
+	animation_state->init = true;
+	wl_list_insert(&animation_manager->animation_states, &animation_state->link);
 	wl_event_source_timer_update(animation_manager->tick, 1);
+}
+
+
+void fadeout_animation_complete(struct sway_container *con) {
+	view_cleanup(con->view);
+	transaction_commit_dirty();
+}
+
+struct container_animation_state container_animation_state_create_fadein(struct sway_container *con) {
+	return (struct container_animation_state) {
+		.init = false,
+		.progress = 0.0f,
+		.from = con->alpha,
+		.to = con->target_alpha,
+		.current = &con->alpha,
+		.container = con,
+		.update = container_update,
+		.complete = NULL,
+	};
+}
+
+struct container_animation_state container_animation_state_create_fadeout(struct sway_container *con) {
+	return (struct container_animation_state) {
+		.init = false,
+		.progress = 0.0f,
+		.from = con->alpha,
+		.to = 0.0,
+		.current = &con->alpha,
+		.container = con,
+		.update = container_update,
+		.complete = fadeout_animation_complete,
+	};
 }
 
 struct animation_manager *animation_manager_create(struct sway_server *server) {
@@ -82,7 +118,7 @@ struct animation_manager *animation_manager_create(struct sway_server *server) {
 		return NULL;
 	}
 
-	animation_manager->animated_states = create_list();
+	wl_list_init(&animation_manager->animation_states);
 	animation_manager->tick = wl_event_loop_add_timer(server->wl_event_loop, animation_timer, animation_manager);
 	wl_event_source_timer_update(animation_manager->tick, 1);
 
