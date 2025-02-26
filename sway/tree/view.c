@@ -784,14 +784,6 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 	view_populate_pid(view);
 	view->container = container_create(view);
 
-	view->animation_state = (struct container_animation_state) {
-		.progress = 0.0f,
-		.from_alpha = view->container->alpha,
-		.to_alpha = view->container->target_alpha,
-		.container = view->container,
-		.is_being_animated = false, // set by animation_manager when picked up	
-	};
-
 	if (view->ctx == NULL) {
 		struct launcher_ctx *ctx = launcher_ctx_find_pid(view->pid);
 		if (ctx != NULL) {
@@ -945,6 +937,7 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 		wlr_foreign_toplevel_handle_v1_set_app_id(view->foreign_toplevel, class);
 	}
 
+	view->animation_state = container_animation_state_create_fadein(view->container);
 	add_container_animation(&view->animation_state, server.animation_manager);	
 }
 
@@ -962,13 +955,9 @@ void view_unmap(struct sway_view *view) {
 		view_save_buffer(view);
 	}
 
-	// start close animation
-	view->animation_state.from_alpha = view->container->alpha;
-	view->animation_state.to_alpha = 0.0f;
-	view->animation_state.progress = 0.0f;
-	if (!view->animation_state.is_being_animated) {
-		add_container_animation(&view->animation_state, server.animation_manager);
-	}
+	cancel_container_animation(&view->animation_state, server.animation_manager);
+	view->animation_state = container_animation_state_create_fadeout(view->container);
+	add_container_animation(&view->animation_state, server.animation_manager);
 
 	view->executed_criteria->length = 0;
 
