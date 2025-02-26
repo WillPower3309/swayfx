@@ -753,6 +753,7 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 		.from_alpha = view->container->alpha,
 		.to_alpha = view->container->target_alpha,
 		.container = view->container,
+		.is_being_animated = false, // set by animation_manager when picked up	
 	};
 
 	if (view->ctx == NULL) {
@@ -911,13 +912,27 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 	add_container_animation(&view->animation_state, server.animation_manager);	
 }
 
+void view_cleanup(struct sway_view *view) {
+	view->container->node.destroying = true;
+	node_set_dirty(&view->container->node);
+	transaction_commit_dirty();
+}
+
 void view_unmap(struct sway_view *view) {
 	wl_signal_emit_mutable(&view->events.unmap, view);
+
+	// save the buffer (needed for close animation)
+	if (!view->saved_surface_tree) {
+		view_save_buffer(view);
+	}
 
 	// start close animation
 	view->animation_state.from_alpha = view->container->alpha;
 	view->animation_state.to_alpha = 0.0f;
 	view->animation_state.progress = 0.0f;
+	if (!view->animation_state.is_being_animated) {
+		add_container_animation(&view->animation_state, server.animation_manager);
+	}
 
 	view->executed_criteria->length = 0;
 
@@ -966,7 +981,6 @@ void view_unmap(struct sway_view *view) {
 		seat_consider_warp_to_focus(seat);
 	}
 
-	transaction_commit_dirty();
 	view->surface = NULL;
 }
 
@@ -1183,6 +1197,8 @@ void view_remove_saved_buffer(struct sway_view *view) {
 	if (!sway_assert(view->saved_surface_tree, "Expected a saved buffer")) {
 		return;
 	}
+
+	printf("REMOVED SAVED BUFFER\n");
 
 	wlr_scene_node_destroy(&view->saved_surface_tree->node);
 	view->saved_surface_tree = NULL;
