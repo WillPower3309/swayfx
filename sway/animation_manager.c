@@ -3,6 +3,7 @@
 #include "log.h"
 #include "sway/animation_manager.h"
 #include "sway/config.h"
+#include "sway/desktop/transaction.h"
 #include "sway/output.h"
 #include "sway/server.h"
 #include "sway/tree/root.h"
@@ -41,6 +42,7 @@ int animation_timer(void *data) {
 			// TODO: do this better, anim complete callbacks?
 			if (animation_state->to_alpha == 0.0) {
 				view_cleanup(animation_state->container->view);
+				transaction_commit_dirty();
 			}
 
 			continue;
