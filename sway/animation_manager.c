@@ -35,7 +35,14 @@ int animation_timer(void *data) {
 	for (int i = 0; i < animation_manager->animated_states->length; i++) {
 		struct container_animation_state *animation_state = animation_manager->animated_states->items[i];
 		if (animation_state->progress == 1.0f) {
+			animation_state->is_being_animated = false; // TODO: ensure this properly catches the race con (view unmapped as animation completes)
 			list_del(animation_manager->animated_states, i);
+
+			// TODO: do this better, anim complete callbacks?
+			if (animation_state->to_alpha == 0.0) {
+				view_cleanup(animation_state->container->view);
+			}
+
 			continue;
 		}
 	}
@@ -44,11 +51,14 @@ int animation_timer(void *data) {
 		struct container_animation_state *animation_state = animation_manager->animated_states->items[i];
 
 		struct sway_container *con = animation_state->container;
+
+		printf("from: %f, to: %f\n", animation_state->from_alpha, animation_state->to_alpha);
+		printf("con alpha: %f\n", con->alpha);
+
 		float progress_delta = get_fastest_output_refresh_ms() / config->animation_duration_ms;
 		animation_state->progress = MIN(animation_state->progress + progress_delta, 1.0f);
 		con->alpha = lerp(animation_state->from_alpha, animation_state->to_alpha, ease_out_cubic(animation_state->progress));
 		container_update(con);
-		printf("con alpha: %f\n", con->alpha);
 	}
 
 	if (animation_manager->animated_states->length > 0) {
@@ -60,6 +70,7 @@ int animation_timer(void *data) {
 
 void add_container_animation(struct container_animation_state *animation_state, struct animation_manager *animation_manager) {
 	list_add(animation_manager->animated_states, animation_state);
+	animation_state->is_being_animated = true;
 	wl_event_source_timer_update(animation_manager->tick, 1);
 }
 
