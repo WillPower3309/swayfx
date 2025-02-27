@@ -108,6 +108,12 @@ struct container_animation_state container_animation_state_create_fadein(struct 
 	alpha_animated_var->current = &con->alpha;
 	list_add(animation_state.animated_vars, alpha_animated_var);
 
+	struct animated_var *blur_alpha_animated_var = calloc(1, sizeof(*blur_alpha_animated_var));
+	blur_alpha_animated_var->from = con->blur_alpha;
+	blur_alpha_animated_var->to = 1.0f;
+	blur_alpha_animated_var->current = &con->blur_alpha;
+	list_add(animation_state.animated_vars, blur_alpha_animated_var);
+
 	return animation_state;
 }
 
@@ -127,6 +133,12 @@ struct container_animation_state container_animation_state_create_fadeout(struct
 	alpha_animated_var->to = 0.0f;
 	alpha_animated_var->current = &con->alpha;
 	list_add(animation_state.animated_vars, alpha_animated_var);
+
+	struct animated_var *blur_alpha_animated_var = calloc(1, sizeof(*blur_alpha_animated_var));
+	blur_alpha_animated_var->from = con->blur_alpha;
+	blur_alpha_animated_var->to = 0.0f;
+	blur_alpha_animated_var->current = &con->blur_alpha;
+	list_add(animation_state.animated_vars, blur_alpha_animated_var);
 
 	return animation_state;
 }
