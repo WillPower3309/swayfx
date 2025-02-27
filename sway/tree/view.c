@@ -1213,6 +1213,8 @@ static void view_save_buffer_iterator(struct wlr_scene_buffer *buffer,
 	// Set effects to saved views
 	wlr_scene_buffer_set_corner_radius(sbuf, buffer->corner_radius, buffer->corners);
 	wlr_scene_buffer_set_backdrop_blur(sbuf, buffer->backdrop_blur);
+	// TODO: this sets blur alpha to 1 which persists throughout close animation
+	wlr_scene_buffer_set_backdrop_blur_alpha(sbuf, buffer->backdrop_blur_alpha);
 	wlr_scene_buffer_set_backdrop_blur_optimized(sbuf, buffer->backdrop_blur_optimized);
 	wlr_scene_buffer_set_backdrop_blur_ignore_transparent(sbuf, buffer->backdrop_blur_ignore_transparent);
 }
