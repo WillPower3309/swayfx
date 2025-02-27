@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <stdlib.h>
 #include <wlr/util/addon.h>
 #include "log.h"
@@ -66,4 +67,37 @@ bool scene_descriptor_assign(struct wlr_scene_node *node,
 	wlr_addon_init(&desc->addon, &node->addons, (void *)type, &addon_interface);
 	desc->data = data;
 	return true;
+}
+
+struct sway_scene_descriptor *scene_descriptor_try_get_first(struct wlr_scene_node *node) {
+	struct wlr_addon *addon;
+	wl_list_for_each(addon, &node->addons.addons, link) {
+		if (addon->impl != &addon_interface) {
+			continue;
+		}
+		enum sway_scene_descriptor_type desc_type = (uintptr_t) addon->owner;
+		switch (desc_type) {
+		case SWAY_SCENE_DESC_BUFFER_TIMER:
+		case SWAY_SCENE_DESC_NON_INTERACTIVE:
+		case SWAY_SCENE_DESC_CONTAINER:
+		case SWAY_SCENE_DESC_VIEW:
+		case SWAY_SCENE_DESC_LAYER_SHELL:
+		case SWAY_SCENE_DESC_XWAYLAND_UNMANAGED:
+		case SWAY_SCENE_DESC_POPUP:
+		case SWAY_SCENE_DESC_DRAG_ICON:;
+			struct scene_descriptor *desc = wl_container_of(addon, desc, addon);
+			if (desc) {
+				struct sway_scene_descriptor *result = malloc(sizeof(*result));
+				if (result) {
+					result->type = desc_type;
+					result->data = desc->data;
+					return result;
+				}
+			}
+			break;
+		default:
+			break;
+		}
+	}
+	return NULL;
 }
