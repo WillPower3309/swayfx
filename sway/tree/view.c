@@ -16,6 +16,7 @@
 #endif
 #include "list.h"
 #include "log.h"
+#include "sway/animation_manager.h"
 #include "sway/criteria.h"
 #include "sway/commands.h"
 #include "sway/desktop/transaction.h"
@@ -899,10 +900,28 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 	} else if ((class = view_get_class(view)) != NULL) {
 		wlr_foreign_toplevel_handle_v1_set_app_id(view->foreign_toplevel, class);
 	}
+
+	view->animation_state = container_animation_state_create_fadein(view->container);
+	add_container_animation(&view->animation_state, server.animation_manager);	
+}
+
+void view_cleanup(struct sway_view *view) {
+	view->container->node.destroying = true;
+	node_set_dirty(&view->container->node);
+	//transaction_commit_dirty();
 }
 
 void view_unmap(struct sway_view *view) {
 	wl_signal_emit_mutable(&view->events.unmap, view);
+
+	// save the buffer (needed for close animation)
+	if (!view->saved_surface_tree) {
+		view_save_buffer(view);
+	}
+
+	cancel_container_animation(&view->animation_state, server.animation_manager);
+	view->animation_state = container_animation_state_create_fadeout(view->container);
+	add_container_animation(&view->animation_state, server.animation_manager);
 
 	view->executed_criteria->length = 0;
 
@@ -951,7 +970,6 @@ void view_unmap(struct sway_view *view) {
 		seat_consider_warp_to_focus(seat);
 	}
 
-	transaction_commit_dirty();
 	view->surface = NULL;
 }
 
@@ -1195,6 +1213,8 @@ static void view_save_buffer_iterator(struct wlr_scene_buffer *buffer,
 	// Set effects to saved views
 	wlr_scene_buffer_set_corner_radius(sbuf, buffer->corner_radius, buffer->corners);
 	wlr_scene_buffer_set_backdrop_blur(sbuf, buffer->backdrop_blur);
+	wlr_scene_buffer_set_backdrop_blur_alpha(sbuf, buffer->backdrop_blur_alpha);
+	wlr_scene_buffer_set_backdrop_blur_strength(sbuf, buffer->backdrop_blur_alpha);
 	wlr_scene_buffer_set_backdrop_blur_optimized(sbuf, buffer->backdrop_blur_optimized);
 	wlr_scene_buffer_set_backdrop_blur_ignore_transparent(sbuf, buffer->backdrop_blur_ignore_transparent);
 }

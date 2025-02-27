@@ -5,6 +5,7 @@
 #include <wlr/config.h>
 #include <wlr/types/wlr_compositor.h>
 #include <wlr/types/wlr_tearing_control_v1.h>
+#include "sway/animation_manager.h"
 #include "sway/config.h"
 #if WLR_HAS_XWAYLAND
 #include <wlr/xwayland.h>
@@ -120,6 +121,8 @@ struct sway_view {
 
 	enum sway_view_tearing_mode tearing_mode;
 	enum wp_tearing_control_v1_presentation_hint tearing_hint;
+
+	struct container_animation_state animation_state;
 };
 
 struct sway_xdg_shell_view {
@@ -296,6 +299,8 @@ void view_begin_destroy(struct sway_view *view);
  */
 void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 	bool fullscreen, struct wlr_output *fullscreen_output, bool decoration);
+
+void view_cleanup(struct sway_view *view);
 
 void view_unmap(struct sway_view *view);
 
