@@ -365,6 +365,7 @@ struct bar_config {
 	enum pango_markup_config pango_markup;
 	char *font;
 	int height; // -1 not defined
+	int border_size;
 	bool workspace_buttons;
 	bool wrap_scroll;
 	char *separator_symbol;
