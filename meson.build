@@ -44,7 +44,7 @@ subproject(
 	'scenefx',
 	required: false,
 )
-scenefx = dependency('scenefx-0.2', fallback: 'scenefx')
+scenefx = dependency('scenefx', version: '0.2', fallback: 'scenefx')
 
 # Execute the wlroots subproject, if any
 wlroots_version = ['>=0.18.0', '<0.19.0']
