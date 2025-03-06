@@ -18,7 +18,6 @@
       mkPackage = pkgs: {
         swayfx-unwrapped =
           (pkgs.swayfx-unwrapped.override {
-            wlroots_0_17 = pkgs.wlroots_0_18;
           }).overrideAttrs
             (old: {
               version = "0.4.0-git";
