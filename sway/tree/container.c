@@ -158,10 +158,12 @@ struct sway_container *container_create(struct sway_view *view) {
 
 	c->pending.layout = L_NONE;
 	c->view = view;
-	c->alpha = 1.0f;
+	c->alpha = view ? 0.0f : 1.0f;
+	c->target_alpha = 1.0f;
 	c->marks = create_list();
 	c->corner_radius = config->corner_radius;
 	c->blur_enabled = config->blur_enabled;
+	c->blur_alpha = 0.0f; // used for animations to ensure smooth blur fade in
 	c->shadow_enabled = config->shadow_enabled;
 	c->dim = config->default_dim_inactive;
 
@@ -248,6 +250,20 @@ static void scene_rect_set_color(struct wlr_scene_rect *rect,
 	wlr_scene_rect_set_color(rect, premultiplied);
 }
 
+// scene shadow wants premultiplied colors
+// TODO: make common get_premultiplied_color function
+static void scene_shadow_set_color(struct wlr_scene_shadow *shadow,
+		const float color[4], float opacity) {
+	const float premultiplied[] = {
+		color[0] * color[3] * opacity,
+		color[1] * color[3] * opacity,
+		color[2] * color[3] * opacity,
+		color[3] * opacity,
+	};
+
+	wlr_scene_shadow_set_color(shadow, premultiplied);
+}
+
 void container_update(struct sway_container *con) {
 	struct border_colors *colors = container_get_current_colors(con);
 	list_t *siblings = NULL;
@@ -282,6 +298,10 @@ void container_update(struct sway_container *con) {
 		scene_rect_set_color(con->border.bottom, bottom, alpha);
 		scene_rect_set_color(con->border.left, colors->child_border, alpha);
 		scene_rect_set_color(con->border.right, right, alpha);
+
+		float *shadow_color = view_is_urgent(con->view) || con->current.focused ?
+				config->shadow_color : config->shadow_inactive_color;
+		scene_shadow_set_color(con->shadow, shadow_color, alpha);
 	}
 
 	if (con->title_bar.title_text) {
@@ -556,8 +576,11 @@ void container_begin_destroy(struct sway_container *con) {
 
 	container_end_mouse_operation(con);
 
-	con->node.destroying = true;
-	node_set_dirty(&con->node);
+	// the view decides when the node should be destroyed
+	if (con->view == NULL) {
+		con->node.destroying = true;
+		node_set_dirty(&con->node);
+	}
 
 	if (con->scratchpad) {
 		root_scratchpad_remove_container(con);

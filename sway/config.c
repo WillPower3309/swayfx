@@ -351,6 +351,8 @@ static void config_defaults(struct sway_config *config) {
 	color_to_rgba(config->border_colors.background, 0xFFFFFFFF);
 
 	// SwayFX defaults
+	config->animation_duration_ms = 0.0f;
+
 	config->corner_radius = 0;
 	config->smart_corner_radius = true;
 
