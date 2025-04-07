@@ -1,22 +1,29 @@
 #ifndef _SWAY_ANIMATION_MANAGER_H
 #define _SWAY_ANIMATION_MANAGER_H
 
-#include "list.h"
 #include "sway/tree/container.h"
-
-struct animated_var {
-	float from;
-	float to;
-	float *current;
-};
 
 struct container_animation_state {
 	struct wl_list link;
 	bool init;
-	list_t *animated_vars; // struct animated_var
 	float progress;
 	struct sway_container *container;
-	void (*update)(struct sway_container *con);
+
+	// TODO: make this an animated vars list similar to before?
+	float from_alpha;
+	float to_alpha;
+	float from_blur_alpha;
+	float to_blur_alpha;
+	float from_x;
+	float to_x;
+	float from_y;
+	float to_y;
+	float from_width;
+	float to_width;
+	float from_height;
+	float to_height;
+
+	void (*update)(struct container_animation_state *animation_state);
 	void (*complete)(struct sway_container *con);
 };
 
