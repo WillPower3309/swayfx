@@ -7,6 +7,8 @@
 #include "sway/desktop/transaction.h"
 #include "sway/output.h"
 #include "sway/server.h"
+#include "sway/tree/arrange.h"
+#include "sway/tree/container.h"
 #include "sway/tree/root.h"
 
 float get_fastest_output_refresh_ms() {
@@ -59,14 +61,11 @@ int animation_timer(void *data) {
 		if (animation_state->progress == 1.0f) {
 			finish_animation(animation_state, animation_manager);
 		}
-		node_set_dirty(&animation_state->container->node);
 	}
 
 	if (!wl_list_empty(&animation_manager->animation_states)) {
 		wl_event_source_timer_update(animation_manager->tick, tick_time);
 	}
-
-	transaction_commit_dirty();
 	return 0;
 }
 
@@ -92,10 +91,15 @@ void fadeinout_animation_update(struct container_animation_state *animation_stat
 	con->pending.width = animation_state->from_width + (animation_state->to_width - animation_state->from_width) * animation_state->progress;
 	con->pending.height = animation_state->from_height + (animation_state->to_height - animation_state->from_height) * animation_state->progress;
 	*/
+
+	container_update(con);
+	// view_configure(con->view); // TODO: add for size / pos change?
 }
 
 void fadeout_animation_complete(struct sway_container *con) {
 	con->node.destroying = true;
+	node_set_dirty(&con->node);
+	transaction_commit_dirty();
 }
 
 struct container_animation_state container_animation_state_create_fadein(struct sway_container *con) {
