@@ -52,25 +52,21 @@ int animation_timer(void *data) {
 		float progress_delta = tick_time / config->animation_duration_ms;
 		animation_state->progress = MIN(animation_state->progress + progress_delta, 1.0f);
 
-		// TODO: memory leak, use wl_list?
-		for(int i = 0; i < animation_state->animated_vars->length; i++) {
-			struct animated_var *animated_var = animation_state->animated_vars->items[i];
-			*animated_var->current = lerp(animated_var->from, animated_var->to, ease_out_cubic(animation_state->progress));
-		}
-
 		if (animation_state->update) {
-			animation_state->update(animation_state->container);
+			animation_state->update(animation_state);
 		}
 
 		if (animation_state->progress == 1.0f) {
 			finish_animation(animation_state, animation_manager);
-			continue;
 		}
+		node_set_dirty(&animation_state->container->node);
 	}
 
 	if (!wl_list_empty(&animation_manager->animation_states)) {
 		wl_event_source_timer_update(animation_manager->tick, tick_time);
 	}
+
+	transaction_commit_dirty();
 	return 0;
 }
 
@@ -85,62 +81,67 @@ void add_container_animation(struct container_animation_state *animation_state, 
 	wl_event_source_timer_update(animation_manager->tick, 1);
 }
 
+void fadeinout_animation_update(struct container_animation_state *animation_state) {
+	struct sway_container *con = animation_state->container;
+	con->alpha = lerp(animation_state->from_alpha, animation_state->to_alpha, ease_out_cubic(animation_state->progress));
+	con->blur_alpha = lerp(animation_state->from_blur_alpha, animation_state->to_blur_alpha, ease_out_cubic(animation_state->progress));
+
+	/*
+	con->pending.x = animation_state->from_x + (animation_state->to_x - animation_state->from_x) * animation_state->progress;
+	con->pending.y = animation_state->from_y + (animation_state->to_y - animation_state->from_y) * animation_state->progress;
+	con->pending.width = animation_state->from_width + (animation_state->to_width - animation_state->from_width) * animation_state->progress;
+	con->pending.height = animation_state->from_height + (animation_state->to_height - animation_state->from_height) * animation_state->progress;
+	*/
+}
 
 void fadeout_animation_complete(struct sway_container *con) {
-	view_cleanup(con->view);
-	transaction_commit_dirty();
+	con->node.destroying = true;
 }
 
-// TODO: free memory or use wl_list
 struct container_animation_state container_animation_state_create_fadein(struct sway_container *con) {
-	struct container_animation_state animation_state;
-	animation_state.init = false;
-	animation_state.progress = 0.0f;
-	animation_state.container = con;
-	animation_state.update = container_update;
-	animation_state.complete = NULL;
-
-	animation_state.animated_vars = create_list();
-
-	struct animated_var *alpha_animated_var = calloc(1, sizeof(*alpha_animated_var));
-	alpha_animated_var->from = con->alpha;
-	alpha_animated_var->to = con->target_alpha;
-	alpha_animated_var->current = &con->alpha;
-	list_add(animation_state.animated_vars, alpha_animated_var);
-
-	struct animated_var *blur_alpha_animated_var = calloc(1, sizeof(*blur_alpha_animated_var));
-	blur_alpha_animated_var->from = con->blur_alpha;
-	blur_alpha_animated_var->to = 1.0f;
-	blur_alpha_animated_var->current = &con->blur_alpha;
-	list_add(animation_state.animated_vars, blur_alpha_animated_var);
-
-	return animation_state;
+	struct sway_container_state pending_state = con->pending;
+	return (struct container_animation_state) {
+		.init = false,
+		.progress = 0.0f,
+		.container = con,
+		.from_alpha = con->alpha,
+		.to_alpha = con->target_alpha,
+		.from_blur_alpha = con->blur_alpha,
+		.to_blur_alpha = 1.0f,
+		.from_x = pending_state.x + (pending_state.width / 2.0f) / 2.0f,
+		.to_x = pending_state.x,
+		.from_y = pending_state.y + (pending_state.height / 2.0f) / 2.0f,
+		.to_y = pending_state.y,
+		.from_width = pending_state.width / 2.0f,
+		.to_width = pending_state.width,
+		.from_height = pending_state.height / 2.0f,
+		.to_height = pending_state.height,
+		.update = fadeinout_animation_update,
+		.complete = NULL,
+	};
 }
 
-// TODO: free memory or use wl_list
 struct container_animation_state container_animation_state_create_fadeout(struct sway_container *con) {
-	struct container_animation_state animation_state;
-	animation_state.init = false;
-	animation_state.progress = 0.0f;
-	animation_state.container = con;
-	animation_state.update = container_update;
-	animation_state.complete = fadeout_animation_complete;
-
-	animation_state.animated_vars = create_list();
-
-	struct animated_var *alpha_animated_var = calloc(1, sizeof(*alpha_animated_var));
-	alpha_animated_var->from = con->alpha;
-	alpha_animated_var->to = 0.0f;
-	alpha_animated_var->current = &con->alpha;
-	list_add(animation_state.animated_vars, alpha_animated_var);
-
-	struct animated_var *blur_alpha_animated_var = calloc(1, sizeof(*blur_alpha_animated_var));
-	blur_alpha_animated_var->from = con->blur_alpha;
-	blur_alpha_animated_var->to = 0.0f;
-	blur_alpha_animated_var->current = &con->blur_alpha;
-	list_add(animation_state.animated_vars, blur_alpha_animated_var);
-
-	return animation_state;
+	struct sway_container_state pending_state = con->pending;
+	return (struct container_animation_state) {
+		.init = false,
+		.progress = 0.0f,
+		.container = con,
+		.from_alpha = con->alpha,
+		.to_alpha = 0.0f,
+		.from_blur_alpha = con->blur_alpha,
+		.to_blur_alpha = 0.0f,
+		.from_x = pending_state.x,
+		.to_x = pending_state.x + (pending_state.width / 2.0f) / 2.0f,
+		.from_y = pending_state.y,
+		.to_y = pending_state.y + (pending_state.height / 2.0f) / 2.0f,
+		.from_width = pending_state.width,
+		.to_width = pending_state.width / 2.0f,
+		.from_height = pending_state.height,
+		.to_height = pending_state.height / 2.0f,
+		.update = fadeinout_animation_update,
+		.complete = fadeout_animation_complete,
+	};
 }
 
 struct animation_manager *animation_manager_create(struct sway_server *server) {

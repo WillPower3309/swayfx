@@ -941,12 +941,6 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 	add_container_animation(&view->animation_state, server.animation_manager);	
 }
 
-void view_cleanup(struct sway_view *view) {
-	view->container->node.destroying = true;
-	node_set_dirty(&view->container->node);
-	//transaction_commit_dirty();
-}
-
 void view_unmap(struct sway_view *view) {
 	wl_signal_emit_mutable(&view->events.unmap, view);
 

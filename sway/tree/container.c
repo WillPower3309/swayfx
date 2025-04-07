@@ -593,7 +593,7 @@ void container_begin_destroy(struct sway_container *con) {
 
 	container_end_mouse_operation(con);
 
-	// the view decides when the node should be destroyed
+	// animation_manager determines when node is destroyed for views
 	if (con->view == NULL) {
 		con->node.destroying = true;
 		node_set_dirty(&con->node);
@@ -2011,8 +2011,10 @@ bool container_has_corner_radius(struct sway_container *con) {
 	if (!con) {
 		return false;
 	}
-	return (container_is_floating_or_child(con) ||
+/*	return (container_is_floating_or_child(con) ||
 			!(config->smart_corner_radius && con->current.workspace->current_gaps.top == 0)) &&
 			con->corner_radius;
+*/
+	return true; // TODO
 }
 
