@@ -964,6 +964,7 @@ void view_unmap(struct sway_view *view) {
 		seat_consider_warp_to_focus(seat);
 	}
 
+	transaction_commit_dirty();
 	view->surface = NULL;
 }
 
