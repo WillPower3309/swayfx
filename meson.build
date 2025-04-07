@@ -17,7 +17,7 @@ add_project_arguments(
 	[
 		'-DWLR_USE_UNSTABLE',
 		'-D_POSIX_C_SOURCE=200809L',
-'-O',
+
 		'-Wno-unused-parameter',
 		'-Wno-unused-result',
 		'-Wno-missing-braces',
