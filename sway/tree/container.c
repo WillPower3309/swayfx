@@ -590,7 +590,7 @@ void container_begin_destroy(struct sway_container *con) {
 		container_fullscreen_disable(con);
 	}
 
-	if (con->pending.parent || con->pending.workspace) {
+	if (con->view == NULL && (con->pending.parent || con->pending.workspace)) {
 		container_detach(con);
 	}
 }
