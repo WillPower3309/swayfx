@@ -955,7 +955,7 @@ void view_unmap(struct sway_view *view) {
 		view_save_buffer(view);
 	}
 
-	cancel_container_animation(&view->animation_state, server.animation_manager);
+	cancel_container_animation(&view->animation_state);
 	view->animation_state = container_animation_state_create_fadeout(view->container);
 	add_container_animation(&view->animation_state, server.animation_manager);
 
