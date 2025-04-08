@@ -10,6 +10,7 @@
 #include "sway/tree/arrange.h"
 #include "sway/tree/container.h"
 #include "sway/tree/root.h"
+#include "sway/tree/workspace.h"
 
 float get_fastest_output_refresh_ms() {
 	float fastest_output_refresh_ms = 16.6667; // fallback to 60 Hz
@@ -99,6 +100,26 @@ void fadeinout_animation_update(struct container_animation_state *animation_stat
 void fadeout_animation_complete(struct sway_container *con) {
 	con->node.destroying = true;
 	node_set_dirty(&con->node);
+
+	struct sway_container *parent = con->pending.parent;
+	struct sway_workspace *ws = con->pending.workspace;
+
+	if (parent) {
+		container_detach(con);
+		container_reap_empty(parent);
+	} else if (ws) {
+		container_detach(con);
+		workspace_consider_destroy(ws);
+	}
+
+	if (root->fullscreen_global) {
+		// Container may have been a child of the root fullscreen container
+		arrange_root();
+	} else if (ws && !ws->node.destroying) {
+		arrange_workspace(ws);
+		workspace_detect_urgent(ws);
+	}
+
 	transaction_commit_dirty();
 }
 
