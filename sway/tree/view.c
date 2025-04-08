@@ -940,23 +940,7 @@ void view_unmap(struct sway_view *view) {
 		view->foreign_toplevel = NULL;
 	}
 
-	//struct sway_container *parent = view->container->pending.parent;
-	//struct sway_workspace *ws = view->container->pending.workspace;
 	container_begin_destroy(view->container);
-	/*
-	if (parent) {
-		container_reap_empty(parent);
-	} else if (ws) {
-		workspace_consider_destroy(ws);
-	}
-
-	if (root->fullscreen_global) {
-		// Container may have been a child of the root fullscreen container
-		arrange_root();
-	} else if (ws && !ws->node.destroying) {
-		arrange_workspace(ws);
-		workspace_detect_urgent(ws);
-	}*/
 
 	struct sway_seat *seat;
 	wl_list_for_each(seat, &server.input->seats, link) {
