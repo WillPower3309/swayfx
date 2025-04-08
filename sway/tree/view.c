@@ -102,56 +102,56 @@ void view_begin_destroy(struct sway_view *view) {
 }
 
 const char *view_get_title(struct sway_view *view) {
-	if (view->impl->get_string_prop) {
+	if (view->surface && view->impl->get_string_prop) {
 		return view->impl->get_string_prop(view, VIEW_PROP_TITLE);
 	}
 	return NULL;
 }
 
 const char *view_get_app_id(struct sway_view *view) {
-	if (view->impl->get_string_prop) {
+	if (view->surface && view->impl->get_string_prop) {
 		return view->impl->get_string_prop(view, VIEW_PROP_APP_ID);
 	}
 	return NULL;
 }
 
 const char *view_get_class(struct sway_view *view) {
-	if (view->impl->get_string_prop) {
+	if (view->surface && view->impl->get_string_prop) {
 		return view->impl->get_string_prop(view, VIEW_PROP_CLASS);
 	}
 	return NULL;
 }
 
 const char *view_get_instance(struct sway_view *view) {
-	if (view->impl->get_string_prop) {
+	if (view->surface && view->impl->get_string_prop) {
 		return view->impl->get_string_prop(view, VIEW_PROP_INSTANCE);
 	}
 	return NULL;
 }
 #if WLR_HAS_XWAYLAND
 uint32_t view_get_x11_window_id(struct sway_view *view) {
-	if (view->impl->get_int_prop) {
+	if (view->surface && view->impl->get_int_prop) {
 		return view->impl->get_int_prop(view, VIEW_PROP_X11_WINDOW_ID);
 	}
 	return 0;
 }
 
 uint32_t view_get_x11_parent_id(struct sway_view *view) {
-	if (view->impl->get_int_prop) {
+	if (view->surface && view->impl->get_int_prop) {
 		return view->impl->get_int_prop(view, VIEW_PROP_X11_PARENT_ID);
 	}
 	return 0;
 }
 #endif
 const char *view_get_window_role(struct sway_view *view) {
-	if (view->impl->get_string_prop) {
+	if (view->surface && view->impl->get_string_prop) {
 		return view->impl->get_string_prop(view, VIEW_PROP_WINDOW_ROLE);
 	}
 	return NULL;
 }
 
 uint32_t view_get_window_type(struct sway_view *view) {
-	if (view->impl->get_int_prop) {
+	if (view->surface && view->impl->get_int_prop) {
 		return view->impl->get_int_prop(view, VIEW_PROP_WINDOW_TYPE);
 	}
 	return 0;
@@ -199,7 +199,7 @@ const char *view_get_shell(struct sway_view *view) {
 
 void view_get_constraints(struct sway_view *view, double *min_width,
 		double *max_width, double *min_height, double *max_height) {
-	if (view->impl->get_constraints) {
+	if (view->surface && view->impl->get_constraints) {
 		view->impl->get_constraints(view,
 				min_width, max_width, min_height, max_height);
 	} else {
@@ -212,7 +212,7 @@ void view_get_constraints(struct sway_view *view, double *min_width,
 
 uint32_t view_configure(struct sway_view *view, double lx, double ly, int width,
 		int height) {
-	if (view->impl->configure) {
+	if (view->surface && view->impl->configure) {
 		return view->impl->configure(view, lx, ly, width, height);
 	}
 	return 0;
@@ -404,6 +404,12 @@ void view_autoconfigure(struct sway_view *view) {
 }
 
 void view_set_activated(struct sway_view *view, bool activated) {
+	// catch a case where view is focused during close animation
+	// before its seat node is destroyed
+	if (!view->surface) {
+		return;
+	}
+
 	if (view->impl->set_activated) {
 		view->impl->set_activated(view, activated);
 	}
@@ -478,19 +484,19 @@ void view_update_csd_from_client(struct sway_view *view, bool enabled) {
 }
 
 void view_set_tiled(struct sway_view *view, bool tiled) {
-	if (view->impl->set_tiled) {
+	if (view->surface && view->impl->set_tiled) {
 		view->impl->set_tiled(view, tiled);
 	}
 }
 
 void view_close(struct sway_view *view) {
-	if (view->impl->close) {
+	if (view->surface && view->impl->close) {
 		view->impl->close(view);
 	}
 }
 
 void view_close_popups(struct sway_view *view) {
-	if (view->impl->close_popups) {
+	if (view->surface && view->impl->close_popups) {
 		view->impl->close_popups(view);
 	}
 }
@@ -970,9 +976,10 @@ void view_unmap(struct sway_view *view) {
 		view->foreign_toplevel = NULL;
 	}
 
-	struct sway_container *parent = view->container->pending.parent;
-	struct sway_workspace *ws = view->container->pending.workspace;
+	//struct sway_container *parent = view->container->pending.parent;
+	//struct sway_workspace *ws = view->container->pending.workspace;
 	container_begin_destroy(view->container);
+	/*
 	if (parent) {
 		container_reap_empty(parent);
 	} else if (ws) {
@@ -985,7 +992,7 @@ void view_unmap(struct sway_view *view) {
 	} else if (ws && !ws->node.destroying) {
 		arrange_workspace(ws);
 		workspace_detect_urgent(ws);
-	}
+	}*/
 
 	struct sway_seat *seat;
 	wl_list_for_each(seat, &server.input->seats, link) {
