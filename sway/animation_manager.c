@@ -33,7 +33,7 @@ float ease_out_cubic(float t) {
 	return pow(p, 3) + 1;
 }
 
-void finish_animation(struct container_animation_state *animation_state, struct animation_manager *animation_manager) {
+void finish_animation(struct container_animation_state *animation_state) {
 	// TODO: can I check if the link is in the list?
 	if (animation_state->init) {
 		wl_list_remove(&animation_state->link);
@@ -60,7 +60,7 @@ int animation_timer(void *data) {
 		}
 
 		if (animation_state->progress == 1.0f) {
-			finish_animation(animation_state, animation_manager);
+			finish_animation(animation_state);
 		}
 	}
 
@@ -71,8 +71,8 @@ int animation_timer(void *data) {
 }
 
 // TODO: is this needed? just calls finish_animation
-void cancel_container_animation(struct container_animation_state *animation_state, struct animation_manager *animation_manager) {
-	finish_animation(animation_state, animation_manager);
+void cancel_container_animation(struct container_animation_state *animation_state) {
+	finish_animation(animation_state);
 }
 
 void add_container_animation(struct container_animation_state *animation_state, struct animation_manager *animation_manager) {
@@ -94,7 +94,6 @@ void fadeinout_animation_update(struct container_animation_state *animation_stat
 	*/
 
 	container_update(con);
-	// view_configure(con->view); // TODO: add for size / pos change?
 }
 
 void fadeout_animation_complete(struct sway_container *con) {

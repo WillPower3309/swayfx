@@ -41,7 +41,6 @@ struct container_animation_state container_animation_state_create_fadeout(struct
 void add_container_animation(struct container_animation_state *animation_state,
 		struct animation_manager *animation_manager);
 
-void cancel_container_animation(struct container_animation_state *animation_state,
-		struct animation_manager *animation_manager);
+void cancel_container_animation(struct container_animation_state *animation_state);
 
 #endif
