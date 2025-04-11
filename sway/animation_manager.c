@@ -4,13 +4,11 @@
 #include "log.h"
 #include "sway/animation_manager.h"
 #include "sway/config.h"
-#include "sway/desktop/transaction.h"
 #include "sway/output.h"
 #include "sway/server.h"
 #include "sway/tree/arrange.h"
 #include "sway/tree/container.h"
 #include "sway/tree/root.h"
-#include "sway/tree/workspace.h"
 
 float get_fastest_output_refresh_ms() {
 	float fastest_output_refresh_ms = 16.6667; // fallback to 60 Hz
@@ -34,7 +32,7 @@ float ease_out_cubic(float t) {
 }
 
 void finish_animation(struct container_animation_state *animation_state) {
-	// TODO: can I check if the link is in the list?
+	// TODO: can I check if the link is in the list and remove the init var?
 	if (animation_state->init) {
 		wl_list_remove(&animation_state->link);
 		animation_state->init = false;
@@ -70,12 +68,7 @@ int animation_timer(void *data) {
 	return 0;
 }
 
-// TODO: is this needed? just calls finish_animation
-void cancel_container_animation(struct container_animation_state *animation_state) {
-	finish_animation(animation_state);
-}
-
-void add_container_animation(struct container_animation_state *animation_state, struct animation_manager *animation_manager) {
+void start_animation(struct container_animation_state *animation_state, struct animation_manager *animation_manager) {
 	animation_state->init = true;
 	wl_list_insert(&animation_manager->animation_states, &animation_state->link);
 	wl_event_source_timer_update(animation_manager->tick, 1);
@@ -83,43 +76,24 @@ void add_container_animation(struct container_animation_state *animation_state, 
 
 void fadeinout_animation_update(struct container_animation_state *animation_state) {
 	struct sway_container *con = animation_state->container;
-	con->alpha = lerp(animation_state->from_alpha, animation_state->to_alpha, ease_out_cubic(animation_state->progress));
-	con->blur_alpha = lerp(animation_state->from_blur_alpha, animation_state->to_blur_alpha, ease_out_cubic(animation_state->progress));
+	const float multiplier = ease_out_cubic(animation_state->progress);
 
-	/*
-	con->pending.x = animation_state->from_x + (animation_state->to_x - animation_state->from_x) * animation_state->progress;
-	con->pending.y = animation_state->from_y + (animation_state->to_y - animation_state->from_y) * animation_state->progress;
-	con->pending.width = animation_state->from_width + (animation_state->to_width - animation_state->from_width) * animation_state->progress;
-	con->pending.height = animation_state->from_height + (animation_state->to_height - animation_state->from_height) * animation_state->progress;
-	*/
+	con->alpha = lerp(animation_state->from_alpha, animation_state->to_alpha, multiplier);
+	con->blur_alpha = lerp(animation_state->from_blur_alpha, animation_state->to_blur_alpha, multiplier);
+	con->current.x = animation_state->from_x + (animation_state->to_x - animation_state->from_x) * multiplier;
+	con->current.y = animation_state->from_y + (animation_state->to_y - animation_state->from_y) * multiplier;
+	con->current.width = animation_state->from_width + (animation_state->to_width - animation_state->from_width) * multiplier;
+	con->current.height = animation_state->from_height + (animation_state->to_height - animation_state->from_height) * multiplier;
 
 	container_update(con);
+	wlr_scene_node_set_position(&con->scene_tree->node, con->current.x, con->current.y);
+	if (con->output_handler) {
+		wlr_scene_buffer_set_dest_size(con->output_handler, con->current.width, con->current.height);
+	}
 }
 
 void fadeout_animation_complete(struct sway_container *con) {
-	con->node.destroying = true;
-	node_set_dirty(&con->node);
-
-	struct sway_container *parent = con->pending.parent;
-	struct sway_workspace *ws = con->pending.workspace;
-
-	if (parent) {
-		container_detach(con);
-		container_reap_empty(parent);
-	} else if (ws) {
-		container_detach(con);
-		workspace_consider_destroy(ws);
-	}
-
-	if (root->fullscreen_global) {
-		// Container may have been a child of the root fullscreen container
-		arrange_root();
-	} else if (ws && !ws->node.destroying) {
-		arrange_workspace(ws);
-		workspace_detect_urgent(ws);
-	}
-
-	transaction_commit_dirty();
+	container_initiate_destroy(con);
 }
 
 struct container_animation_state container_animation_state_create_fadein(struct sway_container *con) {
@@ -132,9 +106,9 @@ struct container_animation_state container_animation_state_create_fadein(struct 
 		.to_alpha = con->target_alpha,
 		.from_blur_alpha = con->blur_alpha,
 		.to_blur_alpha = 1.0f,
-		.from_x = pending_state.x + (pending_state.width / 2.0f) / 2.0f,
+		.from_x = pending_state.x + (pending_state.width / 4.0f),
 		.to_x = pending_state.x,
-		.from_y = pending_state.y + (pending_state.height / 2.0f) / 2.0f,
+		.from_y = pending_state.y + (pending_state.height / 4.0f),
 		.to_y = pending_state.y,
 		.from_width = pending_state.width / 2.0f,
 		.to_width = pending_state.width,
@@ -156,9 +130,9 @@ struct container_animation_state container_animation_state_create_fadeout(struct
 		.from_blur_alpha = con->blur_alpha,
 		.to_blur_alpha = 0.0f,
 		.from_x = pending_state.x,
-		.to_x = pending_state.x + (pending_state.width / 2.0f) / 2.0f,
+		.to_x = pending_state.x + (pending_state.width / 4.0f),
 		.from_y = pending_state.y,
-		.to_y = pending_state.y + (pending_state.height / 2.0f) / 2.0f,
+		.to_y = pending_state.y + (pending_state.height / 4.0f),
 		.from_width = pending_state.width,
 		.to_width = pending_state.width / 2.0f,
 		.from_height = pending_state.height,
