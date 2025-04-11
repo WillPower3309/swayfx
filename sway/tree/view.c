@@ -37,7 +37,6 @@
 #include "sway/tree/workspace.h"
 #include "sway/config.h"
 #include "sway/xdg_decoration.h"
-#include "stringop.h"
 
 bool view_init(struct sway_view *view, enum sway_view_type type,
 		const struct sway_view_impl *impl) {
@@ -943,8 +942,14 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 		wlr_foreign_toplevel_handle_v1_set_app_id(view->foreign_toplevel, class);
 	}
 
-	view->animation_state = container_animation_state_create_fadein(view->container);
-	add_container_animation(&view->animation_state, server.animation_manager);	
+	// should we animate? TODO: don't animate on stacked or tabbed
+	if (config->animation_duration_ms && !fullscreen) {
+		view->animation_state = container_animation_state_create_fadein(view->container);
+		start_animation(&view->animation_state, server.animation_manager);	
+	} else {
+		view->container->alpha = view->container->target_alpha;
+		view->container->blur_alpha = 1.0f;
+	}
 }
 
 void view_unmap(struct sway_view *view) {
@@ -954,10 +959,6 @@ void view_unmap(struct sway_view *view) {
 	if (!view->saved_surface_tree) {
 		view_save_buffer(view);
 	}
-
-	cancel_container_animation(&view->animation_state);
-	view->animation_state = container_animation_state_create_fadeout(view->container);
-	add_container_animation(&view->animation_state, server.animation_manager);
 
 	view->executed_criteria->length = 0;
 
@@ -991,8 +992,16 @@ void view_unmap(struct sway_view *view) {
 		seat_consider_warp_to_focus(seat);
 	}
 
-	transaction_commit_dirty();
+	//transaction_commit_dirty();
 	view->surface = NULL;
+
+	finish_animation(&view->animation_state);
+	if (config->animation_duration_ms) {
+		view->animation_state = container_animation_state_create_fadeout(view->container);
+		start_animation(&view->animation_state, server.animation_manager);
+	} else {
+		container_initiate_destroy(view->container);
+	}
 }
 
 void view_update_size(struct sway_view *view) {
