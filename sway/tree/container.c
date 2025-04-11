@@ -529,6 +529,33 @@ void container_update_title_bar(struct sway_container *con) {
 	container_arrange_title_bar(con);
 }
 
+// TODO: Better name
+void container_initiate_destroy(struct sway_container *con) {
+	con->node.destroying = true;
+	node_set_dirty(&con->node);
+
+	struct sway_container *parent = con->pending.parent;
+	struct sway_workspace *ws = con->pending.workspace;
+
+	if (parent) {
+		container_detach(con);
+		container_reap_empty(parent);
+	} else if (ws) {
+		container_detach(con);
+		workspace_consider_destroy(ws);
+	}
+
+	if (root->fullscreen_global) {
+		// Container may have been a child of the root fullscreen container
+		arrange_root();
+	} else if (ws && !ws->node.destroying) {
+		arrange_workspace(ws);
+		workspace_detect_urgent(ws);
+	}
+
+	transaction_commit_dirty();
+}
+
 void container_destroy(struct sway_container *con) {
 	if (!sway_assert(con->node.destroying,
 				"Tried to free container which wasn't marked as destroying")) {
