@@ -4,8 +4,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-struct sway_container;
-
 /**
  * Transactions enable us to perform atomic layout updates.
  *
