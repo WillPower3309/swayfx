@@ -88,6 +88,7 @@ void container_update_geometry(struct sway_container *con, int x, int y, int wid
 		return;
 	}
 
+	wlr_scene_node_set_position(&con->view->scene_tree->node, x, y); // TODO: proper x/y
 	wlr_scene_node_set_position(&con->view->content_tree->node, 0, 0);
 
 	// only make sure to clip the content if there is content to clip
