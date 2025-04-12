@@ -4,13 +4,11 @@
 #include "log.h"
 #include "sway/animation_manager.h"
 #include "sway/config.h"
-#include "sway/desktop/transaction.h"
 #include "sway/output.h"
 #include "sway/server.h"
 #include "sway/tree/arrange.h"
 #include "sway/tree/container.h"
 #include "sway/tree/root.h"
-#include "sway/tree/view.h"
 
 float get_fastest_output_refresh_ms() {
 	float fastest_output_refresh_ms = 16.6667; // fallback to 60 Hz
