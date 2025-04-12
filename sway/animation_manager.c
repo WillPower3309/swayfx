@@ -4,11 +4,13 @@
 #include "log.h"
 #include "sway/animation_manager.h"
 #include "sway/config.h"
+#include "sway/desktop/transaction.h"
 #include "sway/output.h"
 #include "sway/server.h"
 #include "sway/tree/arrange.h"
 #include "sway/tree/container.h"
 #include "sway/tree/root.h"
+#include "sway/tree/view.h"
 
 float get_fastest_output_refresh_ms() {
 	float fastest_output_refresh_ms = 16.6667; // fallback to 60 Hz
@@ -68,10 +70,35 @@ int animation_timer(void *data) {
 	return 0;
 }
 
-void start_animation(struct container_animation_state *animation_state, struct animation_manager *animation_manager) {
+void start_animation(struct container_animation_state *animation_state,
+		struct animation_manager *animation_manager) {
 	animation_state->init = true;
+
+	// any new animation on a view overrides any of its existing move / resize animations
+	if (animation_state->container->view->move_resize_animation_state.init) {
+		finish_animation(&animation_state->container->view->move_resize_animation_state);
+	}
+
 	wl_list_insert(&animation_manager->animation_states, &animation_state->link);
 	wl_event_source_timer_update(animation_manager->tick, 1);
+}
+
+// TODO: support floating, maybe rework view_center_and_clip_surface instead?
+// TODO: position
+void container_update_geometry(struct sway_container *con, int x, int y, int width, int height) {
+	if (!con->view->surface) {
+		return;
+	}
+
+	wlr_scene_node_set_position(&con->view->content_tree->node, 0, 0);
+
+	// only make sure to clip the content if there is content to clip
+	if (!wl_list_empty(&con->view->content_tree->children)) {
+		struct wlr_box clip = con->view->geometry;
+		clip.width = MIN(width, con->view->geometry.width);
+		clip.height = MIN(height, con->view->geometry.height);
+		wlr_scene_subsurface_tree_set_clip(&con->view->content_tree->node, &clip);
+	}
 }
 
 void fadeinout_animation_update(struct container_animation_state *animation_state) {
@@ -80,16 +107,14 @@ void fadeinout_animation_update(struct container_animation_state *animation_stat
 
 	con->alpha = lerp(animation_state->from_alpha, animation_state->to_alpha, multiplier);
 	con->blur_alpha = lerp(animation_state->from_blur_alpha, animation_state->to_blur_alpha, multiplier);
-	con->current.x = animation_state->from_x + (animation_state->to_x - animation_state->from_x) * multiplier;
-	con->current.y = animation_state->from_y + (animation_state->to_y - animation_state->from_y) * multiplier;
-	con->current.width = animation_state->from_width + (animation_state->to_width - animation_state->from_width) * multiplier;
-	con->current.height = animation_state->from_height + (animation_state->to_height - animation_state->from_height) * multiplier;
 
-	container_update(con);
-	wlr_scene_node_set_position(&con->scene_tree->node, con->current.x, con->current.y);
-	if (con->output_handler) {
-		wlr_scene_buffer_set_dest_size(con->output_handler, con->current.width, con->current.height);
-	}
+	container_update_geometry(
+		con,
+		animation_state->from_x + (animation_state->to_x - animation_state->from_x) * multiplier,
+		animation_state->from_y + (animation_state->to_y - animation_state->from_y) * multiplier,
+		animation_state->from_width + (animation_state->to_width - animation_state->from_width) * multiplier,
+		animation_state->from_height + (animation_state->to_height - animation_state->from_height) * multiplier
+	);
 }
 
 void fadeout_animation_complete(struct sway_container *con) {

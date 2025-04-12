@@ -823,6 +823,11 @@ static void transaction_apply(struct sway_transaction *transaction) {
 					&instruction->workspace_state);
 			break;
 		case N_CONTAINER:
+			// animated views will commit a transaction once they're done
+			if (node->sway_container->view &&
+					view_is_being_animated(node->sway_container->view)) {
+				break;
+			}
 			apply_container_state(node->sway_container,
 					&instruction->container_state);
 			break;
