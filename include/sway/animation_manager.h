@@ -39,6 +39,8 @@ struct container_animation_state container_animation_state_create_fadein(struct 
 
 struct container_animation_state container_animation_state_create_fadeout(struct sway_container *con);
 
+struct container_animation_state container_animation_state_create_move_resize(struct sway_container *con);
+
 // TODO: remove animation_manager struct?
 void start_animation(struct container_animation_state *animation_state,
 		struct animation_manager *animation_manager);

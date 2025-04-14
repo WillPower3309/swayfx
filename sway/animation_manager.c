@@ -82,7 +82,8 @@ void start_animation(struct container_animation_state *animation_state,
 	wl_event_source_timer_update(animation_manager->tick, 1);
 }
 
-// TODO: support floating, maybe rework view_center_and_clip_surface instead?
+// TODO; WORK ON FADE OUT
+// TODO: support borders / titlebars / dim
 void container_update_geometry(struct sway_container *con, int x, int y, int width, int height) {
 	if (!con->view->surface) {
 		return;
@@ -93,16 +94,14 @@ void container_update_geometry(struct sway_container *con, int x, int y, int wid
 	con->current.width = width;
 	con->current.height = height;
 
-	struct sway_view *view = con->view;
-	wlr_scene_node_set_position(&view->scene_tree->node, x, y);
-	wlr_scene_node_set_position(&view->content_tree->node, 0, 0);
-	if (!wl_list_empty(&view->content_tree->children)) {
-		struct wlr_box clip = view->geometry;
-		clip.width = MIN(width, view->geometry.width);
-		clip.height = MIN(height, view->geometry.height);
-		wlr_scene_subsurface_tree_set_clip(&view->content_tree->node, &clip);
-	}
+	// TODO: is this right?
+	con->current.content_x = x;
+	con->current.content_y = y;
+	con->current.content_width = width;
+	con->current.content_height = height;
 
+	view_center_and_clip_surface(con->view);
+	wlr_scene_node_set_position(&con->view->scene_tree->node, x, y);
 	container_update(con);
 }
 
@@ -113,12 +112,30 @@ void fadeinout_animation_update(struct container_animation_state *animation_stat
 	con->alpha = lerp(animation_state->from_alpha, animation_state->to_alpha, multiplier);
 	con->blur_alpha = lerp(animation_state->from_blur_alpha, animation_state->to_blur_alpha, multiplier);
 
+	// let any move / resize animations handle the geometry updates
+	if (con->view->move_resize_animation_state.init) {
+		return;
+	}
+
 	container_update_geometry(
 		con,
 		animation_state->from_x + (animation_state->to_x - animation_state->from_x) * multiplier,
 		animation_state->from_y + (animation_state->to_y - animation_state->from_y) * multiplier,
 		animation_state->from_width + (animation_state->to_width - animation_state->from_width) * multiplier,
 		animation_state->from_height + (animation_state->to_height - animation_state->from_height) * multiplier
+	);
+}
+
+void move_resize_animation_update(struct container_animation_state *animation_state) {
+	struct sway_container *con = animation_state->container;
+	const float multiplier = ease_out_cubic(animation_state->progress);
+
+	container_update_geometry(
+		con,
+		lerp(animation_state->from_x, animation_state->to_x, multiplier),
+		lerp(animation_state->from_y, animation_state->to_y, multiplier),
+		lerp(animation_state->from_width, animation_state->to_width, multiplier),
+		lerp(animation_state->from_height, animation_state->to_height, multiplier)
 	);
 }
 
@@ -169,6 +186,30 @@ struct container_animation_state container_animation_state_create_fadeout(struct
 		.to_height = pending_state.height / 4.0f,
 		.update = fadeinout_animation_update,
 		.complete = fadeout_animation_complete,
+	};
+}
+
+struct container_animation_state container_animation_state_create_move_resize(struct sway_container *con) {
+	struct sway_container_state pending_state = con->pending;
+	struct sway_container_state current_state = con->current;
+	return (struct container_animation_state) {
+		.init = false,
+		.progress = 0.0f,
+		.container = con,
+		.from_alpha = con->alpha,
+		.to_alpha = con->alpha,
+		.from_blur_alpha = con->blur_alpha,
+		.to_blur_alpha = con->blur_alpha,
+		.from_x = current_state.x,
+		.to_x = pending_state.x,
+		.from_y = current_state.y,
+		.to_y = pending_state.y,
+		.from_width = current_state.width,
+		.to_width = pending_state.width,
+		.from_height = current_state.height,
+		.to_height = pending_state.height,
+		.update = move_resize_animation_update,
+		.complete = NULL,
 	};
 }
 
