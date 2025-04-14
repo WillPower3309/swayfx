@@ -9,6 +9,7 @@
 #include "sway/tree/arrange.h"
 #include "sway/tree/container.h"
 #include "sway/tree/root.h"
+#include "sway/tree/view.h"
 
 float get_fastest_output_refresh_ms() {
 	float fastest_output_refresh_ms = 16.6667; // fallback to 60 Hz
@@ -82,22 +83,27 @@ void start_animation(struct container_animation_state *animation_state,
 }
 
 // TODO: support floating, maybe rework view_center_and_clip_surface instead?
-// TODO: position
 void container_update_geometry(struct sway_container *con, int x, int y, int width, int height) {
 	if (!con->view->surface) {
 		return;
 	}
 
-	wlr_scene_node_set_position(&con->view->scene_tree->node, x, y); // TODO: proper x/y
-	wlr_scene_node_set_position(&con->view->content_tree->node, 0, 0);
+	con->current.x = x;
+	con->current.y = y;
+	con->current.width = width;
+	con->current.height = height;
 
-	// only make sure to clip the content if there is content to clip
-	if (!wl_list_empty(&con->view->content_tree->children)) {
-		struct wlr_box clip = con->view->geometry;
-		clip.width = MIN(width, con->view->geometry.width);
-		clip.height = MIN(height, con->view->geometry.height);
-		wlr_scene_subsurface_tree_set_clip(&con->view->content_tree->node, &clip);
+	struct sway_view *view = con->view;
+	wlr_scene_node_set_position(&view->scene_tree->node, x, y);
+	wlr_scene_node_set_position(&view->content_tree->node, 0, 0);
+	if (!wl_list_empty(&view->content_tree->children)) {
+		struct wlr_box clip = view->geometry;
+		clip.width = MIN(width, view->geometry.width);
+		clip.height = MIN(height, view->geometry.height);
+		wlr_scene_subsurface_tree_set_clip(&view->content_tree->node, &clip);
 	}
+
+	container_update(con);
 }
 
 void fadeinout_animation_update(struct container_animation_state *animation_state) {
@@ -130,13 +136,13 @@ struct container_animation_state container_animation_state_create_fadein(struct 
 		.to_alpha = con->target_alpha,
 		.from_blur_alpha = con->blur_alpha,
 		.to_blur_alpha = 1.0f,
-		.from_x = pending_state.x + (pending_state.width / 4.0f),
-		.to_x = pending_state.x,
-		.from_y = pending_state.y + (pending_state.height / 4.0f),
-		.to_y = pending_state.y,
-		.from_width = pending_state.width / 2.0f,
+		.from_x = pending_state.width / 2.0f,
+		.to_x = 0,
+		.from_y = pending_state.height / 2.0f,
+		.to_y = 0,
+		.from_width = pending_state.width / 4.0f,
 		.to_width = pending_state.width,
-		.from_height = pending_state.height / 2.0f,
+		.from_height = pending_state.height / 4.0f,
 		.to_height = pending_state.height,
 		.update = fadeinout_animation_update,
 		.complete = NULL,
@@ -153,14 +159,14 @@ struct container_animation_state container_animation_state_create_fadeout(struct
 		.to_alpha = 0.0f,
 		.from_blur_alpha = con->blur_alpha,
 		.to_blur_alpha = 0.0f,
-		.from_x = pending_state.x,
-		.to_x = pending_state.x + (pending_state.width / 4.0f),
-		.from_y = pending_state.y,
-		.to_y = pending_state.y + (pending_state.height / 4.0f),
+		.from_x = 0,
+		.to_x = pending_state.width / 2.0f,
+		.from_y = 0,
+		.to_y = pending_state.height / 2.0f,
 		.from_width = pending_state.width,
-		.to_width = pending_state.width / 2.0f,
+		.to_width = pending_state.width / 4.0f,
 		.from_height = pending_state.height,
-		.to_height = pending_state.height / 2.0f,
+		.to_height = pending_state.height / 4.0f,
 		.update = fadeinout_animation_update,
 		.complete = fadeout_animation_complete,
 	};
