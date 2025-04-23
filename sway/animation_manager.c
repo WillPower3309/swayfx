@@ -4,12 +4,15 @@
 #include "log.h"
 #include "sway/animation_manager.h"
 #include "sway/config.h"
+#include "sway/desktop/transaction.h"
 #include "sway/output.h"
 #include "sway/server.h"
 #include "sway/tree/arrange.h"
 #include "sway/tree/container.h"
+#include "sway/tree/node.h"
 #include "sway/tree/root.h"
 #include "sway/tree/view.h"
+#include "sway/tree/workspace.h"
 
 float get_fastest_output_refresh_ms() {
 	float fastest_output_refresh_ms = 16.6667; // fallback to 60 Hz
@@ -35,14 +38,18 @@ float ease_out_cubic(float t) {
 void finish_animation(struct container_animation_state *animation_state) {
 	// TODO: can I check if the link is in the list and remove the init var?
 	if (animation_state->init) {
-		wl_list_remove(&animation_state->link);
 		animation_state->init = false;
+		wl_list_remove(&animation_state->link);
+		printf("animation complete\n");
 	}
 	animation_state->progress = 1.0f;
 
 	if (animation_state->complete) {
 		animation_state->complete(animation_state->container);
 	}
+
+	node_set_dirty(&animation_state->container->node);
+	transaction_commit_dirty();
 }
 
 int animation_timer(void *data) {
@@ -71,38 +78,35 @@ int animation_timer(void *data) {
 
 void start_animation(struct container_animation_state *animation_state,
 		struct animation_manager *animation_manager) {
-	animation_state->init = true;
-
 	// any new animation on a view overrides any of its existing move / resize animations
 	if (animation_state->container->view->move_resize_animation_state.init) {
 		finish_animation(&animation_state->container->view->move_resize_animation_state);
 	}
 
 	wl_list_insert(&animation_manager->animation_states, &animation_state->link);
+	animation_state->init = true;
 	wl_event_source_timer_update(animation_manager->tick, 1);
 }
 
 // TODO; WORK ON FADE OUT
 // TODO: support borders / titlebars / dim
-void container_update_geometry(struct sway_container *con, int x, int y, int width, int height) {
+static void container_update_geometry(struct sway_container *con, int x, int y, int width, int height) {
 	if (!con->view->surface) {
 		return;
 	}
 
-	con->current.x = x;
-	con->current.y = y;
-	con->current.width = width;
-	con->current.height = height;
-
-	// TODO: is this right?
-	con->current.content_x = x;
-	con->current.content_y = y;
-	con->current.content_width = width;
-	con->current.content_height = height;
-
-	view_center_and_clip_surface(con->view);
 	wlr_scene_node_set_position(&con->view->scene_tree->node, x, y);
-	container_update(con);
+	// only make sure to clip the content if there is content to clip
+	if (!wl_list_empty(&con->view->content_tree->children)) {
+		struct wlr_box clip = (struct wlr_box){
+			.x = con->view->geometry.x,
+			.y = con->view->geometry.y,
+			.width = width,
+			.height = height,
+		};
+		wlr_scene_subsurface_tree_set_clip(&con->view->content_tree->node, &clip);
+	}
+	//refresh_container(con, width, height, true, con->pending.workspace->gaps_inner);
 }
 
 void fadeinout_animation_update(struct container_animation_state *animation_state) {
@@ -114,6 +118,10 @@ void fadeinout_animation_update(struct container_animation_state *animation_stat
 
 	// let any move / resize animations handle the geometry updates
 	if (con->view->move_resize_animation_state.init) {
+		animation_state->to_x = con->view->move_resize_animation_state.to_x;
+		animation_state->to_y = con->view->move_resize_animation_state.to_y;
+		animation_state->to_width = con->view->move_resize_animation_state.to_width;
+		animation_state->to_height = con->view->move_resize_animation_state.to_height;
 		return;
 	}
 
@@ -192,6 +200,7 @@ struct container_animation_state container_animation_state_create_fadeout(struct
 struct container_animation_state container_animation_state_create_move_resize(struct sway_container *con) {
 	struct sway_container_state pending_state = con->pending;
 	struct sway_container_state current_state = con->current;
+	printf("moving con from (%f, %f) to (%f, %f)\n", current_state.x, current_state.y, pending_state.x, pending_state.y);
 	return (struct container_animation_state) {
 		.init = false,
 		.progress = 0.0f,
