@@ -388,9 +388,18 @@ void container_arrange_title_bar(struct sway_container *con) {
 			con->corner_radius + con->current.border_thickness - thickness : 0;
 	enum corner_location corners = CORNER_LOCATION_TOP;
 
+	enum sway_container_layout layout;
+	const list_t *siblings;
 	if (con->current.parent) {
-		list_t *siblings = con->current.parent->current.children;
-		if (con->current.parent->current.layout == L_TABBED && siblings->length > 1) {
+		layout = con->current.parent->current.layout;
+		siblings = con->current.parent->current.children;
+	} else if (con->current.workspace) {
+		layout = con->current.workspace->layout;
+		siblings = con->current.workspace->tiling;
+	}
+
+	if (con->current.parent || con->current.workspace) {
+		if (layout == L_TABBED && siblings->length > 1) {
 			if (siblings->items[0] == con) {
 				corners = CORNER_LOCATION_TOP_LEFT;
 			} else if (siblings->items[siblings->length - 1] == con) {
@@ -399,8 +408,7 @@ void container_arrange_title_bar(struct sway_container *con) {
 				background_corner_radius = 0;
 				corners = CORNER_LOCATION_NONE;
 			}
-		} else if (con->current.parent->current.layout == L_STACKED &&
-				siblings->items[0] != con) {
+		} else if (layout == L_STACKED && siblings->items[0] != con) {
 			background_corner_radius = 0;
 			corners = CORNER_LOCATION_NONE;
 		}
