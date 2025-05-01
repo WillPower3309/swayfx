@@ -248,11 +248,12 @@ static void output_configure_scene(struct sway_output *output, struct wlr_scene_
 		// Other buffers should set their own effects manually, like the
 		// text buffer and saved views
 		struct wlr_layer_surface_v1 *layer_surface = NULL;
+		const enum corner_location buffer_corners =
+			has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL;
 		if (wlr_xdg_surface_try_from_wlr_surface(surface->surface)
 				|| wlr_xwayland_surface_try_from_wlr_surface(surface->surface)) {
 			wlr_scene_buffer_set_corner_radius(buffer,
-					container_has_corner_radius(closest_con) ? corner_radius : 0,
-					has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL);
+					container_has_corner_radius(closest_con) ? corner_radius : 0, buffer_corners);
 			wlr_scene_buffer_set_backdrop_blur(buffer, blur_enabled);
 			wlr_scene_buffer_set_backdrop_blur_ignore_transparent(buffer, false);
 			// Only enable xray blur if tiled or when xray is explicitly enabled
@@ -260,13 +261,12 @@ static void output_configure_scene(struct sway_output *output, struct wlr_scene_
 			wlr_scene_buffer_set_backdrop_blur_optimized(buffer, should_optimize_blur);
 		} else if (wlr_subsurface_try_from_wlr_surface(surface->surface)) {
 			wlr_scene_buffer_set_corner_radius(buffer,
-					container_has_corner_radius(closest_con) ? corner_radius : 0,
-					CORNER_LOCATION_ALL);
+					container_has_corner_radius(closest_con) ? corner_radius : 0, buffer_corners);
 		} else if ((layer_surface = wlr_layer_surface_v1_try_from_wlr_surface(surface->surface))
 				&& layer_surface->data) {
 			// Layer effects
 			struct sway_layer_surface *surface = layer_surface->data;
-			wlr_scene_buffer_set_corner_radius(buffer, surface->corner_radius, CORNER_LOCATION_ALL);
+			wlr_scene_buffer_set_corner_radius(buffer, surface->corner_radius, buffer_corners);
 			wlr_scene_shadow_set_blur_sigma(surface->shadow_node, config->shadow_blur_sigma);
 			wlr_scene_shadow_set_corner_radius(surface->shadow_node, surface->corner_radius);
 			wlr_scene_buffer_set_backdrop_blur(buffer, surface->blur_enabled);
