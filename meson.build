@@ -40,21 +40,28 @@ if is_freebsd
 endif
 
 # Execute the scenefx subproject, if any
-subproject(
-	'scenefx',
-	required: false,
-)
 scenefx = dependency('scenefx-0.2', fallback: 'scenefx')
+
+if not scenefx.found()
+    subproject(
+            'scenefx',
+            required: false,
+    )
+endif
 
 # Execute the wlroots subproject, if any
 wlroots_version = ['>=0.18.0', '<0.19.0']
-subproject(
-	'wlroots',
-	default_options: ['examples=false'],
-	required: false,
-	version: wlroots_version,
-)
 wlroots = dependency('wlroots-0.18', version: wlroots_version, fallback: 'wlroots')
+
+if not wlroots.found()
+    subproject(
+            'wlroots',
+            default_options: ['examples=false'],
+            required: false,
+            version: wlroots_version,
+    )
+endif
+
 wlroots_features = {
 	'xwayland': false,
 	'libinput_backend': false,
