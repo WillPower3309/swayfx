@@ -30,16 +30,18 @@ void finish_animation(struct container_animation_state *animation_state) {
 	if (animation_state->init) {
 		animation_state->init = false;
 		wl_list_remove(&animation_state->link);
-		printf("animation complete\n");
 	}
+
 	animation_state->progress = 1.0f;
 
 	if (animation_state->complete) {
 		animation_state->complete(animation_state);
 	}
 
-	node_set_dirty(&animation_state->container->node);
-	transaction_commit_dirty();
+	if (animation_state->container) {
+		node_set_dirty(&animation_state->container->node);
+		transaction_commit_dirty();
+	}
 }
 
 int animation_timer(void *data) {
@@ -59,6 +61,8 @@ int animation_timer(void *data) {
 			finish_animation(animation_state);
 		}
 	}
+
+	arrange_root_external();
 
 	if (!wl_list_empty(&animation_manager->animation_states)) {
 		wl_event_source_timer_update(animation_manager->tick, tick_time);

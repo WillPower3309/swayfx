@@ -29,6 +29,7 @@ struct container_animation_state {
 struct animation_manager {
 	struct wl_event_source *tick;
 	struct wl_list animation_states; // struct container_animation_state
+	void (*tick_complete_callback)(void);
 };
 
 struct animation_manager *animation_manager_create();

@@ -123,6 +123,8 @@ struct sway_view {
 	enum wp_tearing_control_v1_presentation_hint tearing_hint;
 
 	struct container_animation_state animation_state;
+
+	bool init; // TODO: remove me
 };
 
 struct sway_xdg_shell_view {
