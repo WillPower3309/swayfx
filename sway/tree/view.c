@@ -58,6 +58,7 @@ bool view_init(struct sway_view *view, enum sway_view_type type,
 	view->shortcuts_inhibit = SHORTCUTS_INHIBIT_DEFAULT;
 	view->tearing_mode = TEARING_WINDOW_HINT;
 	wl_signal_init(&view->events.unmap);
+	view->init = false;
 	return true;
 }
 
@@ -752,6 +753,9 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 	view_populate_pid(view);
 	view->container = container_create(view);
 
+	view->container->alpha = view->container->target_alpha;
+	view->container->blur_alpha = 1.0f;
+
 	if (view->ctx == NULL) {
 		struct launcher_ctx *ctx = launcher_ctx_find_pid(view->pid);
 		if (ctx != NULL) {
@@ -904,9 +908,6 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 	} else if ((class = view_get_class(view)) != NULL) {
 		wlr_foreign_toplevel_handle_v1_set_app_id(view->foreign_toplevel, class);
 	}
-
-	view->container->alpha = view->container->target_alpha;
-	view->container->blur_alpha = 1.0f;
 }
 
 void view_unmap(struct sway_view *view) {

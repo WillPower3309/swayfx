@@ -236,7 +236,7 @@ bool should_animate_state_change(struct sway_container_state *state, struct sway
 }
 
 bool view_is_being_animated(struct sway_view *view) {
-	return view->animation_state.progress > 0.f && view->animation_state.progress < 1.f;
+	return view->animation_state.progress > 0.0f && view->animation_state.progress < 1.0f;
 }
 
 float lerp(float a, float b, float t) {
@@ -248,9 +248,6 @@ float ease_out_cubic(float t) {
 	return pow(p, 3) + 1;
 }
 
-static void arrange_container(struct sway_container *con,
-		int width, int height, bool title_bar, int gaps);
-
 void animation_update(struct container_animation_state *animation_state) {
 	struct sway_container *con = animation_state->container;
 	const float multiplier = ease_out_cubic(animation_state->progress);
@@ -258,78 +255,64 @@ void animation_update(struct container_animation_state *animation_state) {
 	con->alpha = lerp(animation_state->from_alpha, animation_state->to_alpha, multiplier);
 	con->blur_alpha = lerp(animation_state->from_blur_alpha, animation_state->to_blur_alpha, multiplier);
 
-	if (!con->view->surface) {
-		return;
-	}
-
 	int x = lerp(animation_state->from_x, animation_state->to_x, multiplier);
 	int y = lerp(animation_state->from_y, animation_state->to_y, multiplier);
 	int width = lerp(animation_state->from_width, animation_state->to_width, multiplier);
 	int height = lerp(animation_state->from_height, animation_state->to_height, multiplier);
 
-	// TODO: properly clip
-	if (!wl_list_empty(&con->view->content_tree->children)) {
-		struct wlr_box clip = (struct wlr_box){
-			.x = con->view->geometry.x,
-			.y = con->view->geometry.y,
-			.width = width,
-			.height = height,
-		};
-		wlr_scene_subsurface_tree_set_clip(&con->view->content_tree->node, &clip);
-	}
-
-	// TODO: properly set titlebar and gap args
-	arrange_container(con, width, height, true, con->pending.workspace->gaps_inner);
-	wlr_scene_node_set_position(&con->scene_tree->node,
-		x - con->pending.workspace->x, y - con->pending.workspace->y);
-}
-
-// TODO: should I update current every update instead? iirc this has implications wrt the geometry updating in animation_update
-void animation_complete(struct container_animation_state *animation_state) {
-	struct sway_container *con = animation_state->container;
-	con->current.x = animation_state->to_x;
-	con->current.y = animation_state->to_y;
-	con->current.width = animation_state->to_width;
-	con->current.height = animation_state->to_height;
+	con->current.x = x;
+	con->current.y = y;
+	con->current.width = width;
+	con->current.height = height;
 }
 
 static void apply_container_state(struct sway_container *container,
 		struct sway_container_state *state) {
 	struct sway_view *view = container->view;
 
-	// TODO: support updating animation mid flight
-	if (view && view_is_being_animated(view)) {
-		printf("view already being updated\n");
-		return;
+	// TODO: improve the logic in this block (have a sway_container_state in animation_state and compare structs?)
+	if (view->init && should_animate_state_change(state, container)) {
+		struct container_animation_state current_animation_state = view->animation_state;
+
+		// animation in progress and does not need to be updated
+		if (!(current_animation_state.progress < 1.0f && state->x == current_animation_state.to_x && state->y == current_animation_state.to_y &&
+				state->width == current_animation_state.to_width && state->height == current_animation_state.to_height)) {
+
+			// TODO: support pop in / pop out with scale var
+			// TODO: support open better (no surface texture - likely starting anim too early)
+			// TODO: support close
+			struct container_animation_state new_animation_state = (struct container_animation_state) {
+				.init = false,
+				.progress = 0.0f,
+				.container = container,
+				.from_alpha = container->alpha,
+				.to_alpha = container->target_alpha,
+				.from_blur_alpha = container->blur_alpha,
+				.to_blur_alpha = 1.0f,
+				.from_x = container->current.x,
+				.to_x = state->x,
+				.from_y = container->current.y,
+				.to_y = state->y,
+				.from_width = container->current.width,
+				.to_width = state->width,
+				.from_height = container->current.height,
+				.to_height = state->height,
+				.update = animation_update,
+				.complete = NULL,
+			};
+
+			// finish any previous animation
+			finish_animation(&view->animation_state);
+
+			container->view->animation_state = new_animation_state;
+			start_animation(&container->view->animation_state, server.animation_manager);
+		}
+	} else {
+		// no animation? Update state immediately
+		memcpy(&container->current, state, sizeof(struct sway_container_state));
 	}
 
-	if (should_animate_state_change(state, container)) {
-		// TODO: support pop in / pop out with scale var
-		// TODO: support open better (no surface texture - likely starting anim too early)
-		// TODO: support close
-		struct container_animation_state new_animation_state = (struct container_animation_state) {
-			.init = false,
-			.progress = 0.0f,
-			.container = container,
-			.from_alpha = container->alpha,
-			.to_alpha = container->target_alpha,
-			.from_blur_alpha = container->blur_alpha,
-			.to_blur_alpha = 1.0f,
-			.from_x = container->current.x,
-			.to_x = state->x,
-			.from_y = container->current.y,
-			.to_y = state->y,
-			.from_width = container->current.width,
-			.to_width = state->width,
-			.from_height = container->current.height,
-			.to_height = state->height,
-			.update = animation_update,
-			.complete = animation_complete,
-		};
-		container->view->animation_state = new_animation_state;
-		start_animation(&container->view->animation_state, server.animation_manager);
-		return;
-	}
+	view->init = true;
 
 	// There are separate children lists for each instruction state, the
 	// container's current state and the container's pending state
@@ -337,8 +320,6 @@ static void apply_container_state(struct sway_container *container,
 	// Any child containers which are being deleted will be cleaned up in
 	// transaction_destroy().
 	list_free(container->current.children);
-
-	memcpy(&container->current, state, sizeof(struct sway_container_state));
 
 	if (view) {
 		if (view->surface && view->saved_surface_tree) {
@@ -385,6 +366,9 @@ static void disable_container(struct sway_container *con) {
 		}
 	}
 }
+
+static void arrange_container(struct sway_container *con,
+		int width, int height, bool title_bar, int gaps);
 
 static void arrange_children(enum sway_container_layout layout, list_t *children,
 		struct sway_container *active, struct wlr_scene_tree *content,
@@ -487,6 +471,26 @@ static void arrange_children(enum sway_container_layout layout, list_t *children
 
 static void arrange_container(struct sway_container *con,
 		int width, int height, bool title_bar, int gaps) {
+
+	if(con->view && view_is_being_animated(con->view)) {
+		int x = con->current.x - con->pending.workspace->x;
+		int y = con->current.y - con->pending.workspace->y;
+		wlr_scene_node_set_position(&con->scene_tree->node, x, y);
+
+		width = con->current.width;
+		height = con->current.height;
+
+		if (!wl_list_empty(&con->view->content_tree->children)) {
+			struct wlr_box clip = (struct wlr_box){
+				.x = con->view->geometry.x,
+				.y = con->view->geometry.y,
+				.width = MAX(1, width),
+				.height = MAX(1, height)
+			};
+			wlr_scene_subsurface_tree_set_clip(&con->view->content_tree->node, &clip);
+		}
+	}
+
 	// this container might have previously been in the scratchpad,
 	// make sure it's enabled for viewing
 	wlr_scene_node_set_enabled(&con->scene_tree->node, true);
@@ -889,6 +893,11 @@ static void arrange_root(struct sway_root *root) {
 	arrange_popups(root->layers.popup);
 }
 
+// TODO: better way of doing this
+void arrange_root_external() {
+	arrange_root(root);
+}
+
 /**
  * Apply a transaction to the "current" state of the tree.
  */
@@ -973,8 +982,14 @@ static bool should_configure(struct sway_node *node,
 	if (!instruction->server_request) {
 		return false;
 	}
+
 	struct sway_container_state *cstate = &node->sway_container->current;
 	struct sway_container_state *istate = &instruction->container_state;
+
+	// TODO: better way of checking this
+	if (node->sway_container->view->init && should_animate_state_change(istate, node->sway_container)) {
+		return false;
+	}
 #if WLR_HAS_XWAYLAND
 	// Xwayland views are position-aware and need to be reconfigured
 	// when their position changes.
