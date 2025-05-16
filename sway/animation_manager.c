@@ -48,6 +48,7 @@ void finish_animation(struct container_animation_state *animation_state) {
 		animation_state->complete(animation_state->container);
 	}
 
+	// TODO: check transaction logic to see if we need to remove the dirty node when we skip for animations
 	node_set_dirty(&animation_state->container->node);
 	transaction_commit_dirty();
 }
@@ -95,8 +96,6 @@ static void container_update_geometry(struct sway_container *con, int x, int y, 
 		return;
 	}
 
-	wlr_scene_node_set_position(&con->view->scene_tree->node, x, y);
-	// only make sure to clip the content if there is content to clip
 	if (!wl_list_empty(&con->view->content_tree->children)) {
 		struct wlr_box clip = (struct wlr_box){
 			.x = con->view->geometry.x,
@@ -107,6 +106,7 @@ static void container_update_geometry(struct sway_container *con, int x, int y, 
 		wlr_scene_subsurface_tree_set_clip(&con->view->content_tree->node, &clip);
 	}
 	//refresh_container(con, width, height, true, con->pending.workspace->gaps_inner);
+	wlr_scene_node_set_position(&con->scene_tree->node, x - con->pending.workspace->x, y - con->pending.workspace->y);
 }
 
 void fadeinout_animation_update(struct container_animation_state *animation_state) {
@@ -153,6 +153,7 @@ void fadeout_animation_complete(struct sway_container *con) {
 
 struct container_animation_state container_animation_state_create_fadein(struct sway_container *con) {
 	struct sway_container_state pending_state = con->pending;
+	printf("opening con on (%f, %f)\n", pending_state.x, pending_state.y);
 	return (struct container_animation_state) {
 		.init = false,
 		.progress = 0.0f,
@@ -162,9 +163,9 @@ struct container_animation_state container_animation_state_create_fadein(struct 
 		.from_blur_alpha = con->blur_alpha,
 		.to_blur_alpha = 1.0f,
 		.from_x = pending_state.width / 2.0f,
-		.to_x = 0,
+		.to_x = pending_state.x,
 		.from_y = pending_state.height / 2.0f,
-		.to_y = 0,
+		.to_y = pending_state.y,
 		.from_width = pending_state.width / 4.0f,
 		.to_width = pending_state.width,
 		.from_height = pending_state.height / 4.0f,
