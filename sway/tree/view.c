@@ -16,6 +16,7 @@
 #endif
 #include "list.h"
 #include "log.h"
+#include "sway/animation_manager.h"
 #include "sway/criteria.h"
 #include "sway/commands.h"
 #include "sway/desktop/transaction.h"
@@ -34,7 +35,6 @@
 #include "sway/tree/workspace.h"
 #include "sway/config.h"
 #include "sway/xdg_decoration.h"
-#include "stringop.h"
 
 bool view_init(struct sway_view *view, enum sway_view_type type,
 		const struct sway_view_impl *impl) {
@@ -99,56 +99,56 @@ void view_begin_destroy(struct sway_view *view) {
 }
 
 const char *view_get_title(struct sway_view *view) {
-	if (view->impl->get_string_prop) {
+	if (view->surface && view->impl->get_string_prop) {
 		return view->impl->get_string_prop(view, VIEW_PROP_TITLE);
 	}
 	return NULL;
 }
 
 const char *view_get_app_id(struct sway_view *view) {
-	if (view->impl->get_string_prop) {
+	if (view->surface && view->impl->get_string_prop) {
 		return view->impl->get_string_prop(view, VIEW_PROP_APP_ID);
 	}
 	return NULL;
 }
 
 const char *view_get_class(struct sway_view *view) {
-	if (view->impl->get_string_prop) {
+	if (view->surface && view->impl->get_string_prop) {
 		return view->impl->get_string_prop(view, VIEW_PROP_CLASS);
 	}
 	return NULL;
 }
 
 const char *view_get_instance(struct sway_view *view) {
-	if (view->impl->get_string_prop) {
+	if (view->surface && view->impl->get_string_prop) {
 		return view->impl->get_string_prop(view, VIEW_PROP_INSTANCE);
 	}
 	return NULL;
 }
 #if WLR_HAS_XWAYLAND
 uint32_t view_get_x11_window_id(struct sway_view *view) {
-	if (view->impl->get_int_prop) {
+	if (view->surface && view->impl->get_int_prop) {
 		return view->impl->get_int_prop(view, VIEW_PROP_X11_WINDOW_ID);
 	}
 	return 0;
 }
 
 uint32_t view_get_x11_parent_id(struct sway_view *view) {
-	if (view->impl->get_int_prop) {
+	if (view->surface && view->impl->get_int_prop) {
 		return view->impl->get_int_prop(view, VIEW_PROP_X11_PARENT_ID);
 	}
 	return 0;
 }
 #endif
 const char *view_get_window_role(struct sway_view *view) {
-	if (view->impl->get_string_prop) {
+	if (view->surface && view->impl->get_string_prop) {
 		return view->impl->get_string_prop(view, VIEW_PROP_WINDOW_ROLE);
 	}
 	return NULL;
 }
 
 uint32_t view_get_window_type(struct sway_view *view) {
-	if (view->impl->get_int_prop) {
+	if (view->surface && view->impl->get_int_prop) {
 		return view->impl->get_int_prop(view, VIEW_PROP_WINDOW_TYPE);
 	}
 	return 0;
@@ -168,7 +168,7 @@ const char *view_get_shell(struct sway_view *view) {
 
 void view_get_constraints(struct sway_view *view, double *min_width,
 		double *max_width, double *min_height, double *max_height) {
-	if (view->impl->get_constraints) {
+	if (view->surface && view->impl->get_constraints) {
 		view->impl->get_constraints(view,
 				min_width, max_width, min_height, max_height);
 	} else {
@@ -181,7 +181,7 @@ void view_get_constraints(struct sway_view *view, double *min_width,
 
 uint32_t view_configure(struct sway_view *view, double lx, double ly, int width,
 		int height) {
-	if (view->impl->configure) {
+	if (view->surface && view->impl->configure) {
 		return view->impl->configure(view, lx, ly, width, height);
 	}
 	return 0;
@@ -369,6 +369,12 @@ void view_autoconfigure(struct sway_view *view) {
 }
 
 void view_set_activated(struct sway_view *view, bool activated) {
+	// catch a case where view is focused during close animation
+	// before its seat node is destroyed
+	if (!view->surface) {
+		return;
+	}
+
 	if (view->impl->set_activated) {
 		view->impl->set_activated(view, activated);
 	}
@@ -443,19 +449,19 @@ void view_update_csd_from_client(struct sway_view *view, bool enabled) {
 }
 
 void view_set_tiled(struct sway_view *view, bool tiled) {
-	if (view->impl->set_tiled) {
+	if (view->surface && view->impl->set_tiled) {
 		view->impl->set_tiled(view, tiled);
 	}
 }
 
 void view_close(struct sway_view *view) {
-	if (view->impl->close) {
+	if (view->surface && view->impl->close) {
 		view->impl->close(view);
 	}
 }
 
 void view_close_popups(struct sway_view *view) {
-	if (view->impl->close_popups) {
+	if (view->surface && view->impl->close_popups) {
 		view->impl->close_popups(view);
 	}
 }
@@ -899,10 +905,24 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 	} else if ((class = view_get_class(view)) != NULL) {
 		wlr_foreign_toplevel_handle_v1_set_app_id(view->foreign_toplevel, class);
 	}
+
+	// should we animate? TODO: don't animate on stacked or tabbed
+	if (config->animation_duration_ms && !fullscreen) {
+		view->open_close_animation_state = container_animation_state_create_fadein(view->container);
+		start_animation(&view->open_close_animation_state, server.animation_manager);
+	} else {
+		view->container->alpha = view->container->target_alpha;
+		view->container->blur_alpha = 1.0f;
+	}
 }
 
 void view_unmap(struct sway_view *view) {
 	wl_signal_emit_mutable(&view->events.unmap, view);
+
+	// save the buffer (needed for close animation)
+	if (!view->saved_surface_tree) {
+		view_save_buffer(view);
+	}
 
 	view->executed_criteria->length = 0;
 
@@ -921,22 +941,7 @@ void view_unmap(struct sway_view *view) {
 		view->foreign_toplevel = NULL;
 	}
 
-	struct sway_container *parent = view->container->pending.parent;
-	struct sway_workspace *ws = view->container->pending.workspace;
 	container_begin_destroy(view->container);
-	if (parent) {
-		container_reap_empty(parent);
-	} else if (ws) {
-		workspace_consider_destroy(ws);
-	}
-
-	if (root->fullscreen_global) {
-		// Container may have been a child of the root fullscreen container
-		arrange_root();
-	} else if (ws && !ws->node.destroying) {
-		arrange_workspace(ws);
-		workspace_detect_urgent(ws);
-	}
 
 	struct sway_seat *seat;
 	wl_list_for_each(seat, &server.input->seats, link) {
@@ -951,8 +956,16 @@ void view_unmap(struct sway_view *view) {
 		seat_consider_warp_to_focus(seat);
 	}
 
-	transaction_commit_dirty();
+	//transaction_commit_dirty();
 	view->surface = NULL;
+
+	finish_animation(&view->open_close_animation_state);
+	if (config->animation_duration_ms) {
+		view->open_close_animation_state = container_animation_state_create_fadeout(view->container);
+		start_animation(&view->open_close_animation_state, server.animation_manager);
+	} else {
+		container_initiate_destroy(view->container);
+	}
 }
 
 void view_update_size(struct sway_view *view) {
@@ -1195,6 +1208,8 @@ static void view_save_buffer_iterator(struct wlr_scene_buffer *buffer,
 	// Set effects to saved views
 	wlr_scene_buffer_set_corner_radius(sbuf, buffer->corner_radius, buffer->corners);
 	wlr_scene_buffer_set_backdrop_blur(sbuf, buffer->backdrop_blur);
+	wlr_scene_buffer_set_backdrop_blur_alpha(sbuf, buffer->backdrop_blur_alpha);
+	wlr_scene_buffer_set_backdrop_blur_strength(sbuf, buffer->backdrop_blur_alpha);
 	wlr_scene_buffer_set_backdrop_blur_optimized(sbuf, buffer->backdrop_blur_optimized);
 	wlr_scene_buffer_set_backdrop_blur_ignore_transparent(sbuf, buffer->backdrop_blur_ignore_transparent);
 }
@@ -1254,4 +1269,11 @@ void view_send_frame_done(struct sway_view *view) {
 	wl_list_for_each(node, &view->content_tree->children, link) {
 		wlr_scene_node_for_each_buffer(node, send_frame_done_iterator, &when);
 	}
+}
+
+bool view_is_being_animated(struct sway_view *view) {
+	int open_close_progress = view->open_close_animation_state.progress;
+	int resize_progress = view->move_resize_animation_state.progress;
+	return open_close_progress < 100 && resize_progress < 100 &&
+			open_close_progress > 0 && resize_progress > 0;
 }

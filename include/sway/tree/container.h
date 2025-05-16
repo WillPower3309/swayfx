@@ -145,9 +145,11 @@ struct sway_container {
 	struct wlr_box transform;
 
 	float alpha;
+	float target_alpha;
 
 	int corner_radius;
 	bool blur_enabled;
+	float blur_alpha;
 	bool shadow_enabled;
 	float dim;
 
@@ -159,6 +161,8 @@ struct sway_container {
 };
 
 struct sway_container *container_create(struct sway_view *view);
+
+void container_initiate_destroy(struct sway_container *con);
 
 void container_destroy(struct sway_container *con);
 

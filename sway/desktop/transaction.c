@@ -240,7 +240,7 @@ static void apply_container_state(struct sway_container *container,
 	memcpy(&container->current, state, sizeof(struct sway_container_state));
 
 	if (view) {
-		if (view->saved_surface_tree) {
+		if (view->surface && view->saved_surface_tree) {
 			if (!container->node.destroying || container->node.ntxnrefs == 1) {
 				view_remove_saved_buffer(view);
 			}
@@ -311,7 +311,7 @@ static void arrange_children(enum sway_container_layout layout, list_t *children
 			arrange_title_bar(child, title_offset, -title_bar_height,
 				next_title_offset - title_offset, title_bar_height);
 			wlr_scene_node_set_enabled(&child->border.tree->node, activated);
-			wlr_scene_node_set_enabled(&child->shadow->node, false);
+			wlr_scene_node_set_enabled(&child->shadow->node, activated);
 			wlr_scene_node_set_position(&child->scene_tree->node, 0, title_bar_height);
 			wlr_scene_node_reparent(&child->scene_tree->node, content);
 
@@ -341,7 +341,7 @@ static void arrange_children(enum sway_container_layout layout, list_t *children
 
 			arrange_title_bar(child, 0, y - title_height, width, title_bar_height);
 			wlr_scene_node_set_enabled(&child->border.tree->node, activated);
-			wlr_scene_node_set_enabled(&child->shadow->node, false);
+			wlr_scene_node_set_enabled(&child->shadow->node, activated);
 			wlr_scene_node_set_position(&child->scene_tree->node, 0, title_height);
 			wlr_scene_node_reparent(&child->scene_tree->node, content);
 
@@ -426,10 +426,6 @@ static void arrange_container(struct sway_container *con,
 			}
 		});
 
-		bool is_urgent = con->view && view_is_urgent(con->view);
-		float* shadow_color = is_urgent || con->current.focused ?
-				config->shadow_color : config->shadow_inactive_color;
-		wlr_scene_shadow_set_color(con->shadow, shadow_color);
 		wlr_scene_shadow_set_blur_sigma(con->shadow, config->shadow_blur_sigma);
 		wlr_scene_shadow_set_corner_radius(con->shadow,
 				!has_corner_radius ? 0 : corner_radius);
@@ -827,6 +823,11 @@ static void transaction_apply(struct sway_transaction *transaction) {
 					&instruction->workspace_state);
 			break;
 		case N_CONTAINER:
+			// animated views will commit a transaction once they're done
+			if (node->sway_container->view &&
+					view_is_being_animated(node->sway_container->view)) {
+				break;
+			}
 			apply_container_state(node->sway_container,
 					&instruction->container_state);
 			break;

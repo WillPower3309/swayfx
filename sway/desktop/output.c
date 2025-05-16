@@ -206,21 +206,25 @@ static enum wlr_scale_filter_mode get_scale_filter(struct sway_output *output,
 }
 
 static void output_configure_scene(struct sway_output *output, struct wlr_scene_node *node, float opacity,
-		int corner_radius, bool blur_enabled, bool has_titlebar, struct sway_container *closest_con) {
+		int corner_radius, bool blur_enabled, float blur_alpha, bool has_titlebar, struct sway_container *closest_con,
+		struct sway_scene_descriptor *closest_desc) {
 	if (!node->enabled) {
 		return;
 	}
 
-	struct sway_container *con =
-		scene_descriptor_try_get(node, SWAY_SCENE_DESC_CONTAINER);
-	if (con) {
-		closest_con = con;
-		opacity = con->alpha;
-		corner_radius = con->corner_radius;
-		blur_enabled = con->blur_enabled;
+	struct sway_scene_descriptor *descriptor = scene_descriptor_try_get_first(node);
+	if (descriptor && descriptor->data) {
+		closest_desc = descriptor;
+		if (closest_desc->type == SWAY_SCENE_DESC_CONTAINER) {
+			closest_con = closest_desc->data;
+			opacity = closest_con->alpha;
+			corner_radius = closest_con->corner_radius;
+			blur_enabled = closest_con->blur_enabled;
+			blur_alpha = closest_con->blur_alpha;
 
-		enum sway_container_layout layout = con->current.layout;
-		has_titlebar |= con->current.border == B_NORMAL || layout == L_STACKED || layout == L_TABBED;
+			enum sway_container_layout layout = closest_con->current.layout;
+			has_titlebar |= closest_con->current.border == B_NORMAL || layout == L_STACKED || layout == L_TABBED;
+		}
 	}
 
 	if (node->type == WLR_SCENE_NODE_BUFFER) {
@@ -242,43 +246,71 @@ static void output_configure_scene(struct sway_output *output, struct wlr_scene_
 
 		wlr_scene_buffer_set_opacity(buffer, opacity);
 
-		if (!surface || !surface->surface) {
+		if (!closest_desc) {
 			return;
 		}
-		// Other buffers should set their own effects manually, like the
-		// text buffer and saved views
-		struct wlr_layer_surface_v1 *layer_surface = NULL;
-		if (wlr_xdg_surface_try_from_wlr_surface(surface->surface)
-				|| wlr_xwayland_surface_try_from_wlr_surface(surface->surface)) {
-			wlr_scene_buffer_set_corner_radius(buffer,
-					container_has_corner_radius(closest_con) ? corner_radius : 0,
-					has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL);
-			wlr_scene_buffer_set_backdrop_blur(buffer, blur_enabled);
-			wlr_scene_buffer_set_backdrop_blur_ignore_transparent(buffer, false);
-			// Only enable xray blur if tiled or when xray is explicitly enabled
-			bool should_optimize_blur = (closest_con && !container_is_floating_or_child(closest_con)) || config->blur_xray;
-			wlr_scene_buffer_set_backdrop_blur_optimized(buffer, should_optimize_blur);
-		} else if (wlr_subsurface_try_from_wlr_surface(surface->surface)) {
-			wlr_scene_buffer_set_corner_radius(buffer,
-					container_has_corner_radius(closest_con) ? corner_radius : 0,
-					CORNER_LOCATION_ALL);
-		} else if ((layer_surface = wlr_layer_surface_v1_try_from_wlr_surface(surface->surface))
-				&& layer_surface->data) {
+
+		switch (closest_desc->type) {
+		case SWAY_SCENE_DESC_VIEW: {
+			struct sway_view *view = closest_desc->data;
+			// Saved buffers only includes either XDG or XWayland buffers, not
+			// border buffers like the text buffer.
+			bool is_saved = view->saved_surface_tree && view->saved_surface_tree->node.enabled;
+			bool has_surface = surface && surface->surface;
+			// Only the main surface
+			bool is_main_surface = has_surface && surface->surface == view->surface;
+
+			if (is_saved || is_main_surface) {
+				// Main surfaces and saved
+				wlr_scene_buffer_set_corner_radius(buffer,
+						container_has_corner_radius(closest_con) ? corner_radius : 0,
+						has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL);
+				wlr_scene_buffer_set_backdrop_blur(buffer, blur_enabled);
+				wlr_scene_buffer_set_backdrop_blur_alpha(buffer, blur_alpha);
+				wlr_scene_buffer_set_backdrop_blur_strength(buffer, blur_alpha);
+				wlr_scene_buffer_set_backdrop_blur_ignore_transparent(buffer, false);
+				// Only enable xray blur if tiled or when xray is explicitly enabled
+				bool should_optimize_blur = (closest_con && !container_is_floating_or_child(closest_con)) || config->blur_xray;
+				wlr_scene_buffer_set_backdrop_blur_optimized(buffer, should_optimize_blur);
+			} else {
+				// Subsurfaces
+				// TODO: Check for has titlebar. Fixes Firefox weirdness (when its state is "maximized")
+				wlr_scene_buffer_set_corner_radius(buffer,
+						container_has_corner_radius(closest_con) ? corner_radius : 0,
+						CORNER_LOCATION_ALL);
+			}
+			break;
+		}
+		case SWAY_SCENE_DESC_LAYER_SHELL: {
 			// Layer effects
-			struct sway_layer_surface *surface = layer_surface->data;
+			// TODO: Fade-in/out
+			struct sway_layer_surface *surface = closest_desc->data;
 			wlr_scene_buffer_set_corner_radius(buffer, surface->corner_radius, CORNER_LOCATION_ALL);
 			wlr_scene_shadow_set_blur_sigma(surface->shadow_node, config->shadow_blur_sigma);
 			wlr_scene_shadow_set_corner_radius(surface->shadow_node, surface->corner_radius);
 			wlr_scene_buffer_set_backdrop_blur(buffer, surface->blur_enabled);
 			wlr_scene_buffer_set_backdrop_blur_ignore_transparent(buffer, surface->blur_ignore_transparent);
 			wlr_scene_buffer_set_backdrop_blur_optimized(buffer, surface->blur_xray);
+			break;
+		}
+		case SWAY_SCENE_DESC_XWAYLAND_UNMANAGED:
+		case SWAY_SCENE_DESC_POPUP:
+		case SWAY_SCENE_DESC_DRAG_ICON: {
+			// TODO:
+			break;
+		}
+		default:
+			break;
 		}
 	} else if (node->type == WLR_SCENE_NODE_TREE) {
 		struct wlr_scene_tree *tree = wlr_scene_tree_from_node(node);
 		struct wlr_scene_node *node;
 		wl_list_for_each(node, &tree->children, link) {
-			output_configure_scene(output, node, opacity, corner_radius, blur_enabled, has_titlebar, closest_con);
+			output_configure_scene(output, node, opacity, corner_radius, blur_enabled, blur_alpha, has_titlebar, closest_con, closest_desc);
 		}
+
+		// Last use of the descriptor
+		free(descriptor);
 	}
 }
 
@@ -307,7 +339,7 @@ static int output_repaint_timer_handler(void *data) {
 		return 0;
 	}
 	output_configure_scene(output, &root->root_scene->tree.node, 1.0f,
-			0, false, false, NULL);
+			0, false, 1.0f, false, NULL, NULL);
 
 	struct wlr_scene_output_state_options opts = {
 		.color_transform = output->color_transform,

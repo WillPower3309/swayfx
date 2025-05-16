@@ -4,6 +4,7 @@
 #include <wayland-server-core.h>
 #include "config.h"
 #include "list.h"
+#include "sway/animation_manager.h"
 #include "sway/desktop/idle_inhibit_v1.h"
 #if WLR_HAS_XWAYLAND
 #include "sway/xwayland.h"
@@ -140,6 +141,8 @@ struct sway_server {
 	list_t *dirty_nodes;
 
 	struct wl_event_source *delayed_modeset;
+
+	struct animation_manager *animation_manager;
 };
 
 extern struct sway_server server;

@@ -395,6 +395,10 @@ set|plus|minus|toggle <amount>
 The following commands may be used either in the configuration file or at
 runtime.
 
+animation_duration_ms <value>
+	Determines the duration of the animation applied to opening and closing
+	windows, between 0 (no animation) and 5000 (5 seconds).
+
 *assign* <criteria> [→] [workspace] [number] <workspace>
 	Assigns views matching _criteria_ (see *CRITERIA* for details) to
 	_workspace_. The → (U+2192) is optional and cosmetic. This command is
