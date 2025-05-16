@@ -5,6 +5,7 @@
 #include <wlr/types/wlr_buffer.h>
 #include "scenefx/types/fx/clipped_region.h"
 #include "scenefx/types/fx/corner_location.h"
+#include "sway/animation_manager.h"
 #include "sway/config.h"
 #include "sway/scene_descriptor.h"
 #include "sway/desktop/idle_inhibit_v1.h"
@@ -73,6 +74,7 @@ static void transaction_destroy(struct sway_transaction *transaction) {
 				workspace_destroy(node->sway_workspace);
 				break;
 			case N_CONTAINER:
+				// TODO: perhaps handle close animation here!
 				container_destroy(node->sway_container);
 				break;
 			}
@@ -227,9 +229,108 @@ static void apply_workspace_state(struct sway_workspace *ws,
 	memcpy(&ws->current, state, sizeof(struct sway_workspace_state));
 }
 
+bool should_animate_state_change(struct sway_container_state *state, struct sway_container *container) {
+	return container->view && config->animation_duration_ms &&
+		!(state->height == container->current.height && state->width == container->current.width &&
+		state->x == container->current.x && state->y == container->current.y);
+}
+
+bool view_is_being_animated(struct sway_view *view) {
+	return view->animation_state.progress > 0.f && view->animation_state.progress < 1.f;
+}
+
+float lerp(float a, float b, float t) {
+	return a * (1.0 - t) + b * t;
+}
+
+float ease_out_cubic(float t) {
+	float p = t - 1;
+	return pow(p, 3) + 1;
+}
+
+static void arrange_container(struct sway_container *con,
+		int width, int height, bool title_bar, int gaps);
+
+void animation_update(struct container_animation_state *animation_state) {
+	struct sway_container *con = animation_state->container;
+	const float multiplier = ease_out_cubic(animation_state->progress);
+
+	con->alpha = lerp(animation_state->from_alpha, animation_state->to_alpha, multiplier);
+	con->blur_alpha = lerp(animation_state->from_blur_alpha, animation_state->to_blur_alpha, multiplier);
+
+	if (!con->view->surface) {
+		return;
+	}
+
+	int x = lerp(animation_state->from_x, animation_state->to_x, multiplier);
+	int y = lerp(animation_state->from_y, animation_state->to_y, multiplier);
+	int width = lerp(animation_state->from_width, animation_state->to_width, multiplier);
+	int height = lerp(animation_state->from_height, animation_state->to_height, multiplier);
+
+	// TODO: properly clip
+	if (!wl_list_empty(&con->view->content_tree->children)) {
+		struct wlr_box clip = (struct wlr_box){
+			.x = con->view->geometry.x,
+			.y = con->view->geometry.y,
+			.width = width,
+			.height = height,
+		};
+		wlr_scene_subsurface_tree_set_clip(&con->view->content_tree->node, &clip);
+	}
+
+	// TODO: properly set titlebar and gap args
+	arrange_container(con, width, height, true, con->pending.workspace->gaps_inner);
+	wlr_scene_node_set_position(&con->scene_tree->node,
+		x - con->pending.workspace->x, y - con->pending.workspace->y);
+}
+
+// TODO: should I update current every update instead? iirc this has implications wrt the geometry updating in animation_update
+void animation_complete(struct container_animation_state *animation_state) {
+	struct sway_container *con = animation_state->container;
+	con->current.x = animation_state->to_x;
+	con->current.y = animation_state->to_y;
+	con->current.width = animation_state->to_width;
+	con->current.height = animation_state->to_height;
+}
+
 static void apply_container_state(struct sway_container *container,
 		struct sway_container_state *state) {
 	struct sway_view *view = container->view;
+
+	// TODO: support updating animation mid flight
+	if (view && view_is_being_animated(view)) {
+		printf("view already being updated\n");
+		return;
+	}
+
+	if (should_animate_state_change(state, container)) {
+		// TODO: support pop in / pop out with scale var
+		// TODO: support open better (no surface texture - likely starting anim too early)
+		// TODO: support close
+		struct container_animation_state new_animation_state = (struct container_animation_state) {
+			.init = false,
+			.progress = 0.0f,
+			.container = container,
+			.from_alpha = container->alpha,
+			.to_alpha = container->target_alpha,
+			.from_blur_alpha = container->blur_alpha,
+			.to_blur_alpha = 1.0f,
+			.from_x = container->current.x,
+			.to_x = state->x,
+			.from_y = container->current.y,
+			.to_y = state->y,
+			.from_width = container->current.width,
+			.to_width = state->width,
+			.from_height = container->current.height,
+			.to_height = state->height,
+			.update = animation_update,
+			.complete = animation_complete,
+		};
+		container->view->animation_state = new_animation_state;
+		start_animation(&container->view->animation_state, server.animation_manager);
+		return;
+	}
+
 	// There are separate children lists for each instruction state, the
 	// container's current state and the container's pending state
 	// (ie. con->children). The list itself needs to be freed here.
@@ -284,9 +385,6 @@ static void disable_container(struct sway_container *con) {
 		}
 	}
 }
-
-static void arrange_container(struct sway_container *con,
-		int width, int height, bool title_bar, int gaps);
 
 static void arrange_children(enum sway_container_layout layout, list_t *children,
 		struct sway_container *active, struct wlr_scene_tree *content,
@@ -850,11 +948,6 @@ static void transaction_apply(struct sway_transaction *transaction) {
 					&instruction->workspace_state);
 			break;
 		case N_CONTAINER:
-			// animated views will commit a transaction once they're done
-			if (node->sway_container->view &&
-					view_is_being_animated(node->sway_container->view)) {
-				break;
-			}
 			apply_container_state(node->sway_container,
 					&instruction->container_state);
 			break;
