@@ -9,7 +9,6 @@ struct container_animation_state {
 	float progress;
 	struct sway_container *container;
 
-	// TODO: make this an animated vars list similar to before?
 	float from_alpha;
 	float to_alpha;
 	float from_blur_alpha;
@@ -23,9 +22,8 @@ struct container_animation_state {
 	float from_height;
 	float to_height;
 
-	// TODO: same arguments for both
 	void (*update)(struct container_animation_state *animation_state);
-	void (*complete)(struct sway_container *con);
+	void (*complete)(struct container_animation_state *animation_state);
 };
 
 struct animation_manager {
@@ -34,12 +32,6 @@ struct animation_manager {
 };
 
 struct animation_manager *animation_manager_create();
-
-struct container_animation_state container_animation_state_create_fadein(struct sway_container *con);
-
-struct container_animation_state container_animation_state_create_fadeout(struct sway_container *con);
-
-struct container_animation_state container_animation_state_create_move_resize(struct sway_container *con);
 
 // TODO: remove animation_manager struct?
 void start_animation(struct container_animation_state *animation_state,

@@ -12,7 +12,6 @@
 #include "sway/tree/node.h"
 #include "sway/tree/root.h"
 #include "sway/tree/view.h"
-#include "sway/tree/workspace.h"
 
 float get_fastest_output_refresh_ms() {
 	float fastest_output_refresh_ms = 16.6667; // fallback to 60 Hz
@@ -26,15 +25,6 @@ float get_fastest_output_refresh_ms() {
 	return fastest_output_refresh_ms;
 }
 
-float lerp(float a, float b, float t) {
-	return a * (1.0 - t) + b * t;
-}
-
-float ease_out_cubic(float t) {
-	float p = t - 1;
-	return pow(p, 3) + 1;
-}
-
 void finish_animation(struct container_animation_state *animation_state) {
 	// TODO: can I check if the link is in the list and remove the init var?
 	if (animation_state->init) {
@@ -45,10 +35,9 @@ void finish_animation(struct container_animation_state *animation_state) {
 	animation_state->progress = 1.0f;
 
 	if (animation_state->complete) {
-		animation_state->complete(animation_state->container);
+		animation_state->complete(animation_state);
 	}
 
-	// TODO: check transaction logic to see if we need to remove the dirty node when we skip for animations
 	node_set_dirty(&animation_state->container->node);
 	transaction_commit_dirty();
 }
@@ -79,148 +68,9 @@ int animation_timer(void *data) {
 
 void start_animation(struct container_animation_state *animation_state,
 		struct animation_manager *animation_manager) {
-	// any new animation on a view overrides any of its existing move / resize animations
-	if (animation_state->container->view->move_resize_animation_state.init) {
-		finish_animation(&animation_state->container->view->move_resize_animation_state);
-	}
-
 	wl_list_insert(&animation_manager->animation_states, &animation_state->link);
 	animation_state->init = true;
 	wl_event_source_timer_update(animation_manager->tick, 1);
-}
-
-// TODO; WORK ON FADE OUT
-// TODO: support borders / titlebars / dim
-static void container_update_geometry(struct sway_container *con, int x, int y, int width, int height) {
-	if (!con->view->surface) {
-		return;
-	}
-
-	if (!wl_list_empty(&con->view->content_tree->children)) {
-		struct wlr_box clip = (struct wlr_box){
-			.x = con->view->geometry.x,
-			.y = con->view->geometry.y,
-			.width = width,
-			.height = height,
-		};
-		wlr_scene_subsurface_tree_set_clip(&con->view->content_tree->node, &clip);
-	}
-	//refresh_container(con, width, height, true, con->pending.workspace->gaps_inner);
-	wlr_scene_node_set_position(&con->scene_tree->node, x - con->pending.workspace->x, y - con->pending.workspace->y);
-}
-
-void fadeinout_animation_update(struct container_animation_state *animation_state) {
-	struct sway_container *con = animation_state->container;
-	const float multiplier = ease_out_cubic(animation_state->progress);
-
-	con->alpha = lerp(animation_state->from_alpha, animation_state->to_alpha, multiplier);
-	con->blur_alpha = lerp(animation_state->from_blur_alpha, animation_state->to_blur_alpha, multiplier);
-
-	// let any move / resize animations handle the geometry updates
-	if (con->view->move_resize_animation_state.init) {
-		animation_state->to_x = con->view->move_resize_animation_state.to_x;
-		animation_state->to_y = con->view->move_resize_animation_state.to_y;
-		animation_state->to_width = con->view->move_resize_animation_state.to_width;
-		animation_state->to_height = con->view->move_resize_animation_state.to_height;
-		return;
-	}
-
-	container_update_geometry(
-		con,
-		animation_state->from_x + (animation_state->to_x - animation_state->from_x) * multiplier,
-		animation_state->from_y + (animation_state->to_y - animation_state->from_y) * multiplier,
-		animation_state->from_width + (animation_state->to_width - animation_state->from_width) * multiplier,
-		animation_state->from_height + (animation_state->to_height - animation_state->from_height) * multiplier
-	);
-}
-
-void move_resize_animation_update(struct container_animation_state *animation_state) {
-	struct sway_container *con = animation_state->container;
-	const float multiplier = ease_out_cubic(animation_state->progress);
-
-	container_update_geometry(
-		con,
-		lerp(animation_state->from_x, animation_state->to_x, multiplier),
-		lerp(animation_state->from_y, animation_state->to_y, multiplier),
-		lerp(animation_state->from_width, animation_state->to_width, multiplier),
-		lerp(animation_state->from_height, animation_state->to_height, multiplier)
-	);
-}
-
-void fadeout_animation_complete(struct sway_container *con) {
-	container_initiate_destroy(con);
-}
-
-struct container_animation_state container_animation_state_create_fadein(struct sway_container *con) {
-	struct sway_container_state pending_state = con->pending;
-	printf("opening con on (%f, %f)\n", pending_state.x, pending_state.y);
-	return (struct container_animation_state) {
-		.init = false,
-		.progress = 0.0f,
-		.container = con,
-		.from_alpha = con->alpha,
-		.to_alpha = con->target_alpha,
-		.from_blur_alpha = con->blur_alpha,
-		.to_blur_alpha = 1.0f,
-		.from_x = pending_state.width / 2.0f,
-		.to_x = pending_state.x,
-		.from_y = pending_state.height / 2.0f,
-		.to_y = pending_state.y,
-		.from_width = pending_state.width / 4.0f,
-		.to_width = pending_state.width,
-		.from_height = pending_state.height / 4.0f,
-		.to_height = pending_state.height,
-		.update = fadeinout_animation_update,
-		.complete = NULL,
-	};
-}
-
-struct container_animation_state container_animation_state_create_fadeout(struct sway_container *con) {
-	struct sway_container_state pending_state = con->pending;
-	return (struct container_animation_state) {
-		.init = false,
-		.progress = 0.0f,
-		.container = con,
-		.from_alpha = con->alpha,
-		.to_alpha = 0.0f,
-		.from_blur_alpha = con->blur_alpha,
-		.to_blur_alpha = 0.0f,
-		.from_x = 0,
-		.to_x = pending_state.width / 2.0f,
-		.from_y = 0,
-		.to_y = pending_state.height / 2.0f,
-		.from_width = pending_state.width,
-		.to_width = pending_state.width / 4.0f,
-		.from_height = pending_state.height,
-		.to_height = pending_state.height / 4.0f,
-		.update = fadeinout_animation_update,
-		.complete = fadeout_animation_complete,
-	};
-}
-
-struct container_animation_state container_animation_state_create_move_resize(struct sway_container *con) {
-	struct sway_container_state pending_state = con->pending;
-	struct sway_container_state current_state = con->current;
-	printf("moving con from (%f, %f) to (%f, %f)\n", current_state.x, current_state.y, pending_state.x, pending_state.y);
-	return (struct container_animation_state) {
-		.init = false,
-		.progress = 0.0f,
-		.container = con,
-		.from_alpha = con->alpha,
-		.to_alpha = con->alpha,
-		.from_blur_alpha = con->blur_alpha,
-		.to_blur_alpha = con->blur_alpha,
-		.from_x = current_state.x,
-		.to_x = pending_state.x,
-		.from_y = current_state.y,
-		.to_y = pending_state.y,
-		.from_width = current_state.width,
-		.to_width = pending_state.width,
-		.from_height = current_state.height,
-		.to_height = pending_state.height,
-		.update = move_resize_animation_update,
-		.complete = NULL,
-	};
 }
 
 struct animation_manager *animation_manager_create(struct sway_server *server) {

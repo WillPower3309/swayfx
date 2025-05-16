@@ -16,7 +16,6 @@
 #endif
 #include "list.h"
 #include "log.h"
-#include "sway/animation_manager.h"
 #include "sway/criteria.h"
 #include "sway/commands.h"
 #include "sway/desktop/transaction.h"
@@ -906,14 +905,8 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 		wlr_foreign_toplevel_handle_v1_set_app_id(view->foreign_toplevel, class);
 	}
 
-	// should we animate? TODO: don't animate on stacked or tabbed
-	if (config->animation_duration_ms && !fullscreen) {
-		view->open_close_animation_state = container_animation_state_create_fadein(view->container);
-		start_animation(&view->open_close_animation_state, server.animation_manager);
-	} else {
-		view->container->alpha = view->container->target_alpha;
-		view->container->blur_alpha = 1.0f;
-	}
+	view->container->alpha = view->container->target_alpha;
+	view->container->blur_alpha = 1.0f;
 }
 
 void view_unmap(struct sway_view *view) {
@@ -959,13 +952,7 @@ void view_unmap(struct sway_view *view) {
 	//transaction_commit_dirty();
 	view->surface = NULL;
 
-	finish_animation(&view->open_close_animation_state);
-	if (config->animation_duration_ms) {
-		view->open_close_animation_state = container_animation_state_create_fadeout(view->container);
-		start_animation(&view->open_close_animation_state, server.animation_manager);
-	} else {
-		container_initiate_destroy(view->container);
-	}
+	container_initiate_destroy(view->container);
 }
 
 void view_update_size(struct sway_view *view) {
@@ -1269,11 +1256,4 @@ void view_send_frame_done(struct sway_view *view) {
 	wl_list_for_each(node, &view->content_tree->children, link) {
 		wlr_scene_node_for_each_buffer(node, send_frame_done_iterator, &when);
 	}
-}
-
-bool view_is_being_animated(struct sway_view *view) {
-	int open_close_progress = view->open_close_animation_state.progress;
-	int resize_progress = view->move_resize_animation_state.progress;
-	return open_close_progress < 100 && resize_progress < 100 &&
-			open_close_progress > 0 && resize_progress > 0;
 }
