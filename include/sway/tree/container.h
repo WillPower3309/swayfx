@@ -162,8 +162,6 @@ struct sway_container {
 
 struct sway_container *container_create(struct sway_view *view);
 
-void container_initiate_destroy(struct sway_container *con);
-
 void container_destroy(struct sway_container *con);
 
 void container_begin_destroy(struct sway_container *con);
