@@ -19,6 +19,7 @@
 #include "sway/output.h"
 #include "sway/server.h"
 #include "sway/tree/arrange.h"
+#include "sway/tree/node.h"
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
 #include "sway/xdg_decoration.h"
@@ -546,33 +547,6 @@ void container_update_title_bar(struct sway_container *con) {
 	container_arrange_title_bar(con);
 }
 
-// TODO: Better name
-void container_initiate_destroy(struct sway_container *con) {
-	con->node.destroying = true;
-	node_set_dirty(&con->node);
-
-	struct sway_container *parent = con->pending.parent;
-	struct sway_workspace *ws = con->pending.workspace;
-
-	if (parent) {
-		container_detach(con);
-		container_reap_empty(parent);
-	} else if (ws) {
-		container_detach(con);
-		workspace_consider_destroy(ws);
-	}
-
-	if (root->fullscreen_global) {
-		// Container may have been a child of the root fullscreen container
-		arrange_root();
-	} else if (ws && !ws->node.destroying) {
-		arrange_workspace(ws);
-		workspace_detect_urgent(ws);
-	}
-
-	transaction_commit_dirty();
-}
-
 void container_destroy(struct sway_container *con) {
 	if (!sway_assert(con->node.destroying,
 				"Tried to free container which wasn't marked as destroying")) {
@@ -620,11 +594,8 @@ void container_begin_destroy(struct sway_container *con) {
 
 	container_end_mouse_operation(con);
 
-	// animation_manager determines when node is destroyed for views
-	if (con->view == NULL) {
-		con->node.destroying = true;
-		node_set_dirty(&con->node);
-	}
+	con->node.destroying = true;
+	node_set_dirty(&con->node);
 
 	if (con->scratchpad) {
 		root_scratchpad_remove_container(con);
@@ -634,7 +605,7 @@ void container_begin_destroy(struct sway_container *con) {
 		container_fullscreen_disable(con);
 	}
 
-	if (con->view == NULL && (con->pending.parent || con->pending.workspace)) {
+	if (con->pending.parent || con->pending.workspace) {
 		container_detach(con);
 	}
 
@@ -2038,10 +2009,8 @@ bool container_has_corner_radius(struct sway_container *con) {
 	if (!con) {
 		return false;
 	}
-/*	return (container_is_floating_or_child(con) ||
+	return (container_is_floating_or_child(con) ||
 			!(config->smart_corner_radius && con->current.workspace->current_gaps.top == 0)) &&
 			con->corner_radius;
-*/
-	return true; // TODO
 }
 
