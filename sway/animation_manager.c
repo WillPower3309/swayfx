@@ -1,17 +1,23 @@
-#include <stdio.h>
-#include <stdlib.h>
+#include <assert.h>
 #include <wayland-util.h>
-#include "log.h"
 #include "sway/animation_manager.h"
 #include "sway/config.h"
-#include "sway/desktop/transaction.h"
 #include "sway/output.h"
-#include "sway/server.h"
 #include "sway/tree/arrange.h"
 #include "sway/tree/container.h"
 #include "sway/tree/node.h"
 #include "sway/tree/root.h"
-#include "sway/tree/view.h"
+
+struct animation {
+	float progress;
+	float multiplier;
+	void (*update)(void);
+};
+
+struct animation_manager {
+	struct wl_event_source *tick;
+	struct animation current_animation;
+} animation_manager;
 
 float get_fastest_output_refresh_ms() {
 	float fastest_output_refresh_ms = 16.6667; // fallback to 60 Hz
@@ -25,73 +31,49 @@ float get_fastest_output_refresh_ms() {
 	return fastest_output_refresh_ms;
 }
 
-void finish_animation(struct container_animation_state *animation_state) {
-	// TODO: can I check if the link is in the list and remove the init var?
-	if (animation_state->init) {
-		animation_state->init = false;
-		wl_list_remove(&animation_state->link);
-	}
-
-	animation_state->progress = 1.0f;
-
-	if (animation_state->complete) {
-		animation_state->complete(animation_state);
-	}
-
-	if (animation_state->container) {
-		node_set_dirty(&animation_state->container->node);
-		transaction_commit_dirty();
-	}
+float ease_out_cubic(float t) {
+	float p = t - 1;
+	return pow(p, 3) + 1;
 }
 
 int animation_timer(void *data) {
-	struct animation_manager *animation_manager = data;
+	struct animation *animation = data;
+
 	float tick_time = get_fastest_output_refresh_ms();
 
-	struct container_animation_state *animation_state, *tmp;
-	wl_list_for_each_reverse_safe(animation_state, tmp, &animation_manager->animation_states, link) {
-		float progress_delta = tick_time / config->animation_duration_ms;
-		animation_state->progress = MIN(animation_state->progress + progress_delta, 1.0f);
+	float progress_delta = tick_time / config->animation_duration_ms;
+	animation->progress = MIN(animation->progress + progress_delta, 1.0f);
+	animation->multiplier = ease_out_cubic(animation->progress);
 
-		if (animation_state->update) {
-			animation_state->update(animation_state);
-		}
-
-		if (animation_state->progress == 1.0f) {
-			finish_animation(animation_state);
-		}
+	if (animation->update) {
+		animation->update();
 	}
 
-	arrange_root_external();
-
-	if (!wl_list_empty(&animation_manager->animation_states)) {
-		wl_event_source_timer_update(animation_manager->tick, tick_time);
+	if (animation->progress < 1.0f) {
+		wl_event_source_timer_update(animation_manager.tick, tick_time);
 	}
 	return 0;
 }
 
-void start_animation(struct container_animation_state *animation_state,
-		struct animation_manager *animation_manager) {
-	wl_list_insert(&animation_manager->animation_states, &animation_state->link);
-	animation_state->init = true;
-	wl_event_source_timer_update(animation_manager->tick, 1);
+void start_animation(void (update_callback)(void)) {
+	assert(animation_manager.tick);
+
+	animation_manager.current_animation = (struct animation) {
+		.progress = 0.0f,
+		.update = update_callback
+	};
+	wl_event_source_timer_update(animation_manager.tick, 1);
 }
 
-struct animation_manager *animation_manager_create(struct sway_server *server) {
-	struct animation_manager *animation_manager = calloc(1, sizeof(*animation_manager));
-	if (!sway_assert(animation_manager, "Failed to allocate animation_manager")) {
-		return NULL;
-	}
-
-	wl_list_init(&animation_manager->animation_states);
-	animation_manager->tick = wl_event_loop_add_timer(server->wl_event_loop, animation_timer, animation_manager);
-	wl_event_source_timer_update(animation_manager->tick, 1);
-
-	return animation_manager;
+void animation_manager_init(struct sway_server *server) {
+	animation_manager.tick = wl_event_loop_add_timer(server->wl_event_loop,
+			animation_timer, &animation_manager.current_animation);
 }
 
-void animation_manager_destroy(struct animation_manager *animation_manager) {
-	// TODO
-	return;
+float lerp(float a, float b, float t) {
+	return a * (1.0 - t) + b * t;
 }
 
+int get_animated_value(float from, float to) {
+	return lerp(from, to, animation_manager.current_animation.multiplier);
+}
