@@ -61,6 +61,4 @@ bool transaction_notify_view_ready_by_geometry(struct sway_view *view,
 
 void arrange_popups(struct wlr_scene_tree *popups);
 
-void arrange_root_external();
-
 #endif

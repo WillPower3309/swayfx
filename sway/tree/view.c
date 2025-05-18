@@ -59,7 +59,6 @@ bool view_init(struct sway_view *view, enum sway_view_type type,
 	view->shortcuts_inhibit = SHORTCUTS_INHIBIT_DEFAULT;
 	view->tearing_mode = TEARING_WINDOW_HINT;
 	wl_signal_init(&view->events.unmap);
-	view->init = false;
 	return true;
 }
 
