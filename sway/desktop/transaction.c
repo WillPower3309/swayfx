@@ -436,9 +436,6 @@ static void arrange_container(struct sway_container *con,
 		y -= con->pending.workspace->y;
 		wlr_scene_node_set_position(&con->scene_tree->node, x, y);
 
-		width = con->current.width;
-		height = con->current.height;
-
 		if (!wl_list_empty(&con->view->content_tree->children)) {
 			struct wlr_box clip = (struct wlr_box){
 				.x = con->view->geometry.x,
