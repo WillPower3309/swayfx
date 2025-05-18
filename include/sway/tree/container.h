@@ -157,6 +157,21 @@ struct sway_container {
 	list_t *marks; // char *
 
 	struct {
+		float from_alpha;
+		float to_alpha;
+		float from_blur_alpha;
+		float to_blur_alpha;
+		float from_x;
+		float to_x;
+		float from_y;
+		float to_y;
+		float from_width;
+		float to_width;
+		float from_height;
+		float to_height;
+	} animation_state;
+
+	struct {
 		struct wl_signal destroy;
 	} events;
 };
