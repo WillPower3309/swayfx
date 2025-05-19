@@ -240,19 +240,39 @@ static void apply_container_state(struct sway_container *container,
 	// transaction_destroy().
 	list_free(container->current.children);
 
-	// TODO: handle open and close animations
-	container->animation_state.from_alpha = container->alpha;
-	container->animation_state.to_alpha = container->target_alpha;
-	container->animation_state.from_blur_alpha = container->blur_alpha;
-	container->animation_state.to_blur_alpha = 1.0f;
-	container->animation_state.from_x = container->current.x;
-	container->animation_state.to_x = state->x;
-	container->animation_state.from_y = container->current.y;
-	container->animation_state.to_y = state->y;
-	container->animation_state.from_width = container->current.width;
-	container->animation_state.to_width = state->width;
-	container->animation_state.from_height = container->current.height;
-	container->animation_state.to_height = state->height;
+	// TODO: when switching focus during a lot of windows opening, the animation resets
+	if (view) {
+		/* TODO: for some reason here container->alpha is 1.0f,
+		   and when the from_alpha is set to 0, the window doens't fade in
+
+		container->animation_state.from_alpha = get_animated_value(
+			container->animation_state.from_alpha, container->animation_state.to_alpha
+		);
+		container->animation_state.from_blur_alpha = get_animated_value(
+			container->animation_state.from_blur_alpha, container->animation_state.to_blur_alpha
+		);*/
+		container->animation_state.from_alpha = 1.0f;
+		container->animation_state.from_blur_alpha = 1.0f;
+		container->animation_state.from_x = get_animated_value(
+			container->animation_state.from_x, container->animation_state.to_x
+		);
+		container->animation_state.from_y = get_animated_value(
+			container->animation_state.from_y, container->animation_state.to_y
+		);
+		container->animation_state.from_width = get_animated_value(
+			container->animation_state.from_width, container->animation_state.to_width
+		);
+		container->animation_state.from_height = get_animated_value(
+			container->animation_state.from_height, container->animation_state.to_height
+		);
+
+		container->animation_state.to_alpha = container->target_alpha;
+		container->animation_state.to_blur_alpha = 1.0f;
+		container->animation_state.to_x = state->x;
+		container->animation_state.to_y = state->y;
+		container->animation_state.to_width = state->width;
+		container->animation_state.to_height = state->height;
+	}
 
 	memcpy(&container->current, state, sizeof(struct sway_container_state));
 
@@ -432,9 +452,11 @@ static void arrange_container(struct sway_container *con,
 		width = get_animated_value(con->animation_state.from_width, con->animation_state.to_width);
 		height = get_animated_value(con->animation_state.from_height, con->animation_state.to_height);
 
-		x -= con->pending.workspace->x;
-		y -= con->pending.workspace->y;
-		wlr_scene_node_set_position(&con->scene_tree->node, x, y);
+		if (con->pending.workspace) {
+			x -= con->pending.workspace->x;
+			y -= con->pending.workspace->y;
+			wlr_scene_node_set_position(&con->scene_tree->node, x, y);
+		}
 
 		if (!wl_list_empty(&con->view->content_tree->children)) {
 			struct wlr_box clip = (struct wlr_box){
