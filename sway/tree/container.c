@@ -168,6 +168,13 @@ struct sway_container *container_create(struct sway_view *view) {
 	c->shadow_enabled = config->shadow_enabled;
 	c->dim = config->default_dim_inactive;
 
+	c->animation_state.from_alpha = c->alpha;
+	c->animation_state.from_blur_alpha = c->blur_alpha;
+	c->animation_state.from_x = c->current.x;
+	c->animation_state.from_y = c->current.y;
+	c->animation_state.from_width = c->current.width;
+	c->animation_state.from_height = c->current.height;
+
 	wl_signal_init(&c->events.destroy);
 	wl_signal_emit_mutable(&root->events.new_node, &c->node);
 
