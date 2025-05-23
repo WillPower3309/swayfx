@@ -411,25 +411,31 @@ static void arrange_children(enum sway_container_layout layout, list_t *children
 
 static void arrange_container(struct sway_container *con,
 		int width, int height, bool title_bar, int gaps) {
+	// this container might have previously been in the scratchpad,
+	// make sure it's enabled for viewing
+	wlr_scene_node_set_enabled(&con->scene_tree->node, true);
 
-	if(con->view) {
-		width = get_animated_value(con->animation_state.from_width, con->animation_state.to_width);
-		height = get_animated_value(con->animation_state.from_height, con->animation_state.to_height);
-
+	if(config->animation_duration_ms && con->view) {
 		int x = get_animated_value(con->animation_state.from_x, con->animation_state.to_x);
 		int y = get_animated_value(con->animation_state.from_y, con->animation_state.to_y);
 		if (con->current.workspace) {
 			x -= con->current.workspace->x;
 			y -= con->current.workspace->y;
 		}
+
+		int animated_height = get_animated_value(con->animation_state.from_height, con->animation_state.to_height);
 		if (con->current.parent && con->current.parent->current.workspace) {
+			// clever way to account for stacked / tabbed titlebars
+			int y_offset = height - animated_height;
 			x -= con->current.parent->current.x -
 					con->current.parent->current.workspace->x;
 			y -= con->current.parent->current.y -
-					con->current.parent->current.workspace->y;
+					con->current.parent->current.workspace->y + y_offset;
 		}
 		wlr_scene_node_set_position(&con->scene_tree->node, x, y);
 
+		width = MIN(width, get_animated_value(con->animation_state.from_width, con->animation_state.to_width));
+		height = MIN(height, animated_height);
 
 		if (!wl_list_empty(&con->view->content_tree->children)) {
 			struct wlr_box clip = (struct wlr_box){
@@ -441,10 +447,6 @@ static void arrange_container(struct sway_container *con,
 			wlr_scene_subsurface_tree_set_clip(&con->view->content_tree->node, &clip);
 		}
 	}
-
-	// this container might have previously been in the scratchpad,
-	// make sure it's enabled for viewing
-	wlr_scene_node_set_enabled(&con->scene_tree->node, true);
 
 	if (con->output_handler) {
 		wlr_scene_buffer_set_dest_size(con->output_handler, width, height);
