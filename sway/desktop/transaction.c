@@ -232,7 +232,6 @@ static void apply_workspace_state(struct sway_workspace *ws,
 static void apply_container_state(struct sway_container *container,
 		struct sway_container_state *state) {
 	struct sway_view *view = container->view;
-
 	// There are separate children lists for each instruction state, the
 	// container's current state and the container's pending state
 	// (ie. con->children). The list itself needs to be freed here.
@@ -873,18 +872,6 @@ void animation_update_callback() {
 	}
 }
 
-bool container_state_should_animate(struct sway_container *con,
-		struct sway_container_state pending_state) {
-	/*
-	return con->view &&
-			(con->current.x != pending_state.x ||
-			con->current.y != pending_state.y ||
-			con->current.width != pending_state.width ||
-			con->current.height != pending_state.height);
-	*/
-	return true;
-}
-
 /**
  * Apply a transaction to the "current" state of the tree.
  */
@@ -901,7 +888,6 @@ static void transaction_apply(struct sway_transaction *transaction) {
 	}
 
 	// Apply the instruction state to the node's current state
-	bool should_animate = false;
 	for (int i = 0; i < transaction->instructions->length; ++i) {
 		struct sway_transaction_instruction *instruction =
 			transaction->instructions->items[i];
@@ -920,19 +906,13 @@ static void transaction_apply(struct sway_transaction *transaction) {
 		case N_CONTAINER:
 			apply_container_state(node->sway_container,
 					&instruction->container_state);
-			if(!should_animate && container_state_should_animate(node->sway_container,
-					instruction->container_state)) {
-				should_animate = true;
-			}
 			break;
 		}
 
 		node->instruction = NULL;
 	}
 
-	if (should_animate) {
-		start_animation(&animation_update_callback);
-	}
+	start_animation(&animation_update_callback);
 }
 
 static void transaction_commit_pending(void);
