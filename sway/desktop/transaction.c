@@ -16,6 +16,7 @@
 #include "sway/server.h"
 #include "sway/tree/container.h"
 #include "sway/tree/node.h"
+#include "sway/tree/root.h"
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
 #include "list.h"
@@ -239,30 +240,14 @@ static void apply_container_state(struct sway_container *container,
 	// transaction_destroy().
 	list_free(container->current.children);
 
-	// TODO: when switching focus during a lot of windows opening, the animation resets
-	if (view) {
-		container->animation_state.from_x = get_animated_value(
-			container->animation_state.from_x, container->animation_state.to_x
-		);
-		container->animation_state.from_y = get_animated_value(
-			container->animation_state.from_y, container->animation_state.to_y
-		);
-		container->animation_state.from_width = get_animated_value(
-			container->animation_state.from_width, container->animation_state.to_width
-		);
-		container->animation_state.from_height = get_animated_value(
-			container->animation_state.from_height, container->animation_state.to_height
-		);
+	memcpy(&container->current, state, sizeof(struct sway_container_state));
 
+	if (view) {
 		container->animation_state.to_x = state->x;
 		container->animation_state.to_y = state->y;
 		container->animation_state.to_width = state->width;
 		container->animation_state.to_height = state->height;
-	}
 
-	memcpy(&container->current, state, sizeof(struct sway_container_state));
-
-	if (view) {
 		if (view->surface && view->saved_surface_tree) {
 			if (!container->node.destroying || container->node.ntxnrefs == 1) {
 				view_remove_saved_buffer(view);
@@ -872,10 +857,26 @@ void animation_update_callback() {
 	}
 }
 
+void set_container_animation_from_val_iterator(struct sway_container *con, void *_) {
+	con->animation_state.from_x = get_animated_value(
+		con->animation_state.from_x, con->animation_state.to_x
+	);
+	con->animation_state.from_y = get_animated_value(
+		con->animation_state.from_y, con->animation_state.to_y
+	);
+	con->animation_state.from_width = get_animated_value(
+		con->animation_state.from_width, con->animation_state.to_width
+	);
+	con->animation_state.from_height = get_animated_value(
+		con->animation_state.from_height, con->animation_state.to_height
+	);
+}
+
 /**
  * Apply a transaction to the "current" state of the tree.
  */
 static void transaction_apply(struct sway_transaction *transaction) {
+	root_for_each_container(set_container_animation_from_val_iterator, NULL);
 	sway_log(SWAY_DEBUG, "Applying transaction %p", transaction);
 	if (debug.txn_timings) {
 		struct timespec now;
