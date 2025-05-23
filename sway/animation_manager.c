@@ -56,10 +56,20 @@ int animation_timer(void *data) {
 }
 
 void start_animation(void (update_callback)(void)) {
+	if (!config->animation_duration_ms) {
+		animation_manager.current_animation = (struct animation) {
+			.progress = 1.0f,
+			.multiplier = 1.0f,
+			.update = NULL
+		};
+		return;
+	}
+
 	assert(animation_manager.tick);
 
 	animation_manager.current_animation = (struct animation) {
 		.progress = 0.0f,
+		.multiplier = 0.0f,
 		.update = update_callback
 	};
 	wl_event_source_timer_update(animation_manager.tick, 1);
