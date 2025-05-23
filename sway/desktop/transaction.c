@@ -242,17 +242,6 @@ static void apply_container_state(struct sway_container *container,
 
 	// TODO: when switching focus during a lot of windows opening, the animation resets
 	if (view) {
-		/* TODO: for some reason here container->alpha is 1.0f,
-		   and when the from_alpha is set to 0, the window doens't fade in
-
-		container->animation_state.from_alpha = get_animated_value(
-			container->animation_state.from_alpha, container->animation_state.to_alpha
-		);
-		container->animation_state.from_blur_alpha = get_animated_value(
-			container->animation_state.from_blur_alpha, container->animation_state.to_blur_alpha
-		);*/
-		container->animation_state.from_alpha = 1.0f;
-		container->animation_state.from_blur_alpha = 1.0f;
 		container->animation_state.from_x = get_animated_value(
 			container->animation_state.from_x, container->animation_state.to_x
 		);
@@ -266,8 +255,6 @@ static void apply_container_state(struct sway_container *container,
 			container->animation_state.from_height, container->animation_state.to_height
 		);
 
-		container->animation_state.to_alpha = container->target_alpha;
-		container->animation_state.to_blur_alpha = 1.0f;
 		container->animation_state.to_x = state->x;
 		container->animation_state.to_y = state->y;
 		container->animation_state.to_width = state->width;
@@ -442,11 +429,6 @@ static void arrange_container(struct sway_container *con,
 		int width, int height, bool title_bar, int gaps) {
 
 	if(con->view) {
-		con->alpha = get_animated_value(con->animation_state.from_alpha,
-				con->animation_state.to_alpha);
-		con->blur_alpha = get_animated_value(con->animation_state.from_blur_alpha,
-				con->animation_state.to_blur_alpha);
-
 		int x = get_animated_value(con->animation_state.from_x, con->animation_state.to_x);
 		int y = get_animated_value(con->animation_state.from_y, con->animation_state.to_y);
 		width = get_animated_value(con->animation_state.from_width, con->animation_state.to_width);
@@ -885,7 +867,22 @@ static void arrange_root(struct sway_root *root) {
 }
 
 void animation_update_callback() {
-	arrange_root(root);
+	// if theres a pending transaction there will be a re-arrange anyway
+	if (!server.pending_transaction) {
+		arrange_root(root);
+	}
+}
+
+bool container_state_should_animate(struct sway_container *con,
+		struct sway_container_state pending_state) {
+	/*
+	return con->view &&
+			(con->current.x != pending_state.x ||
+			con->current.y != pending_state.y ||
+			con->current.width != pending_state.width ||
+			con->current.height != pending_state.height);
+	*/
+	return true;
 }
 
 /**
@@ -904,6 +901,7 @@ static void transaction_apply(struct sway_transaction *transaction) {
 	}
 
 	// Apply the instruction state to the node's current state
+	bool should_animate = false;
 	for (int i = 0; i < transaction->instructions->length; ++i) {
 		struct sway_transaction_instruction *instruction =
 			transaction->instructions->items[i];
@@ -922,13 +920,19 @@ static void transaction_apply(struct sway_transaction *transaction) {
 		case N_CONTAINER:
 			apply_container_state(node->sway_container,
 					&instruction->container_state);
+			if(!should_animate && container_state_should_animate(node->sway_container,
+					instruction->container_state)) {
+				should_animate = true;
+			}
 			break;
 		}
 
 		node->instruction = NULL;
 	}
 
-	start_animation(&animation_update_callback);
+	if (should_animate) {
+		start_animation(&animation_update_callback);
+	}
 }
 
 static void transaction_commit_pending(void);

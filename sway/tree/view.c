@@ -783,9 +783,6 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 	view_populate_pid(view);
 	view->container = container_create(view);
 
-	view->container->alpha = view->container->target_alpha;
-	view->container->blur_alpha = 1.0f;
-
 	if (view->ctx == NULL) {
 		struct launcher_ctx *ctx = launcher_ctx_find_pid(view->pid);
 		if (ctx != NULL) {
