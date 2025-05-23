@@ -159,17 +159,13 @@ struct sway_container *container_create(struct sway_view *view) {
 
 	c->pending.layout = L_NONE;
 	c->view = view;
-	c->alpha = view ? 0.0f : 1.0f;
-	c->target_alpha = 1.0f;
+	c->alpha = 1.0f;
 	c->marks = create_list();
 	c->corner_radius = config->corner_radius;
 	c->blur_enabled = config->blur_enabled;
-	c->blur_alpha = 0.0f; // used for animations to ensure smooth blur fade in
 	c->shadow_enabled = config->shadow_enabled;
 	c->dim = config->default_dim_inactive;
 
-	c->animation_state.from_alpha = c->alpha;
-	c->animation_state.from_blur_alpha = c->blur_alpha;
 	c->animation_state.from_x = c->current.x;
 	c->animation_state.from_y = c->current.y;
 	c->animation_state.from_width = c->current.width;

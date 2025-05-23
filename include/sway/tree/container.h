@@ -145,11 +145,9 @@ struct sway_container {
 	struct wlr_box transform;
 
 	float alpha;
-	float target_alpha;
 
 	int corner_radius;
 	bool blur_enabled;
-	float blur_alpha;
 	bool shadow_enabled;
 	float dim;
 
@@ -157,10 +155,6 @@ struct sway_container {
 
 	// TODO: should this live in view?
 	struct {
-		float from_alpha;
-		float to_alpha;
-		float from_blur_alpha;
-		float to_blur_alpha;
 		float from_x;
 		float to_x;
 		float from_y;

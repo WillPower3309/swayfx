@@ -206,7 +206,7 @@ static enum wlr_scale_filter_mode get_scale_filter(struct sway_output *output,
 }
 
 static void output_configure_scene(struct sway_output *output, struct wlr_scene_node *node, float opacity,
-		int corner_radius, bool blur_enabled, float blur_alpha, bool has_titlebar, struct sway_container *closest_con,
+		int corner_radius, bool blur_enabled, bool has_titlebar, struct sway_container *closest_con,
 		struct sway_scene_descriptor *closest_desc) {
 	if (!node->enabled) {
 		return;
@@ -220,7 +220,6 @@ static void output_configure_scene(struct sway_output *output, struct wlr_scene_
 			opacity = closest_con->alpha;
 			corner_radius = closest_con->corner_radius;
 			blur_enabled = closest_con->blur_enabled;
-			blur_alpha = closest_con->blur_alpha;
 
 			enum sway_container_layout layout = closest_con->current.layout;
 			has_titlebar |= closest_con->current.border == B_NORMAL || layout == L_STACKED || layout == L_TABBED;
@@ -266,8 +265,6 @@ static void output_configure_scene(struct sway_output *output, struct wlr_scene_
 						container_has_corner_radius(closest_con) ? corner_radius : 0,
 						has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL);
 				wlr_scene_buffer_set_backdrop_blur(buffer, blur_enabled);
-				wlr_scene_buffer_set_backdrop_blur_alpha(buffer, blur_alpha);
-				wlr_scene_buffer_set_backdrop_blur_strength(buffer, blur_alpha);
 				wlr_scene_buffer_set_backdrop_blur_ignore_transparent(buffer, false);
 				// Only enable xray blur if tiled or when xray is explicitly enabled
 				bool should_optimize_blur = (closest_con && !container_is_floating_or_child(closest_con)) || config->blur_xray;
@@ -306,7 +303,7 @@ static void output_configure_scene(struct sway_output *output, struct wlr_scene_
 		struct wlr_scene_tree *tree = wlr_scene_tree_from_node(node);
 		struct wlr_scene_node *node;
 		wl_list_for_each(node, &tree->children, link) {
-			output_configure_scene(output, node, opacity, corner_radius, blur_enabled, blur_alpha, has_titlebar, closest_con, closest_desc);
+			output_configure_scene(output, node, opacity, corner_radius, blur_enabled, has_titlebar, closest_con, closest_desc);
 		}
 
 		// Last use of the descriptor
@@ -339,7 +336,7 @@ static int output_repaint_timer_handler(void *data) {
 		return 0;
 	}
 	output_configure_scene(output, &root->root_scene->tree.node, 1.0f,
-			0, false, 1.0f, false, NULL, NULL);
+			0, false, false, NULL, NULL);
 
 	struct wlr_scene_output_state_options opts = {
 		.color_transform = output->color_transform,
