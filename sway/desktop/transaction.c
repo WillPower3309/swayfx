@@ -399,16 +399,23 @@ static void arrange_container(struct sway_container *con,
 		int width, int height, bool title_bar, int gaps) {
 
 	if(con->view) {
-		int x = get_animated_value(con->animation_state.from_x, con->animation_state.to_x);
-		int y = get_animated_value(con->animation_state.from_y, con->animation_state.to_y);
 		width = get_animated_value(con->animation_state.from_width, con->animation_state.to_width);
 		height = get_animated_value(con->animation_state.from_height, con->animation_state.to_height);
 
-		if (con->pending.workspace) {
-			x -= con->pending.workspace->x;
-			y -= con->pending.workspace->y;
-			wlr_scene_node_set_position(&con->scene_tree->node, x, y);
+		int x = get_animated_value(con->animation_state.from_x, con->animation_state.to_x);
+		int y = get_animated_value(con->animation_state.from_y, con->animation_state.to_y);
+		if (con->current.workspace) {
+			x -= con->current.workspace->x;
+			y -= con->current.workspace->y;
 		}
+		if (con->current.parent && con->current.parent->current.workspace) {
+			x -= con->current.parent->current.x -
+					con->current.parent->current.workspace->x;
+			y -= con->current.parent->current.y -
+					con->current.parent->current.workspace->y;
+		}
+		wlr_scene_node_set_position(&con->scene_tree->node, x, y);
+
 
 		if (!wl_list_empty(&con->view->content_tree->children)) {
 			struct wlr_box clip = (struct wlr_box){
@@ -831,6 +838,7 @@ void animation_update_callback() {
 }
 
 void set_container_animation_from_val_iterator(struct sway_container *con, void *_) {
+	// set starting animation values to their current value
 	con->animation_state.from_x = get_animated_value(
 		con->animation_state.from_x, con->animation_state.to_x
 	);
@@ -886,6 +894,7 @@ static void transaction_apply(struct sway_transaction *transaction) {
 		node->instruction = NULL;
 	}
 
+	// TODO: skip animation if no animated state is changing
 	start_animation(&animation_update_callback);
 }
 
