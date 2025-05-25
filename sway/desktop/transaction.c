@@ -247,6 +247,7 @@ static void apply_container_state(struct sway_container *container,
 		container->animation_state.to_y = state->y;
 		container->animation_state.to_width = state->width;
 		container->animation_state.to_height = state->height;
+		printf("TO (%f, %f) %f x %f\n", state->x, state->y, state->width, state->height);
 
 		if (view->surface && view->saved_surface_tree) {
 			if (!container->node.destroying || container->node.ntxnrefs == 1) {
@@ -423,10 +424,11 @@ static void arrange_container(struct sway_container *con,
 			y -= con->current.workspace->y;
 		}
 
-		int animated_height = get_animated_value(con->animation_state.from_height, con->animation_state.to_height);
 		if (con->current.parent && con->current.parent->current.workspace) {
 			// clever way to account for stacked / tabbed titlebars
-			int y_offset = height - animated_height;
+			int y_offset = height -
+					get_animated_value(con->animation_state.from_height, con->animation_state.to_height);
+
 			x -= con->current.parent->current.x -
 					con->current.parent->current.workspace->x;
 			y -= con->current.parent->current.y -
@@ -434,8 +436,9 @@ static void arrange_container(struct sway_container *con,
 		}
 		wlr_scene_node_set_position(&con->scene_tree->node, x, y);
 
-		width = MIN(width, get_animated_value(con->animation_state.from_width, con->animation_state.to_width));
-		height = MIN(height, animated_height);
+		width = get_animated_value(con->animation_state.from_width, con->animation_state.to_width);
+		// TODO: apply y_offset to height?
+		height = get_animated_value(con->animation_state.from_height, con->animation_state.to_height);
 
 		if (!wl_list_empty(&con->view->content_tree->children)) {
 			struct wlr_box clip = (struct wlr_box){
@@ -867,6 +870,9 @@ void animation_update_callback() {
 }
 
 void set_container_animation_from_val_iterator(struct sway_container *con, void *_) {
+	if (!con->view) {
+		return;
+	}
 	// set starting animation values to their current value
 	con->animation_state.from_x = get_animated_value(
 		con->animation_state.from_x, con->animation_state.to_x
@@ -880,6 +886,7 @@ void set_container_animation_from_val_iterator(struct sway_container *con, void 
 	con->animation_state.from_height = get_animated_value(
 		con->animation_state.from_height, con->animation_state.to_height
 	);
+	printf("FROM (%f, %f) %f x %f\n", con->animation_state.from_x, con->animation_state.from_y, con->animation_state.from_width, con->animation_state.from_height);
 }
 
 /**
