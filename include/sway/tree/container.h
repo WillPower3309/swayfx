@@ -157,13 +157,9 @@ struct sway_container {
 	// TODO: should this live in view?
 	struct {
 		float from_x;
-		float to_x;
 		float from_y;
-		float to_y;
 		float from_width;
-		float to_width;
 		float from_height;
-		float to_height;
 	} animation_state;
 
 	struct {

@@ -243,12 +243,6 @@ static void apply_container_state(struct sway_container *container,
 	memcpy(&container->current, state, sizeof(struct sway_container_state));
 
 	if (view) {
-		container->animation_state.to_x = state->x;
-		container->animation_state.to_y = state->y;
-		container->animation_state.to_width = state->width;
-		container->animation_state.to_height = state->height;
-		printf("TO (%f, %f) %f x %f\n", state->x, state->y, state->width, state->height);
-
 		if (view->surface && view->saved_surface_tree) {
 			if (!container->node.destroying || container->node.ntxnrefs == 1) {
 				view_remove_saved_buffer(view);
@@ -417,8 +411,11 @@ static void arrange_container(struct sway_container *con,
 	wlr_scene_node_set_enabled(&con->scene_tree->node, true);
 
 	if(config->animation_duration_ms && con->view) {
-		int x = get_animated_value(con->animation_state.from_x, con->animation_state.to_x);
-		int y = get_animated_value(con->animation_state.from_y, con->animation_state.to_y);
+		width = get_animated_value(con->animation_state.from_width, width);
+		height = get_animated_value(con->animation_state.from_height, height);
+
+		int x = get_animated_value(con->animation_state.from_x, con->current.x);
+		int y = get_animated_value(con->animation_state.from_y, con->current.y);
 		if (con->current.workspace) {
 			x -= con->current.workspace->x;
 			y -= con->current.workspace->y;
@@ -427,7 +424,7 @@ static void arrange_container(struct sway_container *con,
 		if (con->current.parent && con->current.parent->current.workspace) {
 			// clever way to account for stacked / tabbed titlebars
 			int y_offset = height -
-					get_animated_value(con->animation_state.from_height, con->animation_state.to_height);
+					get_animated_value(con->animation_state.from_height, con->current.height);
 
 			x -= con->current.parent->current.x -
 					con->current.parent->current.workspace->x;
@@ -435,10 +432,6 @@ static void arrange_container(struct sway_container *con,
 					con->current.parent->current.workspace->y + y_offset;
 		}
 		wlr_scene_node_set_position(&con->scene_tree->node, x, y);
-
-		width = get_animated_value(con->animation_state.from_width, con->animation_state.to_width);
-		// TODO: apply y_offset to height?
-		height = get_animated_value(con->animation_state.from_height, con->animation_state.to_height);
 
 		if (!wl_list_empty(&con->view->content_tree->children)) {
 			struct wlr_box clip = (struct wlr_box){
@@ -873,27 +866,27 @@ void set_container_animation_from_val_iterator(struct sway_container *con, void 
 	if (!con->view) {
 		return;
 	}
-	// set starting animation values to their current value
 	con->animation_state.from_x = get_animated_value(
-		con->animation_state.from_x, con->animation_state.to_x
+		con->animation_state.from_x, con->current.x
 	);
 	con->animation_state.from_y = get_animated_value(
-		con->animation_state.from_y, con->animation_state.to_y
+		con->animation_state.from_y, con->current.y
 	);
 	con->animation_state.from_width = get_animated_value(
-		con->animation_state.from_width, con->animation_state.to_width
+		con->animation_state.from_width, con->current.width
 	);
 	con->animation_state.from_height = get_animated_value(
-		con->animation_state.from_height, con->animation_state.to_height
+		con->animation_state.from_height, con->current.height
 	);
-	printf("FROM (%f, %f) %f x %f\n", con->animation_state.from_x, con->animation_state.from_y, con->animation_state.from_width, con->animation_state.from_height);
 }
 
 /**
  * Apply a transaction to the "current" state of the tree.
  */
 static void transaction_apply(struct sway_transaction *transaction) {
+	// save the current container state as the animation starting point
 	root_for_each_container(set_container_animation_from_val_iterator, NULL);
+
 	sway_log(SWAY_DEBUG, "Applying transaction %p", transaction);
 	if (debug.txn_timings) {
 		struct timespec now;
