@@ -693,7 +693,7 @@ void handle_new_output(struct wl_listener *listener, void *data) {
 	}
 
 	request_modeset();
-	refresh_animation_manager_tick_time();
+	refresh_animation_manager_timing();
 }
 
 void handle_gamma_control_set_gamma(struct wl_listener *listener, void *data) {

@@ -5,7 +5,7 @@
 
 void animation_manager_init(struct sway_server *server);
 
-void refresh_animation_manager_tick_time();
+void refresh_animation_manager_timing();
 
 void start_animation(void (update_callback)(void));
 

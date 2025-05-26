@@ -1,8 +1,8 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <strings.h>
+#include "sway/animation_manager.h"
 #include "sway/commands.h"
-#include "log.h"
 
 // TODO: add animation_duration_s command?
 struct cmd_results *cmd_animation_duration_ms(int argc, char **argv) {
@@ -22,6 +22,7 @@ struct cmd_results *cmd_animation_duration_ms(int argc, char **argv) {
 	}
 
 	config->animation_duration_ms = val;
+	refresh_animation_manager_timing();
 
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
