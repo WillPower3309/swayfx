@@ -15,6 +15,7 @@ struct animation {
 };
 
 struct animation_manager {
+	float tick_time;
 	struct wl_event_source *tick;
 	struct animation current_animation;
 } animation_manager;
@@ -39,9 +40,7 @@ float ease_out_cubic(float t) {
 int animation_timer(void *data) {
 	struct animation *animation = data;
 
-	float tick_time = get_fastest_output_refresh_ms();
-
-	float progress_delta = tick_time / config->animation_duration_ms;
+	float progress_delta = animation_manager.tick_time / config->animation_duration_ms;
 	animation->progress = MIN(animation->progress + progress_delta, 1.0f);
 	animation->multiplier = ease_out_cubic(animation->progress);
 
@@ -50,7 +49,8 @@ int animation_timer(void *data) {
 	}
 
 	if (animation->progress < 1.0f) {
-		wl_event_source_timer_update(animation_manager.tick, tick_time);
+		wl_event_source_timer_update(animation_manager.tick,
+				animation_manager.tick_time);
 	}
 	return 0;
 }
@@ -75,7 +75,12 @@ void start_animation(void (update_callback)(void)) {
 	wl_event_source_timer_update(animation_manager.tick, 1);
 }
 
+void refresh_animation_manager_tick_time() {
+	animation_manager.tick_time = get_fastest_output_refresh_ms();
+}
+
 void animation_manager_init(struct sway_server *server) {
+	animation_manager.tick_time = get_fastest_output_refresh_ms();
 	animation_manager.tick = wl_event_loop_add_timer(server->wl_event_loop,
 			animation_timer, &animation_manager.current_animation);
 }
