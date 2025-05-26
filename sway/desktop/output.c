@@ -693,7 +693,7 @@ void handle_new_output(struct wl_listener *listener, void *data) {
 	}
 
 	request_modeset();
-	refresh_animation_manager_tick_time();
+	refresh_animation_manager_timing();
 }
 
 static struct output_config *output_config_for_config_head(
