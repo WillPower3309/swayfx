@@ -853,6 +853,12 @@ void set_container_animation_from_val_iterator(struct sway_container *con, void 
 	);
 }
 
+bool is_con_animation_state_change(struct sway_container_state current,
+		struct sway_container_state pending) {
+	return current.x != pending.x || current.y != pending.y ||
+			current.width != pending.width || current.height != pending.height;
+}
+
 /**
  * Apply a transaction to the "current" state of the tree.
  */
@@ -872,6 +878,7 @@ static void transaction_apply(struct sway_transaction *transaction) {
 	}
 
 	// Apply the instruction state to the node's current state
+	bool is_animation_state_change = false;
 	for (int i = 0; i < transaction->instructions->length; ++i) {
 		struct sway_transaction_instruction *instruction =
 			transaction->instructions->items[i];
@@ -888,6 +895,10 @@ static void transaction_apply(struct sway_transaction *transaction) {
 					&instruction->workspace_state);
 			break;
 		case N_CONTAINER:
+			if (!is_animation_state_change) {
+			is_animation_state_change = is_con_animation_state_change(
+					node->sway_container->current, instruction->container_state);
+			}
 			apply_container_state(node->sway_container,
 					&instruction->container_state);
 			break;
@@ -896,8 +907,9 @@ static void transaction_apply(struct sway_transaction *transaction) {
 		node->instruction = NULL;
 	}
 
-	// TODO: skip animation if no animated state is changing
-	start_animation(&animation_update_callback);
+	if (is_animation_state_change) {
+		start_animation(&animation_update_callback);
+	}
 }
 
 static void transaction_commit_pending(void);
