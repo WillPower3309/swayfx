@@ -60,7 +60,7 @@ void start_animation(void (update_callback)(void)) {
 		animation_manager.current_animation = (struct animation) {
 			.progress = 1.0f,
 			.multiplier = 1.0f,
-			.update = NULL
+			.update = NULL,
 		};
 		return;
 	}
@@ -70,7 +70,7 @@ void start_animation(void (update_callback)(void)) {
 	animation_manager.current_animation = (struct animation) {
 		.progress = 0.0f,
 		.multiplier = 0.0f,
-		.update = update_callback
+		.update = update_callback,
 	};
 	wl_event_source_timer_update(animation_manager.tick, 1);
 }
