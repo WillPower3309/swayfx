@@ -23,6 +23,7 @@
 #include "config.h"
 #include "log.h"
 #include "scenefx/types/fx/corner_location.h"
+#include "sway/animation_manager.h"
 #include "sway/config.h"
 #include "sway/desktop/transaction.h"
 #include "sway/input/input-manager.h"
@@ -692,6 +693,7 @@ void handle_new_output(struct wl_listener *listener, void *data) {
 	}
 
 	request_modeset();
+	refresh_animation_manager_tick_time();
 }
 
 void handle_gamma_control_set_gamma(struct wl_listener *listener, void *data) {
