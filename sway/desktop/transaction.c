@@ -896,8 +896,8 @@ static void transaction_apply(struct sway_transaction *transaction) {
 			break;
 		case N_CONTAINER:
 			if (!is_animation_state_change) {
-			is_animation_state_change = is_con_animation_state_change(
-					node->sway_container->current, instruction->container_state);
+				is_animation_state_change = is_con_animation_state_change(
+						node->sway_container->current, instruction->container_state);
 			}
 			apply_container_state(node->sway_container,
 					&instruction->container_state);
