@@ -839,18 +839,27 @@ void set_container_animation_from_val_iterator(struct sway_container *con, void 
 	if (!con->view) {
 		return;
 	}
-	con->animation_state.from_x = get_animated_value(
-		con->animation_state.from_x, con->current.x
-	);
-	con->animation_state.from_y = get_animated_value(
-		con->animation_state.from_y, con->current.y
-	);
-	con->animation_state.from_width = get_animated_value(
-		con->animation_state.from_width, con->current.width
-	);
-	con->animation_state.from_height = get_animated_value(
-		con->animation_state.from_height, con->current.height
-	);
+	sway_log(SWAY_ERROR, "Re-render %s",con->formatted_title);
+	
+	
+	if (con->current.width > 0 && con->current.height > 0){
+		con->animation_state.from_x = con->current.x;
+		con->animation_state.from_y = con->current.y;
+		con->animation_state.from_width = con->current.width;
+		con->animation_state.from_height = con->current.height;
+	}
+	// con->animation_state.from_x = get_animated_value(
+	// 	con->animation_state.from_x, con->current.x
+	// );
+	// con->animation_state.from_y = get_animated_value(
+	// 	con->animation_state.from_y, con->current.y
+	// );
+	// con->animation_state.from_width = get_animated_value(
+	// 	con->animation_state.from_width, con->current.width
+	// );
+	// con->animation_state.from_height = get_animated_value(
+	// 	con->animation_state.from_height, con->current.height
+	// );
 }
 
 bool is_con_animation_state_change(struct sway_container_state current,
