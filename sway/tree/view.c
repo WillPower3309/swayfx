@@ -899,6 +899,9 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 	} else if ((class = view_get_class(view)) != NULL) {
 		wlr_foreign_toplevel_handle_v1_set_app_id(view->foreign_toplevel, class);
 	}
+
+	view->container->animation_state.from_x = view->container->pending.x + view->container->pending.width /2;
+	view->container->animation_state.from_y = view->container->pending.y + view->container->pending.height /2;
 }
 
 void view_unmap(struct sway_view *view) {
