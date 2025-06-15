@@ -153,6 +153,14 @@ struct sway_container {
 
 	list_t *marks; // char *
 
+	// TODO: should this live in view?
+	struct {
+		float from_x;
+		float from_y;
+		float from_width;
+		float from_height;
+	} animation_state;
+
 	struct {
 		struct wl_signal destroy;
 	} events;
