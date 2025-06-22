@@ -112,22 +112,12 @@ struct sway_container *container_create(struct sway_view *view) {
 
 	c->title_bar.tree = alloc_scene_tree(c->scene_tree, &failed);
 	c->title_bar.tree = alloc_scene_tree(c->scene_tree, &failed);
-	c->title_bar.border = alloc_scene_tree(c->title_bar.tree, &failed);
-	c->title_bar.background = alloc_scene_tree(c->title_bar.tree, &failed);
-
-	// for opacity purposes we need to carfully create the scene such that
-	// none of our rect nodes as well as text buffers don't overlap. To do
-	// this we have to create rects such that they go around text buffers
-	for (int i = 0; i < 4; i++) {
-		alloc_rect_node(c->title_bar.border, &failed);
-	}
-
-	for (int i = 0; i < 5; i++) {
-		alloc_rect_node(c->title_bar.background, &failed);
-	}
 
 	c->border.tree = alloc_scene_tree(c->scene_tree, &failed);
 	c->content_tree = alloc_scene_tree(c->border.tree, &failed);
+
+	c->title_bar.border = alloc_rect_node(c->title_bar.tree, &failed);
+	c->title_bar.background = alloc_rect_node(c->title_bar.tree, &failed);
 
 	if (view) {
 		// only containers with views can have borders
@@ -296,16 +286,6 @@ void container_update(struct sway_container *con) {
 
 	scene_rect_set_color(con->title_bar.background, colors->background, alpha);
 	scene_rect_set_color(con->title_bar.border, colors->border, alpha);
-	struct wlr_scene_node *node;
-	wl_list_for_each(node, &con->title_bar.border->children, link) {
-		struct wlr_scene_rect *rect = wlr_scene_rect_from_node(node);
-		scene_rect_set_color(rect, colors->border, alpha);
-	}
-
-	wl_list_for_each(node, &con->title_bar.background->children, link) {
-		struct wlr_scene_rect *rect = wlr_scene_rect_from_node(node);
-		scene_rect_set_color(rect, colors->background, alpha);
-	}
 
 	if (con->view) {
 		scene_rect_set_color(con->border.top, colors->child_border, alpha);
@@ -343,29 +323,6 @@ void container_update_itself_and_parents(struct sway_container *con) {
 
 	if (con->current.parent) {
 		container_update_itself_and_parents(con->current.parent);
-	}
-}
-
-static void update_rect_list(struct wlr_scene_tree *tree, pixman_region32_t *region) {
-	int len;
-	const pixman_box32_t *rects = pixman_region32_rectangles(region, &len);
-
-	wlr_scene_node_set_enabled(&tree->node, len > 0);
-	if (len == 0) {
-		return;
-	}
-
-	int i = 0;
-	struct wlr_scene_node *node;
-	wl_list_for_each(node, &tree->children, link) {
-		struct wlr_scene_rect *rect = wlr_scene_rect_from_node(node);
-		wlr_scene_node_set_enabled(&rect->node, i < len);
-
-		if (i < len) {
-			const pixman_box32_t *box = &rects[i++];
-			wlr_scene_node_set_position(&rect->node, box->x1, box->y1);
-			wlr_scene_rect_set_size(rect, box->x2 - box->x1, box->y2 - box->y1);
-		}
 	}
 }
 
