@@ -16,6 +16,8 @@
 #include <wlr/types/wlr_output.h>
 #include <wlr/types/wlr_presentation_time.h>
 #include <wlr/types/wlr_compositor.h>
+#include <wlr/types/wlr_subcompositor.h>
+#include <wlr/types/wlr_xdg_shell.h>
 #include <wlr/util/region.h>
 #include <wlr/util/transform.h>
 #include "config.h"
@@ -35,6 +37,10 @@
 #include "sway/tree/root.h"
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
+
+#if WLR_HAS_XWAYLAND
+#include "sway/xwayland.h"
+#endif
 
 #if WLR_HAS_DRM_BACKEND
 #include <wlr/backend/drm.h>
@@ -245,11 +251,15 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 		if (!surface || !surface->surface) {
 			return;
 		}
+
 		// Other buffers should set their own effects manually, like the
 		// text buffer and saved views
 		struct wlr_layer_surface_v1 *layer_surface = NULL;
 		if (wlr_xdg_surface_try_from_wlr_surface(surface->surface)
-				|| wlr_xwayland_surface_try_from_wlr_surface(surface->surface)) {
+#if WLR_HAS_XWAYLAND
+				|| wlr_xwayland_surface_try_from_wlr_surface(surface->surface)
+#endif
+				) {
 			wlr_scene_buffer_set_corner_radius(buffer,
 					container_has_corner_radius(closest_con) ? corner_radius : 0,
 					has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL);
