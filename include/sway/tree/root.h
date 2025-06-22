@@ -5,6 +5,7 @@
 #include <wayland-util.h>
 #include <wlr/config.h>
 #include <wlr/types/wlr_output_layout.h>
+#include <wlr/types/wlr_scene.h>
 #include <wlr/render/wlr_texture.h>
 #include "sway/tree/container.h"
 #include "sway/tree/node.h"

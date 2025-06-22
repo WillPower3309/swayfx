@@ -3,7 +3,7 @@ project(
 	'c',
 	version: '0.5.1',
 	license: 'MIT',
-	meson_version: '>=0.60.0',
+	meson_version: '>=1.3',
 	default_options: [
 		'c_std=c11',
 		'warning_level=2',
@@ -47,14 +47,14 @@ subproject(
 scenefx = dependency('scenefx-0.3', fallback: 'scenefx')
 
 # Execute the wlroots subproject, if any
-wlroots_version = ['>=0.18.0', '<0.19.0']
+wlroots_version = ['>=0.19.0', '<0.20.0']
 subproject(
 	'wlroots',
 	default_options: ['examples=false'],
 	required: false,
 	version: wlroots_version,
 )
-wlroots = dependency('wlroots-0.18', version: wlroots_version, fallback: 'wlroots')
+wlroots = dependency('wlroots-0.19', version: wlroots_version, fallback: 'wlroots')
 wlroots_features = {
 	'xwayland': false,
 	'libinput_backend': false,
@@ -88,7 +88,7 @@ libudev = wlroots_features['libinput_backend'] ? dependency('libudev') : null_de
 math = cc.find_library('m')
 rt = cc.find_library('rt')
 xcb_icccm = wlroots_features['xwayland'] ? dependency('xcb-icccm') : null_dep
-threads = dependency('threads') # for pthread_setschedparam
+threads = dependency('threads') # for pthread_setschedparam and pthread_atfork
 
 if get_option('sd-bus-provider') == 'auto'
 	if not get_option('tray').disabled()
@@ -181,31 +181,10 @@ add_project_arguments('-DSWAY_VERSION=@0@'.format(version), language: 'c')
 add_project_arguments('-DSWAY_ORIGINAL_VERSION="@0@"'.format(original_version), language: 'c')
 add_project_arguments('-DSCENEFX_VERSION="@0@"'.format(scenefx.version()), language: 'c')
 
-# Compute the relative path used by compiler invocations.
-source_root = meson.current_source_dir().split('/')
-build_root = meson.global_build_root().split('/')
-relative_dir_parts = []
-i = 0
-in_prefix = true
-foreach p : build_root
-	if i >= source_root.length() or not in_prefix or p != source_root[i]
-		in_prefix = false
-		relative_dir_parts += '..'
-	endif
-	i += 1
-endforeach
-i = 0
-in_prefix = true
-foreach p : source_root
-	if i >= build_root.length() or not in_prefix or build_root[i] != p
-		in_prefix = false
-		relative_dir_parts += p
-	endif
-	i += 1
-endforeach
-relative_dir = join_paths(relative_dir_parts) + '/'
+fs = import('fs')
 
 # Strip relative path prefixes from the code if possible, otherwise hide them.
+relative_dir = fs.relative_to(meson.current_source_dir(), meson.global_build_root()) + '/'
 if cc.has_argument('-fmacro-prefix-map=/prefix/to/hide=')
 	add_project_arguments(
 		'-fmacro-prefix-map=@0@='.format(relative_dir),

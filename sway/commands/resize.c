@@ -457,7 +457,11 @@ static struct cmd_results *cmd_resize_set(int argc, char **argv) {
 		if (argc > num_consumed_args) {
 			return cmd_results_new(CMD_INVALID, "%s", usage);
 		}
+<<<<<<< HEAD
 		if (width.unit == MOVEMENT_UNIT_INVALID) {
+=======
+		if (height.unit == MOVEMENT_UNIT_INVALID) {
+>>>>>>> 1.11
 			return cmd_results_new(CMD_INVALID, "%s", usage);
 		}
 	}

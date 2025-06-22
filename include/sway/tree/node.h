@@ -3,6 +3,7 @@
 #include <scenefx/types/wlr_scene.h>
 #include <wayland-server-core.h>
 #include <stdbool.h>
+#include <wlr/types/wlr_scene.h>
 #include "list.h"
 
 #define MIN_SANE_W 100

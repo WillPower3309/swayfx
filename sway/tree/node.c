@@ -205,3 +205,4 @@ struct wlr_scene_shadow *alloc_scene_shadow(struct wlr_scene_tree *parent,
 
 	return shadow;
 }
+

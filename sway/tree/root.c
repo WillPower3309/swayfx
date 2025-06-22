@@ -223,11 +223,20 @@ void root_scratchpad_show(struct sway_container *con) {
 	}
 	set_container_transform(new_ws, con);
 
+	if (new_ws->output) {
+		struct wlr_box output_box;
+		output_get_box(new_ws->output, &output_box);
+		floating_fix_coordinates(con, &con->transform, &output_box);
+	}
+	set_container_transform(new_ws, con);
+
 	arrange_workspace(new_ws);
 	seat_set_focus(seat, seat_get_focus_inactive(seat, &con->node));
 	if (old_ws) {
 		workspace_consider_destroy(old_ws);
 	}
+
+	container_raise_floating(con);
 }
 
 static void disable_fullscreen(struct sway_container *con, void *data) {

@@ -4,6 +4,7 @@
 #include <scenefx/types/wlr_scene.h>
 #include <wlr/types/wlr_keyboard_shortcuts_inhibit_v1.h>
 #include <wlr/types/wlr_layer_shell_v1.h>
+#include <wlr/types/wlr_scene.h>
 #include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_touch.h>
 #include <wlr/util/edges.h>

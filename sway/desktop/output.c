@@ -6,18 +6,16 @@
 #include <wlr/config.h>
 #include <wlr/backend/headless.h>
 #include <wlr/render/swapchain.h>
+#include <wlr/render/wlr_renderer.h>
 #include <wlr/types/wlr_buffer.h>
 #include <wlr/types/wlr_alpha_modifier_v1.h>
 #include <wlr/types/wlr_gamma_control_v1.h>
-#include <wlr/types/wlr_matrix.h>
 #include <wlr/types/wlr_output_layout.h>
 #include <wlr/types/wlr_output_management_v1.h>
 #include <wlr/types/wlr_output_power_management_v1.h>
 #include <wlr/types/wlr_output.h>
 #include <wlr/types/wlr_presentation_time.h>
 #include <wlr/types/wlr_compositor.h>
-#include <wlr/types/wlr_xdg_shell.h>
-#include <wlr/types/wlr_subcompositor.h>
 #include <wlr/util/region.h>
 #include <wlr/util/transform.h>
 #include "config.h"
@@ -190,8 +188,8 @@ static enum wlr_scale_filter_mode get_scale_filter(struct sway_output *output,
 		struct wlr_scene_buffer *buffer) {
 	// if we are scaling down, we should always choose linear
 	if (buffer->dst_width > 0 && buffer->dst_height > 0 && (
-			buffer->dst_width < buffer->buffer_width ||
-			buffer->dst_height < buffer->buffer_height)) {
+			buffer->dst_width < buffer->WLR_PRIVATE.buffer_width ||
+			buffer->dst_height < buffer->WLR_PRIVATE.buffer_height)) {
 		return WLR_SCALE_FILTER_BILINEAR;
 	}
 
@@ -238,7 +236,9 @@ static void output_configure_scene(struct sway_output *output, struct wlr_scene_
 		// hack: don't call the scene setter because that will damage all outputs
 		// We don't want to damage outputs that aren't our current output that
 		// we're configuring
-		buffer->filter_mode = get_scale_filter(output, buffer);
+		if (output) {
+			buffer->filter_mode = get_scale_filter(output, buffer);
+		}
 
 		wlr_scene_buffer_set_opacity(buffer, opacity);
 
@@ -303,7 +303,7 @@ static int output_repaint_timer_handler(void *data) {
 	struct sway_output *output = data;
 
 	output->wlr_output->frame_pending = false;
-	if (!output->enabled) {
+	if (!output->wlr_output->enabled) {
 		return 0;
 	}
 	output_configure_scene(output, &root->root_scene->tree.node, 1.0f,
@@ -313,10 +313,8 @@ static int output_repaint_timer_handler(void *data) {
 		.color_transform = output->color_transform,
 	};
 
-	struct wlr_output *wlr_output = output->wlr_output;
 	struct wlr_scene_output *scene_output = output->scene_output;
-	if (!wlr_output->needs_frame && !output->gamma_lut_changed &&
-			!pixman_region32_not_empty(&scene_output->pending_commit_damage)) {
+	if (!wlr_scene_output_needs_frame(scene_output)) {
 		return 0;
 	}
 
@@ -325,22 +323,6 @@ static int output_repaint_timer_handler(void *data) {
 	if (!wlr_scene_output_build_state(output->scene_output, &pending, &opts)) {
 		wlr_output_state_finish(&pending);
 		return 0;
-	}
-
-	if (output->gamma_lut_changed) {
-		output->gamma_lut_changed = false;
-		struct wlr_gamma_control_v1 *gamma_control =
-			wlr_gamma_control_manager_v1_get_control(
-			server.gamma_control_manager_v1, output->wlr_output);
-		if (!wlr_gamma_control_v1_apply(gamma_control, &pending)) {
-			wlr_output_state_finish(&pending);
-			return 0;
-		}
-
-		if (!wlr_output_test_state(output->wlr_output, &pending)) {
-			wlr_gamma_control_v1_send_failed_and_destroy(gamma_control);
-			wlr_output_state_set_gamma_lut(&pending, 0, NULL, NULL, NULL);
-		}
 	}
 
 	if (output_can_tear(output)) {
@@ -479,23 +461,49 @@ void force_modeset(void) {
 }
 
 static void begin_destroy(struct sway_output *output) {
-	if (output->enabled) {
-		output_disable(output);
-	}
-
-	output_begin_destroy(output);
-
-	wl_list_remove(&output->link);
 
 	wl_list_remove(&output->layout_destroy.link);
 	wl_list_remove(&output->destroy.link);
-	wl_list_remove(&output->commit.link);
 	wl_list_remove(&output->present.link);
 	wl_list_remove(&output->frame.link);
 	wl_list_remove(&output->request_state.link);
 
+	// Remove the scene_output first to ensure that the scene does not emit
+	// events for this output.
 	wlr_scene_output_destroy(output->scene_output);
 	output->scene_output = NULL;
+
+	apply_stored_output_configs();
+	return 0;
+}
+
+void request_modeset(void) {
+	if (server.delayed_modeset == NULL) {
+		server.delayed_modeset = wl_event_loop_add_timer(server.wl_event_loop,
+			timer_modeset_handle, &server);
+		wl_event_source_timer_update(server.delayed_modeset, 10);
+	}
+}
+
+bool modeset_is_pending(void) {
+	return server.delayed_modeset != NULL;
+}
+
+void force_modeset(void) {
+	if (server.delayed_modeset != NULL) {
+		wl_event_source_remove(server.delayed_modeset);
+		server.delayed_modeset = NULL;
+	}
+	apply_stored_output_configs();
+}
+
+static void begin_destroy(struct sway_output *output) {
+	if (output->enabled) {
+		output_disable(output);
+	}
+	output_begin_destroy(output);
+	wl_list_remove(&output->link);
+
 	output->wlr_output->data = NULL;
 	output->wlr_output = NULL;
 
@@ -515,20 +523,6 @@ static void handle_layout_destroy(struct wl_listener *listener, void *data) {
 	begin_destroy(output);
 }
 
-static void handle_commit(struct wl_listener *listener, void *data) {
-	struct sway_output *output = wl_container_of(listener, output, commit);
-	struct wlr_output_event_commit *event = data;
-
-	if (!output->enabled) {
-		return;
-	}
-
-	// Next time the output is enabled, try to re-apply the gamma LUT
-	if ((event->state->committed & WLR_OUTPUT_STATE_ENABLED) && !output->wlr_output->enabled) {
-		output->gamma_lut_changed = true;
-	}
-}
-
 static void handle_present(struct wl_listener *listener, void *data) {
 	struct sway_output *output = wl_container_of(listener, output, present);
 	struct wlr_output_event_present *output_event = data;
@@ -537,7 +531,7 @@ static void handle_present(struct wl_listener *listener, void *data) {
 		return;
 	}
 
-	output->last_presentation = *output_event->when;
+	output->last_presentation = output_event->when;
 	output->refresh_nsec = output_event->refresh;
 }
 
@@ -646,8 +640,6 @@ void handle_new_output(struct wl_listener *listener, void *data) {
 	output->layout_destroy.notify = handle_layout_destroy;
 	wl_signal_add(&wlr_output->events.destroy, &output->destroy);
 	output->destroy.notify = handle_destroy;
-	wl_signal_add(&wlr_output->events.commit, &output->commit);
-	output->commit.notify = handle_commit;
 	wl_signal_add(&wlr_output->events.present, &output->present);
 	output->present.notify = handle_present;
 	wl_signal_add(&wlr_output->events.frame, &output->frame);
@@ -663,21 +655,6 @@ void handle_new_output(struct wl_listener *listener, void *data) {
 	}
 
 	request_modeset();
-}
-
-void handle_gamma_control_set_gamma(struct wl_listener *listener, void *data) {
-	struct sway_server *server =
-		wl_container_of(listener, server, gamma_control_set_gamma);
-	const struct wlr_gamma_control_manager_v1_set_gamma_event *event = data;
-
-	struct sway_output *output = event->output->data;
-
-	if(!output) {
-		return;
-	}
-
-	output->gamma_lut_changed = true;
-	wlr_output_schedule_frame(output->wlr_output);
 }
 
 static struct output_config *output_config_for_config_head(

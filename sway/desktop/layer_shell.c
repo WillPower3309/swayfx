@@ -287,6 +287,7 @@ static void handle_output_destroy(struct wl_listener *listener, void *data) {
 
 	layer->output = NULL;
 	wlr_scene_node_destroy(&layer->scene->tree->node);
+	wlr_layer_surface_v1_destroy(layer->layer_surface);
 }
 
 static void handle_node_destroy(struct wl_listener *listener, void *data) {
@@ -311,8 +312,7 @@ static void handle_node_destroy(struct wl_listener *listener, void *data) {
 	}
 
 	struct wlr_layer_surface_v1 *wlr_layer_surface = layer->layer_surface;
-	if (wlr_layer_surface->current.layer ==
-			ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND ||
+	if (wlr_layer_surface->current.layer == ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND ||
 		wlr_layer_surface->current.layer == ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM) {
 		if (layer->output) {
 			wlr_scene_optimized_blur_mark_dirty(layer->output->layers.blur_layer);
@@ -343,9 +343,6 @@ static void handle_surface_commit(struct wl_listener *listener, void *data) {
 		wl_container_of(listener, surface, surface_commit);
 
 	struct wlr_layer_surface_v1 *layer_surface = surface->layer_surface;
-	if (!layer_surface->initialized) {
-		return;
-	}
 
 	// Rerender the optimized blur on change
 	struct wlr_layer_surface_v1 *wlr_layer_surface = surface->layer_surface;
@@ -358,7 +355,7 @@ static void handle_surface_commit(struct wl_listener *listener, void *data) {
 	}
 
 	uint32_t committed = layer_surface->current.committed;
-	if (committed & WLR_LAYER_SURFACE_V1_STATE_LAYER) {
+	if (layer_surface->initialized && committed & WLR_LAYER_SURFACE_V1_STATE_LAYER) {
 		enum zwlr_layer_shell_v1_layer layer_type = layer_surface->current.layer;
 		struct wlr_scene_tree *output_layer = sway_layer_get_scene(
 			surface->output, layer_type);
@@ -367,7 +364,6 @@ static void handle_surface_commit(struct wl_listener *listener, void *data) {
 
 	if (layer_surface->initial_commit || committed || layer_surface->surface->mapped != surface->mapped) {
 		surface->mapped = layer_surface->surface->mapped;
-		layer_parse_criteria(surface);
 		arrange_layers(surface->output);
 		transaction_commit_dirty();
 	}

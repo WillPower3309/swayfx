@@ -74,8 +74,8 @@ struct sway_container {
 	struct {
 		struct wlr_scene_tree *tree;
 
-		struct wlr_scene_rect *border;
-		struct wlr_scene_rect *background;
+		struct wlr_scene_tree *border;
+		struct wlr_scene_tree *background;
 
 		struct sway_text_node *title_text;
 		struct sway_text_node *marks_text;
@@ -94,10 +94,12 @@ struct sway_container {
 
 	struct wlr_scene_tree *content_tree;
 	struct wlr_scene_rect *dim_rect;
+	struct wlr_scene_tree *content_tree;
 	struct wlr_scene_buffer *output_handler;
 
 	struct wl_listener output_enter;
 	struct wl_listener output_leave;
+	struct wl_listener output_handler_destroy;
 
 	struct sway_container_state current;
 	struct sway_container_state pending;
