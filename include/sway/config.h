@@ -1,7 +1,6 @@
 #ifndef _SWAY_CONFIG_H
 #define _SWAY_CONFIG_H
 #include <libinput.h>
-#include <scenefx/types/fx/blur_data.h>
 #include <stdint.h>
 #include <string.h>
 #include <time.h>
