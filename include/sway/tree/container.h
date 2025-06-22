@@ -94,7 +94,6 @@ struct sway_container {
 
 	struct wlr_scene_tree *content_tree;
 	struct wlr_scene_rect *dim_rect;
-	struct wlr_scene_tree *content_tree;
 	struct wlr_scene_buffer *output_handler;
 
 	struct wl_listener output_enter;
