@@ -203,7 +203,7 @@ static enum wlr_scale_filter_mode get_scale_filter(struct sway_output *output,
 	}
 }
 
-static void output_configure_scene(struct sway_output *output, struct wlr_scene_node *node, float opacity,
+void output_configure_scene(struct sway_output *output, struct wlr_scene_node *node, float opacity,
 		int corner_radius, bool blur_enabled, bool has_titlebar, struct sway_container *closest_con) {
 	if (!node->enabled) {
 		return;
@@ -473,31 +473,6 @@ static void begin_destroy(struct sway_output *output) {
 	wlr_scene_output_destroy(output->scene_output);
 	output->scene_output = NULL;
 
-	apply_stored_output_configs();
-	return 0;
-}
-
-void request_modeset(void) {
-	if (server.delayed_modeset == NULL) {
-		server.delayed_modeset = wl_event_loop_add_timer(server.wl_event_loop,
-			timer_modeset_handle, &server);
-		wl_event_source_timer_update(server.delayed_modeset, 10);
-	}
-}
-
-bool modeset_is_pending(void) {
-	return server.delayed_modeset != NULL;
-}
-
-void force_modeset(void) {
-	if (server.delayed_modeset != NULL) {
-		wl_event_source_remove(server.delayed_modeset);
-		server.delayed_modeset = NULL;
-	}
-	apply_stored_output_configs();
-}
-
-static void begin_destroy(struct sway_output *output) {
 	if (output->enabled) {
 		output_disable(output);
 	}
