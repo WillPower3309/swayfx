@@ -1,16 +1,10 @@
 #include <stdlib.h>
-#include <stdint.h>
 #include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <signal.h>
 #include "sway/commands.h"
 #include "sway/config.h"
-#include "sway/server.h"
 #include "sway/desktop/launcher.h"
-#include "sway/tree/container.h"
-#include "sway/tree/root.h"
-#include "sway/tree/workspace.h"
 #include "log.h"
 #include "stringop.h"
 
@@ -23,16 +17,6 @@ struct cmd_results *cmd_exec_validate(int argc, char **argv) {
 		return cmd_results_new(CMD_DEFER, NULL);
 	}
 	return error;
-}
-
-static void export_xdga_token(struct launcher_ctx *ctx) {
-	const char *token = launcher_ctx_get_token_name(ctx);
-	setenv("XDG_ACTIVATION_TOKEN", token, 1);
-}
-
-static void export_startup_id(struct launcher_ctx *ctx) {
-	const char *token = launcher_ctx_get_token_name(ctx);
-	setenv("DESKTOP_STARTUP_ID", token, 1);
 }
 
 struct cmd_results *cmd_exec_process(int argc, char **argv) {
