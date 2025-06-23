@@ -349,7 +349,8 @@ int main(int argc, char **argv) {
 
 	increase_nofile_limit();
 
-	sway_log(SWAY_INFO, "Starting sway version " SWAY_VERSION);
+	sway_log(SWAY_INFO, "Starting swayfx version " SWAY_VERSION
+			" (based on sway version " SWAY_ORIGINAL_VERSION ")");
 
 	if (!server_init(&server)) {
 		return 1;

@@ -111,7 +111,6 @@ struct sway_container *container_create(struct sway_view *view) {
 			0, config->shadow_blur_sigma, config->shadow_color, &failed);
 
 	c->title_bar.tree = alloc_scene_tree(c->scene_tree, &failed);
-	c->title_bar.tree = alloc_scene_tree(c->scene_tree, &failed);
 
 	c->border.tree = alloc_scene_tree(c->scene_tree, &failed);
 	c->content_tree = alloc_scene_tree(c->border.tree, &failed);

@@ -316,6 +316,7 @@ static int output_repaint_timer_handler(void *data) {
 	if (!output->wlr_output->enabled) {
 		return 0;
 	}
+
 	output_configure_scene(output, &root->root_scene->tree.node, 1.0f,
 			0, false, false, NULL);
 

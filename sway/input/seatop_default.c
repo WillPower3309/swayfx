@@ -454,26 +454,6 @@ static void handle_button(struct sway_seat *seat, uint32_t time_msec,
 		transaction_commit_dirty();
 	}
 
-	// Handle changing focus when clicking on a container
-	if (cont && state == WL_POINTER_BUTTON_STATE_PRESSED) {
-		// Default case: focus the container that was just clicked.
-		node = &cont->node;
-
-		// If the container is a tab/stacked container and the click happened
-		// on a tab, switch to the tab. If the tab contents were already
-		// focused, focus the tab container itself. If the tab container was
-		// already focused, cycle back to focusing the tab contents.
-		if (on_titlebar) {
-			struct sway_container *focus = seat_get_focused_container(seat);
-			if (focus == cont || !container_has_ancestor(focus, cont)) {
-				node = seat_get_focus_inactive(seat, &cont->node);
-			}
-		}
-
-		seat_set_focus(seat, node);
-		transaction_commit_dirty();
-	}
-
 	// Handle beginning floating move
 	if (cont && is_floating_or_child && !is_fullscreen_or_child &&
 			state == WL_POINTER_BUTTON_STATE_PRESSED &&
@@ -516,7 +496,6 @@ static void handle_button(struct sway_seat *seat, uint32_t time_msec,
 		} else {
 			seatop_begin_move_tiling(seat, cont);
 		}
-
 		return;
 	}
 
