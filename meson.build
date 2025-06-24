@@ -1,7 +1,7 @@
 project(
 	'sway',
 	'c',
-	version: '0.5.1',
+	version: '0.5.2',
 	license: 'MIT',
 	meson_version: '>=1.3',
 	default_options: [
@@ -44,7 +44,7 @@ subproject(
 	'scenefx',
 	required: false,
 )
-scenefx = dependency('scenefx-0.3', fallback: 'scenefx')
+scenefx = dependency('scenefx-0.4', fallback: 'scenefx')
 
 # Execute the wlroots subproject, if any
 wlroots_version = ['>=0.19.0', '<0.20.0']

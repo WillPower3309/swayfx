@@ -22,7 +22,7 @@
             # unless you intend to override function arguments later.
           }).overrideAttrs
             (old: {
-              version = "0.4.0-git";
+              version = "0.5.2-git";
               src = pkgs.lib.cleanSource ./.;
               nativeBuildInputs = old.nativeBuildInputs ++ [ pkgs.cmake ];
               # Add wlroots_0_19 here
