@@ -8,9 +8,11 @@
 #include <wlr/types/wlr_foreign_toplevel_management_v1.h>
 #include <wlr/types/wlr_fractional_scale_v1.h>
 #include <wlr/types/wlr_output_layout.h>
+#include <wlr/types/wlr_security_context_v1.h>
 #include <wlr/types/wlr_server_decoration.h>
 #include <wlr/types/wlr_subcompositor.h>
 #include <wlr/types/wlr_xdg_decoration_v1.h>
+#include <wlr/types/wlr_session_lock_v1.h>
 #if WLR_HAS_XWAYLAND
 #include <wlr/xwayland.h>
 #endif
@@ -154,6 +156,34 @@ uint32_t view_get_window_type(struct sway_view *view) {
 	return 0;
 }
 
+static const struct wlr_security_context_v1_state *security_context_from_view(
+		struct sway_view *view) {
+	const struct wl_client *client =
+		wl_resource_get_client(view->surface->resource);
+	const struct wlr_security_context_v1_state *security_context =
+		wlr_security_context_manager_v1_lookup_client(
+				server.security_context_manager_v1, client);
+	return security_context;
+}
+
+const char *view_get_sandbox_engine(struct sway_view *view) {
+	const struct wlr_security_context_v1_state *security_context =
+		security_context_from_view(view);
+	return security_context ? security_context->sandbox_engine : NULL;
+}
+
+const char *view_get_sandbox_app_id(struct sway_view *view) {
+	const struct wlr_security_context_v1_state *security_context =
+		security_context_from_view(view);
+	return security_context ? security_context->app_id : NULL;
+}
+
+const char *view_get_sandbox_instance_id(struct sway_view *view) {
+	const struct wlr_security_context_v1_state *security_context =
+		security_context_from_view(view);
+	return security_context ? security_context->instance_id : NULL;
+}
+
 const char *view_get_shell(struct sway_view *view) {
 	switch(view->type) {
 	case SWAY_VIEW_XDG_SHELL:
@@ -188,6 +218,10 @@ uint32_t view_configure(struct sway_view *view, double lx, double ly, int width,
 }
 
 bool view_inhibit_idle(struct sway_view *view) {
+	if (server.session_lock.lock) {
+		return false;
+	}
+
 	struct sway_idle_inhibitor_v1 *user_inhibitor =
 		sway_idle_inhibit_v1_user_inhibitor_for_view(view);
 
@@ -483,10 +517,12 @@ void view_execute_criteria(struct sway_view *view) {
 		sway_log(SWAY_DEBUG, "for_window '%s' matches view %p, cmd: '%s'",
 				criteria->raw, view, criteria->cmdlist);
 		list_add(view->executed_criteria, criteria);
-		list_t *res_list = execute_command(
-				criteria->cmdlist, NULL, view->container);
+		list_t *res_list = execute_command(criteria->cmdlist, NULL, view->container);
 		while (res_list->length) {
 			struct cmd_results *res = res_list->items[0];
+			if (res->status != CMD_SUCCESS) {
+				sway_log(SWAY_ERROR, "for_window '%s' failed: %s", criteria->raw, res->error);
+			}
 			free_cmd_results(res);
 			list_del(res_list, 0);
 		}
@@ -879,7 +915,7 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 #if WLR_HAS_XWAYLAND
 	struct wlr_xwayland_surface *xsurface;
 	if ((xsurface = wlr_xwayland_surface_try_from_wlr_surface(wlr_surface))) {
-		set_focus &= wlr_xwayland_icccm_input_model(xsurface) !=
+		set_focus &= wlr_xwayland_surface_icccm_input_model(xsurface) !=
 				WLR_ICCCM_INPUT_MODEL_NONE;
 	}
 #endif
@@ -1013,6 +1049,9 @@ struct sway_view *view_from_wlr_surface(struct wlr_surface *wlr_surface) {
 		return view_from_wlr_surface(subsurface->parent);
 	}
 	if (wlr_layer_surface_v1_try_from_wlr_surface(wlr_surface) != NULL) {
+		return NULL;
+	}
+	if (wlr_session_lock_surface_v1_try_from_wlr_surface(wlr_surface) != NULL) {
 		return NULL;
 	}
 

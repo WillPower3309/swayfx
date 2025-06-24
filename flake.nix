@@ -25,10 +25,10 @@
               version = "0.4.0-git";
               src = pkgs.lib.cleanSource ./.;
               nativeBuildInputs = old.nativeBuildInputs ++ [ pkgs.cmake ];
-              # Add wlroots_0_18 here
+              # Add wlroots_0_19 here
               buildInputs = old.buildInputs ++ [
                 pkgs.scenefx
-                pkgs.wlroots_0_18 # <-- Added this line
+                pkgs.wlroots_0_19 # <-- Added this line
               ];
               providedSessions = [ pkgs.swayfx-unwrapped.meta.mainProgram ];
               patches = []; ## Consider if you need patches from the original derivation
@@ -77,13 +77,13 @@
           # Adding wlroots and scenefx explicitly here is fine, but they are also included via inputsFrom
           inputsFrom = [
             self.packages.${pkgs.system}.swayfx-unwrapped
-            # pkgs.wlroots_0_18 # Included via swayfx-unwrapped buildInputs now
+            # pkgs.wlroots_0_19 # Included via swayfx-unwrapped buildInputs now
             # pkgs.scenefx      # Included via swayfx-unwrapped buildInputs now
           ];
           # You still might want wlroots/scenefx here if you need tools/headers directly in the shell
           # outside of what swayfx uses.
           buildInputs = [
-            pkgs.wlroots_0_18
+            pkgs.wlroots_0_19
             pkgs.scenefx
           ];
           packages = with pkgs; [
@@ -96,7 +96,7 @@
               echo "Copying wlroots and scenefx sources to ./subprojects for dev environment..."
               mkdir -p "$PWD/subprojects" && cd "$PWD/subprojects"
               rm -rf wlroots scenefx # Clean previous copies if they exist
-              cp -R --no-preserve=mode,ownership ${pkgs.wlroots_0_18.src} wlroots
+              cp -R --no-preserve=mode,ownership ${pkgs.wlroots_0_19.src} wlroots
               cp -R --no-preserve=mode,ownership ${pkgs.scenefx.src} scenefx
               echo "Done copying sources."
               cd "$OLDPWD"

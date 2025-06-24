@@ -246,7 +246,7 @@ static void workspace_name_from_binding(const struct sway_binding * binding,
 		}
 
 		// If the command is workspace number <name>, isolate the name
-		if (strncmp(_target, "number ", strlen("number ")) == 0) {
+		if (has_prefix(_target, "number ")) {
 			size_t length = strlen(_target) - strlen("number ") + 1;
 			char *temp = malloc(length);
 			strncpy(temp, _target + strlen("number "), length - 1);
@@ -659,13 +659,9 @@ void workspace_output_add_priority(struct sway_workspace *workspace,
 }
 
 struct sway_output *workspace_output_get_highest_available(
-		struct sway_workspace *ws, struct sway_output *exclude) {
+		struct sway_workspace *ws) {
 	for (int i = 0; i < ws->output_priority->length; i++) {
 		const char *name = ws->output_priority->items[i];
-		if (exclude && output_match_name_or_id(exclude, name)) {
-			continue;
-		}
-
 		struct sway_output *output = output_by_name_or_id(name);
 		if (output) {
 			return output;

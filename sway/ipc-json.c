@@ -6,13 +6,13 @@
 #include <wlr/config.h>
 #include <wlr/types/wlr_content_type_v1.h>
 #include <wlr/types/wlr_output.h>
+#include <wlr/types/wlr_ext_foreign_toplevel_list_v1.h>
 #include <xkbcommon/xkbcommon.h>
 #include "config.h"
 #include "json_object.h"
 #include "log.h"
 #include "sway/config.h"
 #include "sway/ipc-json.h"
-#include "sway/layers.h"
 #include "sway/scene_descriptor.h"
 #include "sway/server.h"
 #include "sway/tree/container.h"
@@ -23,6 +23,7 @@
 #include "sway/input/input-manager.h"
 #include "sway/input/cursor.h"
 #include "sway/input/seat.h"
+#include "sway/layers.h"
 #include "wlr-layer-shell-unstable-v1-protocol.h"
 #include "sway/desktop/idle_inhibit_v1.h"
 
@@ -659,6 +660,10 @@ static void ipc_json_describe_view(struct sway_container *c, json_object *object
 	json_object_object_add(object, "app_id",
 			app_id ? json_object_new_string(app_id) : NULL);
 
+	json_object_object_add(object, "foreign_toplevel_identifier",
+		c->view->ext_foreign_toplevel ?
+			json_object_new_string(c->view->ext_foreign_toplevel->identifier) : NULL);
+
 	bool visible = view_is_visible(c->view);
 	json_object_object_add(object, "visible", json_object_new_boolean(visible));
 
@@ -683,6 +688,18 @@ static void ipc_json_describe_view(struct sway_container *c, json_object *object
 
 	json_object_object_add(object, "inhibit_idle",
 		json_object_new_boolean(view_inhibit_idle(c->view)));
+
+	const char *sandbox_engine = view_get_sandbox_engine(c->view);
+	json_object_object_add(object, "sandbox_engine",
+			sandbox_engine ? json_object_new_string(sandbox_engine) : NULL);
+
+	const char *sandbox_app_id = view_get_sandbox_app_id(c->view);
+	json_object_object_add(object, "sandbox_app_id",
+			sandbox_app_id ? json_object_new_string(sandbox_app_id) : NULL);
+
+	const char *sandbox_instance_id = view_get_sandbox_instance_id(c->view);
+	json_object_object_add(object, "sandbox_instance_id",
+			sandbox_instance_id ? json_object_new_string(sandbox_instance_id) : NULL);
 
 	json_object *idle_inhibitors = json_object_new_object();
 

@@ -1,7 +1,4 @@
-#include "scenefx/render/fx_renderer/fx_effect_framebuffers.h"
 #include "sway/commands.h"
-#include "sway/config.h"
-#include "sway/output.h"
 
 struct cmd_results *cmd_blur_noise(int argc, char **argv) {
 	struct cmd_results *error = NULL;
@@ -16,9 +13,7 @@ struct cmd_results *cmd_blur_noise(int argc, char **argv) {
 	}
 
 	struct wlr_scene *root_scene = root->root_scene;
-	struct blur_data blur_data = root_scene->blur_data;
-	blur_data.noise = value;
-	wlr_scene_set_blur_data(root_scene, blur_data);
+	wlr_scene_set_blur_noise(root_scene, value);
 
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }

@@ -1,4 +1,3 @@
-#include "sway/tree/container.h"
 #include <assert.h>
 #include <drm_fourcc.h>
 #include <stdint.h>
@@ -8,9 +7,8 @@
 #include <wlr/types/wlr_linux_dmabuf_v1.h>
 #include <wlr/types/wlr_output_layout.h>
 #include <wlr/types/wlr_subcompositor.h>
-#include <wlr/util/box.h>
-#include "linux-dmabuf-unstable-v1-protocol.h"
 #include "scenefx/types/fx/corner_location.h"
+#include "linux-dmabuf-unstable-v1-protocol.h"
 #include "sway/config.h"
 #include "sway/desktop/transaction.h"
 #include "sway/input/input-manager.h"
@@ -51,6 +49,14 @@ static void handle_output_leave(
 		wlr_foreign_toplevel_handle_v1_output_leave(
 			con->view->foreign_toplevel, output->output);
 	}
+}
+
+static void handle_destroy(
+		struct wl_listener *listener, void *data) {
+	struct sway_container *con = wl_container_of(
+			listener, con, output_handler_destroy);
+
+	container_begin_destroy(con);
 }
 
 static bool handle_point_accepts_input(
@@ -136,6 +142,9 @@ struct sway_container *container_create(struct sway_view *view) {
 			c->output_leave.notify = handle_output_leave;
 			wl_signal_add(&c->output_handler->events.output_leave,
 					&c->output_leave);
+			c->output_handler_destroy.notify = handle_destroy;
+			wl_signal_add(&c->output_handler->node.events.destroy,
+					&c->output_handler_destroy);
 			c->output_handler->point_accepts_input = handle_point_accepts_input;
 		}
 	}
@@ -578,6 +587,12 @@ void container_begin_destroy(struct sway_container *con) {
 	if (con->pending.parent || con->pending.workspace) {
 		container_detach(con);
 	}
+
+	if (con->view && con->view->container == con) {
+		wl_list_remove(&con->output_enter.link);
+		wl_list_remove(&con->output_leave.link);
+		wl_list_remove(&con->output_handler_destroy.link);
+	}
 }
 
 void container_reap_empty(struct sway_container *con) {
@@ -722,26 +737,35 @@ size_t parse_title_format(struct sway_container *container, char *buffer) {
 		len += next - format;
 		format = next;
 
-		if (strncmp(next, "%title", 6) == 0) {
+		if (has_prefix(next, "%title")) {
 			if (container->view) {
 				len += append_prop(buffer, view_get_title(container->view));
 			} else {
 				len += container_build_representation(container->pending.layout, container->pending.children, buffer);
 			}
-			format += 6;
+			format += strlen("%title");
 		} else if (container->view) {
-			if (strncmp(next, "%app_id", 7) == 0) {
+			if (has_prefix(next, "%app_id")) {
 				len += append_prop(buffer, view_get_app_id(container->view));
-				format += 7;
-			} else if (strncmp(next, "%class", 6) == 0) {
+				format += strlen("%app_id");
+			} else if (has_prefix(next, "%class")) {
 				len += append_prop(buffer, view_get_class(container->view));
-				format += 6;
-			} else if (strncmp(next, "%instance", 9) == 0) {
+				format += strlen("%class");
+			} else if (has_prefix(next, "%instance")) {
 				len += append_prop(buffer, view_get_instance(container->view));
-				format += 9;
-			} else if (strncmp(next, "%shell", 6) == 0) {
+				format += strlen("%instance");
+			} else if (has_prefix(next, "%shell")) {
 				len += append_prop(buffer, view_get_shell(container->view));
-				format += 6;
+				format += strlen("%shell");
+			} else if (has_prefix(next, "%sandbox_engine")) {
+				len += append_prop(buffer, view_get_sandbox_engine(container->view));
+				format += strlen("%sandbox_engine");
+			} else if (has_prefix(next, "%sandbox_app_id")) {
+				len += append_prop(buffer, view_get_sandbox_app_id(container->view));
+				format += strlen("%sandbox_app_id");
+			} else if (has_prefix(next, "%sandbox_instance_id")) {
+				len += append_prop(buffer, view_get_sandbox_instance_id(container->view));
+				format += strlen("%sandbox_instance_id");
 			} else {
 				lenient_strcat(buffer, "%");
 				++format;
@@ -804,7 +828,7 @@ size_t container_build_representation(enum sway_container_layout layout,
 			len += strlen(identifier);
 			lenient_strcat(buffer, identifier);
 		} else {
-			len += 6;
+			len += strlen("(null)");
 			lenient_strcat(buffer, "(null)");
 		}
 	}
@@ -1968,3 +1992,4 @@ bool container_has_corner_radius(struct sway_container *con) {
 			!(config->smart_corner_radius && con->current.workspace->current_gaps.top == 0)) &&
 			con->corner_radius;
 }
+

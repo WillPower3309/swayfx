@@ -13,9 +13,7 @@ struct cmd_results *cmd_blur_saturation(int argc, char **argv) {
 	}
 
 	struct wlr_scene *root_scene = root->root_scene;
-	struct blur_data blur_data = root_scene->blur_data;
-	blur_data.saturation = value;
-	wlr_scene_set_blur_data(root_scene, blur_data);
+	wlr_scene_set_blur_brightness(root_scene, value);
 
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
