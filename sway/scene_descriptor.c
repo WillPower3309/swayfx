@@ -71,11 +71,11 @@ bool scene_descriptor_assign(struct wlr_scene_node *node,
 
 struct sway_scene_descriptor *scene_descriptor_try_get_first(struct wlr_scene_node *node) {
 	struct wlr_addon *addon;
-	wl_list_for_each(addon, &node->addons.addons, link) {
+	wl_list_for_each(addon, &node->addons.WLR_PRIVATE.addons, WLR_PRIVATE.link) {
 		if (addon->impl != &addon_interface) {
 			continue;
 		}
-		enum sway_scene_descriptor_type desc_type = (uintptr_t) addon->owner;
+		enum sway_scene_descriptor_type desc_type = (uintptr_t) addon->WLR_PRIVATE.owner;
 		switch (desc_type) {
 		case SWAY_SCENE_DESC_BUFFER_TIMER:
 		case SWAY_SCENE_DESC_NON_INTERACTIVE:

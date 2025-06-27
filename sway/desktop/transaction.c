@@ -345,12 +345,8 @@ static void arrange_children(enum sway_container_layout layout, list_t *children
 
 			arrange_title_bar(child, 0, y - title_height, width, title_bar_height);
 			wlr_scene_node_set_enabled(&child->border.tree->node, activated);
-<<<<<<< HEAD
-			wlr_scene_node_set_enabled(&child->shadow->node, false);
-			wlr_scene_node_set_enabled(&child->scene_tree->node, true);
-=======
 			wlr_scene_node_set_enabled(&child->shadow->node, activated);
->>>>>>> a95ef2ef (shadow now fades in and out)
+			wlr_scene_node_set_enabled(&child->scene_tree->node, true);
 			wlr_scene_node_set_position(&child->scene_tree->node, 0, title_height);
 			wlr_scene_node_reparent(&child->scene_tree->node, content);
 

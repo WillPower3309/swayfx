@@ -31,7 +31,6 @@
 #include "sway/ipc-server.h"
 #include "sway/layers.h"
 #include "sway/output.h"
-#include "sway/scene_descriptor.h"
 #include "sway/server.h"
 #include "sway/tree/arrange.h"
 #include "sway/tree/container.h"
@@ -210,7 +209,7 @@ static enum wlr_scale_filter_mode get_scale_filter(struct sway_output *output,
 	}
 }
 
-static void output_configure_scene(struct sway_output *output, struct wlr_scene_node *node, float opacity,
+void output_configure_scene(struct sway_output *output, struct wlr_scene_node *node, float opacity,
 		int corner_radius, bool blur_enabled, bool has_titlebar, struct sway_container *closest_con,
 		struct sway_scene_descriptor *closest_desc) {
 	if (!node->enabled) {
@@ -256,31 +255,6 @@ static void output_configure_scene(struct sway_output *output, struct wlr_scene_
 			return;
 		}
 
-<<<<<<< HEAD
-		// Other buffers should set their own effects manually, like the
-		// text buffer and saved views
-		struct wlr_layer_surface_v1 *layer_surface = NULL;
-		if (wlr_xdg_surface_try_from_wlr_surface(surface->surface)
-#if WLR_HAS_XWAYLAND
-				|| wlr_xwayland_surface_try_from_wlr_surface(surface->surface)
-#endif
-				) {
-			wlr_scene_buffer_set_corner_radius(buffer,
-					container_has_corner_radius(closest_con) ? corner_radius : 0,
-					has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL);
-			wlr_scene_buffer_set_backdrop_blur(buffer, blur_enabled);
-			wlr_scene_buffer_set_backdrop_blur_alpha(buffer, blur_alpha);
-			wlr_scene_buffer_set_backdrop_blur_ignore_transparent(buffer, false);
-			// Only enable xray blur if tiled or when xray is explicitly enabled
-			bool should_optimize_blur = (closest_con && !container_is_floating_or_child(closest_con)) || config->blur_xray;
-			wlr_scene_buffer_set_backdrop_blur_optimized(buffer, should_optimize_blur);
-		} else if (wlr_subsurface_try_from_wlr_surface(surface->surface)) {
-			wlr_scene_buffer_set_corner_radius(buffer,
-					container_has_corner_radius(closest_con) ? corner_radius : 0,
-					CORNER_LOCATION_ALL);
-		} else if ((layer_surface = wlr_layer_surface_v1_try_from_wlr_surface(surface->surface))
-				&& layer_surface->data) {
-=======
 		switch (closest_desc->type) {
 		case SWAY_SCENE_DESC_VIEW: {
 			struct sway_view *view = closest_desc->data;
@@ -311,7 +285,6 @@ static void output_configure_scene(struct sway_output *output, struct wlr_scene_
 			break;
 		}
 		case SWAY_SCENE_DESC_LAYER_SHELL: {
->>>>>>> 9dcca28a (Fixed blur fade-out while also speeding up output_configure)
 			// Layer effects
 			// TODO: Fade-in/out
 			struct sway_layer_surface *surface = closest_desc->data;
