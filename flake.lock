@@ -55,19 +55,11 @@
         "systems": "systems"
       },
       "locked": {
-<<<<<<< HEAD
         "lastModified": 1750992888,
         "narHash": "sha256-P1MSTJrLBBaBVfZ0mD6wOIxNueW31ImXtECQTEX/YD0=",
         "owner": "wlrfx",
         "repo": "scenefx",
         "rev": "5a8d954abae9eeac3e46e1d9ac3c1443188b9c8a",
-=======
-        "lastModified": 1740440098,
-        "narHash": "sha256-kcK57JKbQ+tr0W10ipe2yGvWa9nJD+mLCMo3w2sp8AQ=",
-        "owner": "wlrfx",
-        "repo": "scenefx",
-        "rev": "1775286a04a3c60d6b15221693586ac8174a0b88",
->>>>>>> 46f63a08 (Animation client rework)
         "type": "github"
       },
       "original": {
