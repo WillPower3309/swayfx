@@ -486,12 +486,10 @@ static void arrange_container(struct sway_container *con,
 		int border_bottom = con->current.border_bottom ? border_width : 0;
 		int border_left = con->current.border_left ? border_width : 0;
 		int border_right = con->current.border_right ? border_width : 0;
-		int vert_border_height = MAX(0, height - border_top - border_bottom);
 
-		wlr_scene_rect_set_size(con->border.left,
-				border_left, vert_border_height - vert_border_offset - corner_radius);
-		wlr_scene_rect_set_size(con->border.right,
-				border_right, vert_border_height - vert_border_offset - corner_radius);
+		int vert_border_height = MAX(0, height - border_top - border_bottom - vert_border_offset - corner_radius);
+		wlr_scene_rect_set_size(con->border.left, border_left, vert_border_height);
+		wlr_scene_rect_set_size(con->border.right, border_right, vert_border_height);
 
 		if (border_top) {
 			wlr_scene_rect_set_size(con->border.top, width, border_top + corner_radius);
