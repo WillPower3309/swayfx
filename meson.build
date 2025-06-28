@@ -11,7 +11,7 @@ project(
 	],
 )
 
-original_version = '1.10.1'
+original_version = '1.11.0'
 
 add_project_arguments(
 	[
