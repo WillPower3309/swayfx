@@ -232,6 +232,7 @@ sway_cmd cmd_xwayland;
 sway_cmd bar_cmd_bindcode;
 sway_cmd bar_cmd_binding_mode_indicator;
 sway_cmd bar_cmd_bindsym;
+sway_cmd bar_cmd_border_size;
 sway_cmd bar_cmd_colors;
 sway_cmd bar_cmd_font;
 sway_cmd bar_cmd_gaps;
