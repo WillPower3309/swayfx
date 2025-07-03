@@ -856,10 +856,21 @@ void animation_update_callback() {
 	}
 }
 
+// TODO: store container animation states in transaction, and only update containers that have animation states
 void set_container_animation_from_val_iterator(struct sway_container *con, void *_) {
 	if (!con->view) {
 		return;
 	}
+
+	// newly spawned view
+	if (con->current.width == 0 && con->current.height == 0) {
+		con->animation_state.from_x = con->pending.x;
+		con->animation_state.from_y = con->pending.y;
+		con->animation_state.from_width = con->pending.width;
+		con->animation_state.from_height = con->pending.height;
+		return;
+	}
+
 	con->animation_state.from_x = get_animated_value(
 		con->animation_state.from_x, con->current.x
 	);
@@ -885,6 +896,7 @@ bool is_con_animation_state_change(struct sway_container_state current,
  */
 static void transaction_apply(struct sway_transaction *transaction) {
 	// save the current container state as the animation starting point
+	// TODO: only for currently animated containers
 	root_for_each_container(set_container_animation_from_val_iterator, NULL);
 
 	sway_log(SWAY_DEBUG, "Applying transaction %p", transaction);
