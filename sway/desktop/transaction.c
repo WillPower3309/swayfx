@@ -230,6 +230,14 @@ static void apply_workspace_state(struct sway_workspace *ws,
 	memcpy(&ws->current, state, sizeof(struct sway_workspace_state));
 }
 
+// TODO: do me better
+static bool is_container_animated(struct sway_container *container) {
+	return container->animation_state.from_x != container->current.x ||
+			container->animation_state.from_y != container->current.y ||
+			container->animation_state.from_width != container->current.width ||
+			container->animation_state.from_height != container->current.height;
+}
+
 static void apply_container_state(struct sway_container *container,
 		struct sway_container_state *state) {
 	struct sway_view *view = container->view;
@@ -244,7 +252,8 @@ static void apply_container_state(struct sway_container *container,
 
 	if (view) {
 		if (view->surface && view->saved_surface_tree) {
-			if (!container->node.destroying || container->node.ntxnrefs == 1) {
+			if (!is_container_animated(container) &&
+					(!container->node.destroying || container->node.ntxnrefs == 1)) {
 				view_remove_saved_buffer(view);
 			}
 		}
@@ -849,6 +858,20 @@ static void arrange_root(struct sway_root *root) {
 	arrange_popups(root->layers.popup);
 }
 
+// TODO: store container animation states in transaction, and only update containers that have animation states
+void remove_saved_buffer_iterator(struct sway_container *container, void *_) {
+	struct sway_view *view = container->view;
+	if (view && view->surface && view->saved_surface_tree) {
+		if (!container->node.destroying || container->node.ntxnrefs == 1) {
+			view_remove_saved_buffer(view);
+		}
+	}
+}
+
+void animation_complete_callback() {
+	root_for_each_container(remove_saved_buffer_iterator, NULL);
+}
+
 void animation_update_callback() {
 	// if theres a pending transaction there will be a re-arrange anyway
 	if (!server.pending_transaction) {
@@ -941,7 +964,7 @@ static void transaction_apply(struct sway_transaction *transaction) {
 	}
 
 	if (is_animation_state_change) {
-		start_animation(&animation_update_callback);
+		start_animation(&animation_update_callback, &animation_complete_callback);
 	}
 }
 

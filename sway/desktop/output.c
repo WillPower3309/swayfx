@@ -256,6 +256,7 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 		}
 
 		switch (closest_desc->type) {
+		// TODO: move to a function, this is getting too many layers of indentation
 		case SWAY_SCENE_DESC_VIEW: {
 			struct sway_view *view = closest_desc->data;
 			// Saved buffers only includes either XDG or XWayland buffers, not
@@ -275,6 +276,21 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 				// Only enable xray blur if tiled or when xray is explicitly enabled
 				bool should_optimize_blur = (closest_con && !container_is_floating_or_child(closest_con)) || config->blur_xray;
 				wlr_scene_buffer_set_backdrop_blur_optimized(buffer, should_optimize_blur);
+
+				if (is_saved) {
+					int width = get_animated_value(view->container->animation_state.from_width,
+							view->container->current.width);
+					int height = get_animated_value(view->container->animation_state.from_height,
+							view->container->current.height);
+					if (buffer->transform & WL_OUTPUT_TRANSFORM_90) {
+						int temp = width;
+						width = height;
+						height = temp;
+					}
+
+					buffer->dst_width = width;
+					buffer->dst_height = height;
+				}
 			} else {
 				// Subsurfaces
 				// TODO: Check for has titlebar. Fixes Firefox weirdness (when its state is "maximized")

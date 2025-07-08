@@ -12,6 +12,7 @@ struct animation {
 	float progress;
 	float multiplier;
 	void (*update)(void);
+	void (*complete)(void);
 };
 
 struct animation_manager {
@@ -39,16 +40,19 @@ int animation_timer(void *data) {
 	if (animation->progress < 1.0f) {
 		wl_event_source_timer_update(animation_manager.tick,
 				animation_manager.tick_time);
+	} else if (animation->complete) {
+		animation->complete();
 	}
 	return 0;
 }
 
-void start_animation(void (update_callback)(void)) {
+void start_animation(void (update_callback)(void), void (complete_callback)(void)) {
 	if (!config->animation_duration_ms) {
 		animation_manager.current_animation = (struct animation) {
 			.progress = 1.0f,
 			.multiplier = 1.0f,
 			.update = NULL,
+			.complete = NULL,
 		};
 		return;
 	}
@@ -59,6 +63,7 @@ void start_animation(void (update_callback)(void)) {
 		.progress = 0.0f,
 		.multiplier = 0.0f,
 		.update = update_callback,
+		.complete = complete_callback,
 	};
 	wl_event_source_timer_update(animation_manager.tick, 1);
 }
