@@ -7,6 +7,7 @@
 #include <wlr/types/wlr_damage_ring.h>
 #include <wlr/types/wlr_output.h>
 #include "config.h"
+#include "sway/scene_descriptor.h"
 #include "sway/tree/node.h"
 #include "sway/tree/view.h"
 
@@ -95,7 +96,8 @@ struct sway_output *output_get_in_direction(struct sway_output *reference,
 
 void output_configure_scene(struct sway_output *output,
 	struct wlr_scene_node *node, float opacity, int corner_radius,
-	bool blur_enabled, bool has_titlebar, struct sway_container *closest_con);
+	bool blur_enabled, bool has_titlebar, struct sway_container *closest_con,
+	struct sway_scene_descriptor *closest_desc);
 
 void output_add_workspace(struct sway_output *output,
 		struct sway_workspace *workspace);
