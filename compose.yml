@@ -5,7 +5,7 @@ services:
       args:
         WLROOTSVERSION: 0.19.0
         WLROOTSLIBVERSION: 0.19
-        SWAYFXVERSION: 0.5.2
+        SWAYFXVERSION: 0.5.3
         SCENEFXVERSION: 0.4.1
         SCENEFXLIBVERSION: 0.4
     volumes:
