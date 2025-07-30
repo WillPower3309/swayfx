@@ -279,6 +279,9 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 			wlr_scene_buffer_set_corner_radius(buffer, surface->corner_radius, CORNER_LOCATION_ALL);
 			wlr_scene_shadow_set_blur_sigma(surface->shadow_node, config->shadow_blur_sigma);
 			wlr_scene_shadow_set_corner_radius(surface->shadow_node, surface->corner_radius);
+			if (surface->shadow_node->type == WLR_SCENE_SHADOW_TYPE_DROP) {
+				wlr_scene_shadow_set_reference_buffer(surface->shadow_node, buffer);
+			}
 			wlr_scene_buffer_set_backdrop_blur(buffer, surface->blur_enabled);
 			wlr_scene_buffer_set_backdrop_blur_ignore_transparent(buffer, surface->blur_ignore_transparent);
 			wlr_scene_buffer_set_backdrop_blur_optimized(buffer, surface->blur_xray);

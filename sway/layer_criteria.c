@@ -13,6 +13,7 @@ static void init_criteria_effects(struct layer_criteria *criteria) {
 	criteria->blur_xray = false;
 	criteria->blur_ignore_transparent = false;
 	criteria->shadow_enabled = false;
+	criteria->use_drop_shadow = false;
 }
 
 static void copy_criteria_effects(struct layer_criteria *dst, struct layer_criteria *src) {
@@ -21,6 +22,7 @@ static void copy_criteria_effects(struct layer_criteria *dst, struct layer_crite
 	dst->blur_xray = src->blur_xray;
 	dst->blur_ignore_transparent = src->blur_ignore_transparent;
 	dst->shadow_enabled = src->shadow_enabled;
+	dst->use_drop_shadow = src->use_drop_shadow;
 }
 
 static bool layer_criteria_find(char *namespace,
@@ -80,6 +82,9 @@ static bool layer_criteria_parse(struct layer_criteria *criteria) {
 			continue;
 		} else if (strcmp(argv[0], "shadows") == 0) {
 			criteria->shadow_enabled = parse_boolean(argv[1], true);
+			continue;
+		} else if (strcmp(argv[0], "use_drop_shadow") == 0) {
+			criteria->use_drop_shadow = parse_boolean(argv[1], true);
 			continue;
 		} else if (strcmp(argv[0], "corner_radius") == 0) {
 			int value;
