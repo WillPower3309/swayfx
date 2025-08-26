@@ -108,9 +108,7 @@ struct sway_container *container_create(struct sway_view *view) {
 	c->scene_tree = alloc_scene_tree(root->staging, &failed);
 
 	c->shadow = alloc_scene_shadow(c->scene_tree, 0, 0,
-			0, config->shadow_blur_sigma, config->shadow_color,
-			// TODO: Allow for drop shadows?
-			WLR_SCENE_SHADOW_TYPE_BOX, &failed);
+			0, config->shadow_blur_sigma, config->shadow_color, &failed);
 
 	c->title_bar.tree = alloc_scene_tree(c->scene_tree, &failed);
 

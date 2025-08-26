@@ -249,10 +249,7 @@ static struct sway_layer_surface *sway_layer_surface_create(
 
 	bool failed = false;
 	surface->shadow_node = alloc_scene_shadow(surface->tree, 0, 0,
-			0, config->shadow_blur_sigma, config->shadow_color,
-			// TODO:
-			WLR_SCENE_SHADOW_TYPE_DROP, &failed);
-			// WLR_SCENE_SHADOW_TYPE_BOX, &failed);
+			0, config->shadow_blur_sigma, config->shadow_color, &failed);
 	if (failed) {
 		sway_log(SWAY_ERROR, "Failed to allocate a shadow node");
 		wlr_scene_node_destroy(&popups->node);
