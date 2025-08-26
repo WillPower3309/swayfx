@@ -101,29 +101,27 @@ static void arrange_surface(struct sway_output *output, const struct wlr_box *fu
 		}
 
 		wlr_scene_node_set_enabled(&surface->shadow_node->node, surface->shadow_enabled);
-		if (surface->shadow_enabled) {
-			wlr_scene_shadow_set_type(surface->shadow_node,
-					surface->use_drop_shadow ? WLR_SCENE_SHADOW_TYPE_DROP : WLR_SCENE_SHADOW_TYPE_BOX);
-			// Adjust the size and position of the shadow node
-			const int shadow_size = wlr_scene_shadow_get_offset(surface->shadow_node);
-			wlr_scene_shadow_set_size(surface->shadow_node,
-					surface->layer_surface->surface->current.width + shadow_size * 2,
-					surface->layer_surface->surface->current.height + shadow_size * 2);
-			int x = config->shadow_offset_x - shadow_size;
-			int y = config->shadow_offset_y - shadow_size;
-			wlr_scene_node_set_position(&surface->shadow_node->node, x, y);
+		wlr_scene_shadow_set_type(surface->shadow_node,
+				surface->use_drop_shadow ? WLR_SCENE_SHADOW_TYPE_DROP : WLR_SCENE_SHADOW_TYPE_BOX);
+		// Adjust the size and position of the shadow node
+		const int shadow_size = wlr_scene_shadow_get_offset(surface->shadow_node);
+		wlr_scene_shadow_set_size(surface->shadow_node,
+				surface->layer_surface->surface->current.width + shadow_size * 2,
+				surface->layer_surface->surface->current.height + shadow_size * 2);
+		int x = config->shadow_offset_x - shadow_size;
+		int y = config->shadow_offset_y - shadow_size;
+		wlr_scene_node_set_position(&surface->shadow_node->node, x, y);
 
-			wlr_scene_shadow_set_clipped_region(surface->shadow_node, (struct clipped_region) {
-					.corner_radius = surface->corner_radius,
-					.corners = CORNER_LOCATION_ALL,
-					.area = {
-						.x = -x,
-						.y = -y,
-						.width = surface->layer_surface->surface->current.width,
-						.height = surface->layer_surface->surface->current.height,
-					},
-			});
-		}
+		wlr_scene_shadow_set_clipped_region(surface->shadow_node, (struct clipped_region) {
+				.corner_radius = surface->corner_radius,
+				.corners = CORNER_LOCATION_ALL,
+				.area = {
+					.x = -x,
+					.y = -y,
+					.width = surface->layer_surface->surface->current.width,
+					.height = surface->layer_surface->surface->current.height,
+				},
+		});
 
 		wlr_scene_layer_surface_v1_configure(surface->scene, full_area, usable_area);
 	}
