@@ -292,6 +292,9 @@ static void arrange_children(enum sway_container_layout layout, list_t *children
 		struct sway_container *active, struct wlr_scene_tree *content,
 		int width, int height, int gaps) {
 	int title_bar_height = container_titlebar_height();
+	int title_bar_top_margin = config->titlebar_top_margin;
+	int title_bar_bottom_margin = config->titlebar_bottom_margin;
+	int title_bar_full_height = title_bar_height + title_bar_bottom_margin + title_bar_top_margin;
 
 	if (layout == L_TABBED) {
 		struct sway_container *first = children->length == 1 ?
@@ -299,32 +302,45 @@ static void arrange_children(enum sway_container_layout layout, list_t *children
 		if (config->hide_lone_tab && first && first->view &&
 				first->current.border != B_NORMAL) {
 			title_bar_height = 0;
+			title_bar_bottom_margin = 0;
+			title_bar_top_margin = 0;
+			title_bar_full_height = 0;
 		}
 
-		double w = (double) width / children->length;
+		int gaps_total_w = config->titlebar_gaps * MAX(0, children->length-1);
+		double w = (double) (width - gaps_total_w) / children->length;
 		int title_offset = 0;
+		int actual_title_offset = 0;
 		for (int i = 0; i < children->length; i++) {
 			struct sway_container *child = children->items[i];
 			bool activated = child == active;
 			int next_title_offset = round(w * i + w);
+			if (i > 0) {
+				next_title_offset += (i-1) * config->titlebar_gaps;
+			}
 
-			arrange_title_bar(child, title_offset, -title_bar_height,
+			arrange_title_bar(child, actual_title_offset, -(title_bar_height+title_bar_bottom_margin),
 				next_title_offset - title_offset, title_bar_height);
 			wlr_scene_node_set_enabled(&child->border.tree->node, activated);
 			wlr_scene_node_set_enabled(&child->blur->node, activated);
 			wlr_scene_node_set_enabled(&child->shadow->node, false);
 			wlr_scene_node_set_enabled(&child->scene_tree->node, true);
-			wlr_scene_node_set_position(&child->scene_tree->node, 0, title_bar_height);
+			wlr_scene_node_set_position(&child->scene_tree->node, 0, title_bar_full_height);
 			wlr_scene_node_reparent(&child->scene_tree->node, content);
 
-			int net_height = height - title_bar_height;
+			int net_height = height - title_bar_full_height;
 			if (activated && width > 0 && net_height > 0) {
 				arrange_container(child, width, net_height, title_bar_height == 0, 0);
 			} else {
 				disable_container(child);
 			}
 
-			title_offset = next_title_offset;
+			title_offset = next_title_offset + config->titlebar_gaps;
+			if (config->titlebar_tab_justify == T_TAB_JUSTIFY_EVEN) {
+				actual_title_offset = title_offset;
+			} else if (config->titlebar_tab_justify == T_TAB_JUSTIFY_START) {
+				actual_title_offset += child->title_bar.border->width + config->titlebar_gaps;
+			}
 		}
 	} else if (layout == L_STACKED) {
 		struct sway_container *first = children->length == 1 ?
@@ -479,7 +495,8 @@ static void arrange_container(struct sway_container *con,
 
 	if (con->view) {
 		int corner_radius = has_corner_radius ? con->corner_radius : 0;
-		int border_top = container_titlebar_height();
+		// ??
+		int border_top = container_titlebar_height_and_margin();
 		int border_width = con->current.border_thickness;
 		int vert_border_offset = corner_radius;
 
@@ -493,7 +510,7 @@ static void arrange_container(struct sway_container *con,
 		if (con->current.border == B_NORMAL) {
 			vert_border_offset = 0;
 			if (title_bar) {
-				arrange_title_bar(con, 0, 0, width, border_top);
+				arrange_title_bar(con, 0, config->titlebar_top_margin, width, border_top);
 			} else {
 				border_top = 0;
 				// should be handled by the parent container

@@ -268,6 +268,12 @@ static void config_defaults(struct sway_config *config) {
 	config->titlebar_border_thickness = 1;
 	config->titlebar_h_padding = 5;
 	config->titlebar_v_padding = 4;
+	config->titlebar_gaps = 5;
+	config->titlebar_top_margin = 10;
+	config->titlebar_bottom_margin = 5;
+	config->titlebar_margin_collapse = T_MARGIN_COLLAPSE_ONLY_MARGINS;
+	config->titlebar_tab_justify = T_TAB_JUSTIFY_EVEN;
+	config->titlebar_width = T_WIDTH_FULL;
 
 	// floating view
 	config->floating_maximum_width = 0;

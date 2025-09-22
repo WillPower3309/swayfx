@@ -338,6 +338,8 @@ void container_arrange_title_bar(struct sway_container *con) {
 
 	struct wlr_box text_box = { 0, 0, 0, 0 };
 
+	int old_width = con->title_bar.border->width;
+
 	if (con->title_bar.marks_text) {
 		struct sway_text_node *node = con->title_bar.marks_text;
 		marks_buffer_width = node->width;
@@ -443,8 +445,13 @@ void container_arrange_title_bar(struct sway_container *con) {
 		}
 	}
 
+	int bg_width = width;
+	if (config->titlebar_width != T_WIDTH_FULL) {
+		bg_width = text_box.width + marks_buffer_width + config->titlebar_h_padding*2 + thickness * 2;
+	}
+
 	wlr_scene_node_set_position(&con->title_bar.background->node, thickness, thickness);
-	wlr_scene_rect_set_size(con->title_bar.background, width - thickness * 2,
+	wlr_scene_rect_set_size(con->title_bar.background, bg_width - thickness * 2,
 			height - thickness * (config->titlebar_separator ? 2 : 1));
 	wlr_scene_rect_set_corner_radius(con->title_bar.background, background_corner_radius, corners);
 
@@ -456,7 +463,7 @@ void container_arrange_title_bar(struct sway_container *con) {
 			.area = text_box,
 	});
 
-	wlr_scene_rect_set_size(con->title_bar.border, width, height);
+	wlr_scene_rect_set_size(con->title_bar.border, bg_width, height);
 	wlr_scene_rect_set_corner_radius(con->title_bar.border, background_corner_radius ?
 			background_corner_radius + thickness : 0, corners);
 	wlr_scene_rect_set_clipped_region(con->title_bar.border, (struct clipped_region) {
@@ -469,6 +476,21 @@ void container_arrange_title_bar(struct sway_container *con) {
 			  .height = con->title_bar.background->height,
 			},
 	});
+
+	if (config->titlebar_tab_justify == T_TAB_JUSTIFY_START && config->titlebar_width != T_WIDTH_FULL) {
+		if (container_parent_layout(con) == L_TABBED) {
+			const int width_shrinkage = old_width - con->title_bar.border->width;
+			const list_t* tab_siblings = container_get_siblings(con);
+
+			int next_sibling = container_sibling_index(con) + 1;
+
+			while (next_sibling < tab_siblings->length) {
+				const struct sway_container* item = tab_siblings->items[next_sibling];
+				wlr_scene_node_set_position(&item->title_bar.tree->node, item->title_bar.tree->node.x - width_shrinkage, item->title_bar.tree->node.y);
+				next_sibling++;
+			}
+		}
+	}
 
 	container_update(con);
 }
@@ -886,6 +908,10 @@ size_t container_titlebar_height(void) {
 	return config->font_height + config->titlebar_v_padding * 2;
 }
 
+size_t container_titlebar_height_and_margin(void) {
+	return config->font_height + config->titlebar_top_margin + (config->titlebar_v_padding * 2) + config->titlebar_bottom_margin;
+}
+
 void floating_calculate_constraints(int *min_width, int *max_width,
 		int *min_height, int *max_height) {
 	if (config->floating_minimum_width == -1) { // no minimum
@@ -1138,7 +1164,7 @@ void container_set_geometry_from_content(struct sway_container *con) {
 	if (con->pending.border != B_CSD && !con->pending.fullscreen_mode) {
 		border_width = con->pending.border_thickness * (con->pending.border != B_NONE);
 		top = con->pending.border == B_NORMAL ?
-			container_titlebar_height() : border_width;
+			container_titlebar_height_and_margin() : border_width;
 	}
 
 	con->pending.x = con->pending.content_x - border_width;
