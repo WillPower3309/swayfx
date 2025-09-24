@@ -72,6 +72,7 @@ struct sway_container {
 	struct wlr_scene_tree *scene_tree;
 
 	struct {
+		struct wlr_scene_tree *bar_tree;
 		struct wlr_scene_tree *tree;
 
 		struct wlr_scene_rect *border;
@@ -107,6 +108,7 @@ struct sway_container {
 	char *title;           // The view's title (unformatted)
 	char *formatted_title; // The title displayed in the title bar
 	int title_width;
+	int title_used_width;
 	
 	char *title_format;
 

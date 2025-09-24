@@ -442,23 +442,25 @@ enum edge_border_smart_types {
 	ESMART_NO_GAPS, /**< hide edges if one window and gaps to edge is zero */
 };
 
-enum titlebar_margin_collapse {
-	T_MARGIN_COLLAPSE_SEPARATE = 0, /**< all margins are stacked, not taking into account anything */
-	T_MARGIN_COLLAPSE_ONLY_MARGINS = 1, /**< margins are collapsed, but ignore gaps */
-	T_MARGIN_COLLAPSE_ONLY_GAPS = 2, /**< margins are separate, but collapse with gaps */
-	T_MARGIN_COLLAPSE_COLLAPSE = 3, /**< margins are collapsed, taking into account gaps and margins */
+enum rounded_corners {
+	ROUNDED_NONE = 0, /**< rounds no corners */
+	ROUNDED_OUTER = 1, /**< rounds only the outer corners, e.g. if a window has a title bar, it won't be rounded **/
+	ROUNDED_TITLEBAR = 2, /**< rounds all outer corners of the title bar **and** the top of the window, but not inbetween tabs in stacking or tabbed */
+	ROUNDED_TABS = 4, /**< rounds all corners between tabs for stacking or tabbed layouts */
+	ROUNDED_ALL = 7, /**< rounds all of the above */
 };
 
 enum titlebar_width {
-	T_WIDTH_FULL,
+	T_WIDTH_STRETCH,
 	T_WIDTH_TEXT, /**< title bar will only be the width of the text + padding */
+	T_WIDTH_UNIFORM, /**< title bar will be set width + padding */
 };
 
-enum titlebar_tab_justify {
-	T_TAB_JUSTIFY_EVEN,
-	T_TAB_JUSTIFY_START,
-	T_TAB_JUSTIFY_END,
-	T_TAB_JUSTIFY_CENTER,
+enum titlebar_tab_arrangement {
+	T_TAB_ARRANGEMENT_EVEN,
+	T_TAB_ARRANGEMENT_LEFT,
+	T_TAB_ARRANGEMENT_RIGHT,
+	T_TAB_ARRANGEMENT_CENTER,
 };
 
 enum sway_popup_during_fullscreen {
@@ -504,6 +506,7 @@ enum xwayland_mode {
 struct sway_config {
 	int corner_radius;
 	bool smart_corner_radius;
+	enum rounded_corners rounded_corners;
 
 	float default_dim_inactive;
 	struct {
@@ -558,15 +561,15 @@ struct sway_config {
 	int font_height;
 	int font_baseline;
 	bool pango_markup;
+	enum alignment titlebar_align;
 	int titlebar_border_thickness;
 	int titlebar_h_padding;
 	int titlebar_v_padding;
 	int titlebar_gaps;
-	int titlebar_top_margin;
 	int titlebar_bottom_margin;
-	enum titlebar_margin_collapse titlebar_margin_collapse;
 	enum titlebar_width titlebar_width;
-	enum titlebar_tab_justify titlebar_tab_justify;
+	int titlebar_uniform_width;
+	enum titlebar_tab_arrangement titlebar_tab_arrangement;
 	size_t urgent_timeout;
 	enum sway_fowa focus_on_window_activation;
 	enum sway_popup_during_fullscreen popup_during_fullscreen;

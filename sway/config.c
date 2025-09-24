@@ -268,12 +268,6 @@ static void config_defaults(struct sway_config *config) {
 	config->titlebar_border_thickness = 1;
 	config->titlebar_h_padding = 5;
 	config->titlebar_v_padding = 4;
-	config->titlebar_gaps = 5;
-	config->titlebar_top_margin = 10;
-	config->titlebar_bottom_margin = 5;
-	config->titlebar_margin_collapse = T_MARGIN_COLLAPSE_ONLY_MARGINS;
-	config->titlebar_tab_justify = T_TAB_JUSTIFY_EVEN;
-	config->titlebar_width = T_WIDTH_FULL;
 
 	// floating view
 	config->floating_maximum_width = 0;
@@ -359,6 +353,7 @@ static void config_defaults(struct sway_config *config) {
 	// SwayFX defaults
 	config->corner_radius = 0;
 	config->smart_corner_radius = true;
+	config->rounded_corners = ROUNDED_OUTER;
 
 	config->default_dim_inactive = 0.0f;
 	color_to_rgba(config->dim_inactive_colors.unfocused, 0x000000FF);
@@ -377,6 +372,13 @@ static void config_defaults(struct sway_config *config) {
 	color_to_rgba(config->shadow_inactive_color, 0x0000007F);
 
 	config->titlebar_separator = true;
+	config->titlebar_align = ALIGN_LEFT;
+	config->titlebar_gaps = 0;
+	config->titlebar_bottom_margin = 0;
+	config->titlebar_tab_arrangement = T_TAB_ARRANGEMENT_EVEN;
+	config->titlebar_width = T_WIDTH_STRETCH;
+	config->titlebar_uniform_width = 200;
+
 	config->scratchpad_minimize = false;
 
 	if (!(config->layer_criteria = create_list())) {

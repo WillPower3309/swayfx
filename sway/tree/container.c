@@ -94,11 +94,12 @@ struct sway_container *container_create(struct sway_view *view) {
 	// - scene tree
 	//   - blur source
 	//   - shadow
-	//   - title bar
-	//     - border
-	//     - background
-	//     - title text
-	//     - marks text
+	//   - title gutter
+	//     - title bar
+	//       - border
+	//       - background
+	//       - title text
+	//       - marks text
 	//   - border
 	//     - border top/bottom/left/right
 	//     - content_tree (we put the content node here so when we disable the
@@ -114,12 +115,13 @@ struct sway_container *container_create(struct sway_view *view) {
 			0, config->shadow_blur_sigma, config->shadow_color, &failed);
 
 	c->title_bar.tree = alloc_scene_tree(c->scene_tree, &failed);
+	c->title_bar.bar_tree = alloc_scene_tree(c->title_bar.tree, &failed);
 
 	c->border.tree = alloc_scene_tree(c->scene_tree, &failed);
 	c->content_tree = alloc_scene_tree(c->border.tree, &failed);
 
-	c->title_bar.border = alloc_rect_node(c->title_bar.tree, &failed);
-	c->title_bar.background = alloc_rect_node(c->title_bar.tree, &failed);
+	c->title_bar.border = alloc_rect_node(c->title_bar.bar_tree, &failed);
+	c->title_bar.background = alloc_rect_node(c->title_bar.bar_tree, &failed);
 
 	if (view) {
 		// only containers with views can have borders
@@ -333,12 +335,15 @@ void container_update_itself_and_parents(struct sway_container *con) {
 void container_arrange_title_bar(struct sway_container *con) {
 	enum alignment title_align = config->title_align;
 	int marks_buffer_width = 0;
-	int width = con->title_width;
+	int gutter_width = con->title_width;
 	int height = container_titlebar_height();
 
-	struct wlr_box text_box = { 0, 0, 0, 0 };
+	int width = gutter_width;
+	if (config->titlebar_width == T_WIDTH_UNIFORM) {
+		width = MIN(width, config->titlebar_uniform_width);
+	}
 
-	int old_width = con->title_bar.border->width;
+	struct wlr_box text_box = { 0, 0, 0, 0 };
 
 	if (con->title_bar.marks_text) {
 		struct sway_text_node *node = con->title_bar.marks_text;
@@ -371,12 +376,24 @@ void container_arrange_title_bar(struct sway_container *con) {
 		struct sway_text_node *node = con->title_bar.title_text;
 
 		int h_padding;
-		if (title_align == ALIGN_RIGHT) {
-			h_padding = width - config->titlebar_h_padding - node->width;
-		} else if (title_align == ALIGN_CENTER) {
-			h_padding = ((int)width - marks_buffer_width - node->width) >> 1;
+		if (config->titlebar_width != T_WIDTH_TEXT) {
+			if (title_align == ALIGN_RIGHT) {
+				h_padding = width - config->titlebar_h_padding - node->width;
+			} else if (title_align == ALIGN_CENTER) {
+				h_padding = ((int)width - marks_buffer_width - node->width) >> 1;
+			} else {
+				h_padding = config->titlebar_h_padding;
+			}
 		} else {
-			h_padding = config->titlebar_h_padding;
+			if (title_align == ALIGN_RIGHT) {
+				h_padding = marks_buffer_width + config->titlebar_h_padding;
+
+				if (marks_buffer_width > 0) {
+					h_padding += config->titlebar_h_padding;
+				}
+			} else {
+				h_padding = config->titlebar_h_padding;
+			}
 		}
 
 		h_padding = MAX(h_padding, config->titlebar_h_padding);
@@ -445,13 +462,38 @@ void container_arrange_title_bar(struct sway_container *con) {
 		}
 	}
 
-	int bg_width = width;
-	if (config->titlebar_width != T_WIDTH_FULL) {
-		bg_width = text_box.width + marks_buffer_width + config->titlebar_h_padding*2 + thickness * 2;
+
+	if (config->titlebar_width == T_WIDTH_TEXT) {
+		width = text_box.width + marks_buffer_width + config->titlebar_h_padding*2 + thickness * 2;
+		if (marks_buffer_width > 0) {
+			width += config->titlebar_h_padding;
+		}
 	}
 
+	int width_shrinkage = con->title_used_width - width;
+	con->title_used_width = width;
+
+	int title_offset = 0;
+	if (width != gutter_width) {
+		if (config->title_align != ALIGN_RIGHT) {
+			if (con->title_bar.marks_text && config->titlebar_width == T_WIDTH_TEXT) {
+				wlr_scene_node_set_position(con->title_bar.marks_text->node, width - marks_buffer_width - config->titlebar_h_padding, con->title_bar.marks_text->node->y);
+			}
+		}
+
+		if (layout != L_TABBED) {
+			if (config->titlebar_align != ALIGN_LEFT) {
+				title_offset = gutter_width - width;
+				if (config->titlebar_align == ALIGN_CENTER) {
+					title_offset = title_offset >> 1;
+				}
+			}
+		}
+	}
+
+	wlr_scene_node_set_position(&con->title_bar.bar_tree->node, title_offset, 0);
 	wlr_scene_node_set_position(&con->title_bar.background->node, thickness, thickness);
-	wlr_scene_rect_set_size(con->title_bar.background, bg_width - thickness * 2,
+	wlr_scene_rect_set_size(con->title_bar.background, width - thickness * 2,
 			height - thickness * (config->titlebar_separator ? 2 : 1));
 	wlr_scene_rect_set_corner_radius(con->title_bar.background, background_corner_radius, corners);
 
@@ -463,7 +505,7 @@ void container_arrange_title_bar(struct sway_container *con) {
 			.area = text_box,
 	});
 
-	wlr_scene_rect_set_size(con->title_bar.border, bg_width, height);
+	wlr_scene_rect_set_size(con->title_bar.border, width, height);
 	wlr_scene_rect_set_corner_radius(con->title_bar.border, background_corner_radius ?
 			background_corner_radius + thickness : 0, corners);
 	wlr_scene_rect_set_clipped_region(con->title_bar.border, (struct clipped_region) {
@@ -477,21 +519,52 @@ void container_arrange_title_bar(struct sway_container *con) {
 			},
 	});
 
-	if (config->titlebar_tab_justify == T_TAB_JUSTIFY_START && config->titlebar_width != T_WIDTH_FULL) {
-		if (container_parent_layout(con) == L_TABBED) {
-			const int width_shrinkage = old_width - con->title_bar.border->width;
+	if (config->titlebar_tab_arrangement != T_TAB_ARRANGEMENT_EVEN && config->titlebar_width != T_WIDTH_STRETCH) {
+		if (container_parent_layout(con) == L_TABBED && width_shrinkage != 0) {
 			const list_t* tab_siblings = container_get_siblings(con);
+			if (config->titlebar_tab_arrangement != T_TAB_ARRANGEMENT_CENTER) {
+				int affected_sibling = config->titlebar_tab_arrangement == T_TAB_ARRANGEMENT_LEFT ? 1 : - 1;
+				int next_sibling = container_sibling_index(con);
+				if (config->titlebar_tab_arrangement == T_TAB_ARRANGEMENT_LEFT) {
+					next_sibling += 1;
+				}
 
-			int next_sibling = container_sibling_index(con) + 1;
+				if (config->titlebar_tab_arrangement == T_TAB_ARRANGEMENT_RIGHT) {
+					// if we're arranged to the right, everything should move the other way to make place
+					width_shrinkage = -width_shrinkage;
+				}
 
-			while (next_sibling < tab_siblings->length) {
-				const struct sway_container* item = tab_siblings->items[next_sibling];
-				wlr_scene_node_set_position(&item->title_bar.tree->node, item->title_bar.tree->node.x - width_shrinkage, item->title_bar.tree->node.y);
-				next_sibling++;
+				while (next_sibling < tab_siblings->length && next_sibling >= 0) {
+					const struct sway_container* item = tab_siblings->items[next_sibling];
+					wlr_scene_node_set_position(&item->title_bar.tree->node, item->title_bar.tree->node.x - width_shrinkage, item->title_bar.tree->node.y);
+					next_sibling += affected_sibling;
+				}
+			} else {
+				int tab_gutter_width = tab_siblings->length * con->title_width;
+				if (tab_siblings->length > 0) {
+					tab_gutter_width += (tab_siblings->length - 1) * config->titlebar_gaps;
+				}
+
+				int tab_gutter_space = tab_gutter_width + config->titlebar_gaps;
+				for (int i = 0; i < tab_siblings->length; i++) {
+					const struct sway_container* item = tab_siblings->items[i];
+					tab_gutter_space -= item->title_used_width;
+					tab_gutter_space -= config->titlebar_gaps;
+				}
+
+				tab_gutter_space = tab_gutter_space >> 1;
+				int offset = tab_gutter_space;
+				for (int i = 0; i < tab_siblings->length; i++) {
+					const struct sway_container* item = tab_siblings->items[i];
+					wlr_scene_node_set_position(&item->title_bar.tree->node, offset, item->title_bar.tree->node.y);
+					offset += item->title_used_width;
+					offset += config->titlebar_gaps;
+				}
 			}
 		}
 	}
 
+	con->title_used_width = width;
 	container_update(con);
 }
 
@@ -532,7 +605,7 @@ void container_update_marks(struct sway_container *con) {
 	} else if (!con->title_bar.marks_text) {
 		struct border_colors *colors = container_get_current_colors(con);
 
-		con->title_bar.marks_text = sway_text_node_create(con->title_bar.tree,
+		con->title_bar.marks_text = sway_text_node_create(con->title_bar.bar_tree,
 			buffer, colors->text, false);
 	} else {
 		sway_text_node_set_text(con->title_bar.marks_text, buffer);
@@ -554,7 +627,7 @@ void container_update_title_bar(struct sway_container *con) {
 		con->title_bar.title_text = NULL;
 	}
 
-	con->title_bar.title_text = sway_text_node_create(con->title_bar.tree,
+	con->title_bar.title_text = sway_text_node_create(con->title_bar.bar_tree,
 		con->formatted_title, colors->text, config->pango_markup);
 
 	// we always have to remake these text buffers completely for text font
@@ -909,7 +982,7 @@ size_t container_titlebar_height(void) {
 }
 
 size_t container_titlebar_height_and_margin(void) {
-	return config->font_height + config->titlebar_top_margin + (config->titlebar_v_padding * 2) + config->titlebar_bottom_margin;
+	return container_titlebar_height() + config->titlebar_bottom_margin;
 }
 
 void floating_calculate_constraints(int *min_width, int *max_width,
@@ -2035,7 +2108,7 @@ bool container_has_corner_radius(struct sway_container *con) {
 		return false;
 	}
 	return (container_is_floating_or_child(con) ||
-			!(config->smart_corner_radius && con->current.workspace->current_gaps.top == 0)) &&
+			!(config->smart_corner_radius && con->current.workspace && con->current.workspace->current_gaps.top == 0)) &&
 			con->corner_radius;
 }
 

@@ -348,12 +348,13 @@ void view_autoconfigure(struct sway_view *view) {
 			|| !config->hide_lone_tab;
 		if (show_titlebar) {
 			enum sway_container_layout layout = container_parent_layout(con);
+
 			if (layout == L_TABBED) {
 				y_offset = container_titlebar_height_and_margin();
-				con->pending.border_top = false;
+				con->pending.border_top = config->titlebar_bottom_margin > 0;
 			} else if (layout == L_STACKED) {
 				y_offset = container_titlebar_height_and_margin() * siblings->length;
-				con->pending.border_top = false;
+				con->pending.border_top = config->titlebar_bottom_margin > 0;
 			}
 		}
 	}

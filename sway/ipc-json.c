@@ -639,10 +639,8 @@ static void get_deco_rect(struct sway_container *c, struct wlr_box *deco_rect) {
 
 	if (!container_is_floating(c)) {
 		if (parent_layout == L_TABBED) {
-			deco_rect->width = c->pending.parent
-				? c->pending.parent->pending.width / c->pending.parent->pending.children->length
-				: c->pending.workspace->width / c->pending.workspace->tiling->length;
-			deco_rect->x += deco_rect->width * container_sibling_index(c);
+			deco_rect->width = c->title_used_width;
+			deco_rect->x += c->title_bar.tree->node.x + c->title_bar.bar_tree->node.x;
 		} else if (parent_layout == L_STACKED) {
 			if (!c->view) {
 				size_t siblings = container_get_siblings(c)->length;
