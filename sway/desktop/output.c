@@ -210,7 +210,7 @@ static enum wlr_scale_filter_mode get_scale_filter(struct sway_output *output,
 }
 
 void output_configure_scene(struct sway_output *output, struct wlr_scene_node *node, float opacity,
-		int corner_radius, bool blur_enabled, bool has_titlebar, struct sway_container *closest_con) {
+		int corner_radius, bool blur_enabled, bool has_titlebar, bool responsible_for_rounded_corners, struct sway_container *closest_con) {
 	if (!node->enabled) {
 		return;
 	}
@@ -224,6 +224,7 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 		blur_enabled = con->blur_enabled;
 		enum sway_container_layout layout = con->current.layout;
 		has_titlebar |= con->current.border == B_NORMAL || layout == L_STACKED || layout == L_TABBED;
+		responsible_for_rounded_corners = !has_titlebar;
 	}
 
 	if (node->type == WLR_SCENE_NODE_BUFFER) {
@@ -260,7 +261,7 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 #endif
 				) {
 			wlr_scene_buffer_set_corner_radius(buffer,
-					container_has_corner_radius(closest_con) ? corner_radius : 0,
+					container_has_corner_radius(closest_con) && responsible_for_rounded_corners ? corner_radius : 0,
 					has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL);
 		} else if (wlr_subsurface_try_from_wlr_surface(surface->surface)) {
 			wlr_scene_buffer_set_corner_radius(buffer,
@@ -290,7 +291,7 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 		struct wlr_scene_tree *tree = wlr_scene_tree_from_node(node);
 		struct wlr_scene_node *node;
 		wl_list_for_each(node, &tree->children, link) {
-			output_configure_scene(output, node, opacity, corner_radius, blur_enabled, has_titlebar, closest_con);
+			output_configure_scene(output, node, opacity, corner_radius, blur_enabled, has_titlebar, responsible_for_rounded_corners, closest_con);
 		}
 	} else if (node->type == WLR_SCENE_NODE_BLUR && closest_con) {
 		struct wlr_scene_blur *blur = wlr_scene_blur_from_node(node);
@@ -328,7 +329,7 @@ static int output_repaint_timer_handler(void *data) {
 	}
 
 	output_configure_scene(output, &root->root_scene->tree.node, 1.0f,
-			0, false, false, NULL);
+			0, false, false, true, NULL);
 
 	struct wlr_scene_output_state_options opts = {
 		.color_transform = output->color_transform,
