@@ -458,7 +458,7 @@ static void arrange_container(struct sway_container *con,
 		wlr_scene_node_set_position(&con->shadow->node, x, y);
 
 		wlr_scene_shadow_set_clipped_region(con->shadow, (struct clipped_region) {
-			.corner_radius = corner_radius,
+			.corner_radius = responsible_corners != CORNER_LOCATION_NONE ? corner_radius : 0,
 			.corners = responsible_corners,
 			.area = {
 				.x = config->shadow_blur_sigma - config->shadow_offset_x,
@@ -528,7 +528,7 @@ static void arrange_container(struct sway_container *con,
 			wlr_scene_rect_set_corner_radius(con->border.top, !has_corner_radius ? 0 :
 					corner_radius + border_width, CORNER_LOCATION_TOP & responsible_corners);
 			wlr_scene_rect_set_clipped_region(con->border.top, (struct clipped_region) {
-				.corner_radius = corner_radius,
+				.corner_radius = (CORNER_LOCATION_TOP & responsible_corners) != CORNER_LOCATION_NONE ? corner_radius : 0,
 				.corners = CORNER_LOCATION_TOP & responsible_corners,
 				.area = {
 					.x = border_width,
@@ -547,7 +547,7 @@ static void arrange_container(struct sway_container *con,
 					corner_radius + border_width,CORNER_LOCATION_BOTTOM & responsible_corners);
 
 			wlr_scene_rect_set_clipped_region(con->border.bottom, (struct clipped_region) {
-				.corner_radius = corner_radius,
+				.corner_radius = (CORNER_LOCATION_BOTTOM & responsible_corners) != CORNER_LOCATION_NONE ? corner_radius : 0,
 				.corners = CORNER_LOCATION_BOTTOM & responsible_corners,
 				// shift up one px to fix https://github.com/WillPower3309/swayfx/issues/386
 				// TODO: proper fix
