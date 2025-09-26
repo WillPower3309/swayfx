@@ -96,6 +96,7 @@ struct sway_container *container_create(struct sway_view *view) {
 	//   - shadow
 	//   - title gutter
 	//     - title bar
+	//       - shadow
 	//       - border
 	//       - background
 	//       - title text
@@ -116,6 +117,9 @@ struct sway_container *container_create(struct sway_view *view) {
 
 	c->title_bar.tree = alloc_scene_tree(c->scene_tree, &failed);
 	c->title_bar.bar_tree = alloc_scene_tree(c->title_bar.tree, &failed);
+
+	c->title_bar.shadow = alloc_scene_shadow(c->title_bar.bar_tree, 0, 0,
+		0, config->shadow_blur_sigma, config->shadow_color, &failed);
 
 	c->border.tree = alloc_scene_tree(c->scene_tree, &failed);
 	c->content_tree = alloc_scene_tree(c->border.tree, &failed);
@@ -522,6 +526,38 @@ void container_arrange_title_bar(struct sway_container *con) {
 			  .height = con->title_bar.background->height,
 			},
 	});
+
+	if (container_has_shadow(con) && config->titlebar_bottom_margin > 0) {
+		wlr_scene_node_set_enabled(&con->title_bar.shadow->node, true);
+
+		int shadow_corner_radius = corners != CORNER_LOCATION_NONE ? con->corner_radius + con->current.border_thickness : 0;
+		if (!con->view) {
+			// Stacking/Tabbed containers don't have a border_thickness, so we
+			// use the config default
+			shadow_corner_radius = con->corner_radius + config->border_thickness;
+		}
+
+		wlr_scene_shadow_set_size(con->title_bar.shadow,
+				width + config->shadow_blur_sigma * 2,
+				(height + config->shadow_blur_sigma * 2));
+
+		int x = config->shadow_offset_x - config->shadow_blur_sigma;
+		int y = config->shadow_offset_y - config->shadow_blur_sigma;
+
+		wlr_scene_node_set_position(&con->title_bar.shadow->node, x, y);
+		wlr_scene_shadow_set_clipped_region(con->title_bar.shadow, (struct clipped_region) {
+			.corner_radius = corners != CORNER_LOCATION_NONE ? shadow_corner_radius : 0,
+			.corners = corners,
+			.area = {
+				.x = config->shadow_blur_sigma - config->shadow_offset_x,
+				.y = config->shadow_blur_sigma - config->shadow_offset_y,
+				.width = width,
+				.height = height,
+			}
+		});
+	} else {
+		wlr_scene_node_set_enabled(&con->title_bar.shadow->node, false);
+	}
 
 	if (config->titlebar_tab_arrangement != T_TAB_ARRANGEMENT_EVEN && config->titlebar_width != T_WIDTH_STRETCH) {
 		if (container_parent_layout(con) == L_TABBED && width_shrinkage != 0) {

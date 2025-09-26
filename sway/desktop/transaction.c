@@ -492,42 +492,6 @@ static void arrange_container(struct sway_container *con,
 		responsible_corners &= ~CORNER_LOCATION_TOP;
 	}
 
-	if (container_has_shadow(con)) {
-		int corner_radius = has_corner_radius ? con->corner_radius + con->current.border_thickness : 0;
-		if (!con->view && title_bar) {
-			// Stacking/Tabbed containers don't have a border_thickness, so we
-			// use the config default
-			corner_radius = con->corner_radius + config->border_thickness;
-		}
-
-		wlr_scene_shadow_set_size(con->shadow,
-				width + config->shadow_blur_sigma * 2,
-				height + config->shadow_blur_sigma * 2);
-
-		int x = config->shadow_offset_x - config->shadow_blur_sigma;
-		int y = config->shadow_offset_y - config->shadow_blur_sigma;
-		wlr_scene_node_set_position(&con->shadow->node, x, y);
-
-		wlr_scene_shadow_set_clipped_region(con->shadow, (struct clipped_region) {
-			.corner_radius = responsible_corners != CORNER_LOCATION_NONE ? corner_radius : 0,
-			.corners = responsible_corners,
-			.area = {
-				.x = config->shadow_blur_sigma - config->shadow_offset_x,
-				.y = config->shadow_blur_sigma - config->shadow_offset_y,
-				.width = width,
-				.height = height,
-			}
-		});
-
-		bool is_urgent = con->view && view_is_urgent(con->view);
-		float* shadow_color = is_urgent || con->current.focused ?
-				config->shadow_color : config->shadow_inactive_color;
-		wlr_scene_shadow_set_color(con->shadow, shadow_color);
-		wlr_scene_shadow_set_blur_sigma(con->shadow, config->shadow_blur_sigma);
-		wlr_scene_shadow_set_corner_radius(con->shadow,
-				!has_corner_radius ? 0 : corner_radius);
-	}
-
 	if (con->view) {
 		int corner_radius = has_corner_radius ? con->corner_radius : 0;
 		int border_top = container_titlebar_height_and_margin();
@@ -630,6 +594,49 @@ static void arrange_container(struct sway_container *con,
 			top_offset += container_titlebar_height_and_margin();
 		}
 
+		if (container_has_shadow(con)) {
+			int shadow_corner_radius = has_corner_radius ? con->corner_radius + con->current.border_thickness : 0;
+			if (!con->view && title_bar) {
+				// Stacking/Tabbed containers don't have a border_thickness, so we
+				// use the config default
+				shadow_corner_radius = con->corner_radius + config->border_thickness;
+			}
+
+			int shadow_offset = MAX(0, top_offset);
+			wlr_scene_shadow_set_size(con->shadow,
+					width + config->shadow_blur_sigma * 2,
+					(height + config->shadow_blur_sigma * 2) - shadow_offset);
+
+			int x = config->shadow_offset_x - config->shadow_blur_sigma;
+			int y = config->shadow_offset_y - config->shadow_blur_sigma;
+
+			wlr_scene_node_set_position(&con->shadow->node, x, shadow_offset + y);
+			wlr_scene_shadow_set_clipped_region(con->shadow, (struct clipped_region) {
+				.corner_radius = responsible_corners != CORNER_LOCATION_NONE ? shadow_corner_radius : 0,
+				.corners = responsible_corners,
+				.area = {
+					.x = config->shadow_blur_sigma - config->shadow_offset_x,
+					.y = config->shadow_blur_sigma - config->shadow_offset_y,
+					.width = width,
+					.height = height - shadow_offset,
+				}
+			});
+
+			bool is_urgent = con->view && view_is_urgent(con->view);
+			float* shadow_color = is_urgent || con->current.focused ?
+					config->shadow_color : config->shadow_inactive_color;
+			wlr_scene_shadow_set_color(con->shadow, shadow_color);
+			wlr_scene_shadow_set_color(con->title_bar.shadow, shadow_color);
+
+			wlr_scene_shadow_set_blur_sigma(con->shadow, config->shadow_blur_sigma);
+			wlr_scene_shadow_set_blur_sigma(con->title_bar.shadow, config->shadow_blur_sigma);
+
+			wlr_scene_shadow_set_corner_radius(con->shadow,
+					!has_corner_radius ? 0 : corner_radius);
+			wlr_scene_shadow_set_corner_radius(con->title_bar.shadow,
+					!has_corner_radius ? 0 : corner_radius);
+		}
+
 		wlr_scene_node_set_position(&con->border.top->node, 0, top_offset);
 		wlr_scene_node_set_position(&con->border.bottom->node,
 			0, height - border_bottom - corner_radius);
@@ -667,6 +674,10 @@ static void arrange_container(struct sway_container *con,
 		wlr_scene_node_set_enabled(&con->shadow->node,
 				container_has_shadow(con) &&
 				(con->current.layout == L_TABBED || con->current.layout == L_STACKED));
+		//
+		// wlr_scene_node_set_enabled(&con->title_bar.shadow->node,
+		// 		container_has_shadow(con) &&
+		// 		(con->current.layout == L_TABBED || con->current.layout == L_STACKED));
 
 		arrange_children(con->current.layout, con->current.children,
 			con->current.focused_inactive_child, con->content_tree,
