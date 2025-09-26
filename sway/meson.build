@@ -105,6 +105,7 @@ sway_sources = files(
 	'commands/reload.c',
 	'commands/rename.c',
 	'commands/resize.c',
+	'commands/rounded_corners.c',
 	'commands/scratchpad.c',
 	'commands/scratchpad_minimize.c',
 	'commands/seat.c',

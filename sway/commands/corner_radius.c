@@ -38,6 +38,12 @@ struct cmd_results *cmd_corner_radius(int argc, char **argv) {
 		// Config reload: reset all containers to config value
 		root_for_each_container(arrange_corner_radius_iter, NULL);
 		arrange_root();
+	} else {
+		struct sway_container* con = config->handler_context.container;
+		con->corner_radius = value;
+		output_configure_scene(NULL, &con->scene_tree->node,
+		1.0f, 0, false, false, false, config->rounded_corners.window, NULL);
+		container_update(con);
 	}
 
 	/*
@@ -50,6 +56,7 @@ struct cmd_results *cmd_corner_radius(int argc, char **argv) {
 	if (value > (int)container_titlebar_height()) {
 		config->titlebar_v_padding = (value - config->font_height) / 2;
 	}
+
 
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }

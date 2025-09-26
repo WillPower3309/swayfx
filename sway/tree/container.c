@@ -419,7 +419,7 @@ void container_arrange_title_bar(struct sway_container *con) {
 	int thickness = config->titlebar_border_thickness;
 	int background_corner_radius = container_has_corner_radius(con) ?
 			con->corner_radius + con->current.border_thickness - thickness : 0;
-	enum corner_location corners = CORNER_LOCATION_TOP;
+	enum corner_location corners = config->rounded_corners.titlebar;
 
 	enum sway_container_layout layout;
 	bool responsible_for_corners = true;
@@ -443,23 +443,24 @@ void container_arrange_title_bar(struct sway_container *con) {
 		siblings = con->current.workspace->tiling;
 	}
 
-	if (!responsible_for_corners) {
-		background_corner_radius = 0;
+	if (!responsible_for_corners && config->rounded_corners.skip & R_CORNER_SKIP_EMBEDDED) {
 		corners = CORNER_LOCATION_NONE;
-	} else if (con->current.parent || con->current.workspace) {
+	} else if (config->rounded_corners.skip & R_CORNER_SKIP_BETWEEN_TABS && (con->current.parent || con->current.workspace)) {
 		if (layout == L_TABBED && siblings->length > 1) {
 			if (siblings->items[0] == con) {
-				corners = CORNER_LOCATION_TOP_LEFT;
+				corners &= ~CORNER_LOCATION_TOP_RIGHT;
 			} else if (siblings->items[siblings->length - 1] == con) {
-				corners = CORNER_LOCATION_TOP_RIGHT;
+				corners &= ~CORNER_LOCATION_TOP_LEFT;
 			} else {
-				background_corner_radius = 0;
-				corners = CORNER_LOCATION_NONE;
+				corners &= ~CORNER_LOCATION_TOP;
 			}
 		} else if (layout == L_STACKED && siblings->items[0] != con) {
-			background_corner_radius = 0;
-			corners = CORNER_LOCATION_NONE;
+			corners &= ~CORNER_LOCATION_TOP;
 		}
+	}
+
+	if (corners == CORNER_LOCATION_NONE) {
+		background_corner_radius = 0;
 	}
 
 
@@ -481,14 +482,13 @@ void container_arrange_title_bar(struct sway_container *con) {
 			}
 		}
 
-		if (layout != L_TABBED) {
-			if (config->titlebar_align != ALIGN_LEFT) {
-				title_offset = gutter_width - width;
-				if (config->titlebar_align == ALIGN_CENTER) {
-					title_offset = title_offset >> 1;
-				}
+		if (config->titlebar_align != ALIGN_LEFT) {
+			title_offset = gutter_width - width;
+			if (config->titlebar_align == ALIGN_CENTER) {
+				title_offset = title_offset >> 1;
 			}
 		}
+
 	}
 
 	wlr_scene_node_set_position(&con->title_bar.bar_tree->node, title_offset, 0);

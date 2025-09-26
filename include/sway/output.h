@@ -95,7 +95,7 @@ struct sway_output *output_get_in_direction(struct sway_output *reference,
 
 void output_configure_scene(struct sway_output *output,
 	struct wlr_scene_node *node, float opacity, int corner_radius,
-	bool blur_enabled, bool has_titlebar, bool responsible_for_rounded_corners, struct sway_container *closest_con);
+	bool blur_enabled, bool has_titlebar, bool is_embedded, enum corner_location responsible_for_rounded_corners, struct sway_container *closest_con);
 
 void output_add_workspace(struct sway_output *output,
 		struct sway_workspace *workspace);

@@ -458,8 +458,9 @@ static void arrange_container(struct sway_container *con,
 	}
 
 	bool has_corner_radius = container_has_corner_radius(con);
-	enum corner_location responsible_corners = CORNER_LOCATION_ALL;
-	if (has_corner_radius && gaps == 0) {
+	struct sway_rounded_corners corners = config->rounded_corners;
+	enum corner_location responsible_corners = corners.window;
+	if (has_corner_radius && gaps == 0 && corners.skip & R_CORNER_SKIP_EMBEDDED) {
 		struct sway_container* current = con;
 		struct sway_container* parent = con->current.parent;
 		while (parent && responsible_corners != CORNER_LOCATION_NONE) {
@@ -533,13 +534,13 @@ static void arrange_container(struct sway_container *con,
 			wlr_scene_node_set_enabled(&con->title_bar.tree->node, false);
 			wlr_scene_node_set_enabled(&con->border.top->node, true);
 		} else {
-			wlr_scene_node_set_enabled(&con->border.top->node, config->titlebar_bottom_margin > 0);
+			wlr_scene_node_set_enabled(&con->border.top->node, config->titlebar_bottom_margin > 0 || !(config->rounded_corners.skip & R_CORNER_SKIP_TITLEBAR_SEPARATOR));
 		}
 
 		if (con->current.border == B_NORMAL) {
-			if (config->titlebar_bottom_margin == 0) {
-				vert_border_offset = 0;
-			}
+			// if (config->titlebar_bottom_margin == 0) {
+			// 	vert_border_offset = 0;
+			// }
 
 			if (title_bar) {
 				arrange_title_bar(con, 0, 0, width, border_top);
@@ -568,18 +569,24 @@ static void arrange_container(struct sway_container *con,
 		int border_left = con->current.border_left ? border_width : 0;
 		int border_right = con->current.border_right ? border_width : 0;
 
-		if (con->current.border == B_NORMAL) {
-			if (con->current.border_top && config->titlebar_bottom_margin) {
+		if (con->current.border == B_NORMAL && con->current.border_top) {
+			if (config->titlebar_bottom_margin) {
+				vert_border_offset += border_top;
+				border_top = border_width;
+			} else if (!(config->rounded_corners.skip & R_CORNER_SKIP_TITLEBAR_SEPARATOR)) {
 				vert_border_offset += border_top;
 				border_top = border_width;
 			}
 		}
 
-		int vert_border_height = MAX(0, height - border_top - border_bottom - vert_border_offset - corner_radius);
+		int top_offset = border_top ? 0 : -border_width;
+		vert_border_offset += top_offset;
+
+		int vert_border_height = MAX(0, height - border_top - border_bottom - vert_border_offset - corner_radius - top_offset);
 		wlr_scene_rect_set_size(con->border.left, border_left, vert_border_height);
 		wlr_scene_rect_set_size(con->border.right, border_right, vert_border_height);
 
-		if (border_top) {
+		if (border_top || (corner_radius && responsible_corners & CORNER_LOCATION_TOP)) {
 			wlr_scene_rect_set_size(con->border.top, width, border_top + corner_radius);
 			wlr_scene_rect_set_corner_radius(con->border.top, !has_corner_radius ? 0 :
 					corner_radius + border_width, CORNER_LOCATION_TOP & responsible_corners);
@@ -618,10 +625,10 @@ static void arrange_container(struct sway_container *con,
 			wlr_scene_rect_set_size(con->border.bottom, 0, 0);
 		}
 
-		int top_offset = 0;
+
 		if (title_bar && con->current.border == B_NORMAL) {
-			if (config->titlebar_bottom_margin > 0) {
-				top_offset = container_titlebar_height_and_margin();
+			if (config->titlebar_bottom_margin > 0 || !(config->rounded_corners.skip & R_CORNER_SKIP_TITLEBAR_SEPARATOR)) {
+				top_offset += container_titlebar_height_and_margin();
 			}
 		}
 
@@ -640,14 +647,14 @@ static void arrange_container(struct sway_container *con,
 					con->current.content_height);
 			bool has_titlebar = !title_bar || con->current.border == B_NORMAL;
 			wlr_scene_rect_set_corner_radius(con->dim_rect, con->corner_radius,
-					(has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL) & responsible_corners);
+					(has_titlebar && !(corners.skip & R_CORNER_SKIP_TITLEBAR_SEPARATOR) ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL) & responsible_corners);
 		}
 
 		// make sure to reparent, it's possible that the client just came out of
 		// fullscreen mode where the parent of the surface is not the container
 		wlr_scene_node_reparent(&con->view->scene_tree->node, con->content_tree);
 		wlr_scene_node_set_position(&con->view->scene_tree->node,
-			border_left, top_offset + border_top);
+			border_left, top_offset);
 
 		wlr_scene_node_set_enabled(&con->blur->node, con->blur_enabled);
 		wlr_scene_node_set_position(&con->blur->node, border_left, border_top);

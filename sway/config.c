@@ -353,7 +353,11 @@ static void config_defaults(struct sway_config *config) {
 	// SwayFX defaults
 	config->corner_radius = 0;
 	config->smart_corner_radius = true;
-	config->rounded_corners = ROUNDED_OUTER;
+	config->rounded_corners = (struct sway_rounded_corners) {
+		.skip = R_CORNER_SKIP_NONE,
+		.titlebar = CORNER_LOCATION_TOP_LEFT | CORNER_LOCATION_BOTTOM_RIGHT,
+		.window = CORNER_LOCATION_TOP_RIGHT | CORNER_LOCATION_BOTTOM_LEFT,
+	};
 
 	config->default_dim_inactive = 0.0f;
 	color_to_rgba(config->dim_inactive_colors.unfocused, 0x000000FF);

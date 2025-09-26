@@ -442,14 +442,6 @@ enum edge_border_smart_types {
 	ESMART_NO_GAPS, /**< hide edges if one window and gaps to edge is zero */
 };
 
-enum rounded_corners {
-	ROUNDED_NONE = 0, /**< rounds no corners */
-	ROUNDED_OUTER = 1, /**< rounds only the outer corners, e.g. if a window has a title bar, it won't be rounded **/
-	ROUNDED_TITLEBAR = 2, /**< rounds all outer corners of the title bar **and** the top of the window, but not inbetween tabs in stacking or tabbed */
-	ROUNDED_TABS = 4, /**< rounds all corners between tabs for stacking or tabbed layouts */
-	ROUNDED_ALL = 7, /**< rounds all of the above */
-};
-
 enum titlebar_width {
 	T_WIDTH_STRETCH,
 	T_WIDTH_TEXT, /**< title bar will only be the width of the text + padding */
@@ -500,13 +492,28 @@ enum xwayland_mode {
 	XWAYLAND_MODE_IMMEDIATE,
 };
 
+enum sway_rounded_corners_skip {
+	R_CORNER_SKIP_NONE = 0,
+	R_CORNER_SKIP_BETWEEN_TABS = 1 << 1,
+	R_CORNER_SKIP_TITLEBAR_SEPARATOR = 1 << 2,
+	R_CORNER_SKIP_EMBEDDED = 1 << 3,
+
+	R_CORNER_SKIP_ALL = INT_MAX,
+};
+
+struct sway_rounded_corners {
+	enum sway_rounded_corners_skip skip;
+	enum corner_location window;
+	enum corner_location titlebar;
+};
+
 /**
  * The configuration struct. The result of loading a config file.
  */
 struct sway_config {
 	int corner_radius;
 	bool smart_corner_radius;
-	enum rounded_corners rounded_corners;
+	struct sway_rounded_corners rounded_corners;
 
 	float default_dim_inactive;
 	struct {

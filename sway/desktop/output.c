@@ -210,7 +210,7 @@ static enum wlr_scale_filter_mode get_scale_filter(struct sway_output *output,
 }
 
 void output_configure_scene(struct sway_output *output, struct wlr_scene_node *node, float opacity,
-		int corner_radius, bool blur_enabled, bool has_titlebar, bool responsible_for_rounded_corners, struct sway_container *closest_con) {
+		int corner_radius, bool blur_enabled, bool has_titlebar, bool is_embedded, enum corner_location responsible_for_rounded_corners, struct sway_container *closest_con) {
 	if (!node->enabled) {
 		return;
 	}
@@ -223,8 +223,26 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 		corner_radius = con->corner_radius;
 		blur_enabled = con->blur_enabled;
 		enum sway_container_layout layout = con->current.layout;
+		if (con->current.parent) {
+			if ((layout == L_VERT || layout == L_HORIZ) && is_embedded && !(config->rounded_corners.skip & R_CORNER_SKIP_EMBEDDED)) {
+				list_t* sibs = container_get_siblings(con);
+				int idx = container_sibling_index(con);
+				enum corner_location responsible = CORNER_LOCATION_NONE;
+				if (idx == 0) {
+					responsible |= layout == L_HORIZ ? CORNER_LOCATION_LEFT : CORNER_LOCATION_TOP;
+				}
+
+				if (idx == (sibs->length-1)) {
+					responsible |= layout == L_HORIZ ? CORNER_LOCATION_RIGHT : CORNER_LOCATION_BOTTOM;
+				}
+
+				responsible_for_rounded_corners &= responsible;
+			}
+		}
+
 		has_titlebar |= con->current.border == B_NORMAL || layout == L_STACKED || layout == L_TABBED;
-		responsible_for_rounded_corners = !has_titlebar;
+		responsible_for_rounded_corners &= has_titlebar && (config->rounded_corners.skip & R_CORNER_SKIP_TITLEBAR_SEPARATOR) ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL;
+		is_embedded = layout == L_TABBED || layout == L_STACKED;
 	}
 
 	if (node->type == WLR_SCENE_NODE_BUFFER) {
@@ -260,18 +278,19 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 				|| wlr_xwayland_surface_try_from_wlr_surface(surface->surface)
 #endif
 				) {
+			enum corner_location corners = (has_titlebar && (config->rounded_corners.skip & R_CORNER_SKIP_TITLEBAR_SEPARATOR) ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL) & responsible_for_rounded_corners;
 			wlr_scene_buffer_set_corner_radius(buffer,
-					container_has_corner_radius(closest_con) && responsible_for_rounded_corners ? corner_radius : 0,
-					has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL);
+					container_has_corner_radius(closest_con) && corners != CORNER_LOCATION_NONE ? corner_radius : 0,
+                    corners);
 		} else if (wlr_subsurface_try_from_wlr_surface(surface->surface)) {
 			wlr_scene_buffer_set_corner_radius(buffer,
-					container_has_corner_radius(closest_con) ? corner_radius : 0,
-					CORNER_LOCATION_ALL);
+					container_has_corner_radius(closest_con) && responsible_for_rounded_corners != CORNER_LOCATION_NONE ? corner_radius : 0,
+					responsible_for_rounded_corners);
 		} else if ((layer_surface = wlr_layer_surface_v1_try_from_wlr_surface(surface->surface))
 				&& layer_surface->data) {
 			// Layer effects
 			struct sway_layer_surface *surface = layer_surface->data;
-			wlr_scene_buffer_set_corner_radius(buffer, surface->corner_radius, CORNER_LOCATION_ALL);
+			wlr_scene_buffer_set_corner_radius(buffer, surface->corner_radius, responsible_for_rounded_corners);
 			wlr_scene_shadow_set_blur_sigma(surface->shadow_node, config->shadow_blur_sigma);
 			wlr_scene_shadow_set_corner_radius(surface->shadow_node, surface->corner_radius);
 
@@ -290,8 +309,9 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 	} else if (node->type == WLR_SCENE_NODE_TREE) {
 		struct wlr_scene_tree *tree = wlr_scene_tree_from_node(node);
 		struct wlr_scene_node *node;
+
 		wl_list_for_each(node, &tree->children, link) {
-			output_configure_scene(output, node, opacity, corner_radius, blur_enabled, has_titlebar, responsible_for_rounded_corners, closest_con);
+			output_configure_scene(output, node, opacity, corner_radius, blur_enabled, has_titlebar, is_embedded, responsible_for_rounded_corners, closest_con);
 		}
 	} else if (node->type == WLR_SCENE_NODE_BLUR && closest_con) {
 		struct wlr_scene_blur *blur = wlr_scene_blur_from_node(node);
@@ -329,7 +349,7 @@ static int output_repaint_timer_handler(void *data) {
 	}
 
 	output_configure_scene(output, &root->root_scene->tree.node, 1.0f,
-			0, false, false, true, NULL);
+			0, false, false, false, config->rounded_corners.window, NULL);
 
 	struct wlr_scene_output_state_options opts = {
 		.color_transform = output->color_transform,
