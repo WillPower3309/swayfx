@@ -354,9 +354,9 @@ static void config_defaults(struct sway_config *config) {
 	config->corner_radius = 0;
 	config->smart_corner_radius = true;
 	config->rounded_corners = (struct sway_rounded_corners) {
-		.skip = R_CORNER_SKIP_NONE,
-		.titlebar = CORNER_LOCATION_TOP_LEFT | CORNER_LOCATION_BOTTOM_RIGHT,
-		.window = CORNER_LOCATION_TOP_RIGHT | CORNER_LOCATION_BOTTOM_LEFT,
+		.skip = R_CORNER_SKIP_ALL,
+		.titlebar = CORNER_LOCATION_TOP,
+		.window = CORNER_LOCATION_ALL,
 	};
 
 	config->default_dim_inactive = 0.0f;

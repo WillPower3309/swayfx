@@ -456,6 +456,10 @@ void container_arrange_title_bar(struct sway_container *con) {
 			}
 		} else if (layout == L_STACKED && siblings->items[0] != con) {
 			corners &= ~CORNER_LOCATION_TOP;
+
+			if (siblings->items[siblings->length] != con) {
+				corners &= ~CORNER_LOCATION_BOTTOM;
+			}
 		}
 	}
 

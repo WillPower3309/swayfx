@@ -488,6 +488,10 @@ static void arrange_container(struct sway_container *con,
 		}
 	}
 
+	if (con->current.border == B_NORMAL && corners.skip & R_CORNER_SKIP_TITLEBAR_SEPARATOR) {
+		responsible_corners &= ~CORNER_LOCATION_TOP;
+	}
+
 	if (container_has_shadow(con)) {
 		int corner_radius = has_corner_radius ? con->corner_radius + con->current.border_thickness : 0;
 		if (!con->view && title_bar) {
@@ -528,20 +532,16 @@ static void arrange_container(struct sway_container *con,
 		int corner_radius = has_corner_radius ? con->corner_radius : 0;
 		int border_top = container_titlebar_height_and_margin();
 		int border_width = con->current.border_thickness;
-		int vert_border_offset = corner_radius;
+		int vert_border_offset = responsible_corners & CORNER_LOCATION_TOP ? corner_radius : 0;
 
 		if (title_bar && con->current.border != B_NORMAL) {
 			wlr_scene_node_set_enabled(&con->title_bar.tree->node, false);
 			wlr_scene_node_set_enabled(&con->border.top->node, true);
 		} else {
-			wlr_scene_node_set_enabled(&con->border.top->node, config->titlebar_bottom_margin > 0 || !(config->rounded_corners.skip & R_CORNER_SKIP_TITLEBAR_SEPARATOR));
+			wlr_scene_node_set_enabled(&con->border.top->node, config->titlebar_bottom_margin > 0 || responsible_corners & CORNER_LOCATION_TOP);
 		}
 
 		if (con->current.border == B_NORMAL) {
-			// if (config->titlebar_bottom_margin == 0) {
-			// 	vert_border_offset = 0;
-			// }
-
 			if (title_bar) {
 				arrange_title_bar(con, 0, 0, width, border_top);
 			} else {
@@ -573,13 +573,13 @@ static void arrange_container(struct sway_container *con,
 			if (config->titlebar_bottom_margin) {
 				vert_border_offset += border_top;
 				border_top = border_width;
-			} else if (!(config->rounded_corners.skip & R_CORNER_SKIP_TITLEBAR_SEPARATOR)) {
+			} else if (corner_radius && responsible_corners & CORNER_LOCATION_TOP) {
 				vert_border_offset += border_top;
 				border_top = border_width;
 			}
 		}
 
-		int top_offset = border_top ? 0 : -border_width;
+		int top_offset = border_top || !corner_radius || !(responsible_corners & CORNER_LOCATION_TOP) ? 0 : -border_width;
 		vert_border_offset += top_offset;
 
 		int vert_border_height = MAX(0, height - border_top - border_bottom - vert_border_offset - corner_radius - top_offset);
@@ -626,10 +626,8 @@ static void arrange_container(struct sway_container *con,
 		}
 
 
-		if (title_bar && con->current.border == B_NORMAL) {
-			if (config->titlebar_bottom_margin > 0 || !(config->rounded_corners.skip & R_CORNER_SKIP_TITLEBAR_SEPARATOR)) {
-				top_offset += container_titlebar_height_and_margin();
-			}
+		if (title_bar && con->current.border == B_NORMAL && config->titlebar_bottom_margin > 0) {
+			top_offset += container_titlebar_height_and_margin();
 		}
 
 		wlr_scene_node_set_position(&con->border.top->node, 0, top_offset);
@@ -654,7 +652,7 @@ static void arrange_container(struct sway_container *con,
 		// fullscreen mode where the parent of the surface is not the container
 		wlr_scene_node_reparent(&con->view->scene_tree->node, con->content_tree);
 		wlr_scene_node_set_position(&con->view->scene_tree->node,
-			border_left, top_offset);
+			border_left, top_offset+border_top);
 
 		wlr_scene_node_set_enabled(&con->blur->node, con->blur_enabled);
 		wlr_scene_node_set_position(&con->blur->node, border_left, border_top);

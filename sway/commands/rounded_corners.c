@@ -8,11 +8,11 @@ static void arrange_corner_radius_iter(struct sway_container *con, void *data) {
         1.0f, 0, false, false, false, config->rounded_corners.window, NULL);
 }
 
-static char *unexpected_msg = "Expected 'rounded_corners (<set|add|remove> <outer|window|titlebar|all> <all|none|top|bottom|left|right|top_left|top_right|bottom_left|bottom_right>...)...'";
+static char *unexpected_msg = "Expected 'rounded_corners (<set|add|remove> <outer|window|titlebar|all> <all|none|top|bottom|left|right|top_left|top_right|bottom_left|bottom_right>...)... [skip <all|none|between_tabs|embedded|titlebar_separator>...]'";
 
 struct cmd_results *cmd_rounded_corners(int argc, char **argv) {
     struct cmd_results *error = NULL;
-    if ((error = checkarg(argc, "rounded_corners", EXPECTED_AT_LEAST, 3))) {
+    if ((error = checkarg(argc, "rounded_corners", EXPECTED_AT_LEAST, 2))) {
         return error;
     }
 
@@ -32,6 +32,7 @@ struct cmd_results *cmd_rounded_corners(int argc, char **argv) {
 
     // rounded_corners window set bottom top titlebar add none skip all
     int offset = 0;
+    bool has_skip = false;
     while (offset < (argc - 2)) {
         enum rounded_corner_operation op = RC_SET;
         enum rounded_corner_context context = RC_OUTER;
@@ -45,6 +46,9 @@ struct cmd_results *cmd_rounded_corners(int argc, char **argv) {
             op = RC_ADD;
         } else if (strcmp(arg, "remove") == 0) {
             op = RC_REMOVE;
+        } else if (strcmp(arg, "skip") == 0) {
+            has_skip = true;
+            break;
         } else {
             return cmd_results_new(
                 CMD_INVALID,
@@ -168,6 +172,34 @@ struct cmd_results *cmd_rounded_corners(int argc, char **argv) {
                         break;
                 }
                 break;
+        }
+    }
+
+    if (offset < argc && strcmp(argv[offset], "skip") == 0) {
+        has_skip = true;
+        offset++;
+    }
+
+    if (has_skip) {
+        if (offset >= argc) {
+            return cmd_results_new(CMD_INVALID, "%s missing arguments for skip", unexpected_msg);
+        }
+
+        while (offset < argc) {
+            char *arg = argv[offset++];
+            if (strcmp(arg, "none") == 0) {
+                config->rounded_corners.skip = R_CORNER_SKIP_NONE;
+            } else if (strcmp(arg, "all") == 0) {
+                config->rounded_corners.skip = R_CORNER_SKIP_ALL;
+            } else if (strcmp(arg, "titlebar_separator") == 0) {
+                config->rounded_corners.skip |= R_CORNER_SKIP_TITLEBAR_SEPARATOR;
+            } else if (strcmp(arg, "between_tabs") == 0) {
+                config->rounded_corners.skip |= R_CORNER_SKIP_BETWEEN_TABS;
+            } else if (strcmp(arg, "embedded") == 0) {
+                config->rounded_corners.skip |= R_CORNER_SKIP_EMBEDDED;
+            } else {
+                return cmd_results_new(CMD_INVALID, "%s unexpected argument for skip expected <all|none|titlebar_separator|between_tabs|embedded>", unexpected_msg);
+            }
         }
     }
 
