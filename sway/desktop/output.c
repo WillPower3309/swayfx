@@ -225,7 +225,7 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 		enum sway_container_layout layout = con->current.layout;
 		if (con->current.parent) {
 			enum sway_container_layout parent_layout = con->current.parent->current.layout;
-			if ((layout == L_VERT || layout == L_HORIZ) && is_embedded && config->rounded_corners.skip & R_CORNER_SKIP_EMBEDDED) {
+			if ((parent_layout == L_VERT || parent_layout == L_HORIZ) && is_embedded && config->rounded_corners.skip & R_CORNER_SKIP_EMBEDDED) {
 				list_t* sibs = container_get_siblings(con);
 				if (sibs != NULL) {
 					int idx = container_sibling_index(con);
@@ -245,7 +245,7 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 
 		has_titlebar |= con->current.border == B_NORMAL || layout == L_STACKED || layout == L_TABBED;
 		responsible_for_rounded_corners &= has_titlebar && (config->rounded_corners.skip & R_CORNER_SKIP_TITLEBAR_SEPARATOR) ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL;
-		is_embedded = layout == L_TABBED || layout == L_STACKED;
+		is_embedded |= layout == L_TABBED || layout == L_STACKED;
 	}
 
 	if (node->type == WLR_SCENE_NODE_BUFFER) {
