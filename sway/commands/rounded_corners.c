@@ -8,7 +8,7 @@ static void arrange_corner_radius_iter(struct sway_container *con, void *data) {
         1.0f, 0, false, false, false, config->rounded_corners.window, NULL);
 }
 
-static char *unexpected_msg = "Expected 'rounded_corners (<set|add|remove> <outer|window|titlebar|all> <all|none|top|bottom|left|right|top_left|top_right|bottom_left|bottom_right>...)... [skip <all|none|between_tabs|embedded|titlebar_separator>...]'";
+static char *unexpected_msg = "Expected 'rounded_corners (set|add|remove outer|window|titlebar|all all|none|top|bottom|left|right|top_left|top_right|bottom_left|bottom_right...)... [skip all|none|between_tabs|embedded|titlebar_separator...]'";
 
 struct cmd_results *cmd_rounded_corners(int argc, char **argv) {
     struct cmd_results *error = NULL;
