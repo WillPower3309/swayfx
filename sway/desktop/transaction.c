@@ -515,7 +515,7 @@ static void arrange_container(struct sway_container *con,
 		} else if (con->current.border == B_PIXEL) {
 			container_update(con);
 			border_top = title_bar && con->current.border_top ? border_width : 0;
-			if (!title_bar && !con->current.border_top) {
+			if (!title_bar && !con->current.border_top && !(responsible_corners & CORNER_LOCATION_TOP)) {
 				vert_border_offset = 0;
 			}
 		} else if (con->current.border == B_NONE) {
@@ -533,14 +533,12 @@ static void arrange_container(struct sway_container *con,
 		int border_left = con->current.border_left ? border_width : 0;
 		int border_right = con->current.border_right ? border_width : 0;
 
-		if (con->current.border == B_NORMAL && con->current.border_top) {
-			if (config->titlebar_bottom_margin) {
-				vert_border_offset += border_top;
-				border_top = border_width;
-			} else if (corner_radius && responsible_corners & CORNER_LOCATION_TOP) {
-				vert_border_offset += border_top;
-				border_top = border_width;
-			}
+		if (con->current.border == B_NORMAL && con->current.border_top && config->titlebar_bottom_margin) {
+			vert_border_offset += border_top;
+			border_top = border_width;
+		} else if ((!title_bar || con->current.border == B_NORMAL) && corner_radius && responsible_corners & CORNER_LOCATION_TOP) {
+			vert_border_offset += border_top;
+			border_top = border_width;
 		}
 
 		int top_offset = border_top || !corner_radius || !(responsible_corners & CORNER_LOCATION_TOP) ? 0 : -border_width;

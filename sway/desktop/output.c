@@ -224,19 +224,22 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 		blur_enabled = con->blur_enabled;
 		enum sway_container_layout layout = con->current.layout;
 		if (con->current.parent) {
-			if ((layout == L_VERT || layout == L_HORIZ) && is_embedded && !(config->rounded_corners.skip & R_CORNER_SKIP_EMBEDDED)) {
+			enum sway_container_layout parent_layout = con->current.parent->current.layout;
+			if ((layout == L_VERT || layout == L_HORIZ) && is_embedded && config->rounded_corners.skip & R_CORNER_SKIP_EMBEDDED) {
 				list_t* sibs = container_get_siblings(con);
-				int idx = container_sibling_index(con);
-				enum corner_location responsible = CORNER_LOCATION_NONE;
-				if (idx == 0) {
-					responsible |= layout == L_HORIZ ? CORNER_LOCATION_LEFT : CORNER_LOCATION_TOP;
-				}
+				if (sibs != NULL) {
+					int idx = container_sibling_index(con);
+					enum corner_location responsible = CORNER_LOCATION_NONE;
+					if (idx == 0) {
+						responsible |= parent_layout == L_HORIZ ? CORNER_LOCATION_LEFT : CORNER_LOCATION_TOP;
+					}
 
-				if (idx == (sibs->length-1)) {
-					responsible |= layout == L_HORIZ ? CORNER_LOCATION_RIGHT : CORNER_LOCATION_BOTTOM;
-				}
+					if (idx == (sibs->length-1)) {
+						responsible |= parent_layout == L_HORIZ ? CORNER_LOCATION_RIGHT : CORNER_LOCATION_BOTTOM;
+					}
 
-				responsible_for_rounded_corners &= responsible;
+					responsible_for_rounded_corners &= responsible;
+				}
 			}
 		}
 
