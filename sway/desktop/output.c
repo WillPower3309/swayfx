@@ -287,13 +287,13 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
                     corners);
 		} else if (wlr_subsurface_try_from_wlr_surface(surface->surface)) {
 			wlr_scene_buffer_set_corner_radius(buffer,
-					container_has_corner_radius(closest_con) && responsible_for_rounded_corners != CORNER_LOCATION_NONE ? corner_radius : 0,
-					responsible_for_rounded_corners);
+					container_has_corner_radius(closest_con) ? corner_radius : 0,
+					CORNER_LOCATION_ALL);
 		} else if ((layer_surface = wlr_layer_surface_v1_try_from_wlr_surface(surface->surface))
 				&& layer_surface->data) {
 			// Layer effects
 			struct sway_layer_surface *surface = layer_surface->data;
-			wlr_scene_buffer_set_corner_radius(buffer, surface->corner_radius, responsible_for_rounded_corners);
+			wlr_scene_buffer_set_corner_radius(buffer, surface->corner_radius, CORNER_LOCATION_ALL);
 			wlr_scene_shadow_set_blur_sigma(surface->shadow_node, config->shadow_blur_sigma);
 			wlr_scene_shadow_set_corner_radius(surface->shadow_node, surface->corner_radius);
 
