@@ -488,7 +488,7 @@ static void arrange_container(struct sway_container *con,
 		}
 	}
 
-	if ((con->current.border == B_NORMAL || !title_bar) && corners.skip & R_CORNER_SKIP_TITLEBAR_SEPARATOR) {
+	if ((con->current.border == B_NORMAL || con->current.border == B_CSD || !title_bar) && corners.skip & R_CORNER_SKIP_TITLEBAR_SEPARATOR) {
 		responsible_corners &= ~CORNER_LOCATION_TOP;
 	}
 
