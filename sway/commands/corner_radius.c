@@ -41,20 +41,9 @@ struct cmd_results *cmd_corner_radius(int argc, char **argv) {
 	} else {
 		struct sway_container* con = config->handler_context.container;
 		con->corner_radius = value;
+		arrange_container(con);
 		output_configure_scene(NULL, &con->scene_tree->node,
 		1.0f, 0, false, false, false, config->rounded_corners.window, NULL);
-		container_update(con);
-	}
-
-	/*
-	 titlebar padding depends on corner_radius to
-	 ensure that titlebars are rendered nicely
-	*/
-	if (value > config->titlebar_h_padding) {
-		config->titlebar_h_padding = value;
-	}
-	if (value > (int)container_titlebar_height()) {
-		config->titlebar_v_padding = (value - config->font_height) / 2;
 	}
 
 
