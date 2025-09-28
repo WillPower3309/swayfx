@@ -295,11 +295,19 @@ void container_update(struct sway_container *con) {
 	scene_rect_set_color(con->title_bar.background, colors->background, alpha);
 	scene_rect_set_color(con->title_bar.border, colors->border, alpha);
 
+	wlr_scene_rect_set_backdrop_blur(con->title_bar.background, con->blur_enabled);
+	wlr_scene_rect_set_backdrop_blur(con->title_bar.border, con->blur_enabled);
+
 	if (con->view) {
 		scene_rect_set_color(con->border.top, colors->child_border, alpha);
 		scene_rect_set_color(con->border.bottom, bottom, alpha);
 		scene_rect_set_color(con->border.left, colors->child_border, alpha);
 		scene_rect_set_color(con->border.right, right, alpha);
+
+		wlr_scene_rect_set_backdrop_blur(con->border.top, con->blur_enabled);
+		wlr_scene_rect_set_backdrop_blur(con->border.bottom, con->blur_enabled);
+		wlr_scene_rect_set_backdrop_blur(con->border.left, con->blur_enabled);
+		wlr_scene_rect_set_backdrop_blur(con->border.right, con->blur_enabled);
 	}
 
 	if (con->title_bar.title_text) {
@@ -501,8 +509,6 @@ void container_arrange_title_bar(struct sway_container *con) {
 
 	wlr_scene_node_set_position(&con->title_bar.bar_tree->node, title_offset, 0);
 	wlr_scene_node_set_position(&con->title_bar.background->node, thickness, thickness);
-
-	wlr_scene_rect_set_backdrop_blur(con->title_bar.background, con->blur_enabled);
 
 	wlr_scene_rect_set_size(con->title_bar.background, width - thickness * 2,
 			height - thickness * (config->titlebar_separator ? 2 : 1));
