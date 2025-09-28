@@ -17,7 +17,7 @@ Sway is an incredible window manager, and certainly one of the most well establi
     <img src="assets/swayfx_screenshot.jpg" width="500"/>
 </p>
 
-[SwayFX is also available on the Fedora copr](https://copr.fedorainfracloud.org/coprs/swayfx/swayfx/)
+For Fedora users, SwayFX is also available in [copr](https://copr.fedorainfracloud.org/coprs/swayfx/swayfx/) or in the [Terra repository](https://terra.fyralabs.com).
 
 [Join our Discord](https://discord.gg/qsSx397rkh)
 
