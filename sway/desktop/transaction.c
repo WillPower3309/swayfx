@@ -502,7 +502,7 @@ static void arrange_container(struct sway_container *con,
 			wlr_scene_node_set_enabled(&con->title_bar.tree->node, false);
 			wlr_scene_node_set_enabled(&con->border.top->node, true);
 		} else {
-			wlr_scene_node_set_enabled(&con->border.top->node, config->titlebar_bottom_margin > 0 || responsible_corners & CORNER_LOCATION_TOP);
+			wlr_scene_node_set_enabled(&con->border.top->node, config->titlebar_bottom_margin > 0 || config->titlebar_width != T_WIDTH_STRETCH || responsible_corners & CORNER_LOCATION_TOP);
 		}
 
 		if (con->current.border == B_NORMAL) {
@@ -533,7 +533,7 @@ static void arrange_container(struct sway_container *con,
 		int border_left = con->current.border_left ? border_width : 0;
 		int border_right = con->current.border_right ? border_width : 0;
 
-		if (con->current.border == B_NORMAL && con->current.border_top && config->titlebar_bottom_margin) {
+		if (con->current.border == B_NORMAL && con->current.border_top && (config->titlebar_bottom_margin || config->titlebar_width != T_WIDTH_STRETCH)) {
 			vert_border_offset += border_top;
 			border_top = border_width;
 		} else if ((!title_bar || con->current.border == B_NORMAL) && corner_radius && responsible_corners & CORNER_LOCATION_TOP) {
@@ -588,7 +588,7 @@ static void arrange_container(struct sway_container *con,
 		}
 
 
-		if (title_bar && con->current.border == B_NORMAL && config->titlebar_bottom_margin > 0) {
+		if (title_bar && con->current.border == B_NORMAL && (config->titlebar_bottom_margin > 0 || config->titlebar_width != T_WIDTH_STRETCH)) {
 			top_offset += container_titlebar_height_and_margin();
 		}
 

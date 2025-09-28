@@ -530,7 +530,7 @@ void container_arrange_title_bar(struct sway_container *con) {
 			},
 	});
 
-	if (container_has_shadow(con) && config->titlebar_bottom_margin > 0) {
+	if (container_has_shadow(con) && (config->titlebar_bottom_margin > 0 || config->titlebar_width != T_WIDTH_STRETCH)) {
 		wlr_scene_node_set_enabled(&con->title_bar.shadow->node, true);
 
 		int shadow_corner_radius = corners != CORNER_LOCATION_NONE ? con->corner_radius + con->current.border_thickness : 0;
