@@ -875,8 +875,9 @@ void set_container_animation_from_val_iterator(struct sway_container *con, void 
 		return;
 	}
 
-	// newly spawned view
-	if (con->current.width == 0 && con->current.height == 0) {
+	// newly spawned or to be fullscreen view
+	if ((con->current.width == 0 && con->current.height == 0) ||
+			con->pending.fullscreen_mode != FULLSCREEN_NONE) {
 		con->animation_state.from_x = con->pending.x;
 		con->animation_state.from_y = con->pending.y;
 		con->animation_state.from_width = con->pending.width;
