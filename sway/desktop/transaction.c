@@ -587,13 +587,23 @@ static void arrange_container(struct sway_container *con,
 			wlr_scene_rect_set_size(con->border.bottom, 0, 0);
 		}
 
+		enum corner_location top_corners = responsible_corners & CORNER_LOCATION_TOP;
 
-		if (title_bar && con->current.border == B_NORMAL && (config->titlebar_bottom_margin > 0 || config->titlebar_width != T_WIDTH_STRETCH)) {
-			top_offset += container_titlebar_height_and_margin();
+		if (title_bar && con->current.border == B_NORMAL) {
+			if (config->titlebar_bottom_margin > 0 || config->titlebar_width != T_WIDTH_STRETCH) {
+				top_offset += container_titlebar_height_and_margin();
+			}
+
+			if (config->titlebar_bottom_margin == 0 && config->titlebar_width == T_WIDTH_STRETCH) {
+				top_corners = config->rounded_corners.titlebar & CORNER_LOCATION_TOP;
+			}
 		}
+
+
 
 		if (container_has_shadow(con)) {
 			int shadow_corner_radius = has_corner_radius ? con->corner_radius + con->current.border_thickness : 0;
+			enum corner_location shadow_corners = (top_corners & CORNER_LOCATION_TOP) | (responsible_corners & CORNER_LOCATION_BOTTOM);
 			if (!con->view && title_bar) {
 				// Stacking/Tabbed containers don't have a border_thickness, so we
 				// use the config default
@@ -610,8 +620,8 @@ static void arrange_container(struct sway_container *con,
 
 			wlr_scene_node_set_position(&con->shadow->node, x, shadow_offset + y);
 			wlr_scene_shadow_set_clipped_region(con->shadow, (struct clipped_region) {
-				.corner_radius = responsible_corners != CORNER_LOCATION_NONE ? shadow_corner_radius : 0,
-				.corners = responsible_corners,
+				.corner_radius = shadow_corners != CORNER_LOCATION_NONE ? shadow_corner_radius : 0,
+				.corners = shadow_corners,
 				.area = {
 					.x = config->shadow_blur_sigma - config->shadow_offset_x,
 					.y = config->shadow_blur_sigma - config->shadow_offset_y,
