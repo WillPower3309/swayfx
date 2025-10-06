@@ -278,6 +278,7 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 				wlr_scene_buffer_set_backdrop_blur_optimized(buffer, should_optimize_blur);
 
 				if (is_saved) {
+					// TODO: clever way to account for stacked / tabbed titlebars
 					int width = get_animated_value(view->container->animation_state.from_width,
 							view->container->current.width);
 					int height = get_animated_value(view->container->animation_state.from_height,

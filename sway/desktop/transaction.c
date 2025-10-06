@@ -416,26 +416,23 @@ static void arrange_container(struct sway_container *con,
 	wlr_scene_node_set_enabled(&con->scene_tree->node, true);
 
 	if(config->animation_duration_ms && con->view) {
+		// clever way to account for stacked / tabbed titlebars
+		int y_offset = con->current.height - height;
+
 		width = get_animated_value(con->animation_state.from_width, width);
-		height = get_animated_value(con->animation_state.from_height, height);
+		height = get_animated_value(con->animation_state.from_height - y_offset, height);
 
 		int x = get_animated_value(con->animation_state.from_x, con->current.x);
-		int y = get_animated_value(con->animation_state.from_y, con->current.y);
+		int y = get_animated_value(con->animation_state.from_y, con->current.y) + y_offset;
 		if (con->current.workspace) {
 			x -= con->current.workspace->x;
 			y -= con->current.workspace->y;
 		}
-
 		if (con->current.parent && con->current.parent->current.workspace) {
-			// clever way to account for stacked / tabbed titlebars
-			int y_offset = height -
-					get_animated_value(con->animation_state.from_height, con->current.height);
-
-			x -= con->current.parent->current.x -
-					con->current.parent->current.workspace->x;
-			y -= con->current.parent->current.y -
-					con->current.parent->current.workspace->y + y_offset;
+			x -= con->current.parent->current.x - con->current.parent->current.workspace->x;
+			y -= con->current.parent->current.y - con->current.parent->current.workspace->y;
 		}
+
 		wlr_scene_node_set_position(&con->scene_tree->node, x, y);
 
 		if (!wl_list_empty(&con->view->content_tree->children)) {
