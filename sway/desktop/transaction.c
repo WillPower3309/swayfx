@@ -930,7 +930,6 @@ static void transaction_apply(struct sway_transaction *transaction) {
 	}
 
 	// Apply the instruction state to the node's current state
-	bool is_animation_state_change = false;
 	for (int i = 0; i < transaction->instructions->length; ++i) {
 		struct sway_transaction_instruction *instruction =
 			transaction->instructions->items[i];
@@ -947,10 +946,6 @@ static void transaction_apply(struct sway_transaction *transaction) {
 					&instruction->workspace_state);
 			break;
 		case N_CONTAINER:
-			if (!is_animation_state_change) {
-				is_animation_state_change = is_con_animation_state_change(
-						node->sway_container->current, instruction->container_state);
-			}
 			apply_container_state(node->sway_container,
 					&instruction->container_state);
 			break;
@@ -959,9 +954,7 @@ static void transaction_apply(struct sway_transaction *transaction) {
 		node->instruction = NULL;
 	}
 
-	if (is_animation_state_change) {
-		start_animation(&animation_update_callback, &animation_complete_callback);
-	}
+	start_animation(&animation_update_callback, &animation_complete_callback);
 }
 
 static void transaction_commit_pending(void);
