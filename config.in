@@ -173,13 +173,13 @@ output * bg @datadir@/backgrounds/sway/Sway_Wallpaper_Blue_1920x1080.png fill
     # Show the next scratchpad window or hide the focused scratchpad window.
     # If there are multiple scratchpad windows, this command cycles through them.
     bindsym $mod+minus scratchpad show
+    
 #
 # SwayFX stuff:
 #
     # SwayFX has window blurring, which gives a blurry transparency to window backgrounds.
-    # Window blurring can either be truly transparent, with other apps visible behind the window, or use the wallpaper
     blur disable
-    blur_xray disable # This setting controls whether or not blur will show hidden windows.
+    blur_xray disable # Window blurring can either be truly transparent, with other apps visible behind the window, or blur according to the wallpaper. blur_xray enables wallpaper blurring. 
     blur_passes 4
     blur_radius 4
     # blur_noise <float value 0 - 1>
@@ -187,7 +187,7 @@ output * bg @datadir@/backgrounds/sway/Sway_Wallpaper_Blue_1920x1080.png fill
     # blur_contrast <float value 0 - 2>
     # blur_saturation <float value 0 - 2>
 
-    # SwayFX features window corners
+    # Window corners can be rounded in SwayFX
     # corner_radius can be any number of pixels
     corner_radius 15
     smart_corner_radius enable
@@ -202,14 +202,11 @@ output * bg @datadir@/backgrounds/sway/Sway_Wallpaper_Blue_1920x1080.png fill
     # shadow_blur_radius <integer value 0 - 99>
     # shadow_color <hex color with alpha>
 
-    # SwayFX also features 
+    # Dmimin
     # default_dim_inactive <float value 0.0 - 1.0>
     # for_window [CRITERIA_HERE] dim_inactive <float value 0.0 - 1.0>
     # dim_inactive_colors.unfocused <hex color>
     # dim_inactive_colors.urgent <hex color> 
-
-    
-
 
 #
 # Resizing containers:
