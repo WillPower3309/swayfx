@@ -277,6 +277,7 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 				bool should_optimize_blur = (closest_con && !container_is_floating_or_child(closest_con)) || config->blur_xray;
 				wlr_scene_buffer_set_backdrop_blur_optimized(buffer, should_optimize_blur);
 
+				// TODO: also check if it is being animated -> move is_animated to container.c?
 				if (is_saved) {
 					int title_offset = view->container->scene_tree->node.y;
 					int width = get_animated_value(view->container->animation_state.from_width,
@@ -291,6 +292,7 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 
 					buffer->dst_width = width;
 					buffer->dst_height = height;
+					buffer->opacity *= get_animated_value(view->container->animation_state.from_resize_crossfade_opacity, 0.0f);
 				}
 			} else {
 				// Subsurfaces

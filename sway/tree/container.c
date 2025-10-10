@@ -178,6 +178,7 @@ struct sway_container *container_create(struct sway_view *view) {
 	c->animation_state.from_y = c->current.y;
 	c->animation_state.from_width = c->current.width;
 	c->animation_state.from_height = c->current.height;
+	c->animation_state.from_resize_crossfade_opacity = 1.0f;
 
 	wl_signal_init(&c->events.destroy);
 	wl_signal_emit_mutable(&root->events.new_node, &c->node);

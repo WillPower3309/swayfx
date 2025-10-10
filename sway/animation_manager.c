@@ -98,6 +98,6 @@ float lerp(float a, float b, float t) {
 	return a * (1.0 - t) + b * t;
 }
 
-int get_animated_value(float from, float to) {
+float get_animated_value(float from, float to) {
 	return lerp(from, to, animation_manager.current_animation.multiplier);
 }

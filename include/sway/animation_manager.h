@@ -9,6 +9,6 @@ void refresh_animation_manager_timing();
 
 void start_animation(void (update_callback)(void), void (complete_callback)(void));
 
-int get_animated_value(float from, float to);
+float get_animated_value(float from, float to);
 
 #endif

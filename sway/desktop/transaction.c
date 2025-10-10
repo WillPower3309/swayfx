@@ -230,12 +230,16 @@ static void apply_workspace_state(struct sway_workspace *ws,
 	memcpy(&ws->current, state, sizeof(struct sway_workspace_state));
 }
 
+static bool is_container_animated_resize(struct sway_container *container) {
+	return container->animation_state.from_width != container->current.width ||
+			container->animation_state.from_height != container->current.height;
+}
+
 // TODO: do me better
 static bool is_container_animated(struct sway_container *container) {
 	return container->animation_state.from_x != container->current.x ||
 			container->animation_state.from_y != container->current.y ||
-			container->animation_state.from_width != container->current.width ||
-			container->animation_state.from_height != container->current.height;
+			is_container_animated_resize(container);
 }
 
 static void apply_container_state(struct sway_container *container,
@@ -844,17 +848,18 @@ static void arrange_root(struct sway_root *root) {
 }
 
 // TODO: store container animation states in transaction, and only update containers that have animation states
-void remove_saved_buffer_iterator(struct sway_container *container, void *_) {
+void container_animation_complete_iterator(struct sway_container *container, void *_) {
 	struct sway_view *view = container->view;
 	if (view && view->surface && view->saved_surface_tree) {
 		if (!container->node.destroying || container->node.ntxnrefs == 1) {
 			view_remove_saved_buffer(view);
 		}
 	}
+	container->animation_state.from_resize_crossfade_opacity = 1.0f;
 }
 
 void animation_complete_callback() {
-	root_for_each_container(remove_saved_buffer_iterator, NULL);
+	root_for_each_container(container_animation_complete_iterator, NULL);
 }
 
 void animation_update_callback() {
@@ -876,6 +881,7 @@ void set_container_animation_from_val_iterator(struct sway_container *con, void 
 		con->animation_state.from_y = con->pending.y;
 		con->animation_state.from_width = con->pending.width;
 		con->animation_state.from_height = con->pending.height;
+		con->animation_state.from_resize_crossfade_opacity = 1.0f;
 		return;
 	}
 
@@ -891,6 +897,12 @@ void set_container_animation_from_val_iterator(struct sway_container *con, void 
 	con->animation_state.from_height = get_animated_value(
 		con->animation_state.from_height, con->current.height
 	);
+
+	if (is_container_animated_resize(con)) {
+		// TODO: the below triggers even when swapping two windows with no resize
+		// printf("RESIZE! prev vs current width: %f vs %f, prev vs current height: %f vs %f\n", con->animation_state.from_width, con->current.width, con->animation_state.from_height, con->current.height);
+		con->animation_state.from_resize_crossfade_opacity = get_animated_value(con->animation_state.from_resize_crossfade_opacity, 0.0f);
+	}
 }
 
 bool is_con_animation_state_change(struct sway_container_state current,
