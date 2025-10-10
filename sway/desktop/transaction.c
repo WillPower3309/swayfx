@@ -415,7 +415,7 @@ static void arrange_container(struct sway_container *con,
 	// make sure it's enabled for viewing
 	wlr_scene_node_set_enabled(&con->scene_tree->node, true);
 
-	if(config->animation_duration_ms && con->view) {
+	if(config->animation_duration_ms && con->view && is_container_animated(con)) {
 		// clever way to account for stacked / tabbed titlebars
 		int y_offset = con->current.height - height;
 
@@ -432,18 +432,7 @@ static void arrange_container(struct sway_container *con,
 			x -= con->current.parent->current.x - con->current.parent->current.workspace->x;
 			y -= con->current.parent->current.y - con->current.parent->current.workspace->y;
 		}
-
 		wlr_scene_node_set_position(&con->scene_tree->node, x, y);
-
-		if (!wl_list_empty(&con->view->content_tree->children)) {
-			struct wlr_box clip = (struct wlr_box){
-				.x = con->view->geometry.x,
-				.y = con->view->geometry.y,
-				.width = MAX(1, width),
-				.height = MAX(1, height)
-			};
-			wlr_scene_subsurface_tree_set_clip(&con->view->content_tree->node, &clip);
-		}
 	}
 
 	if (con->output_handler) {
