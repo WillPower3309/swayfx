@@ -420,7 +420,7 @@ static void arrange_container(struct sway_container *con,
 		int y_offset = con->current.height - height;
 
 		width = get_animated_value(con->animation_state.from_width, width);
-		height = get_animated_value(con->animation_state.from_height - y_offset, height);
+		height = MAX(0, get_animated_value(con->animation_state.from_height - y_offset, height));
 
 		int x = get_animated_value(con->animation_state.from_x, con->current.x);
 		int y = get_animated_value(con->animation_state.from_y, con->current.y) + y_offset;
