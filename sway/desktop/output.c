@@ -262,9 +262,8 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 			// Saved buffers only includes either XDG or XWayland buffers, not
 			// border buffers like the text buffer.
 			bool is_saved = view->saved_surface_tree && view->saved_surface_tree->node.enabled;
-			bool has_surface = surface && surface->surface;
 			// Only the main surface
-			bool is_main_surface = has_surface && surface->surface == view->surface;
+			bool is_main_surface = surface && surface->surface == view->surface;
 
 			if (is_saved || is_main_surface) {
 				// Main surfaces and saved
@@ -277,22 +276,25 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 				bool should_optimize_blur = (closest_con && !container_is_floating_or_child(closest_con)) || config->blur_xray;
 				wlr_scene_buffer_set_backdrop_blur_optimized(buffer, should_optimize_blur);
 
-				// TODO: also check if it is being animated -> move is_animated to container.c?
-				if (is_saved) {
-					int title_offset = view->container->scene_tree->node.y;
-					int width = get_animated_value(view->container->animation_state.from_width,
-							view->container->current.width);
-					int height = MAX(0, get_animated_value(view->container->animation_state.from_height,
-							view->container->current.height) - title_offset);
-					if (buffer->transform & WL_OUTPUT_TRANSFORM_90) {
-						int temp = width;
-						width = height;
-						height = temp;
-					}
+				// TODO: check if it is being animated -> move is_animated to container.c?
+				int title_offset = view->container->scene_tree->node.y;
+				int width = get_animated_value(view->container->animation_state.from_width,
+						view->container->current.width);
+				int height = MAX(0, get_animated_value(view->container->animation_state.from_height,
+						view->container->current.height) - title_offset);
+				if (buffer->transform & WL_OUTPUT_TRANSFORM_90) {
+					int temp = width;
+					width = height;
+					height = temp;
+				}
 
-					buffer->dst_width = width;
-					buffer->dst_height = height;
-					buffer->opacity *= get_animated_value(view->container->animation_state.from_resize_crossfade_opacity, 0.0f);
+				buffer->dst_width = width;
+				buffer->dst_height = height;
+
+				if (is_saved && !is_main_surface) {
+					float resize_crossfade_opacity = buffer->opacity * get_animated_value(
+							view->container->animation_state.from_resize_crossfade_opacity, 0.0f);
+					wlr_scene_buffer_set_opacity(buffer, resize_crossfade_opacity);
 				}
 			} else {
 				// Subsurfaces

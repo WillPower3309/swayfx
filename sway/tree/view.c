@@ -1258,7 +1258,8 @@ void view_save_buffer(struct sway_view *view) {
 	wlr_scene_node_for_each_buffer(&view->content_tree->node,
 		view_save_buffer_iterator, view->saved_surface_tree);
 
-	wlr_scene_node_set_enabled(&view->content_tree->node, false);
+	// TODO: conditionally avoid this if resizing
+	//wlr_scene_node_set_enabled(&view->content_tree->node, false);
 	wlr_scene_node_set_enabled(&view->saved_surface_tree->node, true);
 }
 
