@@ -202,7 +202,7 @@ output * bg @datadir@/backgrounds/sway/Sway_Wallpaper_Blue_1920x1080.png fill
     # shadow_blur_radius <integer value 0 - 99>
     # shadow_color <hex color with alpha>
 
-    # Dmimin
+    # Dimming
     # default_dim_inactive <float value 0.0 - 1.0>
     # for_window [CRITERIA_HERE] dim_inactive <float value 0.0 - 1.0>
     # dim_inactive_colors.unfocused <hex color>
