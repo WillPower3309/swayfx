@@ -25,4 +25,8 @@ void sway_text_node_set_max_width(struct sway_text_node *node, int max_width);
 
 void sway_text_node_set_background(struct sway_text_node *node, float background[4]);
 
+void sway_text_node_set_backdrop_blur(struct sway_text_node *node, bool enabled);
+
+void sway_text_node_set_backdrop_blur_optimized(struct sway_text_node *node, bool enabled);
+
 #endif
