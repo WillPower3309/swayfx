@@ -473,11 +473,11 @@ void container_arrange_title_bar(struct sway_container *con) {
 	} else if (config->rounded_corners.skip & R_CORNER_SKIP_BETWEEN_TABS && (con->current.parent || con->current.workspace)) {
 		if (layout == L_TABBED && siblings->length > 1) {
 			if (siblings->items[0] == con) {
-				corners &= ~CORNER_LOCATION_TOP_RIGHT;
+				corners &= ~CORNER_LOCATION_RIGHT;
 			} else if (siblings->items[siblings->length - 1] == con) {
-				corners &= ~CORNER_LOCATION_TOP_LEFT;
+				corners &= ~CORNER_LOCATION_LEFT;
 			} else {
-				corners &= ~CORNER_LOCATION_TOP;
+				corners &= ~CORNER_LOCATION_ALL;
 			}
 		} else if (layout == L_STACKED && siblings->items[0] != con) {
 			corners &= ~CORNER_LOCATION_TOP;
