@@ -1,4 +1,4 @@
-# Default config for sway
+# Default config for SwayFX
 #
 # Copy this to ~/.config/sway/config and edit it to your liking.
 #
@@ -83,8 +83,8 @@ output * bg @datadir@/backgrounds/sway/Sway_Wallpaper_Blue_1920x1080.png fill
     # Reload the configuration file
     bindsym $mod+Shift+c reload
 
-    # Exit sway (logs you out of your Wayland session)
-    bindsym $mod+Shift+e exec swaynag -t warning -m 'You pressed the exit shortcut. Do you really want to exit sway? This will end your Wayland session.' -B 'Yes, exit sway' 'swaymsg exit'
+    # Exit SwayFX (logs you out of your Wayland session)
+    bindsym $mod+Shift+e exec swaynag -t warning -m 'You pressed the exit shortcut. Do you really want to exit SwayFX? This will end your Wayland session.' -B 'Yes, exit SwayFX' 'swaymsg exit'
 #
 # Moving around:
 #
@@ -164,7 +164,7 @@ output * bg @datadir@/backgrounds/sway/Sway_Wallpaper_Blue_1920x1080.png fill
 #
 # Scratchpad:
 #
-    # Sway has a "scratchpad", which is a bag of holding for windows.
+    # SwayFX has a "scratchpad", which is a bag of holding for windows.
     # You can send windows there and get them back later.
 
     # Move the currently focused window to the scratchpad
@@ -173,6 +173,41 @@ output * bg @datadir@/backgrounds/sway/Sway_Wallpaper_Blue_1920x1080.png fill
     # Show the next scratchpad window or hide the focused scratchpad window.
     # If there are multiple scratchpad windows, this command cycles through them.
     bindsym $mod+minus scratchpad show
+    
+#
+# SwayFX stuff:
+#
+    # SwayFX has window blurring, which gives a blurry transparency to window backgrounds.
+    blur disable
+    blur_xray disable # Window blurring can either be truly transparent, with other apps visible behind the window, or blur according to the wallpaper. blur_xray enables wallpaper blurring. 
+    blur_passes 4
+    blur_radius 4
+    # blur_noise <float value 0 - 1>
+    # blur_brightness <float value 0 - 2>
+    # blur_contrast <float value 0 - 2>
+    # blur_saturation <float value 0 - 2>
+
+    # Window corners can be rounded in SwayFX
+    # corner_radius can be any number of pixels
+    corner_radius 15
+    smart_corner_radius enable
+
+    # SwayFX also features window drop shadows, which, of course, can be enabled at any time
+    shadows disable
+    shadows_on_csd enable
+
+    # You can also offset the shadow's position, make unfocused windows have different shadows, give shadows a nondefault color, and blur shadows
+    # shadow_inactive_color #0000007F
+    # shadow_offset <x offset> <y offset>
+    # shadow_blur_radius <integer value 0 - 99>
+    # shadow_color <hex color with alpha>
+
+    # Dimming
+    # default_dim_inactive <float value 0.0 - 1.0>
+    # for_window [CRITERIA_HERE] dim_inactive <float value 0.0 - 1.0>
+    # dim_inactive_colors.unfocused <hex color>
+    # dim_inactive_colors.urgent <hex color> 
+
 #
 # Resizing containers:
 #
