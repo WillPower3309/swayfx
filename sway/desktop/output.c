@@ -260,8 +260,8 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 		case SWAY_SCENE_DESC_VIEW: {
 			struct sway_view *view = closest_desc->data;
 			// Saved buffers only includes either XDG or XWayland buffers, not
-			// border buffers like the text buffer.
-			bool is_saved = view->saved_surface_tree && view->saved_surface_tree->node.enabled;
+			// border buffers like the text buffer
+			bool is_saved = view->saved_surface_tree; // TODO: make this only true if the current buffer is saved - may fix firefox opacity on resize
 			// Only the main surface
 			bool is_main_surface = surface && surface->surface == view->surface;
 
