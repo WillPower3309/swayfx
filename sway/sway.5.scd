@@ -862,6 +862,7 @@ The default colors are:
 	- *blur_xray* <enable|disable>
 	- *blur_ignore_transparent* <enable|disable>
 	- *shadows* <enable|disable>
+	- *use_drop_shadow* <enable|disable>
 	- *corner_radius* <integer>
 	- *reset* Resets all previously applied effects
 	- *reset* To reset/disable all previously applied effects to the layer application
@@ -873,6 +874,7 @@ The default colors are:
 			blur_xray enable;
 			blur_ignore_transparent enable;
 			shadows enable;
+			use_drop_shadow enable;
 			corner_radius 6;
 		}
 

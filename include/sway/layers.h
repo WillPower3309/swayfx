@@ -26,6 +26,7 @@ struct sway_layer_surface {
 	struct wlr_layer_surface_v1 *layer_surface;
 
 	bool shadow_enabled;
+	bool use_drop_shadow;
 	bool blur_enabled;
 	bool blur_xray;
 	bool blur_ignore_transparent;

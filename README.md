@@ -53,6 +53,7 @@ For Fedora users, SwayFX is also available in [copr](https://copr.fedorainfraclo
             blur_xray enable;
             blur_ignore_transparent enable;
             shadows enable;
+            use_drop_shadow enable;
             corner_radius 20;
         }
         ```
@@ -61,6 +62,7 @@ For Fedora users, SwayFX is also available in [copr](https://copr.fedorainfraclo
         - `blur_xray <enable|disable>`
         - `blur_ignore_transparent <enable|disable>`
         - `shadows <enable|disable>`
+        - `use_drop_shadow <enable|disable>`
         - `corner_radius <int>`
         - `reset`: To reset/disable all previously applied effects to the layer application
 + Dim unfocused windows:
