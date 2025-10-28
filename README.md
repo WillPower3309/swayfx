@@ -17,7 +17,7 @@ Sway is an incredible window manager, and certainly one of the most well establi
     <img src="assets/swayfx_screenshot.jpg" width="500"/>
 </p>
 
-[SwayFX is also available on the Fedora copr](https://copr.fedorainfracloud.org/coprs/swayfx/swayfx/)
+For Fedora users, SwayFX is also available in [copr](https://copr.fedorainfracloud.org/coprs/swayfx/swayfx/) or in the [Terra repository](https://terra.fyralabs.com).
 
 [Join our Discord](https://discord.gg/qsSx397rkh)
 
@@ -93,8 +93,30 @@ You can also bring up a development shell and follow the build instructions belo
 nix develop
 ```
 ### Debian
+
 Check [INSTALL-deb.md](/INSTALL-deb.md)
 
+### Container (Docker)
+
+To build SwayFX inside a container, install Docker and run the following commands from inside this repository:
+
+```bash
+# build the container and run it (which builds SwayFX)
+docker compose up --build
+
+# become root to install the previously built files
+sudo bash
+
+# copy all files into the host file system at /usr/local/
+while read -r FILE; do
+  NEW_FILE=/usr/local${FILE#opt}
+  NEW_DIR=$(dirname "${NEW_FILE}")
+  [[ -d ${NEW_DIR} ]] || mkdir -p "${NEW_DIR}"
+
+  echo "Creating '${NEW_FILE}'"
+  cp "${FILE}" "${NEW_FILE}"
+done < <(command find opt/ -type f)
+```
 
 ### Manual Steps
 

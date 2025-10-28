@@ -67,8 +67,6 @@
           packages = [ pkgs.gdb ]; # add debugging packages
           shellHook = ''
             (
-              # Copy the nix version of wlroots and scenefx into the project
-              # This is useful if you want meson to use them as subprojects during manual dev/testing
               mkdir -p "$PWD/subprojects" && cd "$PWD/subprojects"
               if [ ! -d scenefx ]; then
                 echo "Copying scenefx to ./subprojects..."
@@ -77,6 +75,7 @@
               cd "$OLDPWD"
             ) || echo "Failed to copy subproject sources."
           '';
+          hardeningDisable = [ "fortify" ];
         };
 
         formatter = pkgs.nixfmt-rfc-style;
