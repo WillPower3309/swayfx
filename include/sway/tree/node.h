@@ -91,4 +91,7 @@ struct wlr_scene_shadow *alloc_scene_shadow(struct wlr_scene_tree *parent,
 		int width, int height, int corner_radius, float blur_sigma,
 		const float color [static 4], bool *failed);
 
+struct wlr_scene_blur_source *alloc_scene_blur_source(struct wlr_scene_tree *parent,
+		int width, int height, bool *failed);
+
 #endif
