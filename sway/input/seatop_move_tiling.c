@@ -473,7 +473,8 @@ void seatop_begin_move_tiling_threshold(struct sway_seat *seat,
 		free(e);
 		return;
 	}
-	wlr_scene_rect_set_backdrop_blur(e->indicator_rect, true);
+	// TODO: re-add blur
+	// wlr_scene_rect_set_backdrop_blur(e->indicator_rect, true);
 
 	e->con = con;
 	e->ref_lx = seat->cursor->cursor->x;
