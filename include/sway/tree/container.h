@@ -90,7 +90,7 @@ struct sway_container {
 		struct wlr_scene_rect *right;
 	} border;
 
-	struct wlr_scene_blur_source *blur_source;
+	struct wlr_scene_blur *blur;
 	struct wlr_scene_shadow *shadow;
 
 	struct wlr_scene_tree *content_tree;

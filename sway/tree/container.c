@@ -108,7 +108,7 @@ struct sway_container *container_create(struct sway_view *view) {
 	bool failed = false;
 	c->scene_tree = alloc_scene_tree(root->staging, &failed);
 
-	c->blur_source = alloc_scene_blur_source(c->scene_tree, 0, 0, &failed);
+	c->blur = alloc_scene_blur(c->scene_tree, 0, 0, &failed);
 
 	c->shadow = alloc_scene_shadow(c->scene_tree, 0, 0,
 			0, config->shadow_blur_sigma, config->shadow_color, &failed);

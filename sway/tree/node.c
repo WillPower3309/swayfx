@@ -206,20 +206,20 @@ struct wlr_scene_shadow *alloc_scene_shadow(struct wlr_scene_tree *parent,
 	return shadow;
 }
 
-struct wlr_scene_blur_source *alloc_scene_blur_source(struct wlr_scene_tree *parent,
+struct wlr_scene_blur *alloc_scene_blur(struct wlr_scene_tree *parent,
 		int width, int height, bool *failed) {
 	// fallthrough
 	if (*failed) {
 		return NULL;
 	}
 
-	struct wlr_scene_blur_source *blur_source = wlr_scene_blur_source_create(
+	struct wlr_scene_blur *blur = wlr_scene_blur_create(
 			parent, width, height);
-	if (!blur_source) {
+	if (!blur) {
 		sway_log(SWAY_ERROR, "Failed to allocate a scene node");
 		*failed = true;
 	}
 
-	return blur_source;
+	return blur;
 }
 

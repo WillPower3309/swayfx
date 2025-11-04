@@ -274,9 +274,16 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 			wlr_scene_buffer_set_corner_radius(buffer, surface->corner_radius, CORNER_LOCATION_ALL);
 			wlr_scene_shadow_set_blur_sigma(surface->shadow_node, config->shadow_blur_sigma);
 			wlr_scene_shadow_set_corner_radius(surface->shadow_node, surface->corner_radius);
-			wlr_scene_node_set_enabled(&surface->blur_source->node, surface->blur_enabled);
-			wlr_scene_blur_source_set_should_only_blur_bottom_layer(surface->blur_source, surface->blur_xray);
-			wlr_scene_blur_source_set_corner_radius(surface->blur_source, surface->corner_radius, CORNER_LOCATION_ALL);
+
+			if (surface->blur_ignore_transparent) {
+				wlr_scene_blur_set_transparency_mask_source(surface->blur_node, buffer);
+			} else {
+				wlr_scene_blur_set_transparency_mask_source(surface->blur_node, NULL);
+			}
+
+			wlr_scene_node_set_enabled(&surface->blur_node->node, surface->blur_enabled);
+			wlr_scene_blur_set_should_only_blur_bottom_layer(surface->blur_node, surface->blur_xray);
+			wlr_scene_blur_set_corner_radius(surface->blur_node, surface->corner_radius, CORNER_LOCATION_ALL);
 		}
 	} else if (node->type == WLR_SCENE_NODE_TREE) {
 		struct wlr_scene_tree *tree = wlr_scene_tree_from_node(node);
@@ -284,10 +291,10 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 		wl_list_for_each(node, &tree->children, link) {
 			output_configure_scene(output, node, opacity, corner_radius, blur_enabled, has_titlebar, closest_con);
 		}
-	} else if (node->type == WLR_SCENE_NODE_BLUR_SOURCE && closest_con) {
+	} else if (node->type == WLR_SCENE_NODE_BLUR && closest_con) {
 		// Only enable xray blur if tiled or when xray is explicitly enabled
 		bool should_optimize_blur = !container_is_floating_or_child(closest_con) || config->blur_xray;
-		wlr_scene_blur_source_set_should_only_blur_bottom_layer(closest_con->blur_source, should_optimize_blur);
+		wlr_scene_blur_set_should_only_blur_bottom_layer(closest_con->blur, should_optimize_blur);
 	}
 }
 

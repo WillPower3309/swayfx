@@ -22,7 +22,7 @@ struct sway_layer_surface {
 	struct sway_output *output;
 	struct wlr_scene_layer_surface_v1 *scene;
 	struct wlr_scene_tree *tree;
-	struct wlr_scene_blur_source *blur_source;
+	struct wlr_scene_blur *blur_node;
 	struct wlr_scene_shadow *shadow_node;
 	struct wlr_layer_surface_v1 *layer_surface;
 
