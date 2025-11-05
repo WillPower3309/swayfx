@@ -274,15 +274,17 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 			wlr_scene_shadow_set_blur_sigma(surface->shadow_node, config->shadow_blur_sigma);
 			wlr_scene_shadow_set_corner_radius(surface->shadow_node, surface->corner_radius);
 
-			if (surface->blur_ignore_transparent) {
-				wlr_scene_blur_set_transparency_mask_source(surface->blur_node, buffer);
-			} else {
-				wlr_scene_blur_set_transparency_mask_source(surface->blur_node, NULL);
-			}
-
 			wlr_scene_node_set_enabled(&surface->blur_node->node, surface->blur_enabled);
-			wlr_scene_blur_set_should_only_blur_bottom_layer(surface->blur_node, surface->blur_xray);
-			wlr_scene_blur_set_corner_radius(surface->blur_node, surface->corner_radius, CORNER_LOCATION_ALL);
+
+			if (surface->blur_enabled) {
+				if (surface->blur_ignore_transparent) {
+					wlr_scene_blur_set_transparency_mask_source(surface->blur_node, buffer);
+				} else {
+					wlr_scene_blur_set_transparency_mask_source(surface->blur_node, NULL);
+				}
+				wlr_scene_blur_set_should_only_blur_bottom_layer(surface->blur_node, surface->blur_xray);
+				wlr_scene_blur_set_corner_radius(surface->blur_node, surface->corner_radius, CORNER_LOCATION_ALL);
+			}
 		}
 	} else if (node->type == WLR_SCENE_NODE_TREE) {
 		struct wlr_scene_tree *tree = wlr_scene_tree_from_node(node);
