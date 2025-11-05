@@ -482,12 +482,12 @@ static void arrange_container(struct sway_container *con,
 
 			responsible_corners &= current_relevant;
 
-
 			current = parent;
 			parent = parent->current.parent;
 		}
 	}
 
+	bool is_titlebar_attached = con->current.border == B_NORMAL && config->titlebar_width == T_WIDTH_STRETCH && config->titlebar_bottom_margin == 0;
 	if ((con->current.border == B_NORMAL || con->current.border == B_CSD || !title_bar) && corners.skip & R_CORNER_SKIP_TITLEBAR_SEPARATOR) {
 		responsible_corners &= ~CORNER_LOCATION_TOP;
 	}
@@ -550,7 +550,7 @@ static void arrange_container(struct sway_container *con,
 		wlr_scene_rect_set_size(con->border.right, border_right, vert_border_height);
 
 		if (border_top || (corner_radius && responsible_corners & CORNER_LOCATION_TOP)) {
-			wlr_scene_rect_set_size(con->border.top, width, border_top + corner_radius);
+			wlr_scene_rect_set_size(con->border.top, width, border_top + (responsible_corners & CORNER_LOCATION_TOP ? corner_radius : 0));
 			wlr_scene_rect_set_corner_radius(con->border.top, !has_corner_radius ? 0 :
 					corner_radius + border_width, CORNER_LOCATION_TOP & responsible_corners);
 			wlr_scene_rect_set_clipped_region(con->border.top, (struct clipped_region) {
@@ -671,9 +671,13 @@ static void arrange_container(struct sway_container *con,
 			border_left, top_offset+border_top);
 
 		wlr_scene_node_set_enabled(&con->blur->node, con->blur_enabled);
-		wlr_scene_node_set_position(&con->blur->node, border_left, top_offset+border_top);
-		wlr_scene_blur_set_size(con->blur, con->current.content_width,
-			con->current.content_height);
+
+		wlr_scene_node_set_position(&con->blur->node, con->blur_border ? 0 : border_left, top_offset + (con->blur_border ? 0 : border_top));
+		wlr_scene_blur_set_size(con->blur, con->blur_border ? width : con->current.content_width,
+			con->blur_border ? (height - top_offset) : con->current.content_height);
+		wlr_scene_blur_set_corner_radius(con->blur, !has_corner_radius ? 0 :
+					corner_radius + (con->blur_border ? border_width : 0),
+					responsible_corners | (is_titlebar_attached ? corners.titlebar & CORNER_LOCATION_TOP : CORNER_LOCATION_NONE));
 	} else {
 		// make sure to disable the title bar if the parent is not managing it
 		if (title_bar) {

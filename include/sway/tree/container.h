@@ -75,6 +75,7 @@ struct sway_container {
 	struct {
 		struct wlr_scene_tree *bar_tree;
 		struct wlr_scene_tree *tree;
+		struct wlr_scene_blur *blur;
 
 		struct wlr_scene_shadow *shadow;
 		struct wlr_scene_rect *border;
@@ -155,6 +156,7 @@ struct sway_container {
 	int corner_radius;
 
 	bool blur_enabled;
+	bool blur_border;
 	bool shadow_enabled;
 	float dim;
 

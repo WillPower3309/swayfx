@@ -522,6 +522,7 @@ struct sway_config {
 	} dim_inactive_colors;
 
 	bool blur_enabled;
+	bool blur_border;
 	bool blur_xray;
 	struct blur_data blur_data;
 
@@ -577,6 +578,7 @@ struct sway_config {
 	enum titlebar_width titlebar_width;
 	int titlebar_uniform_width;
 	enum titlebar_tab_arrangement titlebar_tab_arrangement;
+	bool titlebar_blur;
 	size_t urgent_timeout;
 	enum sway_fowa focus_on_window_activation;
 	enum sway_popup_during_fullscreen popup_during_fullscreen;

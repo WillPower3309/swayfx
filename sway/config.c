@@ -364,6 +364,7 @@ static void config_defaults(struct sway_config *config) {
 	color_to_rgba(config->dim_inactive_colors.urgent, 0x900000FF);
 
 	config->blur_enabled = false;
+	config->blur_border = true;
 	config->blur_xray = false;
 	config->blur_data = blur_data_get_default();
 
@@ -382,6 +383,7 @@ static void config_defaults(struct sway_config *config) {
 	config->titlebar_tab_arrangement = T_TAB_ARRANGEMENT_EVEN;
 	config->titlebar_width = T_WIDTH_STRETCH;
 	config->titlebar_uniform_width = 200;
+	config->titlebar_blur = true;
 
 	config->scratchpad_minimize = false;
 
