@@ -554,6 +554,7 @@ static void arrange_container(struct sway_container *con,
 		wlr_scene_node_set_position(&con->view->scene_tree->node,
 			border_left, border_top);
 
+		wlr_scene_node_set_enabled(&con->blur->node, con->blur_enabled);
 		wlr_scene_node_set_position(&con->blur->node, border_left, border_top);
 		wlr_scene_blur_set_size(con->blur, con->current.content_width,
 			con->current.content_height);

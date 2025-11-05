@@ -222,7 +222,6 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 		opacity = con->alpha;
 		corner_radius = con->corner_radius;
 		blur_enabled = con->blur_enabled;
-
 		enum sway_container_layout layout = con->current.layout;
 		has_titlebar |= con->current.border == B_NORMAL || layout == L_STACKED || layout == L_TABBED;
 	}
@@ -292,9 +291,12 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 			output_configure_scene(output, node, opacity, corner_radius, blur_enabled, has_titlebar, closest_con);
 		}
 	} else if (node->type == WLR_SCENE_NODE_BLUR && closest_con) {
+		struct wlr_scene_blur *blur = wlr_scene_blur_from_node(node);
+
 		// Only enable xray blur if tiled or when xray is explicitly enabled
 		bool should_optimize_blur = !container_is_floating_or_child(closest_con) || config->blur_xray;
-		wlr_scene_blur_set_should_only_blur_bottom_layer(closest_con->blur, should_optimize_blur);
+		wlr_scene_blur_set_should_only_blur_bottom_layer(blur, should_optimize_blur);
+		wlr_scene_node_set_enabled(node, closest_con->blur_enabled);
 	}
 }
 
