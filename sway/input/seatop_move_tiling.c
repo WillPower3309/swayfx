@@ -28,11 +28,13 @@ struct seatop_move_tiling_event {
 	bool split_target;
 	bool insert_after_target;
 	struct wlr_scene_rect *indicator_rect;
+	struct wlr_scene_blur *indicator_blur;
 };
 
 static void handle_end(struct sway_seat *seat) {
 	struct seatop_move_tiling_event *e = seat->seatop_data;
 	wlr_scene_node_destroy(&e->indicator_rect->node);
+	wlr_scene_node_destroy(&e->indicator_blur->node);
 	e->indicator_rect = NULL;
 }
 
@@ -55,6 +57,7 @@ static void handle_motion_prethreshold(struct sway_seat *seat) {
 	// If the threshold has been exceeded, start the actual drag
 	if ((cx - sx) * (cx - sx) + (cy - sy) * (cy - sy) > threshold) {
 		wlr_scene_node_set_enabled(&e->indicator_rect->node, true);
+		wlr_scene_node_set_enabled(&e->indicator_blur->node, true);
 		e->threshold_reached = true;
 		cursor_set_image(seat->cursor, "grab", NULL);
 	}
@@ -154,6 +157,9 @@ static bool split_titlebar(struct sway_node *node, struct sway_container *avoid,
 }
 
 static void update_indicator(struct seatop_move_tiling_event *e, struct wlr_box *box) {
+	wlr_scene_node_set_position(&e->indicator_blur->node, box->x, box->y);
+	wlr_scene_blur_set_size(e->indicator_blur, box->width, box->height);
+
 	wlr_scene_node_set_position(&e->indicator_rect->node, box->x, box->y);
 	wlr_scene_rect_set_size(e->indicator_rect, box->width, box->height);
 
@@ -166,9 +172,10 @@ static void update_indicator(struct seatop_move_tiling_event *e, struct wlr_box 
 			corner_radius += e->con->current.border_thickness;
 		}
 	}
-	wlr_scene_rect_set_corner_radius(e->indicator_rect,
-			MIN(corner_radius, MIN(box->width / 2, box->height / 2)),
-			CORNER_LOCATION_ALL);
+
+	int corner_radius_real = MIN(corner_radius, MIN(box->width / 2, box->height / 2));
+	wlr_scene_rect_set_corner_radius(e->indicator_rect, corner_radius_real, CORNER_LOCATION_ALL);
+	wlr_scene_blur_set_corner_radius(e->indicator_blur, corner_radius_real, CORNER_LOCATION_ALL);
 }
 
 static void handle_motion_postthreshold(struct sway_seat *seat) {
@@ -468,13 +475,19 @@ void seatop_begin_move_tiling_threshold(struct sway_seat *seat,
 		indicator[2] * .5,
 		indicator[3] * .5,
 	};
-	e->indicator_rect = wlr_scene_rect_create(seat->scene_tree, 0, 0, color);
-	if (!e->indicator_rect) {
+
+	e->indicator_blur = wlr_scene_blur_create(seat->scene_tree, 0, 0);
+	if (!e->indicator_blur) {
 		free(e);
 		return;
 	}
-	// TODO: re-add blur
-	// wlr_scene_rect_set_backdrop_blur(e->indicator_rect, true);
+
+	e->indicator_rect = wlr_scene_rect_create(seat->scene_tree, 0, 0, color);
+	if (!e->indicator_rect) {
+		wlr_scene_node_destroy(&e->indicator_blur->node);
+		free(e);
+		return;
+	}
 
 	e->con = con;
 	e->ref_lx = seat->cursor->cursor->x;
