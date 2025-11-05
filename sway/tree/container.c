@@ -295,42 +295,21 @@ void container_update(struct sway_container *con) {
 	scene_rect_set_color(con->title_bar.background, colors->background, alpha);
 	scene_rect_set_color(con->title_bar.border, colors->border, alpha);
 
-	wlr_scene_rect_set_backdrop_blur(con->title_bar.background, con->blur_enabled);
-	wlr_scene_rect_set_backdrop_blur_optimized(con->title_bar.background, con->blur_enabled);
-
-	wlr_scene_rect_set_backdrop_blur(con->title_bar.border, con->blur_enabled);
-	wlr_scene_rect_set_backdrop_blur_optimized(con->title_bar.border, con->blur_enabled);
-
 	if (con->view) {
 		scene_rect_set_color(con->border.top, colors->child_border, alpha);
 		scene_rect_set_color(con->border.bottom, bottom, alpha);
 		scene_rect_set_color(con->border.left, colors->child_border, alpha);
 		scene_rect_set_color(con->border.right, right, alpha);
-
-		wlr_scene_rect_set_backdrop_blur(con->border.top, con->blur_enabled);
-		wlr_scene_rect_set_backdrop_blur_optimized(con->border.top, con->blur_enabled);
-		wlr_scene_rect_set_backdrop_blur(con->border.bottom, con->blur_enabled);
-		wlr_scene_rect_set_backdrop_blur_optimized(con->border.bottom, con->blur_enabled);
-		wlr_scene_rect_set_backdrop_blur(con->border.left, con->blur_enabled);
-		wlr_scene_rect_set_backdrop_blur_optimized(con->border.left, con->blur_enabled);
-		wlr_scene_rect_set_backdrop_blur(con->border.right, con->blur_enabled);
-		wlr_scene_rect_set_backdrop_blur_optimized(con->border.right, con->blur_enabled);
 	}
 
 	if (con->title_bar.title_text) {
 		sway_text_node_set_color(con->title_bar.title_text, colors->text);
 		sway_text_node_set_background(con->title_bar.title_text, colors->background);
-
-		sway_text_node_set_backdrop_blur(con->title_bar.title_text, con->blur_enabled);
-		sway_text_node_set_backdrop_blur_optimized(con->title_bar.title_text, con->blur_enabled);
 	}
 
 	if (con->title_bar.marks_text) {
 		sway_text_node_set_color(con->title_bar.marks_text, colors->text);
 		sway_text_node_set_background(con->title_bar.marks_text, colors->background);
-
-		sway_text_node_set_backdrop_blur(con->title_bar.marks_text, con->blur_enabled);
-		sway_text_node_set_backdrop_blur_optimized(con->title_bar.marks_text, con->blur_enabled);
 	}
 
 	wlr_scene_node_set_enabled(&con->blur->node, con->blur_enabled);

@@ -298,13 +298,3 @@ void sway_text_node_set_background(struct sway_text_node *node, float background
 	memcpy(&node->background, background, sizeof(*background) * 4);
 	render_backing_buffer(buffer);
 }
-
-void sway_text_node_set_backdrop_blur(struct sway_text_node *node, bool enabled) {
-	struct text_buffer *buffer = wl_container_of(node, buffer, props);
-	wlr_scene_buffer_set_backdrop_blur(buffer->buffer_node, enabled);
-}
-
-void sway_text_node_set_backdrop_blur_optimized(struct sway_text_node *node, bool enabled) {
-	struct text_buffer *buffer = wl_container_of(node, buffer, props);
-	wlr_scene_buffer_set_backdrop_blur_optimized(buffer->buffer_node, enabled);
-}
