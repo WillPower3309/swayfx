@@ -494,7 +494,7 @@ static void arrange_container(struct sway_container *con,
 
 	if (con->view) {
 		int corner_radius = has_corner_radius ? con->corner_radius : 0;
-		int border_top = container_titlebar_height_and_margin();
+		int border_top = container_titlebar_height();
 		int border_width = con->current.border_thickness;
 		int vert_border_offset = responsible_corners & CORNER_LOCATION_TOP ? corner_radius : 0;
 
@@ -508,6 +508,7 @@ static void arrange_container(struct sway_container *con,
 		if (con->current.border == B_NORMAL) {
 			if (title_bar) {
 				arrange_title_bar(con, 0, 0, width, border_top);
+				border_top += config->titlebar_bottom_margin;
 			} else {
 				border_top = 0;
 				// should be handled by the parent container
@@ -591,7 +592,7 @@ static void arrange_container(struct sway_container *con,
 
 		if (title_bar && con->current.border == B_NORMAL) {
 			if (config->titlebar_bottom_margin > 0 || config->titlebar_width != T_WIDTH_STRETCH) {
-				top_offset += container_titlebar_height_and_margin();
+				top_offset += container_titlebar_height() + config->titlebar_bottom_margin;
 			}
 
 			if (config->titlebar_bottom_margin == 0 && config->titlebar_width == T_WIDTH_STRETCH) {

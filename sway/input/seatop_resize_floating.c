@@ -69,7 +69,9 @@ static void handle_pointer_motion(struct sway_seat *seat, uint32_t time_msec) {
 	double border_height = 0.0;
 	if (con->current.border == B_NORMAL) {
 		border_height += container_titlebar_height() + config->titlebar_bottom_margin;
-		border_height += state->border_thickness;
+		if (config->titlebar_bottom_margin > 0 || con->title_width != T_WIDTH_STRETCH) {
+			border_height += state->border_thickness;
+		}
 	} else if (con->current.border == B_PIXEL) {
 		border_height += state->border_thickness * 2;
 	}

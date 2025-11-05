@@ -188,7 +188,8 @@ static void apply_tabbed_layout(list_t *children, struct wlr_box *parent) {
 	}
 	for (int i = 0; i < children->length; ++i) {
 		struct sway_container *child = children->items[i];
-		int parent_offset = child->view ? 0 : container_titlebar_height_and_margin();
+		int parent_offset = child->view ? 0 : container_titlebar_height();
+
 		child->pending.x = parent->x;
 		child->pending.y = parent->y + parent_offset;
 		child->pending.width = parent->width;
@@ -200,7 +201,7 @@ static void apply_stacked_layout(list_t *children, struct wlr_box *parent) {
 	if (!children->length) {
 		return;
 	}
-	int parent_offset = container_titlebar_height_and_margin() * children->length;
+	int parent_offset = (container_titlebar_height() + config->titlebar_bottom_margin) * children->length;
 	for (int i = 0; i < children->length; ++i) {
 		struct sway_container *child = children->items[i];
 		int this_parent_offset = child->view ? 0 : parent_offset;

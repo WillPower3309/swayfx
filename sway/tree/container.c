@@ -1028,10 +1028,6 @@ size_t container_titlebar_height(void) {
 	return config->font_height + config->titlebar_v_padding * 2;
 }
 
-size_t container_titlebar_height_and_margin(void) {
-	return container_titlebar_height() + config->titlebar_bottom_margin;
-}
-
 void floating_calculate_constraints(int *min_width, int *max_width,
 		int *min_height, int *max_height) {
 	if (config->floating_minimum_width == -1) { // no minimum
@@ -1284,9 +1280,9 @@ void container_set_geometry_from_content(struct sway_container *con) {
 	if (con->pending.border != B_CSD && !con->pending.fullscreen_mode) {
 		border_width = con->pending.border_thickness * (con->pending.border != B_NONE);
 		top = con->pending.border == B_NORMAL ?
-			container_titlebar_height_and_margin() : border_width;
+			container_titlebar_height() : border_width;
 		if (con->pending.border == B_NORMAL && config->titlebar_bottom_margin > 0) {
-			top += border_width;
+			top += border_width + config->titlebar_bottom_margin;
 		}
 	}
 

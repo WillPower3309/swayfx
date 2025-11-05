@@ -350,10 +350,10 @@ void view_autoconfigure(struct sway_view *view) {
 			enum sway_container_layout layout = container_parent_layout(con);
 
 			if (layout == L_TABBED) {
-				y_offset = container_titlebar_height_and_margin();
+				y_offset = container_titlebar_height() + config->titlebar_bottom_margin;
 				con->pending.border_top = config->titlebar_bottom_margin > 0;
 			} else if (layout == L_STACKED) {
-				y_offset = container_titlebar_height_and_margin() * siblings->length;
+				y_offset = (container_titlebar_height() + config->titlebar_bottom_margin) * siblings->length;
 				con->pending.border_top = config->titlebar_bottom_margin > 0;
 			}
 		}
@@ -386,13 +386,21 @@ void view_autoconfigure(struct sway_view *view) {
 			- con->pending.border_thickness * con->pending.border_left
 			- con->pending.border_thickness * con->pending.border_right;
 		if (y_offset) {
-			y = con->pending.y + y_offset;
+			y = con->pending.y + y_offset
+				+ con->pending.border_thickness * con->pending.border_top;
 			height = con->pending.height - y_offset
+				- con->pending.border_thickness * con->pending.border_top
 				- con->pending.border_thickness * con->pending.border_bottom;
 		} else {
-			y = con->pending.y + container_titlebar_height_and_margin();
-			height = con->pending.height - container_titlebar_height_and_margin()
+			y = con->pending.y + container_titlebar_height() + config->titlebar_bottom_margin;
+
+			height = con->pending.height - (container_titlebar_height() + config->titlebar_bottom_margin)
 				- con->pending.border_thickness * con->pending.border_bottom;
+
+			if (config->titlebar_bottom_margin > 0 || config->titlebar_width != T_WIDTH_STRETCH) {
+				y += con->pending.border_thickness;
+				height -= con->pending.border_thickness;
+			}
 		}
 		break;
 	}
