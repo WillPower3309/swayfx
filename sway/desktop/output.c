@@ -260,7 +260,7 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 				|| wlr_xwayland_surface_try_from_wlr_surface(surface->surface)
 #endif
 				) {
-			enum corner_location corners = closest_con->window_corners;
+			enum corner_location corners = closest_con ? closest_con->window_corners : config->rounded_corners.window;
 			wlr_scene_buffer_set_corner_radius(buffer,
 					container_has_corner_radius(closest_con) && corners != CORNER_LOCATION_NONE ? corner_radius : 0,
                     corners);
