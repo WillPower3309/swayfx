@@ -311,6 +311,7 @@ static void arrange_children(enum sway_container_layout layout, list_t *children
 			arrange_title_bar(child, title_offset, -title_bar_height,
 				next_title_offset - title_offset, title_bar_height);
 			wlr_scene_node_set_enabled(&child->border.tree->node, activated);
+			wlr_scene_node_set_enabled(&child->blur->node, activated);
 			wlr_scene_node_set_enabled(&child->shadow->node, false);
 			wlr_scene_node_set_enabled(&child->scene_tree->node, true);
 			wlr_scene_node_set_position(&child->scene_tree->node, 0, title_bar_height);
@@ -342,6 +343,7 @@ static void arrange_children(enum sway_container_layout layout, list_t *children
 
 			arrange_title_bar(child, 0, y - title_height, width, title_bar_height);
 			wlr_scene_node_set_enabled(&child->border.tree->node, activated);
+			wlr_scene_node_set_enabled(&child->blur->node, activated);
 			wlr_scene_node_set_enabled(&child->shadow->node, false);
 			wlr_scene_node_set_enabled(&child->scene_tree->node, true);
 			wlr_scene_node_set_position(&child->scene_tree->node, 0, title_height);
@@ -363,6 +365,7 @@ static void arrange_children(enum sway_container_layout layout, list_t *children
 			int cheight = child->current.height;
 
 			wlr_scene_node_set_enabled(&child->border.tree->node, true);
+			wlr_scene_node_set_enabled(&child->blur->node, true);
 			wlr_scene_node_set_enabled(&child->shadow->node,
 					container_has_shadow(child) && child->view);
 			wlr_scene_node_set_position(&child->scene_tree->node, 0, off);
@@ -381,6 +384,7 @@ static void arrange_children(enum sway_container_layout layout, list_t *children
 			int cwidth = child->current.width;
 
 			wlr_scene_node_set_enabled(&child->border.tree->node, true);
+			wlr_scene_node_set_enabled(&child->blur->node, true);
 			wlr_scene_node_set_enabled(&child->shadow->node,
 					container_has_shadow(child) && child->view);
 			wlr_scene_node_set_position(&child->scene_tree->node, off, 0);
@@ -553,6 +557,11 @@ static void arrange_container(struct sway_container *con,
 		wlr_scene_node_reparent(&con->view->scene_tree->node, con->content_tree);
 		wlr_scene_node_set_position(&con->view->scene_tree->node,
 			border_left, border_top);
+
+		wlr_scene_node_set_enabled(&con->blur->node, con->blur_enabled);
+		wlr_scene_node_set_position(&con->blur->node, border_left, border_top);
+		wlr_scene_blur_set_size(con->blur, con->current.content_width,
+			con->current.content_height);
 	} else {
 		// make sure to disable the title bar if the parent is not managing it
 		if (title_bar) {
