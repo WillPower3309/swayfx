@@ -316,7 +316,16 @@ void container_update(struct sway_container *con) {
 	}
 
 	wlr_scene_node_set_enabled(&con->blur->node, con->blur_enabled);
-	wlr_scene_node_set_enabled(&con->title_bar.blur->node, con->current.border == B_NORMAL && (config->titlebar_bottom_margin > 0 || config->titlebar_width != T_WIDTH_STRETCH) && con->blur_enabled && config->blur_border && config->titlebar_blur);
+	bool has_separate_titlebar = false;
+	if (con->current.border == B_NORMAL) {
+		has_separate_titlebar = (config->titlebar_bottom_margin > 0 || config->titlebar_width != T_WIDTH_STRETCH);
+	}
+
+	if (layout == L_STACKED || layout == L_TABBED) {
+		has_separate_titlebar = true;
+	}
+
+	wlr_scene_node_set_enabled(&con->title_bar.blur->node, has_separate_titlebar && con->blur_enabled && config->blur_border && config->titlebar_blur);
 
 	if (con->dim_rect) {
 		float *color = config->dim_inactive_colors.unfocused;
