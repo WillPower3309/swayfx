@@ -43,7 +43,7 @@ struct cmd_results *cmd_corner_radius(int argc, char **argv) {
 		con->corner_radius = value;
 		arrange_container(con);
 		output_configure_scene(NULL, &con->scene_tree->node,
-		1.0f, 0, false, false, false, config->rounded_corners.window, NULL);
+		1.0f, 0, false, false, false, NULL);
 	}
 
 

@@ -459,38 +459,9 @@ static void arrange_container(struct sway_container *con,
 
 	bool has_corner_radius = container_has_corner_radius(con);
 	struct sway_rounded_corners corners = config->rounded_corners;
-	enum corner_location responsible_corners = corners.window;
-	if (has_corner_radius && gaps == 0 && corners.skip & R_CORNER_SKIP_EMBEDDED) {
-		struct sway_container* current = con;
-		struct sway_container* parent = con->current.parent;
-		while (parent && responsible_corners != CORNER_LOCATION_NONE) {
-			if (parent->current.layout != L_VERT && parent->current.layout != L_HORIZ) {
-				break;
-			}
-
-			int idx = container_sibling_index(current);
-			list_t *siblings = container_get_siblings(current);
-			enum corner_location current_relevant = CORNER_LOCATION_NONE;
-
-			if (idx == 0) {
-				current_relevant |= parent->current.layout == L_VERT ? CORNER_LOCATION_TOP : CORNER_LOCATION_LEFT;
-			}
-
-			if (idx == (siblings->length - 1)) {
-				current_relevant |= parent->current.layout == L_VERT ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_RIGHT;
-			}
-
-			responsible_corners &= current_relevant;
-
-			current = parent;
-			parent = parent->current.parent;
-		}
-	}
+	enum corner_location responsible_corners = container_get_window_corners(con, gaps, title_bar);
 
 	bool is_titlebar_attached = con->current.border == B_NORMAL && config->titlebar_width == T_WIDTH_STRETCH && config->titlebar_bottom_margin == 0;
-	if ((con->current.border == B_NORMAL || con->current.border == B_CSD || !title_bar) && corners.skip & R_CORNER_SKIP_TITLEBAR_SEPARATOR) {
-		responsible_corners &= ~CORNER_LOCATION_TOP;
-	}
 
 	if (con->view) {
 		int corner_radius = has_corner_radius ? con->corner_radius : 0;
@@ -600,8 +571,6 @@ static void arrange_container(struct sway_container *con,
 			}
 		}
 
-
-
 		if (container_has_shadow(con)) {
 			int shadow_corner_radius = has_corner_radius ? con->corner_radius + con->current.border_thickness : 0;
 			enum corner_location shadow_corners = (top_corners & CORNER_LOCATION_TOP) | (responsible_corners & CORNER_LOCATION_BOTTOM);
@@ -654,15 +623,18 @@ static void arrange_container(struct sway_container *con,
 		wlr_scene_node_set_position(&con->border.right->node,
 			width - border_right, border_top + vert_border_offset);
 
+
+		bool has_titlebar = !title_bar || con->current.border == B_NORMAL;
 		// Dim
 		if (con->dim_rect) {
 			wlr_scene_node_set_position(&con->dim_rect->node, border_left, top_offset);
 			wlr_scene_rect_set_size(con->dim_rect, con->current.content_width,
 					con->current.content_height);
-			bool has_titlebar = !title_bar || con->current.border == B_NORMAL;
 			wlr_scene_rect_set_corner_radius(con->dim_rect, con->corner_radius,
 					(has_titlebar && !(corners.skip & R_CORNER_SKIP_TITLEBAR_SEPARATOR) ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL) & responsible_corners);
 		}
+
+		con->window_corners = (has_titlebar && !(corners.skip & R_CORNER_SKIP_TITLEBAR_SEPARATOR) ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL) & responsible_corners;
 
 		// make sure to reparent, it's possible that the client just came out of
 		// fullscreen mode where the parent of the surface is not the container

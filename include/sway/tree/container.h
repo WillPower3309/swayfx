@@ -132,6 +132,9 @@ struct sway_container {
 	// border which we use to restore when the view returns to SSD.
 	enum sway_container_border saved_border;
 
+	// Used to store the rounded corners to use when rendering the surface
+	enum corner_location window_corners;
+
 	// The share of the space of parent container this container occupies
 	double width_fraction;
 	double height_fraction;
@@ -214,7 +217,7 @@ void container_update_representation(struct sway_container *container);
  */
 size_t container_titlebar_height(void);
 
-size_t container_titlebar_height_and_margin(void);
+enum corner_location container_get_window_corners(struct sway_container *con, int gaps, bool title_bar);
 
 void floating_calculate_constraints(int *min_width, int *max_width,
 		int *min_height, int *max_height);

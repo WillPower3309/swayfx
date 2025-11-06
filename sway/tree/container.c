@@ -1036,6 +1036,74 @@ size_t container_titlebar_height(void) {
 	return config->font_height + config->titlebar_v_padding * 2;
 }
 
+
+static int container_get_gaps(struct sway_container *con) {
+	struct sway_workspace *ws = con->current.workspace;
+	struct sway_container *temp = con;
+	while (temp) {
+		enum sway_container_layout layout;
+		if (temp->current.parent) {
+			layout = temp->current.parent->current.layout;
+		} else {
+			layout = ws->current.layout;
+		}
+		if (layout == L_TABBED || layout == L_STACKED) {
+			return 0;
+		}
+		temp = temp->pending.parent;
+	}
+	return ws->gaps_inner;
+}
+
+enum corner_location container_get_window_corners(struct sway_container *con, int gaps, bool title_bar) {
+	bool has_corner_radius = container_has_corner_radius(con);
+	struct sway_rounded_corners corners = config->rounded_corners;
+	enum corner_location responsible_corners = corners.window;
+	if (has_corner_radius && gaps == 0 && corners.skip & R_CORNER_SKIP_EMBEDDED) {
+		struct sway_container* current = con;
+		struct sway_container* parent = con->current.parent;
+		bool has_parent = parent != NULL || current->current.workspace != NULL;
+		enum sway_container_layout parent_layout = parent ? parent->current.layout : (current->current.workspace ? current->current.workspace->layout : L_NONE);
+		while (has_parent && responsible_corners != CORNER_LOCATION_NONE && gaps == 0) {
+			if (parent_layout == L_TABBED || parent_layout == L_STACKED) {
+				if (!config->hide_lone_tab || container_get_siblings(current)->length > 1) {
+					responsible_corners &= ~CORNER_LOCATION_TOP;
+				}
+			} else {
+				int idx = container_sibling_index(current);
+				list_t *siblings = container_get_siblings(current);
+				enum corner_location current_relevant = CORNER_LOCATION_NONE;
+
+				if (idx == 0) {
+					current_relevant |= parent_layout == L_VERT ? CORNER_LOCATION_TOP : CORNER_LOCATION_LEFT;
+				}
+
+				if (idx == (siblings->length - 1)) {
+					current_relevant |= parent_layout == L_VERT ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_RIGHT;
+				}
+
+				responsible_corners &= current_relevant;
+			}
+
+			if (!parent) {
+				break;
+			}
+
+			current = parent;
+			gaps = container_get_gaps(current);
+			parent = parent->current.parent;
+			has_parent = parent != NULL || current->current.workspace != NULL;
+			parent_layout = parent ? parent->current.layout : (current->current.workspace ? current->current.workspace->layout : L_NONE);
+		}
+	}
+
+	if ((con->current.border == B_NORMAL || con->current.border == B_CSD || !title_bar) && corners.skip & R_CORNER_SKIP_TITLEBAR_SEPARATOR) {
+		responsible_corners &= ~CORNER_LOCATION_TOP;
+	}
+
+	return responsible_corners;
+}
+
 void floating_calculate_constraints(int *min_width, int *max_width,
 		int *min_height, int *max_height) {
 	if (config->floating_minimum_width == -1) { // no minimum

@@ -5,7 +5,7 @@
 static void arrange_corner_radius_iter(struct sway_container *con, void *data) {
     container_update(con);
     output_configure_scene(NULL, &con->scene_tree->node,
-        1.0f, 0, false, false, false, config->rounded_corners.window, NULL);
+        1.0f, 0, false, false, false, NULL);
 }
 
 static char *unexpected_msg = "Expected 'rounded_corners (set|add|remove outer|window|titlebar|all all|none|top|bottom|left|right|top_left|top_right|bottom_left|bottom_right...)... [skip all|none|between_tabs|embedded|titlebar_separator...]'";
