@@ -455,13 +455,19 @@ void container_arrange_title_bar(struct sway_container *con) {
 		siblings = parent->current.children;
 
 		while (parent->current.parent) {
-			enum sway_container_layout grand_parent_layout = parent->current.parent->current.layout;
+			parent = parent->current.parent;
+			enum sway_container_layout grand_parent_layout = parent->current.layout;
 			if (grand_parent_layout == L_TABBED || grand_parent_layout == L_STACKED) {
 				responsible_for_corners = false;
 				break;
 			}
+		}
 
-			parent = parent->current.parent;
+		if (responsible_for_corners && parent->current.parent == NULL && parent->current.workspace) {
+			enum sway_container_layout workspace_layout = parent->current.workspace->current.layout;
+			if (workspace_layout == L_TABBED || workspace_layout == L_STACKED) {
+				responsible_for_corners = false;
+			}
 		}
 	} else if (con->current.workspace) {
 		layout = con->current.workspace->layout;
