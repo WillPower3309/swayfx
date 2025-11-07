@@ -98,7 +98,12 @@ static void arrange_surface(struct sway_output *output, const struct wlr_box *fu
 			continue;
 		}
 
+		wlr_scene_node_set_enabled(&surface->blur_node->node, surface->blur_enabled);
+		wlr_scene_blur_set_size(surface->blur_node, surface->layer_surface->surface->current.width,
+			surface->layer_surface->surface->current.height);
+
 		wlr_scene_node_set_enabled(&surface->shadow_node->node, surface->shadow_enabled);
+
 		if (surface->shadow_enabled) {
 			// Adjust the size and position of the shadow node
 			wlr_scene_shadow_set_size(surface->shadow_node,
@@ -242,6 +247,7 @@ static struct sway_layer_surface *sway_layer_surface_create(
 	surface->shadow_enabled = false;
 
 	bool failed = false;
+	surface->blur_node = alloc_scene_blur(surface->tree, 0, 0, &failed);
 	surface->shadow_node = alloc_scene_shadow(surface->tree, 0, 0,
 			0, config->shadow_blur_sigma, config->shadow_color, &failed);
 	if (failed) {
@@ -377,6 +383,7 @@ static void handle_map(struct wl_listener *listener, void *data) {
 
 	layer_parse_criteria(surface);
 	wlr_scene_node_lower_to_bottom(&surface->shadow_node->node);
+	wlr_scene_node_lower_to_bottom(&surface->blur_node->node);
 
 	// focus on new surface
 	if (layer_surface->current.keyboard_interactive &&

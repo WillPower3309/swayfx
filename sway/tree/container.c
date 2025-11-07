@@ -92,6 +92,7 @@ struct sway_container *container_create(struct sway_view *view) {
 
 	// Container tree structure
 	// - scene tree
+	//   - blur source
 	//   - shadow
 	//   - title bar
 	//     - border
@@ -106,6 +107,8 @@ struct sway_container *container_create(struct sway_view *view) {
 	//     - buffer used for output enter/leave events for foreign_toplevel
 	bool failed = false;
 	c->scene_tree = alloc_scene_tree(root->staging, &failed);
+
+	c->blur = alloc_scene_blur(c->scene_tree, 0, 0, &failed);
 
 	c->shadow = alloc_scene_shadow(c->scene_tree, 0, 0,
 			0, config->shadow_blur_sigma, config->shadow_color, &failed);
@@ -326,6 +329,8 @@ void container_update(struct sway_container *con) {
 		sway_text_node_set_color(con->title_bar.marks_text, colors->text);
 		sway_text_node_set_background(con->title_bar.marks_text, colors->background);
 	}
+
+	wlr_scene_node_set_enabled(&con->blur->node, con->blur_enabled);
 
 	if (con->dim_rect) {
 		float *color = config->dim_inactive_colors.unfocused;
