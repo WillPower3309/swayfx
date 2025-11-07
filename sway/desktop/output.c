@@ -262,6 +262,9 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 			wlr_scene_buffer_set_corner_radius(buffer,
 					container_has_corner_radius(closest_con) ? corner_radius : 0,
 					has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL);
+			if (closest_con) {
+				wlr_scene_blur_set_mask_source(closest_con->blur, node, BLUR_MASK_OPAQUE_REGION);
+			}
 		} else if (wlr_subsurface_try_from_wlr_surface(surface->surface)) {
 			wlr_scene_buffer_set_corner_radius(buffer,
 					container_has_corner_radius(closest_con) ? corner_radius : 0,
@@ -275,13 +278,8 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 			wlr_scene_shadow_set_corner_radius(surface->shadow_node, surface->corner_radius);
 
 			wlr_scene_node_set_enabled(&surface->blur_node->node, surface->blur_enabled);
-
 			if (surface->blur_enabled) {
-				if (surface->blur_ignore_transparent) {
-					wlr_scene_blur_set_transparency_mask_source(surface->blur_node, buffer);
-				} else {
-					wlr_scene_blur_set_transparency_mask_source(surface->blur_node, NULL);
-				}
+				wlr_scene_blur_set_mask_source(surface->blur_node, &buffer->node, (surface->blur_ignore_transparent ? BLUR_MASK_IGNORE_TRANSPARENCY : BLUR_MASK_NONE) | BLUR_MASK_OPAQUE_REGION);
 				wlr_scene_blur_set_should_only_blur_bottom_layer(surface->blur_node, surface->blur_xray);
 				wlr_scene_blur_set_corner_radius(surface->blur_node, surface->corner_radius, CORNER_LOCATION_ALL);
 			}
