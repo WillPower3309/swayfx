@@ -306,8 +306,6 @@ void container_update(struct sway_container *con) {
 		sway_text_node_set_background(con->title_bar.marks_text, colors->background);
 	}
 
-	wlr_scene_node_set_enabled(&con->blur->node, con->blur_enabled);
-
 	if (con->dim_rect) {
 		float *color = config->dim_inactive_colors.unfocused;
 
