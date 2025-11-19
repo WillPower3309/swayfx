@@ -31,6 +31,7 @@
 #include "sway/ipc-server.h"
 #include "sway/layers.h"
 #include "sway/output.h"
+#include "sway/scene_descriptor.h"
 #include "sway/server.h"
 #include "sway/tree/arrange.h"
 #include "sway/tree/container.h"
@@ -283,14 +284,9 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 					height = temp;
 				}
 
+				// TODO: should we use buffer dst_size setter
 				buffer->dst_width = width;
 				buffer->dst_height = height;
-
-				if (is_saved && !is_main_surface) {
-					float resize_crossfade_opacity = buffer->opacity * get_animated_value(
-							view->container->animation_state.from_resize_crossfade_opacity, 0.0f);
-					wlr_scene_buffer_set_opacity(buffer, resize_crossfade_opacity);
-				}
 			} else {
 				// Subsurfaces
 				// TODO: Check for has titlebar. Fixes Firefox weirdness (when its state is "maximized")
@@ -331,6 +327,32 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 		default:
 			break;
 		}
+	} else if (node->type == WLR_SCENE_NODE_BUFFER_CROSSFADE) {
+		// TODO: this is logic shared between WLR_SCENE_NODE_BUFFER
+
+		assert(closest_desc->type == SWAY_SCENE_DESC_VIEW);
+		struct sway_view *view = closest_desc->data;
+		struct wlr_scene_buffer_crossfade *buffer_crossfade = wlr_scene_buffer_crossfade_from_node(node);
+		wlr_scene_buffer_crossfade_set_progress(buffer_crossfade,
+				get_animated_value(view->container->animation_state.from_resize_crossfade_progress, 1.0f));
+
+		wlr_scene_buffer_crossfade_set_corner_radius(buffer_crossfade, corner_radius,
+				has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL);
+
+		// TODO: check if it is being animated -> move is_animated to container.c?
+		int title_offset = view->container->scene_tree->node.y;
+		int width = get_animated_value(view->container->animation_state.from_width,
+				view->container->current.width);
+		int height = MAX(0, get_animated_value(view->container->animation_state.from_height,
+				view->container->current.height) - title_offset);
+		if (buffer_crossfade->transform & WL_OUTPUT_TRANSFORM_90) {
+			int temp = width;
+			width = height;
+			height = temp;
+		}
+
+		buffer_crossfade->dst_width = width;
+		buffer_crossfade->dst_height = height;
 	} else if (node->type == WLR_SCENE_NODE_TREE) {
 		struct wlr_scene_tree *tree = wlr_scene_tree_from_node(node);
 		struct wlr_scene_node *node;

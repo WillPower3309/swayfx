@@ -864,7 +864,7 @@ void container_animation_complete_iterator(struct sway_container *container, voi
 			view_remove_saved_buffer(view);
 		}
 	}
-	container->animation_state.from_resize_crossfade_opacity = 1.0f;
+	container->animation_state.from_resize_crossfade_progress = 0.0f;
 }
 
 void animation_complete_callback() {
@@ -891,7 +891,7 @@ void set_container_animation_from_val_iterator(struct sway_container *con, void 
 		con->animation_state.from_y = con->pending.y;
 		con->animation_state.from_width = con->pending.width;
 		con->animation_state.from_height = con->pending.height;
-		con->animation_state.from_resize_crossfade_opacity = 1.0f;
+		con->animation_state.from_resize_crossfade_progress = 0.0f;
 		return;
 	}
 
@@ -911,7 +911,7 @@ void set_container_animation_from_val_iterator(struct sway_container *con, void 
 	if (is_container_animated_resize(con)) {
 		// TODO: the below triggers even when swapping two windows with no resize
 		// printf("RESIZE! prev vs current width: %f vs %f, prev vs current height: %f vs %f\n", con->animation_state.from_width, con->current.width, con->animation_state.from_height, con->current.height);
-		con->animation_state.from_resize_crossfade_opacity = get_animated_value(con->animation_state.from_resize_crossfade_opacity, 0.0f);
+		con->animation_state.from_resize_crossfade_progress = get_animated_value(con->animation_state.from_resize_crossfade_progress, 1.0f);
 	}
 }
 
@@ -1127,6 +1127,15 @@ static void set_instruction_ready(
 	}
 
 	instruction->node->instruction = NULL;
+
+	if (instruction->node->type == N_CONTAINER &&
+			instruction->node->sway_container->view != NULL) {
+		struct sway_view *view = instruction->node->sway_container->view;
+		wlr_scene_node_set_enabled(&view->saved_surface_tree->node, false);
+		printf("DEBUG: enabling crossfade!\n");
+		wlr_scene_node_set_enabled(&view->resize_crossfade_surface_tree->node, true);
+	}
+
 	transaction_progress();
 }
 
