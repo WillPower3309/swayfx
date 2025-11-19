@@ -173,6 +173,12 @@ void free_config(struct sway_config *config) {
 		}
 		list_free(config->layer_criteria);
 	}
+	if (config->window_buttons) {
+		for (int i = 0; i < config->window_buttons->length; ++i) {
+			window_button_free(config->window_buttons->items[i]);
+		}
+		list_free(config->window_buttons);
+	}
 	list_free(config->no_focus);
 	list_free(config->active_bar_modifiers);
 	list_free_items_and_destroy(config->config_chain);
@@ -297,6 +303,13 @@ static void config_defaults(struct sway_config *config) {
 	config->gaps_outer.right = 0;
 	config->gaps_outer.bottom = 0;
 	config->gaps_outer.left = 0;
+
+	if (!(config->window_buttons = create_list())) goto cleanup;
+	config->window_button_gaps = 10;
+	config->window_button_radius = 0;
+	config->window_button_size = 20;
+	config->window_button_margin = 20;
+	config->window_button_vertical_align = V_ALIGN_TOP;
 
 	if (!(config->active_bar_modifiers = create_list())) goto cleanup;
 
@@ -1044,4 +1057,32 @@ void translate_keysyms(struct input_config *input_config) {
 
 	sway_log(SWAY_DEBUG, "Translated keysyms using config for device '%s'",
 			input_config->identifier);
+}
+
+struct window_button *window_button_copy(struct window_button *orig) {
+	struct window_button *copy = malloc(sizeof(*orig));
+	if (orig->id != NULL) {
+		copy->id = malloc(strlen(orig->id) + 1);
+		strcpy(copy->id, orig->id);
+	}
+
+	if (orig->command != NULL) {
+		copy->command = malloc(strlen(orig->command) + 1);
+		strcpy(copy->command, orig->command);
+	}
+
+	memcpy(copy->color, orig->color, 4 * sizeof(float));
+	return copy;
+}
+
+void window_button_free(struct window_button *button) {
+	if (button->id != NULL) {
+		free(button->id);
+	}
+
+	if (button->command != NULL) {
+		free(button->command);
+	}
+
+	free(button);
 }

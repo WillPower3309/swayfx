@@ -473,11 +473,27 @@ enum alignment {
 	ALIGN_RIGHT,
 };
 
+enum vertical_alignment {
+	V_ALIGN_TOP,
+	V_ALIGN_MIDDLE,
+	V_ALIGN_BOTTOM,
+};
+
 enum xwayland_mode {
 	XWAYLAND_MODE_DISABLED,
 	XWAYLAND_MODE_LAZY,
 	XWAYLAND_MODE_IMMEDIATE,
 };
+
+struct window_button {
+	char *id;
+	char* command;
+	float color[4];
+};
+
+struct window_button *window_button_copy(struct window_button *orig);
+
+void window_button_free(struct window_button *button);
 
 /**
  * The configuration struct. The result of loading a config file.
@@ -522,6 +538,12 @@ struct sway_config {
 	list_t *criteria;
 	list_t *no_focus;
 	list_t *active_bar_modifiers;
+	list_t *window_buttons;
+	int window_button_size;
+	int window_button_gaps;
+	int window_button_radius;
+	int window_button_margin;
+	enum vertical_alignment window_button_vertical_align;
 	struct sway_mode *current_mode;
 	struct bar_config *current_bar;
 	uint32_t floating_mod;

@@ -65,6 +65,11 @@ struct sway_container_state {
 	double content_width, content_height;
 };
 
+struct sway_container_button {
+	struct wlr_scene_rect *background;
+	int button_idx;
+};
+
 struct sway_container {
 	struct sway_node node;
 	struct sway_view *view;
@@ -79,6 +84,7 @@ struct sway_container {
 
 		struct sway_text_node *title_text;
 		struct sway_text_node *marks_text;
+		list_t *buttons;
 	} title_bar;
 
 	struct {
@@ -154,6 +160,7 @@ struct sway_container {
 	float dim;
 
 	list_t *marks; // char *
+	list_t *buttons;
 
 	struct {
 		struct wl_signal destroy;
@@ -194,6 +201,8 @@ struct sway_container *container_flatten(struct sway_container *container);
 void container_update_title_bar(struct sway_container *container);
 
 void container_update_marks(struct sway_container *container);
+
+void container_update_buttons(struct sway_container *con);
 
 size_t parse_title_format(struct sway_container *container, char *buffer);
 

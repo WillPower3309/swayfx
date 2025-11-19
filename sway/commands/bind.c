@@ -622,7 +622,7 @@ void seat_execute_command(struct sway_seat *seat, struct sway_binding *binding) 
 		double sx, sy;
 		struct sway_node *node = node_at_coords(seat,
 				seat->cursor->cursor->x, seat->cursor->cursor->y,
-				&surface, &sx, &sy);
+				&surface, NULL, &sx, &sy);
 		if (node && node->type == N_CONTAINER) {
 			con = node->sway_container;
 		}

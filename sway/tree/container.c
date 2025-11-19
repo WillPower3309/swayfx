@@ -26,6 +26,7 @@
 #include "pango.h"
 #include "log.h"
 #include "stringop.h"
+#include "util.h"
 
 static void handle_output_enter(
 		struct wl_listener *listener, void *data) {
@@ -97,6 +98,7 @@ struct sway_container *container_create(struct sway_view *view) {
 	//   - title bar
 	//     - border
 	//     - background
+	//     - buttons
 	//     - title text
 	//     - marks text
 	//   - border
@@ -120,6 +122,8 @@ struct sway_container *container_create(struct sway_view *view) {
 
 	c->title_bar.border = alloc_rect_node(c->title_bar.tree, &failed);
 	c->title_bar.background = alloc_rect_node(c->title_bar.tree, &failed);
+
+	c->title_bar.buttons = create_list();
 
 	if (view) {
 		// only containers with views can have borders
@@ -176,6 +180,10 @@ struct sway_container *container_create(struct sway_view *view) {
 	c->blur_enabled = config->blur_enabled;
 	c->shadow_enabled = config->shadow_enabled;
 	c->dim = config->default_dim_inactive;
+	c->buttons = create_list();
+	for (int i = 0; i < config->window_buttons->length; i++) {
+		list_add(c->buttons, window_button_copy(config->window_buttons->items[i]));
+	}
 
 	wl_signal_init(&c->events.destroy);
 	wl_signal_emit_mutable(&root->events.new_node, &c->node);
@@ -260,6 +268,18 @@ static void scene_rect_set_color(struct wlr_scene_rect *rect,
 	wlr_scene_rect_set_color(rect, premultiplied);
 }
 
+static void scene_rect_set_outer_color(struct wlr_scene_rect *rect,
+		const float color[4], float opacity) {
+	const float premultiplied[] = {
+		color[0] * color[3] * opacity,
+		color[1] * color[3] * opacity,
+		color[2] * color[3] * opacity,
+		color[3] * opacity,
+	};
+
+	wlr_scene_rect_set_outer_color(rect, premultiplied);
+}
+
 void container_update(struct sway_container *con) {
 	struct border_colors *colors = container_get_current_colors(con);
 	list_t *siblings = NULL;
@@ -288,6 +308,16 @@ void container_update(struct sway_container *con) {
 
 	scene_rect_set_color(con->title_bar.background, colors->background, alpha);
 	scene_rect_set_color(con->title_bar.border, colors->border, alpha);
+
+	for (int i = 0; i < con->title_bar.buttons->length; i++) {
+		struct sway_container_button* button = con->title_bar.buttons->items[i];
+		if (con->buttons->length > i) {
+			struct window_button *button_def = con->buttons->items[i];
+			scene_rect_set_color(button->background, button_def->color, alpha);
+		}
+
+		scene_rect_set_outer_color(button->background, colors->background, alpha);
+	}
 
 	if (con->view) {
 		scene_rect_set_color(con->border.top, colors->child_border, alpha);
@@ -336,7 +366,59 @@ void container_arrange_title_bar(struct sway_container *con) {
 	int width = con->title_width;
 	int height = container_titlebar_height();
 
-	struct wlr_box text_box = { 0, 0, 0, 0 };
+	pixman_region32_clear(&con->title_bar.background->clipped_holes);
+	int thickness = config->titlebar_border_thickness;
+
+	int used_margin = config->window_button_margin;
+
+	int start = 0;
+	int step = 1;
+	if (title_align != ALIGN_RIGHT) {
+		// we are rending from right to left
+		start = con->title_bar.buttons->length - 1;
+		step = -1;
+	}
+
+	int button_size = config->window_button_size;
+	int button_radius = config->window_button_radius;
+	int button_gaps = config->window_button_gaps;
+	enum vertical_alignment button_tag = config->window_button_vertical_align;
+	int y_offset = 0;
+	if (button_tag == V_ALIGN_BOTTOM) {
+		y_offset = height - button_size;
+	} else if (button_tag == V_ALIGN_MIDDLE) {
+		y_offset = (height - button_size) >> 1;
+	}
+
+	for (int i = start; i >= 0 && i < con->title_bar.buttons->length; i += step) {
+		struct sway_container_button *button = con->title_bar.buttons->items[i];
+		int h_padding;
+		if (title_align == ALIGN_RIGHT) {
+			h_padding = config->titlebar_h_padding + used_margin;
+		} else {
+			h_padding = width - config->titlebar_h_padding - button_size - used_margin;
+		}
+
+		wlr_scene_rect_set_size(button->background, button_size, button_size);
+		wlr_scene_node_set_position(&button->background->node, h_padding, y_offset);
+		wlr_scene_rect_set_corner_radius(button->background, button_radius, CORNER_LOCATION_ALL);
+
+		pixman_region32_union_rect(
+			&con->title_bar.background->clipped_holes,
+			&con->title_bar.background->clipped_holes,
+			button->background->node.x - thickness,
+			button->background->node.y - thickness,
+			button->background->width,
+			button->background->height
+		);
+
+		used_margin += button_gaps + button->background->width;
+	}
+
+	if (con->title_bar.buttons->length > 0) {
+		// give 5px space between mark/title
+		used_margin += 5 - button_gaps;
+	}
 
 	if (con->title_bar.marks_text) {
 		struct sway_text_node *node = con->title_bar.marks_text;
@@ -344,9 +426,9 @@ void container_arrange_title_bar(struct sway_container *con) {
 
 		int h_padding;
 		if (title_align == ALIGN_RIGHT) {
-			h_padding = config->titlebar_h_padding;
+			h_padding = config->titlebar_h_padding + used_margin;
 		} else {
-			h_padding = width - config->titlebar_h_padding - marks_buffer_width;
+			h_padding = width - config->titlebar_h_padding - marks_buffer_width - used_margin;
 		}
 
 		h_padding = MAX(h_padding, config->titlebar_h_padding);
@@ -354,15 +436,20 @@ void container_arrange_title_bar(struct sway_container *con) {
 		int alloc_width = MIN((int)node->width,
 			width - h_padding - config->titlebar_h_padding);
 		alloc_width = MAX(alloc_width, 0);
+		used_margin += alloc_width;
 
 		sway_text_node_set_max_width(node, alloc_width);
 		wlr_scene_node_set_position(node->node,
 			h_padding, (height - node->height) >> 1);
 
-		text_box.x = node->node->x;
-		text_box.y = node->node->y;
-		text_box.width = alloc_width;
-		text_box.height = node->height;
+		pixman_region32_union_rect(
+			&con->title_bar.background->clipped_holes,
+			&con->title_bar.background->clipped_holes,
+			node->node->x - thickness,
+			node->node->y - thickness,
+			alloc_width,
+			node->height
+		);
 	}
 
 	if (con->title_bar.title_text) {
@@ -372,7 +459,7 @@ void container_arrange_title_bar(struct sway_container *con) {
 		if (title_align == ALIGN_RIGHT) {
 			h_padding = width - config->titlebar_h_padding - node->width;
 		} else if (title_align == ALIGN_CENTER) {
-			h_padding = ((int)width - marks_buffer_width - node->width) >> 1;
+			h_padding = ((int)width - marks_buffer_width - used_margin - node->width) >> 1;
 		} else {
 			h_padding = config->titlebar_h_padding;
 		}
@@ -380,24 +467,27 @@ void container_arrange_title_bar(struct sway_container *con) {
 		h_padding = MAX(h_padding, config->titlebar_h_padding);
 
 		int alloc_width = MIN((int) node->width,
-			width - h_padding - config->titlebar_h_padding);
+			width - h_padding - config->titlebar_h_padding - used_margin);
 		alloc_width = MAX(alloc_width, 0);
 
 		sway_text_node_set_max_width(node, alloc_width);
 		wlr_scene_node_set_position(node->node,
 			h_padding, (height - node->height) >> 1);
 
-		text_box.x = MAX(text_box.x, node->node->x);
-		text_box.y = MAX(text_box.y, node->node->y);
-		text_box.width = MAX(text_box.width, alloc_width);
-		text_box.height = MAX(text_box.height, node->height);
+		pixman_region32_union_rect(
+			&con->title_bar.background->clipped_holes,
+			&con->title_bar.background->clipped_holes,
+			node->node->x - thickness,
+			node->node->y - thickness,
+			alloc_width,
+			node->height
+		);
 	}
 
 	if (width <= 0 || height <= 0) {
 		return;
 	}
 
-	int thickness = config->titlebar_border_thickness;
 	int background_corner_radius = container_has_corner_radius(con) ?
 			con->corner_radius + con->current.border_thickness - thickness : 0;
 	enum corner_location corners = CORNER_LOCATION_TOP;
@@ -432,14 +522,6 @@ void container_arrange_title_bar(struct sway_container *con) {
 	wlr_scene_rect_set_size(con->title_bar.background, width - thickness * 2,
 			height - thickness * (config->titlebar_separator ? 2 : 1));
 	wlr_scene_rect_set_corner_radius(con->title_bar.background, background_corner_radius, corners);
-
-	text_box.x -= thickness;
-	text_box.y -= thickness;
-	wlr_scene_rect_set_clipped_region(con->title_bar.background, (struct clipped_region) {
-			.corner_radius = 0,
-			.corners = CORNER_LOCATION_NONE,
-			.area = text_box,
-	});
 
 	wlr_scene_rect_set_size(con->title_bar.border, width, height);
 	wlr_scene_rect_set_corner_radius(con->title_bar.border, background_corner_radius ?
@@ -505,6 +587,50 @@ void container_update_marks(struct sway_container *con) {
 	free(buffer);
 }
 
+static struct sway_container_button *container_button_create(struct wlr_scene_tree *parent, bool *failed) {
+	struct sway_container_button *button = calloc(1, sizeof(*button));
+	if (!button) {
+		*failed = true;
+	}
+
+	button->background = alloc_rect_node(parent, failed);
+	button->background->accepts_input = true;
+	scene_descriptor_assign(&button->background->node, SWAY_SCENE_DESC_BUTTON, button);
+
+	return button;
+}
+
+static void container_button_destroy(struct sway_container_button *button) {
+	wlr_scene_node_destroy(&button->background->node);
+	free(button);
+}
+
+void container_update_buttons(struct sway_container *con) {
+	int i = 0;
+	bool failed = false;
+	for (; i < con->buttons->length && !failed; i++) {
+		struct sway_container_button *button = NULL;
+		struct window_button *button_def = con->buttons->items[i];
+		if (i < con->title_bar.buttons->length) {
+			button = con->title_bar.buttons->items[i];
+		}
+
+		if (button == NULL) {
+			button = container_button_create(con->title_bar.tree, &failed);
+			list_add(con->title_bar.buttons, button);
+		}
+
+		button->button_idx = i;
+		scene_rect_set_color(button->background, button_def->color, con->alpha);
+	}
+
+	for (int j = con->title_bar.buttons->length - 1; i < j; j--) {
+		struct sway_container_button *button = con->title_bar.buttons->items[j];
+		list_del(con->title_bar.buttons, j);
+		container_button_destroy(button);
+	}
+}
+
 void container_update_title_bar(struct sway_container *con) {
 	if (!con->formatted_title) {
 		return;
@@ -527,6 +653,7 @@ void container_update_title_bar(struct sway_container *con) {
 		con->title_bar.marks_text = NULL;
 	}
 
+	container_update_buttons(con);
 	container_update_marks(con);
 	container_arrange_title_bar(con);
 }
@@ -546,7 +673,20 @@ void container_destroy(struct sway_container *con) {
 	list_free(con->pending.children);
 	list_free(con->current.children);
 
+	for (int i = 0; i < con->title_bar.buttons->length; i++) {
+		struct sway_container_button *button = con->title_bar.buttons->items[i];
+		wlr_scene_node_destroy(&button->background->node);
+	}
+
+	list_free_items_and_destroy(con->title_bar.buttons);
 	list_free_items_and_destroy(con->marks);
+
+	for (int i = 0; i < con->buttons->length; i++) {
+		struct window_button *button = con->buttons->items[i];
+		window_button_free(button);
+	}
+
+	list_free(con->buttons);
 
 	if (con->view && con->view->container == con) {
 		con->view->container = NULL;

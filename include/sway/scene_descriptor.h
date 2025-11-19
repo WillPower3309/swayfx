@@ -19,6 +19,7 @@ enum sway_scene_descriptor_type {
 	SWAY_SCENE_DESC_XWAYLAND_UNMANAGED,
 	SWAY_SCENE_DESC_POPUP,
 	SWAY_SCENE_DESC_DRAG_ICON,
+	SWAY_SCENE_DESC_BUTTON,
 };
 
 bool scene_descriptor_assign(struct wlr_scene_node *node,
