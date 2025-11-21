@@ -284,6 +284,10 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 				}
 				wlr_scene_blur_set_should_only_blur_bottom_layer(surface->blur_node, surface->blur_xray);
 				wlr_scene_blur_set_corner_radius(surface->blur_node, surface->corner_radius, CORNER_LOCATION_ALL);
+				wlr_scene_blur_set_size(surface->blur_node,
+					surface->layer_surface->surface->current.width,
+					surface->layer_surface->surface->current.height
+				);
 			}
 		}
 	} else if (node->type == WLR_SCENE_NODE_TREE) {
