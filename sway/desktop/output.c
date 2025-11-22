@@ -303,6 +303,9 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 		bool should_optimize_blur = !container_is_floating_or_child(closest_con) || config->blur_xray;
 		wlr_scene_blur_set_should_only_blur_bottom_layer(blur, should_optimize_blur);
 		wlr_scene_node_set_enabled(node, closest_con->blur_enabled);
+		wlr_scene_blur_set_corner_radius(blur,
+					container_has_corner_radius(closest_con) ? corner_radius : 0,
+					has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL);
 	}
 }
 
