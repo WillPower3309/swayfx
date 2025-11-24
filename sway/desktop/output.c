@@ -271,22 +271,6 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 				wlr_scene_buffer_set_corner_radius(buffer,
 						container_has_corner_radius(closest_con) ? corner_radius : 0,
 						has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL);
-
-				// TODO: check if it is being animated -> move is_animated to container.c?
-				int title_offset = view->container->scene_tree->node.y;
-				int width = get_animated_value(view->container->animation_state.from_width,
-						view->container->current.width);
-				int height = MAX(0, get_animated_value(view->container->animation_state.from_height,
-						view->container->current.height) - title_offset);
-				if (buffer->transform & WL_OUTPUT_TRANSFORM_90) {
-					int temp = width;
-					width = height;
-					height = temp;
-				}
-
-				// TODO: should we use buffer dst_size setter
-				buffer->dst_width = width;
-				buffer->dst_height = height;
 			} else {
 				// Subsurfaces
 				// TODO: Check for has titlebar. Fixes Firefox weirdness (when its state is "maximized")
