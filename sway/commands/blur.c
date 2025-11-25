@@ -27,7 +27,7 @@ struct cmd_results *cmd_blur(int argc, char **argv) {
 		arrange_root();
 	} else {
 		con->blur_enabled = result;
-		container_update(con);
+		arrange_container(con);
 	}
 
 	struct sway_output *output;
