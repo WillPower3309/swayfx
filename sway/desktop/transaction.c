@@ -591,8 +591,7 @@ static void arrange_container(struct sway_container *con,
 
 		wlr_scene_node_set_enabled(&con->blur->node, con->blur_enabled);
 		wlr_scene_node_set_position(&con->blur->node, border_left, border_top);
-		wlr_scene_blur_set_size(con->blur, con->current.content_width,
-			con->current.content_height);
+		wlr_scene_blur_set_size(con->blur, width - border_left - border_right, height - border_top - border_bottom);
 	} else {
 		// make sure to disable the title bar if the parent is not managing it
 		if (title_bar) {
