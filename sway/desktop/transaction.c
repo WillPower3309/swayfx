@@ -1130,9 +1130,10 @@ static void set_instruction_ready(
 	if (instruction->node->type == N_CONTAINER &&
 			instruction->node->sway_container->view != NULL) {
 		struct sway_view *view = instruction->node->sway_container->view;
-		wlr_scene_node_set_enabled(&view->saved_surface_tree->node, false);
-		printf("DEBUG: enabling crossfade!\n");
-		wlr_scene_node_set_enabled(&view->resize_crossfade_surface_tree->node, true);
+		if (view->saved_surface_tree != NULL) {
+			wlr_scene_node_set_enabled(&view->saved_surface_tree->node, false);
+			wlr_scene_node_set_enabled(&view->resize_crossfade_surface_tree->node, true);
+		}
 	}
 
 	transaction_progress();
