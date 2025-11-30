@@ -23,6 +23,7 @@
 #include "config.h"
 #include "log.h"
 #include "scenefx/types/fx/corner_location.h"
+#include "sway/animation_manager.h"
 #include "sway/config.h"
 #include "sway/desktop/transaction.h"
 #include "sway/input/input-manager.h"
@@ -210,20 +211,24 @@ static enum wlr_scale_filter_mode get_scale_filter(struct sway_output *output,
 }
 
 void output_configure_scene(struct sway_output *output, struct wlr_scene_node *node, float opacity,
-		int corner_radius, bool blur_enabled, bool has_titlebar, struct sway_container *closest_con) {
+		int corner_radius, bool blur_enabled, bool has_titlebar, struct sway_container *closest_con,
+		struct sway_scene_descriptor *closest_desc) {
 	if (!node->enabled) {
 		return;
 	}
 
-	struct sway_container *con =
-		scene_descriptor_try_get(node, SWAY_SCENE_DESC_CONTAINER);
-	if (con) {
-		closest_con = con;
-		opacity = con->alpha;
-		corner_radius = con->corner_radius;
-		blur_enabled = con->blur_enabled;
-		enum sway_container_layout layout = con->current.layout;
-		has_titlebar |= con->current.border == B_NORMAL || layout == L_STACKED || layout == L_TABBED;
+	struct sway_scene_descriptor *descriptor = scene_descriptor_try_get_first(node);
+	if (descriptor && descriptor->data) {
+		closest_desc = descriptor;
+		if (closest_desc->type == SWAY_SCENE_DESC_CONTAINER) {
+			closest_con = closest_desc->data;
+			opacity = closest_con->alpha;
+			corner_radius = closest_con->corner_radius;
+			blur_enabled = closest_con->blur_enabled;
+
+			enum sway_container_layout layout = closest_con->current.layout;
+			has_titlebar |= closest_con->current.border == B_NORMAL || layout == L_STACKED || layout == L_TABBED;
+		}
 	}
 
 	if (node->type == WLR_SCENE_NODE_BUFFER) {
@@ -247,29 +252,38 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 
 		wlr_scene_buffer_set_opacity(buffer, opacity);
 
-		if (!surface || !surface->surface) {
+		if (!closest_desc) {
 			return;
 		}
 
-		// Other buffers should set their own effects manually, like the
-		// text buffer and saved views
-		struct wlr_layer_surface_v1 *layer_surface = NULL;
-		if (wlr_xdg_surface_try_from_wlr_surface(surface->surface)
-#if WLR_HAS_XWAYLAND
-				|| wlr_xwayland_surface_try_from_wlr_surface(surface->surface)
-#endif
-				) {
-			wlr_scene_buffer_set_corner_radius(buffer,
-					container_has_corner_radius(closest_con) ? corner_radius : 0,
-					has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL);
-		} else if (wlr_subsurface_try_from_wlr_surface(surface->surface)) {
-			wlr_scene_buffer_set_corner_radius(buffer,
-					container_has_corner_radius(closest_con) ? corner_radius : 0,
-					CORNER_LOCATION_ALL);
-		} else if ((layer_surface = wlr_layer_surface_v1_try_from_wlr_surface(surface->surface))
-				&& layer_surface->data) {
+		switch (closest_desc->type) {
+		// TODO: move to a function, this is getting too many layers of indentation
+		case SWAY_SCENE_DESC_VIEW: {
+			struct sway_view *view = closest_desc->data;
+			// Saved buffers only includes either XDG or XWayland buffers, not
+			// border buffers like the text buffer
+			bool is_saved = view->saved_surface_tree; // TODO: make this only true if the current buffer is saved - may fix firefox opacity on resize
+			// Only the main surface
+			bool is_main_surface = surface && surface->surface == view->surface;
+
+			if (is_saved || is_main_surface) {
+				// Main surfaces and saved
+				wlr_scene_buffer_set_corner_radius(buffer,
+						container_has_corner_radius(closest_con) ? corner_radius : 0,
+						has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL);
+			} else {
+				// Subsurfaces
+				// TODO: Check for has titlebar. Fixes Firefox weirdness (when its state is "maximized")
+				wlr_scene_buffer_set_corner_radius(buffer,
+						container_has_corner_radius(closest_con) ? corner_radius : 0,
+						CORNER_LOCATION_ALL);
+			}
+			break;
+		}
+		case SWAY_SCENE_DESC_LAYER_SHELL: {
 			// Layer effects
-			struct sway_layer_surface *surface = layer_surface->data;
+			// TODO: Fade-in/out
+			struct sway_layer_surface *surface = closest_desc->data;
 			wlr_scene_buffer_set_corner_radius(buffer, surface->corner_radius, CORNER_LOCATION_ALL);
 			wlr_scene_shadow_set_blur_sigma(surface->shadow_node, config->shadow_blur_sigma);
 			wlr_scene_shadow_set_corner_radius(surface->shadow_node, surface->corner_radius);
@@ -289,13 +303,53 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 					surface->layer_surface->surface->current.height
 				);
 			}
+			
+			break;
 		}
+		case SWAY_SCENE_DESC_XWAYLAND_UNMANAGED:
+		case SWAY_SCENE_DESC_POPUP:
+		case SWAY_SCENE_DESC_DRAG_ICON: {
+			// TODO:
+			break;
+		}
+		default:
+			break;
+		}
+	} else if (node->type == WLR_SCENE_NODE_BUFFER_CROSSFADE) {
+		// TODO: this is logic shared between WLR_SCENE_NODE_BUFFER
+
+		assert(closest_desc->type == SWAY_SCENE_DESC_VIEW);
+		struct sway_view *view = closest_desc->data;
+		struct wlr_scene_buffer_crossfade *buffer_crossfade = wlr_scene_buffer_crossfade_from_node(node);
+		wlr_scene_buffer_crossfade_set_progress(buffer_crossfade,
+				get_animated_value(view->container->animation_state.from_resize_crossfade_progress, 1.0f));
+
+		wlr_scene_buffer_crossfade_set_corner_radius(buffer_crossfade, corner_radius,
+				has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL);
+
+		// TODO: check if it is being animated -> move is_animated to container.c?
+		int title_offset = view->container->scene_tree->node.y;
+		int width = get_animated_value(view->container->animation_state.from_width,
+				view->container->current.width);
+		int height = MAX(0, get_animated_value(view->container->animation_state.from_height,
+				view->container->current.height) - title_offset);
+		if (buffer_crossfade->transform & WL_OUTPUT_TRANSFORM_90) {
+			int temp = width;
+			width = height;
+			height = temp;
+		}
+
+		buffer_crossfade->dst_width = width;
+		buffer_crossfade->dst_height = height;
 	} else if (node->type == WLR_SCENE_NODE_TREE) {
 		struct wlr_scene_tree *tree = wlr_scene_tree_from_node(node);
 		struct wlr_scene_node *node;
 		wl_list_for_each(node, &tree->children, link) {
-			output_configure_scene(output, node, opacity, corner_radius, blur_enabled, has_titlebar, closest_con);
+			output_configure_scene(output, node, opacity, corner_radius, blur_enabled, has_titlebar, closest_con, closest_desc);
 		}
+
+		// Last use of the descriptor
+		free(descriptor);
 	} else if (node->type == WLR_SCENE_NODE_BLUR && closest_con) {
 		struct wlr_scene_blur *blur = wlr_scene_blur_from_node(node);
 
@@ -335,7 +389,7 @@ static int output_repaint_timer_handler(void *data) {
 	}
 
 	output_configure_scene(output, &root->root_scene->tree.node, 1.0f,
-			0, false, false, NULL);
+			0, false, false, NULL, NULL);
 
 	struct wlr_scene_output_state_options opts = {
 		.color_transform = output->color_transform,
@@ -658,6 +712,7 @@ void handle_new_output(struct wl_listener *listener, void *data) {
 	}
 
 	request_modeset();
+	refresh_animation_manager_timing();
 }
 
 static struct output_config *output_config_for_config_head(

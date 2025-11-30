@@ -1,4 +1,5 @@
 sway_sources = files(
+	'animation_manager.c',
 	'commands.c',
 	'config.c',
 	'criteria.c',
@@ -43,6 +44,7 @@ sway_sources = files(
 	'config/seat.c',
 	'config/input.c',
 
+	'commands/animation_duration_ms.c',
 	'commands/allow_tearing.c',
 	'commands/assign.c',
 	'commands/bar.c',

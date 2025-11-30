@@ -52,6 +52,7 @@
 #include "config.h"
 #include "list.h"
 #include "log.h"
+#include "sway/animation_manager.h"
 #include "sway/config.h"
 #include "sway/desktop/idle_inhibit_v1.h"
 #include "sway/input/input-manager.h"
@@ -64,7 +65,6 @@
 #include <wlr/xwayland/shell.h>
 #include "sway/xwayland.h"
 #endif
-
 #if WLR_HAS_DRM_BACKEND
 #include <wlr/types/wlr_drm_lease_v1.h>
 #endif
@@ -463,6 +463,8 @@ bool server_init(struct sway_server *server) {
 
 	server->input = input_manager_create(server);
 	input_manager_get_default_seat(); // create seat0
+
+	animation_manager_init(server);
 
 	return true;
 }
