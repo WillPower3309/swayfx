@@ -49,6 +49,7 @@ static const struct cmd_handler handlers[] = {
 	{ "bindswitch", cmd_bindswitch },
 	{ "bindsym", cmd_bindsym },
 	{ "blur", cmd_blur },
+	{ "blur_border", cmd_blur_border },
 	{ "blur_brightness", cmd_blur_brightness },
 	{ "blur_contrast", cmd_blur_contrast },
 	{ "blur_noise", cmd_blur_noise },

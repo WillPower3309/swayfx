@@ -493,6 +493,7 @@ struct sway_config {
 	} dim_inactive_colors;
 
 	bool blur_enabled;
+	bool blur_border;
 	bool blur_xray;
 	struct blur_data blur_data;
 
