@@ -16,6 +16,7 @@
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
 #include "log.h"
+#include "sway/commands.h"
 #if WLR_HAS_XWAYLAND
 #include "sway/xwayland.h"
 #endif
@@ -224,7 +225,7 @@ static void handle_tablet_tool_tip(struct sway_seat *seat,
 	struct wlr_surface *surface = NULL;
 	double sx, sy;
 	struct sway_node *node = node_at_coords(seat,
-		cursor->cursor->x, cursor->cursor->y, &surface, &sx, &sy);
+		cursor->cursor->x, cursor->cursor->y, &surface, NULL, &sx, &sy);
 
 	if (!sway_assert(surface,
 			"Expected null-surface tablet input to route through pointer emulation")) {
@@ -335,9 +336,10 @@ static void handle_button(struct sway_seat *seat, uint32_t time_msec,
 
 	// Determine what's under the cursor
 	struct wlr_surface *surface = NULL;
+	struct sway_container_button *con_button = NULL;
 	double sx, sy;
 	struct sway_node *node = node_at_coords(seat,
-			cursor->cursor->x, cursor->cursor->y, &surface, &sx, &sy);
+			cursor->cursor->x, cursor->cursor->y, &surface, &con_button, &sx, &sy);
 
 	struct sway_container *cont = node && node->type == N_CONTAINER ?
 		node->sway_container : NULL;
@@ -361,6 +363,7 @@ static void handle_button(struct sway_seat *seat, uint32_t time_msec,
 	bool mod_move_btn_pressed = mod_pressed && button == mod_move_btn;
 	bool mod_resize_btn_pressed = mod_pressed && button == mod_resize_btn;
 	bool titlebar_left_btn_pressed = on_titlebar && button == BTN_LEFT;
+	bool titlebar_button_left_btn_pressed = !mod_pressed && con_button != NULL && button == BTN_LEFT;
 
 	// Handle mouse bindings
 	if (trigger_pointer_button_binding(seat, device, button, state, modifiers,
@@ -390,6 +393,22 @@ static void handle_button(struct sway_seat *seat, uint32_t time_msec,
 		}
 		seat_pointer_notify_button(seat, time_msec, button, state);
 		return;
+	}
+
+	if (titlebar_button_left_btn_pressed && state == WL_POINTER_BUTTON_STATE_PRESSED && cont != NULL) {
+		struct window_button *btn = cont->buttons->items[con_button->button_idx];
+		if (btn != NULL && btn->command != NULL) {
+			list_t *res_list = execute_command(btn->command, seat, cont);
+			for (int j = 0; j < res_list->length; ++j) {
+				struct cmd_results *results = res_list->items[j];
+				if (results->status != CMD_SUCCESS) {
+					sway_log(SWAY_DEBUG, "could not run command for binding: %s (%s)",
+						btn->command, results->error);
+				}
+				free_cmd_results(results);
+			}
+			list_free(res_list);
+		}
 	}
 
 	// Handle tiling resize via border
@@ -550,7 +569,7 @@ static void check_focus_follows_mouse(struct sway_seat *seat,
 		struct wlr_surface *surface = NULL;
 		double sx, sy;
 		node_at_coords(seat, seat->cursor->cursor->x, seat->cursor->cursor->y,
-				&surface, &sx, &sy);
+				&surface, NULL, &sx, &sy);
 
 		// Focus topmost layer surface
 		struct wlr_layer_surface_v1 *layer = NULL;
@@ -605,7 +624,7 @@ static void handle_pointer_motion(struct sway_seat *seat, uint32_t time_msec) {
 	struct wlr_surface *surface = NULL;
 	double sx, sy;
 	struct sway_node *node = node_at_coords(seat,
-			cursor->cursor->x, cursor->cursor->y, &surface, &sx, &sy);
+			cursor->cursor->x, cursor->cursor->y, &surface, NULL, &sx, &sy);
 
 	if (config->focus_follows_mouse != FOLLOWS_NO) {
 		check_focus_follows_mouse(seat, e, node);
@@ -634,7 +653,7 @@ static void handle_tablet_tool_motion(struct sway_seat *seat,
 	struct wlr_surface *surface = NULL;
 	double sx, sy;
 	struct sway_node *node = node_at_coords(seat,
-			cursor->cursor->x, cursor->cursor->y, &surface, &sx, &sy);
+			cursor->cursor->x, cursor->cursor->y, &surface, NULL, &sx, &sy);
 
 	if (config->focus_follows_mouse != FOLLOWS_NO) {
 		check_focus_follows_mouse(seat, e, node);
@@ -662,7 +681,7 @@ static void handle_touch_down(struct sway_seat *seat,
 	struct wlr_seat *wlr_seat = seat->wlr_seat;
 	struct sway_cursor *cursor = seat->cursor;
 	double sx, sy;
-	node_at_coords(seat, seat->touch_x, seat->touch_y, &surface, &sx, &sy);
+	node_at_coords(seat, seat->touch_x, seat->touch_y, &surface, NULL, &sx, &sy);
 
 	if (surface && wlr_surface_accepts_touch(surface, wlr_seat)) {
 		if (seat_is_input_allowed(seat, surface)) {
@@ -715,7 +734,7 @@ static void handle_pointer_axis(struct sway_seat *seat,
 	struct wlr_surface *surface = NULL;
 	double sx, sy;
 	struct sway_node *node = node_at_coords(seat,
-			cursor->cursor->x, cursor->cursor->y, &surface, &sx, &sy);
+			cursor->cursor->x, cursor->cursor->y, &surface, NULL, &sx, &sy);
 	struct sway_container *cont = node && node->type == N_CONTAINER ?
 		node->sway_container : NULL;
 	enum wlr_edges edge = cont ? find_edge(cont, surface, cursor) : WLR_EDGE_NONE;
@@ -1107,7 +1126,7 @@ static void handle_rebase(struct sway_seat *seat, uint32_t time_msec) {
 	struct wlr_surface *surface = NULL;
 	double sx = 0.0, sy = 0.0;
 	e->previous_node = node_at_coords(seat,
-			cursor->cursor->x, cursor->cursor->y, &surface, &sx, &sy);
+			cursor->cursor->x, cursor->cursor->y, &surface, NULL, &sx, &sy);
 
 	if (surface) {
 		if (seat_is_input_allowed(seat, surface)) {

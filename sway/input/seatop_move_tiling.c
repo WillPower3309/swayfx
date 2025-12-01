@@ -185,7 +185,7 @@ static void handle_motion_postthreshold(struct sway_seat *seat) {
 	double sx, sy;
 	struct sway_cursor *cursor = seat->cursor;
 	struct sway_node *node = node_at_coords(seat,
-			cursor->cursor->x, cursor->cursor->y, &surface, &sx, &sy);
+			cursor->cursor->x, cursor->cursor->y, &surface, NULL, &sx, &sy);
 
 	if (!node) {
 		// Eg. hovered over a layer surface such as swaybar

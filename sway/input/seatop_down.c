@@ -76,7 +76,7 @@ static void handle_touch_down(struct sway_seat *seat,
 	double sx, sy;
 	struct wlr_surface *surface = NULL;
 	struct sway_node *focused_node = node_at_coords(seat, seat->touch_x,
-		seat->touch_y, &surface, &sx, &sy);
+		seat->touch_y, &surface, NULL, &sx, &sy);
 
 	if (!surface || surface != e->surface) { // Must start from the initial surface
 		return;
