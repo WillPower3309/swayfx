@@ -1232,7 +1232,7 @@ static void view_save_buffer_iterator(struct wlr_scene_buffer *buffer,
 	wlr_scene_buffer_set_buffer(sbuf, buffer->buffer);
 
 	// Set effects to saved views
-	wlr_scene_buffer_set_corner_radius(sbuf, buffer->corner_radius, buffer->corners);
+	wlr_scene_buffer_set_corner_radii(sbuf, buffer->corners);
 }
 
 void view_save_buffer(struct sway_view *view) {

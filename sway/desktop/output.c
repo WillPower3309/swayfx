@@ -22,7 +22,6 @@
 #include <wlr/util/transform.h>
 #include "config.h"
 #include "log.h"
-#include "scenefx/types/fx/corner_location.h"
 #include "sway/config.h"
 #include "sway/desktop/transaction.h"
 #include "sway/input/input-manager.h"
@@ -259,18 +258,21 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 				|| wlr_xwayland_surface_try_from_wlr_surface(surface->surface)
 #endif
 				) {
-			wlr_scene_buffer_set_corner_radius(buffer,
-					container_has_corner_radius(closest_con) ? corner_radius : 0,
-					has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL);
+			int buffer_corner_radius = container_has_corner_radius(closest_con) ? corner_radius : 0;
+			wlr_scene_buffer_set_corner_radii(
+				buffer,
+				has_titlebar ? corner_radii_bottom(buffer_corner_radius) : corner_radii_all(buffer_corner_radius)
+			);
 		} else if (wlr_subsurface_try_from_wlr_surface(surface->surface)) {
-			wlr_scene_buffer_set_corner_radius(buffer,
-					container_has_corner_radius(closest_con) ? corner_radius : 0,
-					CORNER_LOCATION_ALL);
+			wlr_scene_buffer_set_corner_radii(
+				buffer,
+				corner_radii_all(container_has_corner_radius(closest_con) ? corner_radius : 0)
+			);
 		} else if ((layer_surface = wlr_layer_surface_v1_try_from_wlr_surface(surface->surface))
 				&& layer_surface->data) {
 			// Layer effects
 			struct sway_layer_surface *surface = layer_surface->data;
-			wlr_scene_buffer_set_corner_radius(buffer, surface->corner_radius, CORNER_LOCATION_ALL);
+			wlr_scene_buffer_set_corner_radii(buffer, corner_radii_all(surface->corner_radius));
 			wlr_scene_shadow_set_blur_sigma(surface->shadow_node, config->shadow_blur_sigma);
 			wlr_scene_shadow_set_corner_radius(surface->shadow_node, surface->corner_radius);
 
@@ -283,7 +285,7 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 					wlr_scene_blur_set_transparency_mask_source(surface->blur_node, NULL);
 				}
 				wlr_scene_blur_set_should_only_blur_bottom_layer(surface->blur_node, surface->blur_xray);
-				wlr_scene_blur_set_corner_radius(surface->blur_node, surface->corner_radius, CORNER_LOCATION_ALL);
+				wlr_scene_blur_set_corner_radii(surface->blur_node, corner_radii_all(surface->corner_radius));
 				wlr_scene_blur_set_size(surface->blur_node,
 					surface->layer_surface->surface->current.width,
 					surface->layer_surface->surface->current.height
@@ -303,9 +305,11 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 		bool should_optimize_blur = !container_is_floating_or_child(closest_con) || config->blur_xray;
 		wlr_scene_blur_set_should_only_blur_bottom_layer(blur, should_optimize_blur);
 		wlr_scene_node_set_enabled(node, closest_con->blur_enabled);
-		wlr_scene_blur_set_corner_radius(blur,
-					container_has_corner_radius(closest_con) ? corner_radius : 0,
-					has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL);
+		int blur_corner_radius = container_has_corner_radius(closest_con) ? corner_radius : 0;
+		wlr_scene_blur_set_corner_radii(
+			blur,
+			has_titlebar ? corner_radii_bottom(blur_corner_radius) : corner_radii_all(blur_corner_radius)
+		);
 	}
 }
 
