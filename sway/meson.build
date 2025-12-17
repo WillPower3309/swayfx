@@ -57,6 +57,7 @@ sway_sources = files(
 	'commands/blur_saturation.c',
 	'commands/border.c',
 	'commands/client.c',
+	'commands/colorkey.c',
 	'commands/corner_radius.c',
 	'commands/create_output.c',
 	'commands/default_border.c',
