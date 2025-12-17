@@ -1991,6 +1991,11 @@ bool container_has_corner_radius(struct sway_container *con) {
 	if (!con) {
 		return false;
 	}
+	// Check workspace is valid before accessing its properties
+	// (can be NULL during container setup before mapping to workspace)
+	if (!con->current.workspace) {
+		return con->corner_radius > 0;
+	}
 	return (container_is_floating_or_child(con) ||
 			!(config->smart_corner_radius && con->current.workspace->current_gaps.top == 0)) &&
 			con->corner_radius;
