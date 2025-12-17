@@ -68,6 +68,10 @@ For Fedora users, SwayFX is also available in [copr](https://copr.fedorainfraclo
     - `for_window [CRITERIA_HERE] dim_inactive <float value 0.0 - 1.0>`
     - `dim_inactive_colors.unfocused <hex color> ex, #000000FF`
     - `dim_inactive_colors.urgent <hex color> ex, #900000FF`
++ Color-key transparency (extracting/replacing a specific color):
+    - `colorkey <src_color> <dst_color>`: replace pixels matching src_color with dst_color
+    - `colorkey disable`: turn off color-key effect
+    - Example: `for_window [app_id="emacs"] colorkey #171925 #000000b3` replaces a dark background with 70% transparent black
 + Keep/remove separator border between titlebar and content: `titlebar_separator enable|disable`
 + Treat Scratchpad as minimized: `scratchpad_minimize enable|disable`: **we recommend keeping this setting off, as there are many kinks to iron out here**
 

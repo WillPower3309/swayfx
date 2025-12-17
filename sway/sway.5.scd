@@ -980,6 +980,14 @@ The default colors are:
 	Adjusts the opacity of the window between 0 (completely transparent) and
 	1 (completely opaque). If the operation is omitted, _set_ will be used.
 
+*colorkey* <src_color> <dst_color>|disable
+	Enables color-key transparency for the window. Pixels matching _src_color_
+	will be replaced with _dst_color_, allowing selective transparency effects
+	(similar to chroma key / green screen). Colors are specified as _#RRGGBB_ or
+	_#RRGGBBAA_. Use _disable_ to turn off the effect. Example:
+	_colorkey #171925 #000000b3_ replaces dark background with 70% transparent
+	black.
+
 *tiling_drag*  enable|disable|toggle
 	Sets whether or not tiling containers can be dragged with the mouse. If
 	_enabled_ (default), the _floating_mod_ can be used to drag tiling, as well
