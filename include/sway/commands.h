@@ -132,6 +132,7 @@ sway_cmd cmd_client_unfocused;
 sway_cmd cmd_client_urgent;
 sway_cmd cmd_client_placeholder;
 sway_cmd cmd_client_background;
+sway_cmd cmd_colorkey;
 sway_cmd cmd_commands;
 sway_cmd cmd_corner_radius;
 sway_cmd cmd_create_output;

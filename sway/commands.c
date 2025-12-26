@@ -63,6 +63,7 @@ static const struct cmd_handler handlers[] = {
 	{ "client.placeholder", cmd_client_noop },
 	{ "client.unfocused", cmd_client_unfocused },
 	{ "client.urgent", cmd_client_urgent },
+	{ "colorkey", cmd_colorkey },
 	{ "corner_radius", cmd_corner_radius },
 	{ "default_border", cmd_default_border },
 	{ "default_dim_inactive", cmd_default_dim_inactive },

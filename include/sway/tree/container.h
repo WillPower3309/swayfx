@@ -153,6 +153,11 @@ struct sway_container {
 	bool shadow_enabled;
 	float dim;
 
+	// Color-key transparency
+	bool colorkey_enabled;
+	float colorkey_src[4];  // Source RGBA to match (normalized 0.0-1.0)
+	float colorkey_dst[4];  // Destination RGBA replacement (normalized 0.0-1.0)
+
 	list_t *marks; // char *
 
 	struct {

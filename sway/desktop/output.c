@@ -262,10 +262,22 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 			wlr_scene_buffer_set_corner_radius(buffer,
 					container_has_corner_radius(closest_con) ? corner_radius : 0,
 					has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL);
+			if (closest_con) {
+				wlr_scene_buffer_set_colorkey(buffer,
+						closest_con->colorkey_enabled,
+						closest_con->colorkey_src,
+						closest_con->colorkey_dst);
+			}
 		} else if (wlr_subsurface_try_from_wlr_surface(surface->surface)) {
 			wlr_scene_buffer_set_corner_radius(buffer,
 					container_has_corner_radius(closest_con) ? corner_radius : 0,
 					CORNER_LOCATION_ALL);
+			if (closest_con) {
+				wlr_scene_buffer_set_colorkey(buffer,
+						closest_con->colorkey_enabled,
+						closest_con->colorkey_src,
+						closest_con->colorkey_dst);
+			}
 		} else if ((layer_surface = wlr_layer_surface_v1_try_from_wlr_surface(surface->surface))
 				&& layer_surface->data) {
 			// Layer effects
