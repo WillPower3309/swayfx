@@ -430,16 +430,9 @@ static void arrange_container(struct sway_container *con,
 		width = get_animated_value(con->animation_state.from_width, width);
 		height = MAX(0, get_animated_value(con->animation_state.from_height - y_offset, height));
 
-		int x = get_animated_value(con->animation_state.from_x, con->current.x);
-		int y = get_animated_value(con->animation_state.from_y, con->current.y) + y_offset;
-		if (con->current.workspace) {
-			x -= con->current.workspace->x;
-			y -= con->current.workspace->y;
-		}
-		if (con->current.parent && con->current.parent->current.workspace) {
-			x -= con->current.parent->current.x - con->current.parent->current.workspace->x;
-			y -= con->current.parent->current.y - con->current.parent->current.workspace->y;
-		}
+		// reuse the position from arrange_child. A bit hacky, but this reduces diff size vs upstream.
+		int x = get_animated_value(con->animation_state.from_x, con->scene_tree->node.x);
+		int y = get_animated_value(con->animation_state.from_y, con->scene_tree->node.y) + y_offset;
 		wlr_scene_node_set_position(&con->scene_tree->node, x, y);
 	}
 
@@ -895,10 +888,10 @@ void set_container_animation_from_val_iterator(struct sway_container *con, void 
 	}
 
 	con->animation_state.from_x = get_animated_value(
-		con->animation_state.from_x, con->current.x
+		con->animation_state.from_x, con->scene_tree->node.x
 	);
 	con->animation_state.from_y = get_animated_value(
-		con->animation_state.from_y, con->current.y
+		con->animation_state.from_y, con->scene_tree->node.y
 	);
 	con->animation_state.from_width = get_animated_value(
 		con->animation_state.from_width, con->current.width
