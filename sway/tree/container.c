@@ -1991,6 +1991,11 @@ bool container_has_corner_radius(struct sway_container *con) {
 	if (!con) {
 		return false;
 	}
+	// Guard against NULL workspace (can occur during window creation before
+	// workspace is assigned, or for scratchpad containers)
+	if (!con->current.workspace) {
+		return con->corner_radius > 0;
+	}
 	return (container_is_floating_or_child(con) ||
 			!(config->smart_corner_radius && con->current.workspace->current_gaps.top == 0)) &&
 			con->corner_radius;
