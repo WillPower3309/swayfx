@@ -432,7 +432,7 @@ static void arrange_container(struct sway_container *con,
 
 		// reuse the position from arrange_child. A bit hacky, but this reduces diff size vs upstream.
 		int x = get_animated_value(con->animation_state.from_x, con->scene_tree->node.x);
-		int y = get_animated_value(con->animation_state.from_y, con->scene_tree->node.y) + y_offset;
+		int y = get_animated_value(con->animation_state.from_y, con->scene_tree->node.y);
 		wlr_scene_node_set_position(&con->scene_tree->node, x, y);
 	}
 
