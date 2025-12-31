@@ -303,7 +303,7 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 					surface->layer_surface->surface->current.height
 				);
 			}
-			
+
 			break;
 		}
 		case SWAY_SCENE_DESC_XWAYLAND_UNMANAGED:
@@ -315,32 +315,6 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 		default:
 			break;
 		}
-	} else if (node->type == WLR_SCENE_NODE_BUFFER_CROSSFADE) {
-		// TODO: this is logic shared between WLR_SCENE_NODE_BUFFER
-
-		assert(closest_desc->type == SWAY_SCENE_DESC_VIEW);
-		struct sway_view *view = closest_desc->data;
-		struct wlr_scene_buffer_crossfade *buffer_crossfade = wlr_scene_buffer_crossfade_from_node(node);
-		wlr_scene_buffer_crossfade_set_progress(buffer_crossfade,
-				get_animated_value(view->container->animation_state.from_resize_crossfade_progress, 1.0f));
-
-		wlr_scene_buffer_crossfade_set_corner_radius(buffer_crossfade, corner_radius,
-				has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL);
-
-		// TODO: check if it is being animated -> move is_animated to container.c?
-		int title_offset = view->container->scene_tree->node.y;
-		int width = get_animated_value(view->container->animation_state.from_width,
-				view->container->current.width);
-		int height = MAX(0, get_animated_value(view->container->animation_state.from_height,
-				view->container->current.height) - title_offset);
-		if (buffer_crossfade->transform & WL_OUTPUT_TRANSFORM_90) {
-			int temp = width;
-			width = height;
-			height = temp;
-		}
-
-		buffer_crossfade->dst_width = width;
-		buffer_crossfade->dst_height = height;
 	} else if (node->type == WLR_SCENE_NODE_TREE) {
 		struct wlr_scene_tree *tree = wlr_scene_tree_from_node(node);
 		struct wlr_scene_node *node;
@@ -358,8 +332,21 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 		wlr_scene_blur_set_should_only_blur_bottom_layer(blur, should_optimize_blur);
 		wlr_scene_node_set_enabled(node, closest_con->blur_enabled);
 		wlr_scene_blur_set_corner_radius(blur,
-					container_has_corner_radius(closest_con) ? corner_radius : 0,
-					has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL);
+				container_has_corner_radius(closest_con) ? corner_radius : 0,
+				has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL);
+	} else if (node->type == WLR_SCENE_NODE_BUFFER_CROSSFADE) {
+		struct wlr_scene_buffer_crossfade *buffer_crossfade = wlr_scene_buffer_crossfade_from_node(node);
+		assert(closest_desc->type == SWAY_SCENE_DESC_VIEW);
+		struct sway_view *view = closest_desc->data;
+
+		int width = get_animated_value(buffer_crossfade->scene_buffer_prev->dst_width,
+				buffer_crossfade->scene_buffer_next->dst_width);
+		int height = get_animated_value(buffer_crossfade->scene_buffer_prev->dst_height,
+				buffer_crossfade->scene_buffer_next->dst_height);
+		wlr_scene_buffer_crossfade_set_dest_size(buffer_crossfade, width, height);
+
+		wlr_scene_buffer_crossfade_set_progress(buffer_crossfade,
+				get_animated_value(view->container->animation_state.from_resize_crossfade_progress, 1.0f));
 	}
 }
 

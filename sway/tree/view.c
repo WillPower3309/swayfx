@@ -1255,7 +1255,6 @@ static void view_save_buffer_iterator(struct wlr_scene_buffer *buffer,
 	wlr_scene_buffer_crossfade_set_dest_size(crossfade_buffer, buffer->dst_width, buffer->dst_height);
 	wlr_scene_buffer_crossfade_set_source_box(crossfade_buffer, &buffer->src_box);
 	wlr_scene_node_set_position(&crossfade_buffer->node, sx, sy);
-	wlr_scene_buffer_crossfade_set_transform(crossfade_buffer, buffer->transform);
 	wlr_scene_buffer_crossfade_set_progress(crossfade_buffer, 0.0f);
 	wlr_scene_buffer_crossfade_set_corner_radius(crossfade_buffer, buffer->corner_radius, buffer->corners);
 }
