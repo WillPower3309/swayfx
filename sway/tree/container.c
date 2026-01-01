@@ -7,7 +7,6 @@
 #include <wlr/types/wlr_linux_dmabuf_v1.h>
 #include <wlr/types/wlr_output_layout.h>
 #include <wlr/types/wlr_subcompositor.h>
-#include "scenefx/types/fx/corner_location.h"
 #include "linux-dmabuf-unstable-v1-protocol.h"
 #include "sway/config.h"
 #include "sway/desktop/transaction.h"
@@ -398,7 +397,7 @@ void container_arrange_title_bar(struct sway_container *con) {
 	int thickness = config->titlebar_border_thickness;
 	int background_corner_radius = container_has_corner_radius(con) ?
 			con->corner_radius + con->current.border_thickness - thickness : 0;
-	enum corner_location corners = CORNER_LOCATION_TOP;
+	struct fx_corner_radii corners = corner_radii_top(background_corner_radius);
 
 	enum sway_container_layout layout;
 	const list_t *siblings;
@@ -413,37 +412,34 @@ void container_arrange_title_bar(struct sway_container *con) {
 	if (con->current.parent || con->current.workspace) {
 		if (layout == L_TABBED && siblings->length > 1) {
 			if (siblings->items[0] == con) {
-				corners = CORNER_LOCATION_TOP_LEFT;
+				corners.top_right = 0;
 			} else if (siblings->items[siblings->length - 1] == con) {
-				corners = CORNER_LOCATION_TOP_RIGHT;
+				corners.top_left = 0;
 			} else {
 				background_corner_radius = 0;
-				corners = CORNER_LOCATION_NONE;
+				corners = corner_radii_none();
 			}
 		} else if (layout == L_STACKED && siblings->items[0] != con) {
 			background_corner_radius = 0;
-			corners = CORNER_LOCATION_NONE;
+			corners = corner_radii_none();
 		}
 	}
 
 	wlr_scene_node_set_position(&con->title_bar.background->node, thickness, thickness);
 	wlr_scene_rect_set_size(con->title_bar.background, width - thickness * 2,
 			height - thickness * (config->titlebar_separator ? 2 : 1));
-	wlr_scene_rect_set_corner_radius(con->title_bar.background, background_corner_radius, corners);
+	wlr_scene_rect_set_corner_radii(con->title_bar.background, corners);
 
 	text_box.x -= thickness;
 	text_box.y -= thickness;
 	wlr_scene_rect_set_clipped_region(con->title_bar.background, (struct clipped_region) {
-			.corner_radius = 0,
-			.corners = CORNER_LOCATION_NONE,
+			.corners = {0},
 			.area = text_box,
 	});
 
 	wlr_scene_rect_set_size(con->title_bar.border, width, height);
-	wlr_scene_rect_set_corner_radius(con->title_bar.border, background_corner_radius ?
-			background_corner_radius + thickness : 0, corners);
+	wlr_scene_rect_set_corner_radii(con->title_bar.border, fx_corner_radii_extend(corners, thickness));
 	wlr_scene_rect_set_clipped_region(con->title_bar.border, (struct clipped_region) {
-			.corner_radius = background_corner_radius,
 			.corners = corners,
 			.area = {
 			  .x = thickness,

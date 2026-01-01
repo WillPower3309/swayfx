@@ -1,7 +1,6 @@
 #include <limits.h>
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/util/edges.h>
-#include "scenefx/types/fx/corner_location.h"
 #include "sway/desktop/transaction.h"
 #include "sway/input/cursor.h"
 #include "sway/input/seat.h"
@@ -174,8 +173,8 @@ static void update_indicator(struct seatop_move_tiling_event *e, struct wlr_box 
 	}
 
 	int corner_radius_real = MIN(corner_radius, MIN(box->width / 2, box->height / 2));
-	wlr_scene_rect_set_corner_radius(e->indicator_rect, corner_radius_real, CORNER_LOCATION_ALL);
-	wlr_scene_blur_set_corner_radius(e->indicator_blur, corner_radius_real, CORNER_LOCATION_ALL);
+	wlr_scene_rect_set_corner_radii(e->indicator_rect, corner_radii_all(corner_radius_real));
+	wlr_scene_blur_set_corner_radii(e->indicator_blur, corner_radii_all(corner_radius_real));
 }
 
 static void handle_motion_postthreshold(struct sway_seat *seat) {

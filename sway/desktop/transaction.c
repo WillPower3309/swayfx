@@ -4,7 +4,6 @@
 #include <time.h>
 #include <wlr/types/wlr_buffer.h>
 #include "scenefx/types/fx/clipped_region.h"
-#include "scenefx/types/fx/corner_location.h"
 #include "sway/config.h"
 #include "sway/scene_descriptor.h"
 #include "sway/desktop/idle_inhibit_v1.h"
@@ -430,8 +429,7 @@ static void arrange_container(struct sway_container *con,
 		wlr_scene_node_set_position(&con->shadow->node, x, y);
 
 		wlr_scene_shadow_set_clipped_region(con->shadow, (struct clipped_region) {
-			.corner_radius = corner_radius,
-			.corners = CORNER_LOCATION_ALL,
+			.corners = corner_radii_all(corner_radius),
 			.area = {
 				.x = config->shadow_blur_sigma - config->shadow_offset_x,
 				.y = config->shadow_blur_sigma - config->shadow_offset_y,
@@ -497,11 +495,10 @@ static void arrange_container(struct sway_container *con,
 
 		if (border_top) {
 			wlr_scene_rect_set_size(con->border.top, width, border_top + corner_radius);
-			wlr_scene_rect_set_corner_radius(con->border.top, !has_corner_radius ? 0 :
-					corner_radius + border_width, CORNER_LOCATION_TOP);
+			wlr_scene_rect_set_corner_radii(con->border.top, corner_radii_top(!has_corner_radius ? 0 :
+					corner_radius + border_width));
 			wlr_scene_rect_set_clipped_region(con->border.top, (struct clipped_region) {
-				.corner_radius = corner_radius,
-				.corners = CORNER_LOCATION_TOP,
+				.corners = corner_radii_top(corner_radius),
 				.area = {
 					.x = border_width,
 					.y = border_width,
@@ -515,12 +512,11 @@ static void arrange_container(struct sway_container *con,
 
 		if (border_bottom) {
 			wlr_scene_rect_set_size(con->border.bottom, width, border_bottom + corner_radius);
-			wlr_scene_rect_set_corner_radius(con->border.bottom, !has_corner_radius ? 0 :
-					corner_radius + border_width, CORNER_LOCATION_BOTTOM);
+			wlr_scene_rect_set_corner_radii(con->border.bottom, corner_radii_bottom(!has_corner_radius ? 0 :
+					corner_radius + border_width));
 
 			wlr_scene_rect_set_clipped_region(con->border.bottom, (struct clipped_region) {
-				.corner_radius = corner_radius,
-				.corners = CORNER_LOCATION_BOTTOM,
+				.corners = corner_radii_bottom(corner_radius),
 				// shift up one px to fix https://github.com/WillPower3309/swayfx/issues/386
 				// TODO: proper fix
 				.area = {
@@ -548,8 +544,10 @@ static void arrange_container(struct sway_container *con,
 			wlr_scene_rect_set_size(con->dim_rect, con->current.content_width,
 					con->current.content_height);
 			bool has_titlebar = !title_bar || con->current.border == B_NORMAL;
-			wlr_scene_rect_set_corner_radius(con->dim_rect, con->corner_radius,
-					has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL);
+			wlr_scene_rect_set_corner_radii(
+				con->dim_rect,
+				has_titlebar ? corner_radii_bottom(con->corner_radius) : corner_radii_all(con->corner_radius)
+			);
 		}
 
 		// make sure to reparent, it's possible that the client just came out of
