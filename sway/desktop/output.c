@@ -303,9 +303,15 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 		bool should_optimize_blur = !container_is_floating_or_child(closest_con) || config->blur_xray;
 		wlr_scene_blur_set_should_only_blur_bottom_layer(blur, should_optimize_blur);
 		wlr_scene_node_set_enabled(node, closest_con->blur_enabled);
-		wlr_scene_blur_set_corner_radius(blur,
-					container_has_corner_radius(closest_con) ? corner_radius : 0,
-					has_titlebar ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL);
+		enum corner_location blur_corners = has_titlebar  ? CORNER_LOCATION_BOTTOM : CORNER_LOCATION_ALL;
+		bool blur_has_corner_radius = container_has_corner_radius(closest_con);
+		int blur_corner_radius = blur_has_corner_radius ? corner_radius : 0;
+		if (closest_con && closest_con->blur_border && blur_has_corner_radius) {
+			blur_corners = CORNER_LOCATION_ALL;
+			blur_corner_radius += closest_con->current.border_thickness;
+		}
+
+		wlr_scene_blur_set_corner_radius(blur, blur_corner_radius, blur_corners);
 	}
 }
 
