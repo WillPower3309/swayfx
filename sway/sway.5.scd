@@ -693,7 +693,7 @@ The default colors are:
 
 *corner_radius* <radius>
 	Set corner radius in pixels for new windows.
-	This can range between 0 to 65,535
+	This can range between 0 to 99
 
 *smart_corner_radius* enable|disable
 	Set corner radius only if there are gaps around the window.
