@@ -52,6 +52,9 @@ runtime.
 *height* <height>
 	Sets the height of the bar. Default height (0) will match the font size.
 
+*border_size* <size>
+	Sets the size of the border around the workspaces. Default is 1
+
 *hidden_state* hide|show [<bar-id>]
 	Specifies the behaviour of the bar when it is in _hide_ mode. When the
 	hidden state is _hide_, then it is normally hidden, and only unhidden by
