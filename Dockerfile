@@ -8,59 +8,56 @@ SHELL ["/bin/bash", "-e", "-o", "pipefail", "-c"]
 ENV LANG=C.UTF-8
 
 RUN <<EOF
-  PACKAGES=(
-    build-essential
-    cmake
-    cdbs
-    devscripts
-    equivs
-    meson
-    wayland-protocols
-    libwayland-dev
-    libwayland-bin
-    libwayland-client0
-    libdrm-dev
-    libxkbcommon-dev
-    libudev-dev
-    hwdata
-    libseat-dev
-    libgles-dev
-    libavutil-dev
-    libavcodec-dev
-    libavformat-dev
-    libgbm-dev
-    xwayland
-    libxcb-composite0-dev
-    libxcb-icccm4-dev
-    libxcb-res0-dev
-    libxcb-errors-dev
-    libinput-dev
-    libxcb-present-dev
-    libxcb-render-util0-dev
-    libxcb-xinput-dev
-    glslang-tools
-    glslang-dev
-    libpcre2-dev
-    libjson-c-dev
-    libgdk-pixbuf-2.0-dev
-    libsystemd-dev
-    scdoc
-    bash-completion
-    libpango1.0-dev
-    libcairo2-dev
-    libxcb-ewmh-dev
-    libdisplay-info-dev
-    libliftoff-dev
-    liblcms2-dev
-    libvulkan-dev
-    wget
-    bash
-    git
-    ca-certificates
-  )
-
   apt-get update
-  apt-get --yes install --no-install-recommends "${PACKAGES[@]}"
+  apt-get --yes install --no-install-recommends \
+    build-essential \
+    cmake \
+    cdbs \
+    devscripts \
+    equivs \
+    meson \
+    wayland-protocols \
+    libwayland-dev \
+    libwayland-bin \
+    libwayland-client0 \
+    libdrm-dev \
+    libxkbcommon-dev \
+    libudev-dev \
+    hwdata \
+    libseat-dev \
+    libgles-dev \
+    libavutil-dev \
+    libavcodec-dev \
+    libavformat-dev \
+    libgbm-dev \
+    xwayland \
+    libxcb-composite0-dev \
+    libxcb-icccm4-dev \
+    libxcb-res0-dev \
+    libxcb-errors-dev \
+    libinput-dev \
+    libxcb-present-dev \
+    libxcb-render-util0-dev \
+    libxcb-xinput-dev \
+    glslang-tools \
+    glslang-dev \
+    libpcre2-dev \
+    libjson-c-dev \
+    libgdk-pixbuf-2.0-dev \
+    libsystemd-dev \
+    scdoc \
+    bash-completion \
+    libpango1.0-dev \
+    libcairo2-dev \
+    libxcb-ewmh-dev \
+    libdisplay-info-dev \
+    libliftoff-dev \
+    liblcms2-dev \
+    libvulkan-dev \
+    wget \
+    bash \
+    git \
+    ca-certificates
 EOF
 
 WORKDIR /build

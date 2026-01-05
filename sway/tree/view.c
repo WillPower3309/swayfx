@@ -294,7 +294,7 @@ void view_autoconfigure(struct sway_view *view) {
 	}
 	struct sway_output *output = ws ? ws->output : NULL;
 
-	if (con->pending.fullscreen_mode == FULLSCREEN_WORKSPACE) {
+	if (output && con->pending.fullscreen_mode == FULLSCREEN_WORKSPACE) {
 		con->pending.content_x = output->lx;
 		con->pending.content_y = output->ly;
 		con->pending.content_width = output->width;
@@ -1241,7 +1241,7 @@ static void view_save_buffer_iterator(struct wlr_scene_buffer *buffer,
 	wlr_scene_node_set_position(&sbuf->node, sx, sy);
 	wlr_scene_buffer_set_transform(sbuf, buffer->transform);
 	wlr_scene_buffer_set_buffer(sbuf, buffer->buffer);
-	wlr_scene_buffer_set_corner_radius(sbuf, buffer->corner_radius, buffer->corners);
+	wlr_scene_buffer_set_corner_radii(sbuf, buffer->corners);
 
 	struct wlr_scene_tree *resize_crossfade_surface_tree = iterator_data->resize_crossfade_surface_tree;
 
@@ -1256,7 +1256,7 @@ static void view_save_buffer_iterator(struct wlr_scene_buffer *buffer,
 	wlr_scene_buffer_crossfade_set_source_box(crossfade_buffer, &buffer->src_box);
 	wlr_scene_node_set_position(&crossfade_buffer->node, sx, sy);
 	wlr_scene_buffer_crossfade_set_progress(crossfade_buffer, 0.0f);
-	wlr_scene_buffer_crossfade_set_corner_radius(crossfade_buffer, buffer->corner_radius, buffer->corners);
+	wlr_scene_buffer_crossfade_set_corner_radii(crossfade_buffer, buffer->corners);
 }
 
 void view_save_buffer(struct sway_view *view) {
