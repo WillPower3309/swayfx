@@ -422,7 +422,7 @@ static void arrange_container(struct sway_container *con,
 	// make sure it's enabled for viewing
 	wlr_scene_node_set_enabled(&con->scene_tree->node, true);
 
-	if(config->animation_duration_ms && con->view && is_container_animated(con)) {
+	if(config->animation_duration_ms && is_container_animated(con)) {
 		// clever way to account for stacked / tabbed titlebars
 		int y_offset = con->current.height - height;
 
@@ -870,10 +870,6 @@ void animation_update_callback() {
 
 // TODO: store container animation states in transaction, and only update containers that have animation states
 void set_container_animation_from_val_iterator(struct sway_container *con, void *_) {
-	if (!con->view) {
-		return;
-	}
-
 	// newly spawned or to be fullscreen view
 	if ((con->current.width == 0 && con->current.height == 0) ||
 			con->pending.fullscreen_mode != FULLSCREEN_NONE) {
