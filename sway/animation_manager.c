@@ -48,6 +48,7 @@ int animation_timer(void *data) {
 
 void start_animation(void (update_callback)(void), void (complete_callback)(void)) {
 	if (!config->animation_duration_ms) {
+		// TODO: needed?
 		animation_manager.current_animation = (struct animation) {
 			.progress = 1.0f,
 			.multiplier = 1.0f,
@@ -99,5 +100,9 @@ float lerp(float a, float b, float t) {
 }
 
 float get_animated_value(float from, float to) {
+	if (!config->animation_duration_ms) {
+		return to;
+	}
 	return lerp(from, to, animation_manager.current_animation.multiplier);
 }
+

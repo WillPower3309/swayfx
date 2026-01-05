@@ -229,16 +229,12 @@ static void apply_workspace_state(struct sway_workspace *ws,
 	memcpy(&ws->current, state, sizeof(struct sway_workspace_state));
 }
 
-static bool is_container_animated_resize(struct sway_container *container) {
-	return container->animation_state.from_width != container->current.width ||
-			container->animation_state.from_height != container->current.height;
-}
-
-// TODO: do me better
+// TODO: remove me after open and close animations are implemented
 static bool is_container_animated(struct sway_container *container) {
 	return container->animation_state.from_x != container->current.x ||
 			container->animation_state.from_y != container->current.y ||
-			is_container_animated_resize(container);
+			container->animation_state.from_width != container->current.width ||
+			container->animation_state.from_height != container->current.height;
 }
 
 static void apply_container_state(struct sway_container *container,
@@ -422,18 +418,16 @@ static void arrange_container(struct sway_container *con,
 	// make sure it's enabled for viewing
 	wlr_scene_node_set_enabled(&con->scene_tree->node, true);
 
-	if(config->animation_duration_ms && is_container_animated(con)) {
-		// clever way to account for stacked / tabbed titlebars
-		int y_offset = con->current.height - height;
+	// clever way to account for stacked / tabbed titlebars
+	int y_offset = con->current.height - height;
 
-		width = get_animated_value(con->animation_state.from_width, width);
-		height = MAX(0, get_animated_value(con->animation_state.from_height - y_offset, height));
+	width = get_animated_value(con->animation_state.from_width, width);
+	height = MAX(0, get_animated_value(con->animation_state.from_height - y_offset, height));
 
-		// reuse the position from arrange_child. A bit hacky, but this reduces diff size vs upstream.
-		int x = get_animated_value(con->animation_state.from_x, con->scene_tree->node.x);
-		int y = get_animated_value(con->animation_state.from_y, con->scene_tree->node.y);
-		wlr_scene_node_set_position(&con->scene_tree->node, x, y);
-	}
+	// reuse the position from arrange_child. A bit hacky, but this reduces diff size vs upstream.
+	int x = get_animated_value(con->animation_state.from_x, con->scene_tree->node.x);
+	int y = get_animated_value(con->animation_state.from_y, con->scene_tree->node.y);
+	wlr_scene_node_set_position(&con->scene_tree->node, x, y);
 
 	if (con->output_handler) {
 		wlr_scene_buffer_set_dest_size(con->output_handler, width, height);
@@ -894,7 +888,8 @@ void set_container_animation_from_val_iterator(struct sway_container *con, void 
 		con->animation_state.from_height, con->current.height
 	);
 
-	if (is_container_animated_resize(con)) {
+	if (con->animation_state.from_width != con->current.width ||
+			con->animation_state.from_height != con->current.height) {
 		// TODO: the below triggers even when swapping two windows with no resize
 		// printf("RESIZE! prev vs current width: %f vs %f, prev vs current height: %f vs %f\n", con->animation_state.from_width, con->current.width, con->animation_state.from_height, con->current.height);
 		con->animation_state.from_resize_crossfade_progress = get_animated_value(con->animation_state.from_resize_crossfade_progress, 1.0f);
