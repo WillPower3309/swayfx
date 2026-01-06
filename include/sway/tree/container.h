@@ -162,6 +162,8 @@ struct sway_container {
 		float from_width;
 		float from_height;
 		float from_resize_crossfade_progress;
+		int current_width;
+		int current_height;
 	} animation_state;
 
 	struct {

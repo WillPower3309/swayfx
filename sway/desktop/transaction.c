@@ -250,7 +250,7 @@ static void apply_container_state(struct sway_container *container,
 	memcpy(&container->current, state, sizeof(struct sway_container_state));
 
 	if (view) {
-		if (view->surface && view->saved_surface_tree) {
+		if (view->saved_surface_tree) {
 			if (!is_container_animated(container) &&
 					(!container->node.destroying || container->node.ntxnrefs == 1)) {
 				view_remove_saved_buffer(view);
@@ -418,16 +418,17 @@ static void arrange_container(struct sway_container *con,
 	// make sure it's enabled for viewing
 	wlr_scene_node_set_enabled(&con->scene_tree->node, true);
 
-	// clever way to account for stacked / tabbed titlebars
-	int y_offset = con->current.height - height;
-
-	width = get_animated_value(con->animation_state.from_width, width);
-	height = MAX(0, get_animated_value(con->animation_state.from_height - y_offset, height));
-
 	// reuse the position from arrange_child. A bit hacky, but this reduces diff size vs upstream.
 	int x = get_animated_value(con->animation_state.from_x, con->scene_tree->node.x);
 	int y = get_animated_value(con->animation_state.from_y, con->scene_tree->node.y);
 	wlr_scene_node_set_position(&con->scene_tree->node, x, y);
+
+	if (con->view) {
+		width = get_animated_value(con->animation_state.from_width, width);
+		height = get_animated_value(con->animation_state.from_height, height);
+		con->animation_state.current_width = width;
+		con->animation_state.current_height = height;
+	}
 
 	if (con->output_handler) {
 		wlr_scene_buffer_set_dest_size(con->output_handler, width, height);
@@ -840,15 +841,15 @@ static void arrange_root(struct sway_root *root) {
 	arrange_popups(root->layers.popup);
 }
 
-// TODO: store container animation states in transaction, and only update containers that have animation states
 void container_animation_complete_iterator(struct sway_container *container, void *_) {
 	struct sway_view *view = container->view;
-	if (view && view->surface && view->saved_surface_tree) {
+	if (view && view->saved_surface_tree) {
 		if (!container->node.destroying || container->node.ntxnrefs == 1) {
 			view_remove_saved_buffer(view);
 		}
 	}
 	container->animation_state.from_resize_crossfade_progress = 0.0f;
+	printf("%s: %d, %d\n\n", container->title, container->scene_tree->node.x, container->scene_tree->node.y);
 }
 
 void animation_complete_callback() {
@@ -856,7 +857,7 @@ void animation_complete_callback() {
 }
 
 void animation_update_callback() {
-	// if theres a pending transaction there will be a re-arrange anyway
+	// if there's a pending transaction there will be a re-arrange anyway
 	if (!server.pending_transaction) {
 		arrange_root(root);
 	}
@@ -864,7 +865,7 @@ void animation_update_callback() {
 
 // TODO: store container animation states in transaction, and only update containers that have animation states
 void set_container_animation_from_val_iterator(struct sway_container *con, void *_) {
-	// newly spawned or to be fullscreen view
+	// newly spawned or to be fullscreen view. TODO: PROPERLY SET
 	if ((con->current.width == 0 && con->current.height == 0) ||
 			con->pending.fullscreen_mode != FULLSCREEN_NONE) {
 		con->animation_state.from_x = con->pending.x;
@@ -875,31 +876,20 @@ void set_container_animation_from_val_iterator(struct sway_container *con, void 
 		return;
 	}
 
-	con->animation_state.from_x = get_animated_value(
-		con->animation_state.from_x, con->scene_tree->node.x
-	);
-	con->animation_state.from_y = get_animated_value(
-		con->animation_state.from_y, con->scene_tree->node.y
-	);
-	con->animation_state.from_width = get_animated_value(
-		con->animation_state.from_width, con->current.width
-	);
-	con->animation_state.from_height = get_animated_value(
-		con->animation_state.from_height, con->current.height
-	);
+	con->animation_state.from_x = con->scene_tree->node.x;
+	con->animation_state.from_y = con->scene_tree->node.y;
 
-	if (con->animation_state.from_width != con->current.width ||
-			con->animation_state.from_height != con->current.height) {
-		// TODO: the below triggers even when swapping two windows with no resize
-		// printf("RESIZE! prev vs current width: %f vs %f, prev vs current height: %f vs %f\n", con->animation_state.from_width, con->current.width, con->animation_state.from_height, con->current.height);
-		con->animation_state.from_resize_crossfade_progress = get_animated_value(con->animation_state.from_resize_crossfade_progress, 1.0f);
-	}
-}
+	con->animation_state.from_width = con->animation_state.current_width;
+	con->animation_state.from_height = con->animation_state.current_height;
+	con->animation_state.from_resize_crossfade_progress = get_animated_value(con->animation_state.from_resize_crossfade_progress, 1.0f);
 
-bool is_con_animation_state_change(struct sway_container_state current,
-		struct sway_container_state pending) {
-	return current.x != pending.x || current.y != pending.y ||
-			current.width != pending.width || current.height != pending.height;
+	printf(
+		"container %s animation:\n%f,%f\n%fx%f to %fx%f\n\n",
+		con->title,
+		con->animation_state.from_x, con->animation_state.from_y,
+		con->animation_state.from_width, con->animation_state.from_height,
+		con->current.width, con->current.height
+	);
 }
 
 /**
@@ -909,6 +899,7 @@ static void transaction_apply(struct sway_transaction *transaction) {
 	// save the current container state as the animation starting point
 	// TODO: only for currently animated containers
 	root_for_each_container(set_container_animation_from_val_iterator, NULL);
+	printf("\n\n-------------------------------\n\n");
 
 	sway_log(SWAY_DEBUG, "Applying transaction %p", transaction);
 	if (debug.txn_timings) {
