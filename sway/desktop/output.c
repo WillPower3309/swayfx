@@ -259,29 +259,21 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 		// TODO: move to a function, this is getting too many layers of indentation
 		case SWAY_SCENE_DESC_VIEW: {
 			struct sway_view *view = closest_desc->data;
+			// Only the main surface
+			bool is_main_surface = surface && surface->surface == view->surface;
 			// Saved buffers only includes either XDG or XWayland buffers, not
 			// border buffers like the text buffer
 			bool is_saved = view->saved_surface_tree; // TODO: make this only true if the current buffer is saved - may fix firefox opacity on resize
-			// Only the main surface
-			bool is_main_surface = surface && surface->surface == view->surface;
-
 
 			int buffer_corner_radius = container_has_corner_radius(closest_con) ? corner_radius : 0;
+			wlr_scene_buffer_set_corner_radii(
+				buffer,
+				has_titlebar && (is_saved || is_main_surface) ? // has_titlebar and not a subsurface
+					corner_radii_bottom(buffer_corner_radius) : corner_radii_all(buffer_corner_radius)
+			);
 
-			if (is_saved || is_main_surface) {
-				// Main surfaces and saved
-				wlr_scene_buffer_set_corner_radii(
-					buffer,
-					has_titlebar ? corner_radii_bottom(buffer_corner_radius) : corner_radii_all(buffer_corner_radius)
-				);
-			} else {
-				// Subsurfaces
-				// TODO: Check for has titlebar. Fixes Firefox weirdness (when its state is "maximized")
-				wlr_scene_buffer_set_corner_radii(
-					buffer,
-					corner_radii_all(container_has_corner_radius(closest_con) ? corner_radius : 0)
-				);
-			}
+			// TODO: resize for animation if the crossfade buffer isn't created yet - guess the size based on container size
+
 			break;
 		}
 		case SWAY_SCENE_DESC_LAYER_SHELL: {
