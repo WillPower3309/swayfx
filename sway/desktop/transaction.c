@@ -892,12 +892,17 @@ void set_container_animation_from_val_iterator(struct sway_container *con, void 
 	);
 }
 
+static bool should_animate(struct sway_container *con, struct sway_container_state *new_state) {
+	return con->current.width != new_state->width ||
+		con->current.height != new_state->height ||
+		con->current.x != new_state->x ||
+		con->current.y != new_state->y;
+}
+
 /**
  * Apply a transaction to the "current" state of the tree.
  */
 static void transaction_apply(struct sway_transaction *transaction) {
-	// save the current container state as the animation starting point
-	// TODO: only for currently animated containers
 	root_for_each_container(set_container_animation_from_val_iterator, NULL);
 	printf("\n\n-------------------------------\n\n");
 
@@ -912,6 +917,7 @@ static void transaction_apply(struct sway_transaction *transaction) {
 				"(%.1f frames if 60Hz)", transaction, ms, ms / (1000.0f / 60));
 	}
 
+	bool should_start_new_animation = false;
 	// Apply the instruction state to the node's current state
 	for (int i = 0; i < transaction->instructions->length; ++i) {
 		struct sway_transaction_instruction *instruction =
@@ -929,15 +935,20 @@ static void transaction_apply(struct sway_transaction *transaction) {
 					&instruction->workspace_state);
 			break;
 		case N_CONTAINER:
-			apply_container_state(node->sway_container,
-					&instruction->container_state);
+			if (!should_start_new_animation &&
+					should_animate(node->sway_container, &instruction->container_state)) {
+				should_start_new_animation = true;
+			}
+			apply_container_state(node->sway_container, &instruction->container_state);
 			break;
 		}
 
 		node->instruction = NULL;
 	}
 
-	start_animation(&animation_update_callback, &animation_complete_callback);
+	if (should_start_new_animation) {
+		start_animation(&animation_update_callback, &animation_complete_callback);
+	}
 }
 
 static void transaction_commit_pending(void);
