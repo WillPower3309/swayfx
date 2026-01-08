@@ -256,29 +256,27 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 		}
 
 		switch (closest_desc->type) {
-		// TODO: move to a function, this is getting too many layers of indentation
 		case SWAY_SCENE_DESC_VIEW: {
 			struct sway_view *view = closest_desc->data;
-			// Only the main surface
-			bool is_main_surface = surface && surface->surface == view->surface;
-			// Saved buffers only includes either XDG or XWayland buffers, not
-			// border buffers like the text buffer
-			bool is_saved = view->saved_surface_tree; // TODO: make this only true if the current buffer is saved - may fix firefox opacity on resize
 
+			bool is_main_surface = surface && surface->surface == view->surface;
 			int buffer_corner_radius = container_has_corner_radius(closest_con) ? corner_radius : 0;
 			wlr_scene_buffer_set_corner_radii(
 				buffer,
-				has_titlebar && (is_saved || is_main_surface) ? // has_titlebar and not a subsurface
+				has_titlebar && (is_main_surface || view->saved_surface_tree) ?
 					corner_radii_bottom(buffer_corner_radius) : corner_radii_all(buffer_corner_radius)
 			);
 
-			// TODO: resize for animation if the crossfade buffer isn't created yet - guess the size based on container size
+			if (is_main_surface && view->container->animation_state.current_width > -1 &&
+					view->container->animation_state.current_height > -1) {
+				wlr_scene_buffer_set_dest_size(buffer, view->container->animation_state.current_width,
+					view->container->animation_state.current_height);
+			}
 
 			break;
 		}
 		case SWAY_SCENE_DESC_LAYER_SHELL: {
 			// Layer effects
-			// TODO: Fade-in/out
 			struct sway_layer_surface *surface = closest_desc->data;
 			wlr_scene_buffer_set_corner_radii(buffer, corner_radii_all(surface->corner_radius));
 			wlr_scene_shadow_set_blur_sigma(surface->shadow_node, config->shadow_blur_sigma);
@@ -332,19 +330,6 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 			blur,
 			has_titlebar ? corner_radii_bottom(blur_corner_radius) : corner_radii_all(blur_corner_radius)
 		);
-	} else if (node->type == WLR_SCENE_NODE_BUFFER_CROSSFADE) {
-		struct wlr_scene_buffer_crossfade *buffer_crossfade = wlr_scene_buffer_crossfade_from_node(node);
-		assert(closest_desc->type == SWAY_SCENE_DESC_VIEW);
-		struct sway_view *view = closest_desc->data;
-
-		int width = get_animated_value(buffer_crossfade->scene_buffer_prev->dst_width,
-				buffer_crossfade->scene_buffer_next->dst_width);
-		int height = get_animated_value(buffer_crossfade->scene_buffer_prev->dst_height,
-				buffer_crossfade->scene_buffer_next->dst_height);
-		wlr_scene_buffer_crossfade_set_dest_size(buffer_crossfade, width, height);
-
-		wlr_scene_buffer_crossfade_set_progress(buffer_crossfade,
-				get_animated_value(view->container->animation_state.from_resize_crossfade_progress, 1.0f));
 	}
 }
 

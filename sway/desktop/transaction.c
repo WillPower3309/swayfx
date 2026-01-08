@@ -229,14 +229,6 @@ static void apply_workspace_state(struct sway_workspace *ws,
 	memcpy(&ws->current, state, sizeof(struct sway_workspace_state));
 }
 
-// TODO: remove me after open and close animations are implemented
-static bool is_container_animated(struct sway_container *container) {
-	return container->animation_state.from_x != container->current.x ||
-			container->animation_state.from_y != container->current.y ||
-			container->animation_state.from_width != container->current.width ||
-			container->animation_state.from_height != container->current.height;
-}
-
 static void apply_container_state(struct sway_container *container,
 		struct sway_container_state *state) {
 	struct sway_view *view = container->view;
@@ -251,8 +243,7 @@ static void apply_container_state(struct sway_container *container,
 
 	if (view) {
 		if (view->saved_surface_tree) {
-			if (!is_container_animated(container) &&
-					(!container->node.destroying || container->node.ntxnrefs == 1)) {
+			if (!container->node.destroying || container->node.ntxnrefs == 1) {
 				view_remove_saved_buffer(view);
 			}
 		}
@@ -418,17 +409,36 @@ static void arrange_container(struct sway_container *con,
 	// make sure it's enabled for viewing
 	wlr_scene_node_set_enabled(&con->scene_tree->node, true);
 
-	// reuse the position from arrange_child. A bit hacky, but this reduces diff size vs upstream.
-	int x = get_animated_value(con->animation_state.from_x, con->scene_tree->node.x);
-	int y = get_animated_value(con->animation_state.from_y, con->scene_tree->node.y);
-	wlr_scene_node_set_position(&con->scene_tree->node, x, y);
+	if (con->animation_state.current_width > -1 && con->animation_state.current_height > -1) {
+		// reuse the position from arrange_child. A bit hacky, but this reduces diff size vs upstream.
+		int x = get_animated_value(con->animation_state.from_x, con->scene_tree->node.x);
+		int y = get_animated_value(con->animation_state.from_y, con->scene_tree->node.y);
+		wlr_scene_node_set_position(&con->scene_tree->node, x, y);
 
-	if (con->view) {
-		width = get_animated_value(con->animation_state.from_width, width);
-		height = get_animated_value(con->animation_state.from_height, height);
-		con->animation_state.current_width = width;
-		con->animation_state.current_height = height;
+		if (con->view) {
+			width = get_animated_value(con->animation_state.from_width, width);
+			height = get_animated_value(con->animation_state.from_height, height);
+			
+			// only make sure to clip the content if there is content to clip
+			if (!wl_list_empty(&con->view->content_tree->children)) {
+				// TODO: content width / height, remove borders?
+				struct wlr_box clip = (struct wlr_box){
+					.x = con->view->geometry.x,
+					.y = con->view->geometry.y,
+					.width = width,
+					.height = height,
+				};
+				wlr_scene_subsurface_tree_set_clip(&con->view->content_tree->node, &clip);
+			}
+		}
+	} else {
+		con->animation_state.from_x = con->scene_tree->node.x;
+		con->animation_state.from_y = con->scene_tree->node.y;
+		con->animation_state.from_width = width;
+		con->animation_state.from_height = height;
 	}
+	con->animation_state.current_width = width;
+	con->animation_state.current_height = height;
 
 	if (con->output_handler) {
 		wlr_scene_buffer_set_dest_size(con->output_handler, width, height);
@@ -841,19 +851,8 @@ static void arrange_root(struct sway_root *root) {
 	arrange_popups(root->layers.popup);
 }
 
-void container_animation_complete_iterator(struct sway_container *container, void *_) {
-	struct sway_view *view = container->view;
-	if (view && view->saved_surface_tree) {
-		if (!container->node.destroying || container->node.ntxnrefs == 1) {
-			view_remove_saved_buffer(view);
-		}
-	}
-	container->animation_state.from_resize_crossfade_progress = 0.0f;
-	printf("%s: %d, %d\n\n", container->title, container->scene_tree->node.x, container->scene_tree->node.y);
-}
-
 void animation_complete_callback() {
-	root_for_each_container(container_animation_complete_iterator, NULL);
+	// TODO: needed for close animations
 }
 
 void animation_update_callback() {
@@ -865,31 +864,24 @@ void animation_update_callback() {
 
 // TODO: store container animation states in transaction, and only update containers that have animation states
 void set_container_animation_from_val_iterator(struct sway_container *con, void *_) {
-	// newly spawned or to be fullscreen view. TODO: PROPERLY SET
-	if ((con->current.width == 0 && con->current.height == 0) ||
-			con->pending.fullscreen_mode != FULLSCREEN_NONE) {
-		con->animation_state.from_x = con->pending.x;
-		con->animation_state.from_y = con->pending.y;
-		con->animation_state.from_width = con->pending.width;
-		con->animation_state.from_height = con->pending.height;
-		con->animation_state.from_resize_crossfade_progress = 0.0f;
+	// newly spawned or to be fullscreen view
+	// TODO: PROPERLY SET (should I set a -1 to tell arrange_container its new, or perhaps set all of the from iterators there?)
+	if (con->animation_state.current_width == -1 && con->animation_state.current_height == -1) {
+			//con->pending.fullscreen_mode != FULLSCREEN_NONE) {
+		/*
+		con->animation_state.from_x = con->scene_tree->node.x;
+		con->animation_state.from_y = con->scene_tree->node.y;
+		con->animation_state.from_width = con->current.width;
+		con->animation_state.from_height = con->current.height;
+		con->animation_state.current_width = con->current.width;
+		con->animation_state.current_height = con->current.height;
+		*/
 		return;
 	}
-
 	con->animation_state.from_x = con->scene_tree->node.x;
 	con->animation_state.from_y = con->scene_tree->node.y;
-
 	con->animation_state.from_width = con->animation_state.current_width;
 	con->animation_state.from_height = con->animation_state.current_height;
-	con->animation_state.from_resize_crossfade_progress = get_animated_value(con->animation_state.from_resize_crossfade_progress, 1.0f);
-
-	printf(
-		"container %s animation:\n%f,%f\n%fx%f to %fx%f\n\n",
-		con->title,
-		con->animation_state.from_x, con->animation_state.from_y,
-		con->animation_state.from_width, con->animation_state.from_height,
-		con->current.width, con->current.height
-	);
 }
 
 static bool should_animate(struct sway_container *con, struct sway_container_state *new_state) {
@@ -903,9 +895,6 @@ static bool should_animate(struct sway_container *con, struct sway_container_sta
  * Apply a transaction to the "current" state of the tree.
  */
 static void transaction_apply(struct sway_transaction *transaction) {
-	root_for_each_container(set_container_animation_from_val_iterator, NULL);
-	printf("\n\n-------------------------------\n\n");
-
 	sway_log(SWAY_DEBUG, "Applying transaction %p", transaction);
 	if (debug.txn_timings) {
 		struct timespec now;
@@ -947,6 +936,7 @@ static void transaction_apply(struct sway_transaction *transaction) {
 	}
 
 	if (should_start_new_animation) {
+		root_for_each_container(set_container_animation_from_val_iterator, NULL);
 		start_animation(&animation_update_callback, &animation_complete_callback);
 	}
 }
@@ -1110,16 +1100,6 @@ static void set_instruction_ready(
 	}
 
 	instruction->node->instruction = NULL;
-
-	if (instruction->node->type == N_CONTAINER &&
-			instruction->node->sway_container->view != NULL) {
-		struct sway_view *view = instruction->node->sway_container->view;
-		if (view->saved_surface_tree != NULL) {
-			wlr_scene_node_set_enabled(&view->saved_surface_tree->node, false);
-			wlr_scene_node_set_enabled(&view->resize_crossfade_surface_tree->node, true);
-		}
-	}
-
 	transaction_progress();
 }
 

@@ -1204,11 +1204,6 @@ bool view_is_urgent(struct sway_view *view) {
 }
 
 void view_remove_saved_buffer(struct sway_view *view) {
-	if (view->resize_crossfade_surface_tree) {
-		wlr_scene_node_destroy(&view->resize_crossfade_surface_tree->node);
-		view->resize_crossfade_surface_tree = NULL;
-	}
-
 	if (!sway_assert(view->saved_surface_tree, "Expected a saved buffer")) {
 		return;
 	}
@@ -1218,17 +1213,11 @@ void view_remove_saved_buffer(struct sway_view *view) {
 	wlr_scene_node_set_enabled(&view->content_tree->node, true);
 }
 
-struct save_buffer_iterator_data {
-	struct wlr_scene_tree *saved_surface_tree;
-	struct wlr_scene_tree *resize_crossfade_surface_tree;
-};
-
 static void view_save_buffer_iterator(struct wlr_scene_buffer *buffer,
 		int sx, int sy, void *data) {
-	struct save_buffer_iterator_data *iterator_data = data;
-	struct wlr_scene_tree *saved_surface_tree = iterator_data->saved_surface_tree;
+	struct wlr_scene_tree *tree = data;
 
-	struct wlr_scene_buffer *sbuf = wlr_scene_buffer_create(saved_surface_tree, NULL);
+	struct wlr_scene_buffer *sbuf = wlr_scene_buffer_create(tree, NULL);
 	if (!sbuf) {
 		sway_log(SWAY_ERROR, "Could not allocate a scene buffer when saving a surface");
 		return;
@@ -1242,21 +1231,6 @@ static void view_save_buffer_iterator(struct wlr_scene_buffer *buffer,
 	wlr_scene_buffer_set_transform(sbuf, buffer->transform);
 	wlr_scene_buffer_set_buffer(sbuf, buffer->buffer);
 	wlr_scene_buffer_set_corner_radii(sbuf, buffer->corners);
-
-	struct wlr_scene_tree *resize_crossfade_surface_tree = iterator_data->resize_crossfade_surface_tree;
-
-	struct wlr_scene_buffer_crossfade *crossfade_buffer = wlr_scene_buffer_crossfade_create(
-		resize_crossfade_surface_tree, sbuf, buffer);
-	if (!crossfade_buffer) {
-		sway_log(SWAY_ERROR, "Could not allocate a scene buffer when saving a surface");
-		return;
-	}
-
-	wlr_scene_buffer_crossfade_set_dest_size(crossfade_buffer, buffer->dst_width, buffer->dst_height);
-	wlr_scene_buffer_crossfade_set_source_box(crossfade_buffer, &buffer->src_box);
-	wlr_scene_node_set_position(&crossfade_buffer->node, sx, sy);
-	wlr_scene_buffer_crossfade_set_progress(crossfade_buffer, 0.0f);
-	wlr_scene_buffer_crossfade_set_corner_radii(crossfade_buffer, buffer->corners);
 }
 
 void view_save_buffer(struct sway_view *view) {
@@ -1270,26 +1244,12 @@ void view_save_buffer(struct sway_view *view) {
 		return;
 	}
 
-	view->resize_crossfade_surface_tree = wlr_scene_tree_create(view->scene_tree);
-	if (!view->resize_crossfade_surface_tree) {
-		sway_log(SWAY_ERROR, "Could not allocate a scene tree node when saving a surface");
-		return;
-	}
-
-	// Enable and disable the saved surface tree like so to atomitaclly update
+	// Enable and disable the saved surface tree like so to atomically update
 	// the tree. This will prevent over damaging or other weirdness.
 	wlr_scene_node_set_enabled(&view->saved_surface_tree->node, false);
 
-	// The resize crossfade tree will be enabled once a view is reconfigured
-	// to crossfade between the saved and newly reconfigured view
-	wlr_scene_node_set_enabled(&view->resize_crossfade_surface_tree->node, false);
-
-	struct save_buffer_iterator_data iterator_data = {
-		.saved_surface_tree = view->saved_surface_tree,
-		.resize_crossfade_surface_tree = view->resize_crossfade_surface_tree,
-	};
 	wlr_scene_node_for_each_buffer(&view->content_tree->node,
-		view_save_buffer_iterator, &iterator_data);
+		view_save_buffer_iterator, view->saved_surface_tree);
 
 	wlr_scene_node_set_enabled(&view->content_tree->node, false);
 	wlr_scene_node_set_enabled(&view->saved_surface_tree->node, true);
