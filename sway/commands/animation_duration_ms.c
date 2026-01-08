@@ -17,7 +17,7 @@ struct cmd_results *cmd_animation_duration_ms(int argc, char **argv) {
 		return cmd_results_new(CMD_INVALID, "animation_duration_ms float invalid");
 	}
 
-	if (val < 0 || val > 50000) { // surely no one wants an animation longer than 5 seconds
+	if (val < 0 || val > 5000) { // surely no one wants an animation longer than 5 seconds
 		return cmd_results_new(CMD_FAILURE, "animation_duration_ms value out of bounds");
 	}
 
