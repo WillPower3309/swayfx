@@ -864,8 +864,7 @@ void animation_update_callback() {
 	}
 }
 
-// TODO: store container animation states in transaction, and only update containers that have animation states
-void set_container_animation_from_val_iterator(struct sway_container *con, void *_) {
+void set_container_animation_from_vals(struct sway_container *con) {
 	if (con->animation_state.current_width == -1 && con->animation_state.current_height == -1) {
 		return;
 	}
@@ -875,7 +874,7 @@ void set_container_animation_from_val_iterator(struct sway_container *con, void 
 	con->animation_state.from_height = con->animation_state.current_height;
 }
 
-static bool should_animate(struct sway_container *con, struct sway_container_state *new_state) {
+static bool should_con_new_animation(struct sway_container *con, struct sway_container_state *new_state) {
 	return con->current.width != new_state->width ||
 		con->current.height != new_state->height ||
 		con->current.x != new_state->x ||
@@ -915,8 +914,8 @@ static void transaction_apply(struct sway_transaction *transaction) {
 					&instruction->workspace_state);
 			break;
 		case N_CONTAINER:
-			if (!should_start_new_animation &&
-					should_animate(node->sway_container, &instruction->container_state)) {
+			if (should_con_new_animation(node->sway_container, &instruction->container_state)) {
+				set_container_animation_from_vals(node->sway_container);
 				should_start_new_animation = true;
 			}
 			apply_container_state(node->sway_container, &instruction->container_state);
@@ -927,7 +926,6 @@ static void transaction_apply(struct sway_transaction *transaction) {
 	}
 
 	if (should_start_new_animation) {
-		root_for_each_container(set_container_animation_from_val_iterator, NULL);
 		start_animation(&animation_update_callback, &animation_complete_callback);
 	}
 }
