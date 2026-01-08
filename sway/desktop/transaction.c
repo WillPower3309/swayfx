@@ -866,18 +866,7 @@ void animation_update_callback() {
 
 // TODO: store container animation states in transaction, and only update containers that have animation states
 void set_container_animation_from_val_iterator(struct sway_container *con, void *_) {
-	// newly spawned or to be fullscreen view
-	// TODO: PROPERLY SET (should I set a -1 to tell arrange_container its new, or perhaps set all of the from iterators there?)
 	if (con->animation_state.current_width == -1 && con->animation_state.current_height == -1) {
-			//con->pending.fullscreen_mode != FULLSCREEN_NONE) {
-		/*
-		con->animation_state.from_x = con->scene_tree->node.x;
-		con->animation_state.from_y = con->scene_tree->node.y;
-		con->animation_state.from_width = con->current.width;
-		con->animation_state.from_height = con->current.height;
-		con->animation_state.current_width = con->current.width;
-		con->animation_state.current_height = con->current.height;
-		*/
 		return;
 	}
 	con->animation_state.from_x = con->scene_tree->node.x;
