@@ -22,7 +22,6 @@
 #include <wlr/util/transform.h>
 #include "config.h"
 #include "log.h"
-#include "sway/animation_manager.h"
 #include "sway/config.h"
 #include "sway/desktop/transaction.h"
 #include "sway/input/input-manager.h"
@@ -210,24 +209,20 @@ static enum wlr_scale_filter_mode get_scale_filter(struct sway_output *output,
 }
 
 void output_configure_scene(struct sway_output *output, struct wlr_scene_node *node, float opacity,
-		int corner_radius, bool blur_enabled, bool has_titlebar, struct sway_container *closest_con,
-		struct sway_scene_descriptor *closest_desc) {
+		int corner_radius, bool blur_enabled, bool has_titlebar, struct sway_container *closest_con) {
 	if (!node->enabled) {
 		return;
 	}
 
-	struct sway_scene_descriptor *descriptor = scene_descriptor_try_get_first(node);
-	if (descriptor && descriptor->data) {
-		closest_desc = descriptor;
-		if (closest_desc->type == SWAY_SCENE_DESC_CONTAINER) {
-			closest_con = closest_desc->data;
-			opacity = closest_con->alpha;
-			corner_radius = closest_con->corner_radius;
-			blur_enabled = closest_con->blur_enabled;
-
-			enum sway_container_layout layout = closest_con->current.layout;
-			has_titlebar |= closest_con->current.border == B_NORMAL || layout == L_STACKED || layout == L_TABBED;
-		}
+	struct sway_container *con =
+		scene_descriptor_try_get(node, SWAY_SCENE_DESC_CONTAINER);
+	if (con) {
+		closest_con = con;
+		opacity = con->alpha;
+		corner_radius = con->corner_radius;
+		blur_enabled = con->blur_enabled;
+		enum sway_container_layout layout = con->current.layout;
+		has_titlebar |= con->current.border == B_NORMAL || layout == L_STACKED || layout == L_TABBED;
 	}
 
 	if (node->type == WLR_SCENE_NODE_BUFFER) {
@@ -251,33 +246,32 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 
 		wlr_scene_buffer_set_opacity(buffer, opacity);
 
-		if (!closest_desc) {
+		if (!surface || !surface->surface) {
 			return;
 		}
 
-		switch (closest_desc->type) {
-		case SWAY_SCENE_DESC_VIEW: {
-			struct sway_view *view = closest_desc->data;
-
-			bool is_main_surface = surface && surface->surface == view->surface;
+		// Other buffers should set their own effects manually, like the
+		// text buffer and saved views
+		struct wlr_layer_surface_v1 *layer_surface = NULL;
+		if (wlr_xdg_surface_try_from_wlr_surface(surface->surface)
+#if WLR_HAS_XWAYLAND
+				|| wlr_xwayland_surface_try_from_wlr_surface(surface->surface)
+#endif
+				) {
 			int buffer_corner_radius = container_has_corner_radius(closest_con) ? corner_radius : 0;
 			wlr_scene_buffer_set_corner_radii(
 				buffer,
-				has_titlebar && (is_main_surface || view->saved_surface_tree) ?
-					corner_radii_bottom(buffer_corner_radius) : corner_radii_all(buffer_corner_radius)
+				has_titlebar ? corner_radii_bottom(buffer_corner_radius) : corner_radii_all(buffer_corner_radius)
 			);
-
-			if (is_main_surface && view->container->animation_state.current_width > -1 &&
-					view->container->animation_state.current_height > -1) {
-				wlr_scene_buffer_set_dest_size(buffer, view->container->animation_state.current_width,
-					view->container->animation_state.current_height);
-			}
-
-			break;
-		}
-		case SWAY_SCENE_DESC_LAYER_SHELL: {
+		} else if (wlr_subsurface_try_from_wlr_surface(surface->surface)) {
+			wlr_scene_buffer_set_corner_radii(
+				buffer,
+				corner_radii_all(container_has_corner_radius(closest_con) ? corner_radius : 0)
+			);
+		} else if ((layer_surface = wlr_layer_surface_v1_try_from_wlr_surface(surface->surface))
+				&& layer_surface->data) {
 			// Layer effects
-			struct sway_layer_surface *surface = closest_desc->data;
+			struct sway_layer_surface *surface = layer_surface->data;
 			wlr_scene_buffer_set_corner_radii(buffer, corner_radii_all(surface->corner_radius));
 			wlr_scene_shadow_set_blur_sigma(surface->shadow_node, config->shadow_blur_sigma);
 			wlr_scene_shadow_set_corner_radius(surface->shadow_node, surface->corner_radius);
@@ -297,27 +291,13 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 					surface->layer_surface->surface->current.height
 				);
 			}
-
-			break;
-		}
-		case SWAY_SCENE_DESC_XWAYLAND_UNMANAGED:
-		case SWAY_SCENE_DESC_POPUP:
-		case SWAY_SCENE_DESC_DRAG_ICON: {
-			// TODO:
-			break;
-		}
-		default:
-			break;
 		}
 	} else if (node->type == WLR_SCENE_NODE_TREE) {
 		struct wlr_scene_tree *tree = wlr_scene_tree_from_node(node);
 		struct wlr_scene_node *node;
 		wl_list_for_each(node, &tree->children, link) {
-			output_configure_scene(output, node, opacity, corner_radius, blur_enabled, has_titlebar, closest_con, closest_desc);
+			output_configure_scene(output, node, opacity, corner_radius, blur_enabled, has_titlebar, closest_con);
 		}
-
-		// Last use of the descriptor
-		free(descriptor);
 	} else if (node->type == WLR_SCENE_NODE_BLUR && closest_con) {
 		struct wlr_scene_blur *blur = wlr_scene_blur_from_node(node);
 
@@ -359,7 +339,7 @@ static int output_repaint_timer_handler(void *data) {
 	}
 
 	output_configure_scene(output, &root->root_scene->tree.node, 1.0f,
-			0, false, false, NULL, NULL);
+			0, false, false, NULL);
 
 	struct wlr_scene_output_state_options opts = {
 		.color_transform = output->color_transform,
@@ -682,7 +662,6 @@ void handle_new_output(struct wl_listener *listener, void *data) {
 	}
 
 	request_modeset();
-	refresh_animation_manager_timing();
 }
 
 static struct output_config *output_config_for_config_head(

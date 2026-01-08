@@ -65,6 +65,7 @@
 #include <wlr/xwayland/shell.h>
 #include "sway/xwayland.h"
 #endif
+
 #if WLR_HAS_DRM_BACKEND
 #include <wlr/types/wlr_drm_lease_v1.h>
 #endif

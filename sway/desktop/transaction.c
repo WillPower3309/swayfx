@@ -409,33 +409,35 @@ static void arrange_container(struct sway_container *con,
 	// make sure it's enabled for viewing
 	wlr_scene_node_set_enabled(&con->scene_tree->node, true);
 
-	if (con->animation_state.current_width > -1 && con->animation_state.current_height > -1) {
-		// reuse the position from arrange_child. A bit hacky, but this reduces diff size vs upstream.
-		int x = get_animated_value(con->animation_state.from_x, con->scene_tree->node.x);
-		int y = get_animated_value(con->animation_state.from_y, con->scene_tree->node.y);
-		wlr_scene_node_set_position(&con->scene_tree->node, x, y);
+	if (con->view) {
+		if (con->animation_state.current_width == -1 && con->animation_state.current_height == -1) {
+			con->animation_state.from_x = con->scene_tree->node.x;
+			con->animation_state.from_y = con->scene_tree->node.y;
+			con->animation_state.from_width = width;
+			con->animation_state.from_height = height;
+		} else {
+			// reuse the position from arrange_child. A bit hacky, but this reduces diff size vs upstream.
+			int x = get_animated_value(con->animation_state.from_x, con->scene_tree->node.x);
+			int y = get_animated_value(con->animation_state.from_y, con->scene_tree->node.y);
+			wlr_scene_node_set_position(&con->scene_tree->node, x, y);
 
-		if (con->view) {
-			width = get_animated_value(con->animation_state.from_width, width);
-			height = get_animated_value(con->animation_state.from_height, height);
-			
-			// only make sure to clip the content if there is content to clip
-			if (!wl_list_empty(&con->view->content_tree->children)) {
-				// TODO: content width / height, remove borders?
-				struct wlr_box clip = (struct wlr_box){
-					.x = con->view->geometry.x,
-					.y = con->view->geometry.y,
-					.width = width,
-					.height = height,
-				};
-				wlr_scene_subsurface_tree_set_clip(&con->view->content_tree->node, &clip);
+			if (con->view) {
+				width = get_animated_value(con->animation_state.from_width, width);
+				height = get_animated_value(con->animation_state.from_height, height);
+				
+				// only make sure to clip the content if there is content to clip
+				if (!wl_list_empty(&con->view->content_tree->children)) {
+					// TODO: content width / height, remove borders?
+					struct wlr_box clip = (struct wlr_box){
+						.x = con->view->geometry.x,
+						.y = con->view->geometry.y,
+						.width = width,
+						.height = height,
+					};
+					wlr_scene_subsurface_tree_set_clip(&con->view->content_tree->node, &clip);
+				}
 			}
 		}
-	} else {
-		con->animation_state.from_x = con->scene_tree->node.x;
-		con->animation_state.from_y = con->scene_tree->node.y;
-		con->animation_state.from_width = width;
-		con->animation_state.from_height = height;
 	}
 	con->animation_state.current_width = width;
 	con->animation_state.current_height = height;
