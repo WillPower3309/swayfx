@@ -410,33 +410,24 @@ static void arrange_container(struct sway_container *con,
 	wlr_scene_node_set_enabled(&con->scene_tree->node, true);
 
 	if (con->view) {
-		if (con->animation_state.current_width == -1 && con->animation_state.current_height == -1) {
-			con->animation_state.from_x = con->scene_tree->node.x;
-			con->animation_state.from_y = con->scene_tree->node.y;
-			con->animation_state.from_width = width;
-			con->animation_state.from_height = height;
-		} else {
-			// reuse the position from arrange_child. A bit hacky, but this reduces diff size vs upstream.
-			int x = get_animated_value(con->animation_state.from_x, con->scene_tree->node.x);
-			int y = get_animated_value(con->animation_state.from_y, con->scene_tree->node.y);
-			wlr_scene_node_set_position(&con->scene_tree->node, x, y);
+		// reuse the position from arrange_child. A bit hacky, but this reduces diff size vs upstream.
+		int x = get_animated_value(con->scene_tree->node.x + con->animation_state.delta_x, con->scene_tree->node.x);
+		int y = get_animated_value(con->scene_tree->node.y + con->animation_state.delta_y, con->scene_tree->node.y);
+		wlr_scene_node_set_position(&con->scene_tree->node, x, y);
 
-			if (con->view) {
-				width = get_animated_value(con->animation_state.from_width, width);
-				height = get_animated_value(con->animation_state.from_height, height);
-				
-				// only make sure to clip the content if there is content to clip
-				if (!wl_list_empty(&con->view->content_tree->children)) {
-					// TODO: content width / height, remove borders?
-					struct wlr_box clip = (struct wlr_box){
-						.x = con->view->geometry.x,
-						.y = con->view->geometry.y,
-						.width = width,
-						.height = height,
-					};
-					wlr_scene_subsurface_tree_set_clip(&con->view->content_tree->node, &clip);
-				}
-			}
+		width = get_animated_value(width + con->animation_state.delta_width, width);
+		height = get_animated_value(height + con->animation_state.delta_height, height);
+
+		// only make sure to clip the content if there is content to clip
+		if (!wl_list_empty(&con->view->content_tree->children)) {
+			// TODO: content width / height, remove borders?
+			struct wlr_box clip = (struct wlr_box){
+				.x = con->view->geometry.x,
+				.y = con->view->geometry.y,
+				.width = width,
+				.height = height,
+			};
+			wlr_scene_subsurface_tree_set_clip(&con->view->content_tree->node, &clip);
 		}
 	}
 	con->animation_state.current_width = width;
@@ -864,16 +855,6 @@ void animation_update_callback() {
 	}
 }
 
-void set_container_animation_from_vals(struct sway_container *con) {
-	if (con->animation_state.current_width == -1 && con->animation_state.current_height == -1) {
-		return;
-	}
-	con->animation_state.from_x = con->scene_tree->node.x;
-	con->animation_state.from_y = con->scene_tree->node.y;
-	con->animation_state.from_width = con->animation_state.current_width;
-	con->animation_state.from_height = con->animation_state.current_height;
-}
-
 static bool should_con_new_animation(struct sway_container *con, struct sway_container_state *new_state) {
 	return con->current.width != new_state->width ||
 		con->current.height != new_state->height ||
@@ -914,17 +895,28 @@ static void transaction_apply(struct sway_transaction *transaction) {
 					&instruction->workspace_state);
 			break;
 		case N_CONTAINER:
-			if (should_con_new_animation(node->sway_container, &instruction->container_state)) {
-				set_container_animation_from_vals(node->sway_container);
+			struct sway_container *con = node->sway_container;
+			if (should_con_new_animation(con, &instruction->container_state)) {
 				should_start_new_animation = true;
+
+				// skip newly spawned windows (for now!)
+				if (con->current.width != 0 && con->current.height != 0) {
+					int lx, ly;
+					wlr_scene_node_coords(&con->scene_tree->node, &lx, &ly);
+					con->animation_state.delta_x = lx - con->pending.x;
+					con->animation_state.delta_y = ly - con->pending.y;
+					con->animation_state.delta_width = con->animation_state.current_width - con->pending.width;
+					con->animation_state.delta_height = con->animation_state.current_height - con->pending.height;
+				}
 			}
-			apply_container_state(node->sway_container, &instruction->container_state);
+			apply_container_state(con, &instruction->container_state);
 			break;
 		}
 
 		node->instruction = NULL;
 	}
 
+	// TODO: give each container a separate progress
 	if (should_start_new_animation) {
 		start_animation(&animation_update_callback, &animation_complete_callback);
 	}

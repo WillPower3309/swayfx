@@ -176,10 +176,10 @@ struct sway_container *container_create(struct sway_view *view) {
 	c->shadow_enabled = config->shadow_enabled;
 	c->dim = config->default_dim_inactive;
 
-	c->animation_state.from_x = -1;
-	c->animation_state.from_y = -1;
-	c->animation_state.from_width = -1;
-	c->animation_state.from_height = -1;
+	c->animation_state.delta_x = 0;
+	c->animation_state.delta_y = 0;
+	c->animation_state.delta_width = 0;
+	c->animation_state.delta_height = 0;
 	c->animation_state.current_width = -1;
 	c->animation_state.current_height = -1;
 
