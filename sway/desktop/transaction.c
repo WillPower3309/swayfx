@@ -15,7 +15,6 @@
 #include "sway/server.h"
 #include "sway/tree/container.h"
 #include "sway/tree/node.h"
-#include "sway/tree/root.h"
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
 #include "list.h"
@@ -313,8 +312,8 @@ static void arrange_children(enum sway_container_layout layout, list_t *children
 			arrange_title_bar(child, title_offset, -title_bar_height,
 				next_title_offset - title_offset, title_bar_height);
 			wlr_scene_node_set_enabled(&child->border.tree->node, activated);
-			wlr_scene_node_set_enabled(&child->shadow->node, activated);
 			wlr_scene_node_set_enabled(&child->blur->node, activated);
+			wlr_scene_node_set_enabled(&child->shadow->node, false);
 			wlr_scene_node_set_enabled(&child->scene_tree->node, true);
 			wlr_scene_node_set_position(&child->scene_tree->node, 0, title_bar_height);
 			wlr_scene_node_reparent(&child->scene_tree->node, content);
@@ -345,8 +344,8 @@ static void arrange_children(enum sway_container_layout layout, list_t *children
 
 			arrange_title_bar(child, 0, y - title_height, width, title_bar_height);
 			wlr_scene_node_set_enabled(&child->border.tree->node, activated);
-			wlr_scene_node_set_enabled(&child->shadow->node, activated);
 			wlr_scene_node_set_enabled(&child->blur->node, activated);
+			wlr_scene_node_set_enabled(&child->shadow->node, false);
 			wlr_scene_node_set_enabled(&child->scene_tree->node, true);
 			wlr_scene_node_set_position(&child->scene_tree->node, 0, title_height);
 			wlr_scene_node_reparent(&child->scene_tree->node, content);
@@ -970,7 +969,6 @@ static bool should_configure(struct sway_node *node,
 	if (!instruction->server_request) {
 		return false;
 	}
-
 	struct sway_container_state *cstate = &node->sway_container->current;
 	struct sway_container_state *istate = &instruction->container_state;
 #if WLR_HAS_XWAYLAND

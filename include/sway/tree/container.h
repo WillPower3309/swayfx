@@ -156,11 +156,10 @@ struct sway_container {
 	list_t *marks; // char *
 
 	struct {
-		// TODO: ints?
-		float delta_x;
-		float delta_y;
-		float delta_width;
-		float delta_height;
+		int delta_x;
+		int delta_y;
+		int delta_width;
+		int delta_height;
 		int current_width;
 		int current_height;
 		int current_content_width; // needed for output.c

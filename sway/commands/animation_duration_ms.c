@@ -4,7 +4,6 @@
 #include "sway/animation_manager.h"
 #include "sway/commands.h"
 
-// TODO: add animation_duration_s command?
 struct cmd_results *cmd_animation_duration_ms(int argc, char **argv) {
 	struct cmd_results *error = NULL;
 	if ((error = checkarg(argc, "animation_duration_ms", EXPECTED_AT_LEAST, 1))) {
