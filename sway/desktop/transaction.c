@@ -417,18 +417,6 @@ static void arrange_container(struct sway_container *con,
 
 		width = get_animated_value(width + con->animation_state.delta_width, width);
 		height = get_animated_value(height + con->animation_state.delta_height, height);
-
-		// only make sure to clip the content if there is content to clip
-		if (!wl_list_empty(&con->view->content_tree->children)) {
-			// TODO: content width / height, remove borders?
-			struct wlr_box clip = (struct wlr_box){
-				.x = con->view->geometry.x,
-				.y = con->view->geometry.y,
-				.width = width,
-				.height = height,
-			};
-			wlr_scene_subsurface_tree_set_clip(&con->view->content_tree->node, &clip);
-		}
 	}
 	con->animation_state.current_width = width;
 	con->animation_state.current_height = height;
@@ -561,10 +549,26 @@ static void arrange_container(struct sway_container *con,
 		wlr_scene_node_set_position(&con->border.right->node,
 			width - border_right, border_top + vert_border_offset);
 
+		int content_width = width - border_left - border_right;
+		int content_height = height - border_top - border_bottom;
+
+		// only make sure to clip the content if there is content to clip
+		if (!wl_list_empty(&con->view->content_tree->children)) {
+			struct wlr_box clip = (struct wlr_box){
+				.x = con->view->geometry.x,
+				.y = con->view->geometry.y,
+				.width = content_width,
+				.height = content_height,
+			};
+			wlr_scene_subsurface_tree_set_clip(&con->view->content_tree->node, &clip);
+		}
+		con->animation_state.current_content_width = content_width;
+		con->animation_state.current_content_height = content_height;
+
 		// Dim
 		if (con->dim_rect) {
 			wlr_scene_node_set_position(&con->dim_rect->node, border_left, border_top);
-			wlr_scene_rect_set_size(con->dim_rect, width, height);
+			wlr_scene_rect_set_size(con->dim_rect, content_width, content_height);
 			bool has_titlebar = !title_bar || con->current.border == B_NORMAL;
 			wlr_scene_rect_set_corner_radii(
 				con->dim_rect,
@@ -580,7 +584,7 @@ static void arrange_container(struct sway_container *con,
 
 		wlr_scene_node_set_enabled(&con->blur->node, con->blur_enabled);
 		wlr_scene_node_set_position(&con->blur->node, border_left, border_top);
-		wlr_scene_blur_set_size(con->blur, width - border_left - border_right, height - border_top - border_bottom);
+		wlr_scene_blur_set_size(con->blur, content_width, content_height);
 	} else {
 		// make sure to disable the title bar if the parent is not managing it
 		if (title_bar) {
@@ -899,6 +903,7 @@ static void transaction_apply(struct sway_transaction *transaction) {
 			if (should_con_new_animation(con, &instruction->container_state)) {
 				should_start_new_animation = true;
 
+				// TODO: reset animation state on going to scratchpad
 				// skip newly spawned windows (for now!)
 				if (con->current.width != 0 && con->current.height != 0) {
 					int lx, ly;

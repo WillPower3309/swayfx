@@ -156,12 +156,15 @@ struct sway_container {
 	list_t *marks; // char *
 
 	struct {
+		// TODO: ints?
 		float delta_x;
 		float delta_y;
 		float delta_width;
 		float delta_height;
-		float current_width; // needed for output.c
-		float current_height; // needed for output.c
+		int current_width;
+		int current_height;
+		int current_content_width; // needed for output.c
+		int current_content_height; // needed for output.c
 	} animation_state;
 
 	struct {

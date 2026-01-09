@@ -182,6 +182,8 @@ struct sway_container *container_create(struct sway_view *view) {
 	c->animation_state.delta_height = 0;
 	c->animation_state.current_width = -1;
 	c->animation_state.current_height = -1;
+	c->animation_state.current_content_width = -1;
+	c->animation_state.current_content_height = -1;
 
 	wl_signal_init(&c->events.destroy);
 	wl_signal_emit_mutable(&root->events.new_node, &c->node);
