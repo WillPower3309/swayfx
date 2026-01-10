@@ -410,12 +410,22 @@ static void arrange_container(struct sway_container *con,
 
 	if (con->view) {
 		// reuse the position from arrange_child. A bit hacky, but this reduces diff size vs upstream.
-		int x = get_animated_value(con->scene_tree->node.x + con->animation_state.delta_x, con->scene_tree->node.x);
-		int y = get_animated_value(con->scene_tree->node.y + con->animation_state.delta_y, con->scene_tree->node.y);
+		int x = get_animated_value(con->scene_tree->node.x + con->animation_state.delta_x,
+			con->scene_tree->node.x, *con->animation_state.animation);
+		int y = get_animated_value(con->scene_tree->node.y + con->animation_state.delta_y,
+			con->scene_tree->node.y, *con->animation_state.animation);
 		wlr_scene_node_set_position(&con->scene_tree->node, x, y);
 
-		width = get_animated_value(width + con->animation_state.delta_width, width);
-		height = get_animated_value(height + con->animation_state.delta_height, height);
+		width = get_animated_value(width + con->animation_state.delta_width, width,
+			*con->animation_state.animation);
+		if (width <= 0) {
+			return;
+		}
+		height = get_animated_value(height + con->animation_state.delta_height, height,
+			*con->animation_state.animation);
+		if (height <= 0) {
+			return;
+		}
 	}
 	con->animation_state.current_width = width;
 	con->animation_state.current_height = height;
@@ -847,10 +857,6 @@ static void arrange_root(struct sway_root *root) {
 	arrange_popups(root->layers.popup);
 }
 
-void animation_complete_callback() {
-	// TODO: needed for close animations
-}
-
 void animation_update_callback() {
 	// if there's a pending transaction there will be a re-arrange anyway
 	if (!server.pending_transaction) {
@@ -904,13 +910,14 @@ static void transaction_apply(struct sway_transaction *transaction) {
 
 				// TODO: reset animation state on going to scratchpad
 				// skip newly spawned windows (for now!)
-				if (con->current.width != 0 && con->current.height != 0) {
+				if (con->view && con->current.workspace) {
 					int lx, ly;
 					wlr_scene_node_coords(&con->scene_tree->node, &lx, &ly);
 					con->animation_state.delta_x = lx - con->pending.x;
 					con->animation_state.delta_y = ly - con->pending.y;
 					con->animation_state.delta_width = con->animation_state.current_width - con->pending.width;
 					con->animation_state.delta_height = con->animation_state.current_height - con->pending.height;
+					add_animation(con->animation_state.animation);
 				}
 			}
 			apply_container_state(con, &instruction->container_state);
@@ -920,9 +927,8 @@ static void transaction_apply(struct sway_transaction *transaction) {
 		node->instruction = NULL;
 	}
 
-	// TODO: give each container a separate progress
 	if (should_start_new_animation) {
-		start_animation(&animation_update_callback, &animation_complete_callback);
+		start_animations(&animation_update_callback);
 	}
 }
 

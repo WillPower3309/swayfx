@@ -1289,3 +1289,4 @@ void view_send_frame_done(struct sway_view *view) {
 		wlr_scene_node_for_each_buffer(node, send_frame_done_iterator, &when);
 	}
 }
+

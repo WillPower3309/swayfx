@@ -1,71 +1,71 @@
 #include <assert.h>
-#include <wayland-util.h>
 #include "sway/animation_manager.h"
 #include "sway/config.h"
 #include "sway/output.h"
+#include "sway/server.h"
 #include "sway/tree/arrange.h"
 #include "sway/tree/container.h"
 #include "sway/tree/node.h"
 #include "sway/tree/root.h"
 
-struct animation {
-	float progress;
-	float multiplier;
-	void (*update)(void);
-	void (*complete)(void);
-};
-
 struct animation_manager {
 	float tick_time;
 	float progress_delta;
 	struct wl_event_source *tick;
-	struct animation current_animation;
+	struct wl_list animations;
+	void (*update)(void);
 } animation_manager;
+
+struct animation init_animation() {
+	return (struct animation){
+		.progress = 0.0f,
+		.multiplier = 0.0f
+	};
+}
 
 float ease_out_cubic(float t) {
 	float p = t - 1;
 	return pow(p, 3) + 1;
 }
 
-int animation_timer(void *data) {
-	struct animation *animation = data;
-
-	animation->progress = MIN(animation->progress + animation_manager.progress_delta, 1.0f);
-	animation->multiplier = ease_out_cubic(animation->progress);
-
-	if (animation->update) {
-		animation->update();
+int animation_timer() {
+	struct animation *animation, *tmp;
+	wl_list_for_each_reverse_safe(animation, tmp, &animation_manager.animations, link) {
+		animation->progress = MIN(animation->progress + animation_manager.progress_delta, 1.0f);
+		animation->multiplier = ease_out_cubic(animation->progress);
+		if (animation->progress == 1.0f) {
+			wl_list_remove(&animation->link);
+			animation->initialized = false;
+		}
 	}
 
-	if (animation->progress < 1.0f) {
+	animation_manager.update();
+
+	if (!wl_list_empty(&animation_manager.animations)) {
 		wl_event_source_timer_update(animation_manager.tick,
 				animation_manager.tick_time);
-	} else if (animation->complete) {
-		animation->complete();
 	}
 	return 0;
 }
 
-void start_animation(void (update_callback)(void), void (complete_callback)(void)) {
-	if (!config->animation_duration_ms) {
-		// TODO: needed?
-		animation_manager.current_animation = (struct animation) {
-			.progress = 1.0f,
-			.multiplier = 1.0f,
-			.update = NULL,
-			.complete = NULL,
-		};
-		return;
+void add_animation(struct animation *animation) {
+	// remove previous instances of this animation
+	if (animation->initialized) {
+		wl_list_remove(&animation->link);
 	}
 
-	assert(animation_manager.tick);
+	animation->progress = 0.0f;
+	animation->multiplier = 0.0f;
+	animation->initialized = true;
+	wl_list_insert(&animation_manager.animations, &animation->link);
+}
 
-	animation_manager.current_animation = (struct animation) {
-		.progress = 0.0f,
-		.multiplier = 0.0f,
-		.update = update_callback,
-		.complete = complete_callback,
-	};
+void start_animations(void (update_callback)(void)) {
+	if (!config->animation_duration_ms) {
+		return;
+	}
+	assert(animation_manager.tick);
+	animation_manager.update = update_callback;
 	wl_event_source_timer_update(animation_manager.tick, 1);
 }
 
@@ -91,7 +91,8 @@ void refresh_animation_manager_timing() {
 
 void animation_manager_init(struct sway_server *server) {
 	animation_manager.tick = wl_event_loop_add_timer(server->wl_event_loop,
-			animation_timer, &animation_manager.current_animation);
+			animation_timer, NULL);
+	wl_list_init(&animation_manager.animations);
 	refresh_animation_manager_timing();
 }
 
@@ -99,10 +100,11 @@ float lerp(float a, float b, float t) {
 	return a * (1.0 - t) + b * t;
 }
 
-float get_animated_value(float from, float to) {
+
+float get_animated_value(float from, float to, struct animation animation) {
 	if (!config->animation_duration_ms) {
 		return to;
 	}
-	return lerp(from, to, animation_manager.current_animation.multiplier);
+	return lerp(from, to, animation.multiplier);
 }
 
