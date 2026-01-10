@@ -572,7 +572,13 @@ static void arrange_container(struct sway_container *con,
 			wlr_scene_subsurface_tree_set_clip(&con->view->content_tree->node, &clip);
 		}
 		con->animation_state.current_content_width = content_width;
+		if (content_width <= 0) {
+			return;
+		}
 		con->animation_state.current_content_height = content_height;
+		if (content_height <= 0) {
+			return;
+		}
 
 		// Dim
 		if (con->dim_rect) {
