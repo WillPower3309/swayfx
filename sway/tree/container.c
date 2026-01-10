@@ -178,6 +178,7 @@ struct sway_container *container_create(struct sway_view *view) {
 
 	c->animation_state.animation = malloc(sizeof(struct animation));
 	*c->animation_state.animation = init_animation();
+	c->animation_state.from_alpha = 0.0f;
 	c->animation_state.delta_x = 0;
 	c->animation_state.delta_y = 0;
 	c->animation_state.delta_width = 0;

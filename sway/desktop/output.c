@@ -218,7 +218,8 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 		scene_descriptor_try_get(node, SWAY_SCENE_DESC_CONTAINER);
 	if (con) {
 		closest_con = con;
-		opacity = con->alpha;
+		opacity = get_animated_value(con->animation_state.from_alpha, con->alpha,
+			*con->animation_state.animation);
 		corner_radius = con->corner_radius;
 		blur_enabled = con->blur_enabled;
 		enum sway_container_layout layout = con->current.layout;
@@ -312,6 +313,7 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 		// Only enable xray blur if tiled or when xray is explicitly enabled
 		bool should_optimize_blur = !container_is_floating_or_child(closest_con) || config->blur_xray;
 		wlr_scene_blur_set_should_only_blur_bottom_layer(blur, should_optimize_blur);
+		wlr_scene_blur_set_strength(blur, opacity);
 		wlr_scene_node_set_enabled(node, closest_con->blur_enabled);
 		int blur_corner_radius = container_has_corner_radius(closest_con) ? corner_radius : 0;
 		wlr_scene_blur_set_corner_radii(

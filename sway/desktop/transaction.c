@@ -924,9 +924,11 @@ static void transaction_apply(struct sway_transaction *transaction) {
 						con->animation_state.delta_y = ly - con->pending.y;
 						con->animation_state.delta_width = con->animation_state.current_width - con->pending.width;
 						con->animation_state.delta_height = con->animation_state.current_height - con->pending.height;
+						con->animation_state.from_alpha = get_animated_value(con->animation_state.from_alpha,
+							con->alpha, *con->animation_state.animation);
 					} else {
 						// open animation
-						// TODO: opacity
+						// TODO: scratchpad open
 						con->animation_state.delta_x = 150;
 						con->animation_state.delta_y = 150;
 						con->animation_state.delta_width = -300;
