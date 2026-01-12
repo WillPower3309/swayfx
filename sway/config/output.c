@@ -952,6 +952,11 @@ static bool apply_resolved_output_configs(struct matched_output_config *configs,
 	// around, so we do a second pass to update positions and arrange.
 	for (size_t idx = 0; idx < configs_len; idx++) {
 		struct matched_output_config *cfg = &configs[idx];
+		// since everything got moved around, mark the optimized blur as dirty
+		// this is to catch e.g. the output transform since it directly picks things up from the fbo
+		if (cfg->output->layers.blur_layer) {
+			cfg->output->layers.blur_layer->dirty = true;
+		}
 		output_update_position(cfg->output);
 		arrange_layers(cfg->output);
 	}

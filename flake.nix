@@ -75,6 +75,7 @@
               cd "$OLDPWD"
             ) || echo "Failed to copy subproject sources."
           '';
+          hardeningDisable = [ "fortify" ];
         };
 
         formatter = pkgs.nixfmt-rfc-style;

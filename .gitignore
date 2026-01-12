@@ -13,3 +13,6 @@ wayland-*-protocol.*
 /subprojects/wlroots
 subprojects
 result
+
+# ignore the build output from build.sh
+opt/

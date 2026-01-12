@@ -7,7 +7,6 @@
 #include <wlr/types/wlr_linux_dmabuf_v1.h>
 #include <wlr/types/wlr_output_layout.h>
 #include <wlr/types/wlr_subcompositor.h>
-#include "scenefx/types/fx/corner_location.h"
 #include "linux-dmabuf-unstable-v1-protocol.h"
 #include "sway/config.h"
 #include "sway/desktop/transaction.h"
@@ -92,6 +91,7 @@ struct sway_container *container_create(struct sway_view *view) {
 
 	// Container tree structure
 	// - scene tree
+	//   - blur source
 	//   - shadow
 	//   - title bar
 	//     - border
@@ -106,6 +106,8 @@ struct sway_container *container_create(struct sway_view *view) {
 	//     - buffer used for output enter/leave events for foreign_toplevel
 	bool failed = false;
 	c->scene_tree = alloc_scene_tree(root->staging, &failed);
+
+	c->blur = alloc_scene_blur(c->scene_tree, 0, 0, &failed);
 
 	c->shadow = alloc_scene_shadow(c->scene_tree, 0, 0,
 			0, config->shadow_blur_sigma, config->shadow_color, &failed);
@@ -173,6 +175,17 @@ struct sway_container *container_create(struct sway_view *view) {
 	c->blur_enabled = config->blur_enabled;
 	c->shadow_enabled = config->shadow_enabled;
 	c->dim = config->default_dim_inactive;
+
+	c->animation_state.animation = malloc(sizeof(struct animation));
+	*c->animation_state.animation = init_animation();
+	c->animation_state.delta_x = 0;
+	c->animation_state.delta_y = 0;
+	c->animation_state.delta_width = 0;
+	c->animation_state.delta_height = 0;
+	c->animation_state.current_width = -1;
+	c->animation_state.current_height = -1;
+	c->animation_state.current_content_width = -1;
+	c->animation_state.current_content_height = -1;
 
 	wl_signal_init(&c->events.destroy);
 	wl_signal_emit_mutable(&root->events.new_node, &c->node);
@@ -257,6 +270,20 @@ static void scene_rect_set_color(struct wlr_scene_rect *rect,
 	wlr_scene_rect_set_color(rect, premultiplied);
 }
 
+// scene shadow wants premultiplied colors
+// TODO: make common get_premultiplied_color function
+static void scene_shadow_set_color(struct wlr_scene_shadow *shadow,
+		const float color[4], float opacity) {
+	const float premultiplied[] = {
+		color[0] * color[3] * opacity,
+		color[1] * color[3] * opacity,
+		color[2] * color[3] * opacity,
+		color[3] * opacity,
+	};
+
+	wlr_scene_shadow_set_color(shadow, premultiplied);
+}
+
 void container_update(struct sway_container *con) {
 	struct border_colors *colors = container_get_current_colors(con);
 	list_t *siblings = NULL;
@@ -291,6 +318,10 @@ void container_update(struct sway_container *con) {
 		scene_rect_set_color(con->border.bottom, bottom, alpha);
 		scene_rect_set_color(con->border.left, colors->child_border, alpha);
 		scene_rect_set_color(con->border.right, right, alpha);
+
+		float *shadow_color = view_is_urgent(con->view) || con->current.focused ?
+				config->shadow_color : config->shadow_inactive_color;
+		scene_shadow_set_color(con->shadow, shadow_color, alpha);
 	}
 
 	if (con->title_bar.title_text) {
@@ -395,7 +426,7 @@ void container_arrange_title_bar(struct sway_container *con) {
 	int thickness = config->titlebar_border_thickness;
 	int background_corner_radius = container_has_corner_radius(con) ?
 			con->corner_radius + con->current.border_thickness - thickness : 0;
-	enum corner_location corners = CORNER_LOCATION_TOP;
+	struct fx_corner_radii corners = corner_radii_top(background_corner_radius);
 
 	enum sway_container_layout layout;
 	const list_t *siblings;
@@ -410,37 +441,34 @@ void container_arrange_title_bar(struct sway_container *con) {
 	if (con->current.parent || con->current.workspace) {
 		if (layout == L_TABBED && siblings->length > 1) {
 			if (siblings->items[0] == con) {
-				corners = CORNER_LOCATION_TOP_LEFT;
+				corners.top_right = 0;
 			} else if (siblings->items[siblings->length - 1] == con) {
-				corners = CORNER_LOCATION_TOP_RIGHT;
+				corners.top_left = 0;
 			} else {
 				background_corner_radius = 0;
-				corners = CORNER_LOCATION_NONE;
+				corners = corner_radii_none();
 			}
 		} else if (layout == L_STACKED && siblings->items[0] != con) {
 			background_corner_radius = 0;
-			corners = CORNER_LOCATION_NONE;
+			corners = corner_radii_none();
 		}
 	}
 
 	wlr_scene_node_set_position(&con->title_bar.background->node, thickness, thickness);
 	wlr_scene_rect_set_size(con->title_bar.background, width - thickness * 2,
 			height - thickness * (config->titlebar_separator ? 2 : 1));
-	wlr_scene_rect_set_corner_radius(con->title_bar.background, background_corner_radius, corners);
+	wlr_scene_rect_set_corner_radii(con->title_bar.background, corners);
 
 	text_box.x -= thickness;
 	text_box.y -= thickness;
 	wlr_scene_rect_set_clipped_region(con->title_bar.background, (struct clipped_region) {
-			.corner_radius = 0,
-			.corners = CORNER_LOCATION_NONE,
+			.corners = {0},
 			.area = text_box,
 	});
 
 	wlr_scene_rect_set_size(con->title_bar.border, width, height);
-	wlr_scene_rect_set_corner_radius(con->title_bar.border, background_corner_radius ?
-			background_corner_radius + thickness : 0, corners);
+	wlr_scene_rect_set_corner_radii(con->title_bar.border, fx_corner_radii_extend(corners, thickness));
 	wlr_scene_rect_set_clipped_region(con->title_bar.border, (struct clipped_region) {
-			.corner_radius = background_corner_radius,
 			.corners = corners,
 			.area = {
 			  .x = thickness,
@@ -535,6 +563,7 @@ void container_destroy(struct sway_container *con) {
 				"which is still referenced by transactions")) {
 		return;
 	}
+
 	free(con->title);
 	free(con->formatted_title);
 	free(con->title_format);
@@ -592,6 +621,11 @@ void container_begin_destroy(struct sway_container *con) {
 		wl_list_remove(&con->output_enter.link);
 		wl_list_remove(&con->output_leave.link);
 		wl_list_remove(&con->output_handler_destroy.link);
+	}
+	if (con->animation_state.animation->initialized) {
+		con->animation_state.animation->initialized = false;
+		wl_list_remove(&con->animation_state.animation->link);
+		free(con->animation_state.animation);
 	}
 }
 
@@ -1987,6 +2021,11 @@ bool container_has_shadow(struct sway_container *con) {
 bool container_has_corner_radius(struct sway_container *con) {
 	if (!con) {
 		return false;
+	}
+	// Guard against NULL workspace (can occur during window creation before
+	// workspace is assigned, or for scratchpad containers)
+	if (!con->current.workspace) {
+		return con->corner_radius > 0;
 	}
 	return (container_is_floating_or_child(con) ||
 			!(config->smart_corner_radius && con->current.workspace->current_gaps.top == 0)) &&
