@@ -268,6 +268,7 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 			// Only enable xray blur if tiled or when xray is explicitly enabled
 			bool should_optimize_blur = (closest_con && !container_is_floating_or_child(closest_con)) || config->blur_xray;
 			wlr_scene_buffer_set_backdrop_blur_optimized(buffer, should_optimize_blur);
+			wlr_scene_shadow_set_reference_buffer(closest_con->shadow, buffer);
 		} else if (wlr_subsurface_try_from_wlr_surface(surface->surface)) {
 			wlr_scene_buffer_set_corner_radius(buffer,
 					container_has_corner_radius(closest_con) ? corner_radius : 0,
@@ -279,9 +280,8 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 			wlr_scene_buffer_set_corner_radius(buffer, surface->corner_radius, CORNER_LOCATION_ALL);
 			wlr_scene_shadow_set_blur_sigma(surface->shadow_node, config->shadow_blur_sigma);
 			wlr_scene_shadow_set_corner_radius(surface->shadow_node, surface->corner_radius);
-			if (surface->shadow_node->type == WLR_SCENE_SHADOW_TYPE_DROP) {
-				wlr_scene_shadow_set_reference_buffer(surface->shadow_node, buffer);
-			}
+			wlr_scene_shadow_set_reference_buffer(surface->shadow_node,
+					surface->use_drop_shadow ? buffer : NULL);
 			wlr_scene_buffer_set_backdrop_blur(buffer, surface->blur_enabled);
 			wlr_scene_buffer_set_backdrop_blur_ignore_transparent(buffer, surface->blur_ignore_transparent);
 			wlr_scene_buffer_set_backdrop_blur_optimized(buffer, surface->blur_xray);

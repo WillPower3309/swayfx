@@ -101,8 +101,6 @@ static void arrange_surface(struct sway_output *output, const struct wlr_box *fu
 		}
 
 		wlr_scene_node_set_enabled(&surface->shadow_node->node, surface->shadow_enabled);
-		wlr_scene_shadow_set_type(surface->shadow_node,
-				surface->use_drop_shadow ? WLR_SCENE_SHADOW_TYPE_DROP : WLR_SCENE_SHADOW_TYPE_BOX);
 		// Adjust the size and position of the shadow node
 		const int shadow_size = wlr_scene_shadow_get_offset(surface->shadow_node);
 		wlr_scene_shadow_set_size(surface->shadow_node,
