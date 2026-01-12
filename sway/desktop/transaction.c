@@ -444,12 +444,12 @@ static void arrange_container(struct sway_container *con,
 			corner_radius = con->corner_radius + config->border_thickness;
 		}
 
-		const int shadow_size = wlr_scene_shadow_get_offset(con->shadow);
 		wlr_scene_shadow_set_size(con->shadow,
-				width + shadow_size * 2, height + shadow_size * 2);
+				width + config->shadow_blur_sigma * 2,
+				height + config->shadow_blur_sigma * 2);
 
-		int x = config->shadow_offset_x - shadow_size;
-		int y = config->shadow_offset_y - shadow_size;
+		int x = config->shadow_offset_x - config->shadow_blur_sigma;
+		int y = config->shadow_offset_y - config->shadow_blur_sigma;
 		wlr_scene_node_set_position(&con->shadow->node, x, y);
 
 		wlr_scene_shadow_set_clipped_region(con->shadow, (struct clipped_region) {
