@@ -121,16 +121,6 @@ static void arrange_surface(struct sway_output *output, const struct wlr_box *fu
 				const int x = config->shadow_offset_x - blur_offset;
 				const int y = config->shadow_offset_y - blur_offset;
 				wlr_scene_node_set_position(&surface->drop_shadow_node->node, x, y);
-
-				wlr_scene_drop_shadow_set_clipped_region(surface->drop_shadow_node, (struct clipped_region) {
-						.corners = corner_radii_all(surface->corner_radius),
-						.area = {
-							.x = -x,
-							.y = -y,
-							.width = surface_width,
-							.height = surface_height,
-						},
-				});
 			} else {
 				// Adjust the size and position of the shadow node
 				wlr_scene_shadow_set_size(surface->box_shadow_node,
