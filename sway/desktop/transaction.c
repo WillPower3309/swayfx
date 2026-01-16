@@ -20,6 +20,8 @@
 #include "list.h"
 #include "log.h"
 
+#define ANIMATION_OPEN_CLOSE_POP_SIZE 150
+
 struct sway_transaction {
 	struct wl_event_source *timer;
 	list_t *instructions;   // struct sway_transaction_instruction *
@@ -73,7 +75,6 @@ static void transaction_destroy(struct sway_transaction *transaction) {
 				workspace_destroy(node->sway_workspace);
 				break;
 			case N_CONTAINER:
-				// TODO: perhaps handle close animation here!
 				container_destroy(node->sway_container);
 				break;
 			}
@@ -411,18 +412,18 @@ static void arrange_container(struct sway_container *con,
 	if (con->view) {
 		// reuse the position from arrange_child. A bit hacky, but this reduces diff size vs upstream.
 		int x = get_animated_value(con->scene_tree->node.x + con->animation_state.delta_x,
-			con->scene_tree->node.x, *con->animation_state.animation);
+			con->scene_tree->node.x, con->animation_state.animation);
 		int y = get_animated_value(con->scene_tree->node.y + con->animation_state.delta_y,
-			con->scene_tree->node.y, *con->animation_state.animation);
+			con->scene_tree->node.y, con->animation_state.animation);
 		wlr_scene_node_set_position(&con->scene_tree->node, x, y);
 
 		width = get_animated_value(width + con->animation_state.delta_width, width,
-			*con->animation_state.animation);
+			con->animation_state.animation);
 		if (width <= 0) {
 			return;
 		}
 		height = get_animated_value(height + con->animation_state.delta_height, height,
-			*con->animation_state.animation);
+			con->animation_state.animation);
 		if (height <= 0) {
 			return;
 		}
@@ -918,7 +919,7 @@ static void transaction_apply(struct sway_transaction *transaction) {
 				// skip newly spawned windows (for now!)
 				if (con->view) {
 					con->animation_state.from_alpha = get_animated_value(con->animation_state.from_alpha,
-						con->animation_state.to_alpha, *con->animation_state.animation);
+						con->animation_state.to_alpha, con->animation_state.animation);
 					con->animation_state.to_alpha = con->alpha;
 
 					if (con->current.workspace) {
@@ -931,12 +932,12 @@ static void transaction_apply(struct sway_transaction *transaction) {
 					} else {
 						// open animation
 						// TODO: scratchpad open
-						con->animation_state.delta_x = 150;
-						con->animation_state.delta_y = 150;
-						con->animation_state.delta_width = -300;
-						con->animation_state.delta_height = -300;
+						con->animation_state.delta_x = ANIMATION_OPEN_CLOSE_POP_SIZE;
+						con->animation_state.delta_y = ANIMATION_OPEN_CLOSE_POP_SIZE;
+						con->animation_state.delta_width = -2 * ANIMATION_OPEN_CLOSE_POP_SIZE;
+						con->animation_state.delta_height = -2 * ANIMATION_OPEN_CLOSE_POP_SIZE;
 					}
-					add_animation(con->animation_state.animation);
+					add_animation(&con->animation_state.animation);
 				}
 			}
 			apply_container_state(con, &instruction->container_state);

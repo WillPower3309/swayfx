@@ -209,8 +209,8 @@ static enum wlr_scale_filter_mode get_scale_filter(struct sway_output *output,
 }
 
 static bool is_container_animated_moving(struct sway_container *con) {
-	if (con->animation_state.animation->progress == 0.0f ||
-			con->animation_state.animation->progress == 1.0f) {
+	if (con->animation_state.animation.progress == 0.0f ||
+			con->animation_state.animation.progress == 1.0f) {
 		return false;
 	}
 
@@ -228,7 +228,7 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 	if (con) {
 		closest_con = con;
 		opacity = get_animated_value(con->animation_state.from_alpha,
-			con->animation_state.to_alpha, *con->animation_state.animation);
+			con->animation_state.to_alpha, con->animation_state.animation);
 		corner_radius = con->corner_radius;
 		blur_enabled = con->blur_enabled;
 		enum sway_container_layout layout = con->current.layout;

@@ -157,7 +157,7 @@ struct sway_container {
 	list_t *marks; // char *
 
 	struct {
-		struct animation *animation;
+		struct animation animation;
 		float from_alpha;
 		float to_alpha;
 		int delta_x;

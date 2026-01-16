@@ -176,8 +176,7 @@ struct sway_container *container_create(struct sway_view *view) {
 	c->shadow_enabled = config->shadow_enabled;
 	c->dim = config->default_dim_inactive;
 
-	c->animation_state.animation = malloc(sizeof(struct animation));
-	*c->animation_state.animation = init_animation();
+	c->animation_state.animation = init_animation();
 	c->animation_state.from_alpha = 0.0f;
 	c->animation_state.to_alpha = c->alpha;
 	c->animation_state.delta_x = 0;
@@ -291,7 +290,7 @@ void container_update(struct sway_container *con) {
 	list_t *siblings = NULL;
 	enum sway_container_layout layout = L_NONE;
 	float alpha = get_animated_value(con->animation_state.from_alpha,
-		con->animation_state.to_alpha, *con->animation_state.animation);
+		con->animation_state.to_alpha, con->animation_state.animation);
 
 	if (con->current.parent) {
 		siblings = con->current.parent->current.children;
@@ -567,6 +566,11 @@ void container_destroy(struct sway_container *con) {
 		return;
 	}
 
+	if (con->animation_state.animation.initialized) {
+		con->animation_state.animation.initialized = false;
+		wl_list_remove(&con->animation_state.animation.link);
+	}
+
 	free(con->title);
 	free(con->formatted_title);
 	free(con->title_format);
@@ -624,11 +628,6 @@ void container_begin_destroy(struct sway_container *con) {
 		wl_list_remove(&con->output_enter.link);
 		wl_list_remove(&con->output_leave.link);
 		wl_list_remove(&con->output_handler_destroy.link);
-	}
-	if (con->animation_state.animation->initialized) {
-		con->animation_state.animation->initialized = false;
-		wl_list_remove(&con->animation_state.animation->link);
-		free(con->animation_state.animation);
 	}
 }
 
