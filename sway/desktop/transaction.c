@@ -917,6 +917,10 @@ static void transaction_apply(struct sway_transaction *transaction) {
 				// TODO: reset animation state on going to scratchpad
 				// skip newly spawned windows (for now!)
 				if (con->view) {
+					con->animation_state.from_alpha = get_animated_value(con->animation_state.from_alpha,
+						con->animation_state.to_alpha, *con->animation_state.animation);
+					con->animation_state.to_alpha = con->alpha;
+
 					if (con->current.workspace) {
 						int lx, ly;
 						wlr_scene_node_coords(&con->scene_tree->node, &lx, &ly);
@@ -924,8 +928,6 @@ static void transaction_apply(struct sway_transaction *transaction) {
 						con->animation_state.delta_y = ly - con->pending.y;
 						con->animation_state.delta_width = con->animation_state.current_width - con->pending.width;
 						con->animation_state.delta_height = con->animation_state.current_height - con->pending.height;
-						con->animation_state.from_alpha = get_animated_value(con->animation_state.from_alpha,
-							con->alpha, *con->animation_state.animation);
 					} else {
 						// open animation
 						// TODO: scratchpad open
