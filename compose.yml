@@ -8,5 +8,6 @@ services:
         SWAYFXVERSION: 0.5.3
         SCENEFXVERSION: 0.4.1
         SCENEFXLIBVERSION: 0.4
+        OPT_SWAYFX: /opt
     volumes:
       - ./opt:/opt
