@@ -281,8 +281,14 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 			// Layer effects
 			struct sway_layer_surface *surface = layer_surface->data;
 			wlr_scene_buffer_set_corner_radii(buffer, corner_radii_all(surface->corner_radius));
-			wlr_scene_shadow_set_blur_sigma(surface->shadow_node, config->shadow_blur_sigma);
-			wlr_scene_shadow_set_corner_radius(surface->shadow_node, surface->corner_radius);
+			if (surface->use_drop_shadow && surface->drop_shadow_node) {
+				wlr_scene_drop_shadow_set_blur_sigma(surface->drop_shadow_node, config->shadow_blur_sigma);
+				wlr_scene_drop_shadow_set_reference_buffer(surface->drop_shadow_node,
+						surface->use_drop_shadow ? buffer : NULL);
+			} else if (surface->box_shadow_node) {
+				wlr_scene_shadow_set_blur_sigma(surface->box_shadow_node, config->shadow_blur_sigma);
+				wlr_scene_shadow_set_corner_radius(surface->box_shadow_node, surface->corner_radius);
+			}
 
 			wlr_scene_node_set_enabled(&surface->blur_node->node, surface->blur_enabled);
 
