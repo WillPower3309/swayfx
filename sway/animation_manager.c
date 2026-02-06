@@ -16,10 +16,13 @@ struct animation_manager {
 	void (*update)(void);
 } animation_manager;
 
-struct animation init_animation() {
+struct animation init_animation(struct sway_container *con) {
 	return (struct animation){
+		.con = con,
 		.progress = 0.0f,
-		.multiplier = 0.0f
+		.multiplier = 0.0f,
+		.initialized = false,
+		.complete = NULL,
 	};
 }
 
@@ -36,6 +39,10 @@ int animation_timer() {
 		if (animation->progress == 1.0f) {
 			wl_list_remove(&animation->link);
 			animation->initialized = false;
+
+			if (animation->complete) {
+				animation->complete(animation->con);
+			}
 		}
 	}
 
@@ -48,7 +55,7 @@ int animation_timer() {
 	return 0;
 }
 
-void add_animation(struct animation *animation) {
+void add_animation(struct animation *animation, void (*complete_callback)(struct sway_container *)) {
 	// remove previous instances of this animation
 	if (animation->initialized) {
 		wl_list_remove(&animation->link);
@@ -57,6 +64,7 @@ void add_animation(struct animation *animation) {
 	animation->progress = 0.0f;
 	animation->multiplier = 0.0f;
 	animation->initialized = true;
+	animation->complete = complete_callback;
 	wl_list_insert(&animation_manager.animations, &animation->link);
 }
 
@@ -66,6 +74,7 @@ void start_animations(void (update_callback)(void)) {
 	}
 	assert(animation_manager.tick);
 	animation_manager.update = update_callback;
+
 	wl_event_source_timer_update(animation_manager.tick, 1);
 }
 

@@ -214,6 +214,7 @@ static bool is_container_animated_moving(struct sway_container *con) {
 		return false;
 	}
 
+	// TODO: account for open and close as well
 	return con->animation_state.delta_x != 0 || con->animation_state.delta_y != 0;
 }
 

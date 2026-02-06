@@ -176,7 +176,7 @@ struct sway_container *container_create(struct sway_view *view) {
 	c->shadow_enabled = config->shadow_enabled;
 	c->dim = config->default_dim_inactive;
 
-	c->animation_state.animation = init_animation();
+	c->animation_state.animation = init_animation(c);
 	c->animation_state.from_alpha = 0.0f;
 	c->animation_state.to_alpha = c->alpha;
 	c->animation_state.delta_x = 0;
@@ -580,6 +580,10 @@ void container_destroy(struct sway_container *con) {
 	list_free_items_and_destroy(con->marks);
 
 	if (con->view && con->view->container == con) {
+		if (con->view->saved_surface_tree) {
+			view_remove_saved_buffer(con->view);
+		}
+
 		con->view->container = NULL;
 		wlr_scene_node_destroy(&con->output_handler->node);
 		if (con->view->destroying) {
@@ -596,6 +600,7 @@ void container_begin_destroy(struct sway_container *con) {
 	if (con->view) {
 		ipc_event_window(con, "close");
 	}
+
 	// The workspace must have the fullscreen pointer cleared so that the
 	// seat code can find an appropriate new focus.
 	if (con->pending.fullscreen_mode == FULLSCREEN_WORKSPACE && con->pending.workspace) {

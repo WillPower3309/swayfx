@@ -20,8 +20,6 @@
 #include "list.h"
 #include "log.h"
 
-#define ANIMATION_OPEN_CLOSE_POP_SIZE 150
-
 struct sway_transaction {
 	struct wl_event_source *timer;
 	list_t *instructions;   // struct sway_transaction_instruction *
@@ -75,7 +73,21 @@ static void transaction_destroy(struct sway_transaction *transaction) {
 				workspace_destroy(node->sway_workspace);
 				break;
 			case N_CONTAINER:
-				container_destroy(node->sway_container);
+				struct sway_container *con = node->sway_container;
+				if (con->view) {
+					// close animation
+					con->animation_state.from_alpha = get_animated_value(con->animation_state.from_alpha,
+						con->animation_state.to_alpha, con->animation_state.animation);
+					con->animation_state.to_alpha = 0.0f;
+					con->animation_state.delta_x = 0;
+					con->animation_state.delta_y = 0;
+					con->animation_state.delta_width = 0;
+					con->animation_state.delta_height = 0;
+					add_animation(&con->animation_state.animation, container_destroy);
+				}
+				else {
+					container_destroy(con);
+				}
 				break;
 			}
 		}
@@ -243,7 +255,7 @@ static void apply_container_state(struct sway_container *container,
 
 	if (view) {
 		if (view->saved_surface_tree) {
-			if (!container->node.destroying || container->node.ntxnrefs == 1) {
+			if (!container->node.destroying) {
 				view_remove_saved_buffer(view);
 			}
 		}
@@ -864,18 +876,11 @@ static void arrange_root(struct sway_root *root) {
 	arrange_popups(root->layers.popup);
 }
 
-void animation_update_callback() {
+static void animation_update_callback() {
 	// if there's a pending transaction there will be a re-arrange anyway
 	if (!server.pending_transaction) {
 		arrange_root(root);
 	}
-}
-
-static bool should_con_new_animation(struct sway_container *con, struct sway_container_state *new_state) {
-	return con->current.width != new_state->width ||
-		con->current.height != new_state->height ||
-		con->current.x != new_state->x ||
-		con->current.y != new_state->y;
 }
 
 /**
@@ -893,7 +898,6 @@ static void transaction_apply(struct sway_transaction *transaction) {
 				"(%.1f frames if 60Hz)", transaction, ms, ms / (1000.0f / 60));
 	}
 
-	bool should_start_new_animation = false;
 	// Apply the instruction state to the node's current state
 	for (int i = 0; i < transaction->instructions->length; ++i) {
 		struct sway_transaction_instruction *instruction =
@@ -912,43 +916,35 @@ static void transaction_apply(struct sway_transaction *transaction) {
 			break;
 		case N_CONTAINER:
 			struct sway_container *con = node->sway_container;
-			if (should_con_new_animation(con, &instruction->container_state)) {
-				should_start_new_animation = true;
+			// TODO: reset animation state on going to scratchpad
+			// skip newly spawned windows (for now!)
+			if (con->view) {
+				con->animation_state.from_alpha = get_animated_value(con->animation_state.from_alpha,
+					con->animation_state.to_alpha, con->animation_state.animation);
+				con->animation_state.to_alpha = con->alpha;
 
-				// TODO: reset animation state on going to scratchpad
-				// skip newly spawned windows (for now!)
-				if (con->view) {
-					con->animation_state.from_alpha = get_animated_value(con->animation_state.from_alpha,
-						con->animation_state.to_alpha, con->animation_state.animation);
-					con->animation_state.to_alpha = con->alpha;
-
-					if (con->current.workspace) {
-						int lx, ly;
-						wlr_scene_node_coords(&con->scene_tree->node, &lx, &ly);
-						con->animation_state.delta_x = lx - con->pending.x;
-						con->animation_state.delta_y = ly - con->pending.y;
-						con->animation_state.delta_width = con->animation_state.current_width - con->pending.width;
-						con->animation_state.delta_height = con->animation_state.current_height - con->pending.height;
-					} else {
-						// open animation
-						// TODO: scratchpad open
-						con->animation_state.delta_x = ANIMATION_OPEN_CLOSE_POP_SIZE;
-						con->animation_state.delta_y = ANIMATION_OPEN_CLOSE_POP_SIZE;
-						con->animation_state.delta_width = -2 * ANIMATION_OPEN_CLOSE_POP_SIZE;
-						con->animation_state.delta_height = -2 * ANIMATION_OPEN_CLOSE_POP_SIZE;
-					}
-					add_animation(&con->animation_state.animation);
+				if (con->current.workspace) {
+					int lx, ly;
+					wlr_scene_node_coords(&con->scene_tree->node, &lx, &ly);
+					con->animation_state.delta_x = lx - con->pending.x;
+					con->animation_state.delta_y = ly - con->pending.y;
+					con->animation_state.delta_width = con->animation_state.current_width - con->pending.width;
+					con->animation_state.delta_height = con->animation_state.current_height - con->pending.height;
+				} else {
+					// open animation
+					// TODO: scratchpad open
+					con->animation_state.delta_x = 0;
+					con->animation_state.delta_y = 0;
+					con->animation_state.delta_width = 0;
+					con->animation_state.delta_height = 0;
 				}
+				add_animation(&con->animation_state.animation, NULL);
 			}
 			apply_container_state(con, &instruction->container_state);
 			break;
 		}
 
 		node->instruction = NULL;
-	}
-
-	if (should_start_new_animation) {
-		start_animations(&animation_update_callback);
 	}
 }
 
@@ -965,6 +961,7 @@ static void transaction_progress(void) {
 	arrange_root(root);
 	cursor_rebase_all();
 	transaction_destroy(server.queued_transaction);
+	start_animations(&animation_update_callback);
 	server.queued_transaction = NULL;
 
 	if (!server.pending_transaction) {
