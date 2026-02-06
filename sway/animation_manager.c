@@ -36,6 +36,11 @@ int animation_timer() {
 	wl_list_for_each_reverse_safe(animation, tmp, &animation_manager.animations, link) {
 		animation->progress = MIN(animation->progress + animation_manager.progress_delta, 1.0f);
 		animation->multiplier = ease_out_cubic(animation->progress);
+
+		if (animation->update) {
+			animation->update(animation->con);
+		}
+
 		if (animation->progress == 1.0f) {
 			wl_list_remove(&animation->link);
 			animation->initialized = false;
@@ -55,7 +60,8 @@ int animation_timer() {
 	return 0;
 }
 
-void add_animation(struct animation *animation, void (*complete_callback)(struct sway_container *)) {
+void add_animation(struct animation *animation, void (*update_callback)(struct sway_container *),
+		void (*complete_callback)(struct sway_container *)) {
 	// remove previous instances of this animation
 	if (animation->initialized) {
 		wl_list_remove(&animation->link);
@@ -64,6 +70,7 @@ void add_animation(struct animation *animation, void (*complete_callback)(struct
 	animation->progress = 0.0f;
 	animation->multiplier = 0.0f;
 	animation->initialized = true;
+	animation->update = update_callback;
 	animation->complete = complete_callback;
 	wl_list_insert(&animation_manager.animations, &animation->link);
 }

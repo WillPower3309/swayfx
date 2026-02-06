@@ -208,14 +208,14 @@ static enum wlr_scale_filter_mode get_scale_filter(struct sway_output *output,
 	}
 }
 
-static bool is_container_animated_moving(struct sway_container *con) {
-	if (con->animation_state.animation.progress == 0.0f ||
-			con->animation_state.animation.progress == 1.0f) {
-		return false;
+static bool could_container_overlap(struct sway_container *con) {
+	if (container_is_floating_or_child(con)) {
+		return true;
 	}
 
-	// TODO: account for open and close as well
-	return con->animation_state.delta_x != 0 || con->animation_state.delta_y != 0;
+	// animations can have tiled containers overlap in flight
+	return con->animation_state.animation.progress != 0.0f &&
+		con->animation_state.animation.progress != 1.0f;
 }
 
 void output_configure_scene(struct sway_output *output, struct wlr_scene_node *node, float opacity,
@@ -320,9 +320,7 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 	} else if (node->type == WLR_SCENE_NODE_BLUR && closest_con) {
 		struct wlr_scene_blur *blur = wlr_scene_blur_from_node(node);
 
-		// Only enable xray blur if tiled or when xray is explicitly enabled and a move animation is not occurring
-		// (since tiled views can overlap on move animation)
-		bool should_optimize_blur = config->blur_xray || !(container_is_floating_or_child(closest_con) || is_container_animated_moving(closest_con));
+		bool should_optimize_blur = config->blur_xray || !could_container_overlap(closest_con);
 		wlr_scene_blur_set_should_only_blur_bottom_layer(blur, should_optimize_blur);
 		wlr_scene_blur_set_strength(blur, opacity);
 		wlr_scene_node_set_enabled(node, closest_con->blur_enabled);

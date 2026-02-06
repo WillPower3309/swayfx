@@ -15,6 +15,7 @@ struct animation {
 	struct sway_container *con;
 	float multiplier;
 	bool initialized;
+	void (*update)(struct sway_container *);
 	void (*complete)(struct sway_container *);
 };
 
@@ -24,7 +25,8 @@ struct animation init_animation(struct sway_container *con);
 
 void refresh_animation_manager_timing();
 
-void add_animation(struct animation *animation, void (*complete_callback)(struct sway_container *));
+void add_animation(struct animation *animation, void (*update_callback)(struct sway_container *),
+	void (*complete_callback)(struct sway_container *));
 
 void start_animations(void (update_callback)(void));
 

@@ -51,6 +51,13 @@ static struct sway_transaction *transaction_create(void) {
 	return transaction;
 }
 
+static void arrange_container(struct sway_container *con,
+		int width, int height, bool title_bar, int gaps);
+
+static void container_update_callback(struct sway_container *con) {
+	arrange_container(con, con->animation_state.current_width, con->animation_state.current_height, false, 0);
+}
+
 static void transaction_destroy(struct sway_transaction *transaction) {
 	// Free instructions
 	for (int i = 0; i < transaction->instructions->length; ++i) {
@@ -83,7 +90,7 @@ static void transaction_destroy(struct sway_transaction *transaction) {
 					con->animation_state.delta_y = 0;
 					con->animation_state.delta_width = 0;
 					con->animation_state.delta_height = 0;
-					add_animation(&con->animation_state.animation, container_destroy);
+					add_animation(&con->animation_state.animation, container_update_callback, container_destroy);
 				}
 				else {
 					container_destroy(con);
@@ -298,9 +305,6 @@ static void disable_container(struct sway_container *con) {
 		}
 	}
 }
-
-static void arrange_container(struct sway_container *con,
-		int width, int height, bool title_bar, int gaps);
 
 static void arrange_children(enum sway_container_layout layout, list_t *children,
 		struct sway_container *active, struct wlr_scene_tree *content,
@@ -878,9 +882,11 @@ static void arrange_root(struct sway_root *root) {
 
 static void animation_update_callback() {
 	// if there's a pending transaction there will be a re-arrange anyway
-	if (!server.pending_transaction) {
-		arrange_root(root);
+	if (server.pending_transaction) {
+		return;
 	}
+
+	arrange_root(root);
 }
 
 /**
@@ -938,7 +944,7 @@ static void transaction_apply(struct sway_transaction *transaction) {
 					con->animation_state.delta_width = 0;
 					con->animation_state.delta_height = 0;
 				}
-				add_animation(&con->animation_state.animation, NULL);
+				add_animation(&con->animation_state.animation, NULL, NULL);
 			}
 			apply_container_state(con, &instruction->container_state);
 			break;
