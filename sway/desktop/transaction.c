@@ -55,7 +55,8 @@ static void arrange_container(struct sway_container *con,
 		int width, int height, bool title_bar, int gaps);
 
 static void container_update_callback(struct sway_container *con) {
-	arrange_container(con, con->animation_state.current_width, con->animation_state.current_height, false, 0);
+	// TODO: titlebar value
+	arrange_container(con, con->animation_state.to_width, con->animation_state.to_height, false, 0);
 }
 
 static void transaction_destroy(struct sway_transaction *transaction) {
@@ -86,10 +87,16 @@ static void transaction_destroy(struct sway_transaction *transaction) {
 					con->animation_state.from_alpha = get_animated_value(con->animation_state.from_alpha,
 						con->animation_state.to_alpha, con->animation_state.animation);
 					con->animation_state.to_alpha = 0.0f;
-					con->animation_state.delta_x = 0;
-					con->animation_state.delta_y = 0;
-					con->animation_state.delta_width = 0;
-					con->animation_state.delta_height = 0;
+					con->animation_state.from_x = con->scene_tree->node.x;
+					con->animation_state.from_y = con->scene_tree->node.y;
+					con->animation_state.to_x = con->animation_state.from_x;
+					con->animation_state.to_y = con->animation_state.from_y;
+					con->animation_state.from_width = get_animated_value(con->animation_state.from_width,
+						con->animation_state.to_width, con->animation_state.animation);
+					con->animation_state.from_height = get_animated_value(con->animation_state.from_height,
+						con->animation_state.to_height, con->animation_state.animation);
+					con->animation_state.to_width = con->animation_state.from_width;
+					con->animation_state.to_height = con->animation_state.from_height;
 					add_animation(&con->animation_state.animation, container_update_callback, container_destroy);
 				}
 				else {
@@ -426,26 +433,23 @@ static void arrange_container(struct sway_container *con,
 	wlr_scene_node_set_enabled(&con->scene_tree->node, true);
 
 	if (con->view) {
-		// reuse the position from arrange_child. A bit hacky, but this reduces diff size vs upstream.
-		int x = get_animated_value(con->scene_tree->node.x + con->animation_state.delta_x,
-			con->scene_tree->node.x, con->animation_state.animation);
-		int y = get_animated_value(con->scene_tree->node.y + con->animation_state.delta_y,
-			con->scene_tree->node.y, con->animation_state.animation);
+		int x = get_animated_value(con->animation_state.from_x,
+			con->animation_state.to_x, con->animation_state.animation);
+		int y = get_animated_value(con->animation_state.from_y,
+			con->animation_state.to_y, con->animation_state.animation);
 		wlr_scene_node_set_position(&con->scene_tree->node, x, y);
 
-		width = get_animated_value(width + con->animation_state.delta_width, width,
+		width = get_animated_value(con->animation_state.from_width, width,
 			con->animation_state.animation);
 		if (width <= 0) {
 			return;
 		}
-		height = get_animated_value(height + con->animation_state.delta_height, height,
+		height = get_animated_value(con->animation_state.from_height, height,
 			con->animation_state.animation);
 		if (height <= 0) {
 			return;
 		}
 	}
-	con->animation_state.current_width = width;
-	con->animation_state.current_height = height;
 
 	if (con->output_handler) {
 		wlr_scene_buffer_set_dest_size(con->output_handler, width, height);
@@ -880,15 +884,6 @@ static void arrange_root(struct sway_root *root) {
 	arrange_popups(root->layers.popup);
 }
 
-static void animation_update_callback() {
-	// if there's a pending transaction there will be a re-arrange anyway
-	if (server.pending_transaction) {
-		return;
-	}
-
-	arrange_root(root);
-}
-
 /**
  * Apply a transaction to the "current" state of the tree.
  */
@@ -923,28 +918,48 @@ static void transaction_apply(struct sway_transaction *transaction) {
 		case N_CONTAINER:
 			struct sway_container *con = node->sway_container;
 			// TODO: reset animation state on going to scratchpad
-			// skip newly spawned windows (for now!)
 			if (con->view) {
+				con->animation_state.from_width = get_animated_value(con->animation_state.from_width,
+					con->animation_state.to_width, con->animation_state.animation);
+				con->animation_state.from_height = get_animated_value(con->animation_state.from_height,
+					con->animation_state.to_height, con->animation_state.animation);
 				con->animation_state.from_alpha = get_animated_value(con->animation_state.from_alpha,
 					con->animation_state.to_alpha, con->animation_state.animation);
+
 				con->animation_state.to_alpha = con->alpha;
+				con->animation_state.to_width = con->pending.width;
+				con->animation_state.to_height = con->pending.height;
+				con->animation_state.to_x = con->pending.x;
+				con->animation_state.to_y = con->pending.y;
+				if (con->pending.workspace) {
+					con->animation_state.to_x -= con->pending.workspace->x;
+					con->animation_state.to_y -= con->pending.workspace->y;
+				}
+				if (con->pending.parent && con->pending.parent->pending.workspace) {
+					con->animation_state.to_x -= con->pending.parent->pending.x - con->pending.parent->pending.workspace->x;
+					con->animation_state.to_y -= con->pending.parent->pending.y - con->pending.parent->pending.workspace->y;
+				}
 
 				if (con->current.workspace) {
 					int lx, ly;
 					wlr_scene_node_coords(&con->scene_tree->node, &lx, &ly);
-					con->animation_state.delta_x = lx - con->pending.x;
-					con->animation_state.delta_y = ly - con->pending.y;
-					con->animation_state.delta_width = con->animation_state.current_width - con->pending.width;
-					con->animation_state.delta_height = con->animation_state.current_height - con->pending.height;
+					con->animation_state.from_x = con->animation_state.to_x + lx - con->pending.x;
+					con->animation_state.from_y = con->animation_state.to_y + ly - con->pending.y;
 				} else {
 					// open animation
-					// TODO: scratchpad open
-					con->animation_state.delta_x = 0;
-					con->animation_state.delta_y = 0;
-					con->animation_state.delta_width = 0;
-					con->animation_state.delta_height = 0;
+					con->animation_state.from_x = con->animation_state.to_x;
+					con->animation_state.from_y = con->animation_state.to_y;
+					con->animation_state.from_width = con->animation_state.to_width;
+					con->animation_state.from_height = con->animation_state.to_height;
 				}
-				add_animation(&con->animation_state.animation, NULL, NULL);
+
+				printf("from: %f, %f aka %d, %d\n", con->current.x, con->current.y, con->animation_state.from_x, con->animation_state.from_y);
+				//printf("from: %f x %f aka %d x %d\n", con->current.width, con->current.height, con->animation_state.from_width, con->animation_state.from_height);
+				printf("to: %f, %f aka %d, %d\n", con->pending.x, con->pending.y, con->animation_state.to_x, con->animation_state.to_y);
+				//printf("to: %f x %f aka %d x %d\n", con->pending.width, con->pending.height, con->animation_state.to_width, con->animation_state.to_height);
+				printf("\n");
+
+				add_animation(&con->animation_state.animation, container_update_callback, NULL);
 			}
 			apply_container_state(con, &instruction->container_state);
 			break;
@@ -967,7 +982,7 @@ static void transaction_progress(void) {
 	arrange_root(root);
 	cursor_rebase_all();
 	transaction_destroy(server.queued_transaction);
-	start_animations(&animation_update_callback);
+	start_animations();
 	server.queued_transaction = NULL;
 
 	if (!server.pending_transaction) {

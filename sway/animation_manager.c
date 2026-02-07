@@ -13,7 +13,6 @@ struct animation_manager {
 	float progress_delta;
 	struct wl_event_source *tick;
 	struct wl_list animations;
-	void (*update)(void);
 } animation_manager;
 
 struct animation init_animation(struct sway_container *con) {
@@ -51,8 +50,6 @@ int animation_timer() {
 		}
 	}
 
-	animation_manager.update();
-
 	if (!wl_list_empty(&animation_manager.animations)) {
 		wl_event_source_timer_update(animation_manager.tick,
 				animation_manager.tick_time);
@@ -75,12 +72,11 @@ void add_animation(struct animation *animation, void (*update_callback)(struct s
 	wl_list_insert(&animation_manager.animations, &animation->link);
 }
 
-void start_animations(void (update_callback)(void)) {
+void start_animations() {
 	if (!config->animation_duration_ms) {
 		return;
 	}
 	assert(animation_manager.tick);
-	animation_manager.update = update_callback;
 
 	wl_event_source_timer_update(animation_manager.tick, 1);
 }

@@ -28,7 +28,7 @@ void refresh_animation_manager_timing();
 void add_animation(struct animation *animation, void (*update_callback)(struct sway_container *),
 	void (*complete_callback)(struct sway_container *));
 
-void start_animations(void (update_callback)(void));
+void start_animations();
 
 float get_animated_value(float from, float to, struct animation animation);
 
