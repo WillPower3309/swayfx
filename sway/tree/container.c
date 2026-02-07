@@ -598,7 +598,6 @@ void container_begin_destroy(struct sway_container *con) {
 	if (con->view) {
 		ipc_event_window(con, "close");
 	}
-
 	// The workspace must have the fullscreen pointer cleared so that the
 	// seat code can find an appropriate new focus.
 	if (con->pending.fullscreen_mode == FULLSCREEN_WORKSPACE && con->pending.workspace) {
