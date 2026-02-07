@@ -961,12 +961,6 @@ static void transaction_apply(struct sway_transaction *transaction) {
 					con->animation_state.from_height = con->animation_state.to_height;
 				}
 
-				//printf("from: %f, %f aka %d, %d\n", con->current.x, con->current.y, con->animation_state.from_x, con->animation_state.from_y);
-				printf("from: %f x %f aka %d x %d\n", con->current.width, con->current.height, con->animation_state.from_width, con->animation_state.from_height);
-				//printf("to: %f, %f aka %d, %d\n", con->pending.x, con->pending.y, con->animation_state.to_x, con->animation_state.to_y);
-				printf("to: %f x %f aka %d x %d\n", con->pending.width, con->pending.height, con->animation_state.to_width, con->animation_state.to_height);
-				printf("\n");
-
 				add_animation(&con->animation_state.animation, con_anim_update_callback, NULL);
 			}
 			apply_container_state(con, &instruction->container_state);
