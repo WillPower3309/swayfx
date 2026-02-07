@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -54,9 +55,15 @@ static struct sway_transaction *transaction_create(void) {
 static void arrange_container(struct sway_container *con,
 		int width, int height, bool title_bar, int gaps);
 
-static void container_update_callback(struct sway_container *con) {
+static void con_anim_update_callback(struct sway_container *con) {
 	// TODO: titlebar value
 	arrange_container(con, con->animation_state.to_width, con->animation_state.to_height, false, 0);
+}
+
+static void con_anim_complete_callback(struct sway_container *con) {
+	assert(con->view->saved_surface_tree);
+	view_remove_saved_buffer(con->view);
+	container_destroy(con);
 }
 
 static void transaction_destroy(struct sway_transaction *transaction) {
@@ -97,7 +104,7 @@ static void transaction_destroy(struct sway_transaction *transaction) {
 						con->animation_state.to_height, con->animation_state.animation);
 					con->animation_state.to_width = con->animation_state.from_width;
 					con->animation_state.to_height = con->animation_state.from_height;
-					add_animation(&con->animation_state.animation, container_update_callback, container_destroy);
+					add_animation(&con->animation_state.animation, con_anim_update_callback, con_anim_complete_callback);
 				}
 				else {
 					container_destroy(con);
@@ -919,28 +926,29 @@ static void transaction_apply(struct sway_transaction *transaction) {
 			struct sway_container *con = node->sway_container;
 			// TODO: reset animation state on going to scratchpad
 			if (con->view) {
+				con->animation_state.from_alpha = get_animated_value(con->animation_state.from_alpha,
+					con->animation_state.to_alpha, con->animation_state.animation);
+				con->animation_state.to_alpha = con->alpha;
+
 				con->animation_state.from_width = get_animated_value(con->animation_state.from_width,
 					con->animation_state.to_width, con->animation_state.animation);
 				con->animation_state.from_height = get_animated_value(con->animation_state.from_height,
 					con->animation_state.to_height, con->animation_state.animation);
-				con->animation_state.from_alpha = get_animated_value(con->animation_state.from_alpha,
-					con->animation_state.to_alpha, con->animation_state.animation);
-
-				con->animation_state.to_alpha = con->alpha;
 				con->animation_state.to_width = con->pending.width;
 				con->animation_state.to_height = con->pending.height;
+
 				con->animation_state.to_x = con->pending.x;
 				con->animation_state.to_y = con->pending.y;
-				if (con->pending.workspace) {
+				if (con->pending.parent && con->pending.parent->pending.workspace) {
+					con->animation_state.to_x -= con->pending.parent->pending.x;
+					con->animation_state.to_y -= con->pending.parent->pending.y;
+				} else if (con->pending.workspace) {
 					con->animation_state.to_x -= con->pending.workspace->x;
 					con->animation_state.to_y -= con->pending.workspace->y;
 				}
-				if (con->pending.parent && con->pending.parent->pending.workspace) {
-					con->animation_state.to_x -= con->pending.parent->pending.x - con->pending.parent->pending.workspace->x;
-					con->animation_state.to_y -= con->pending.parent->pending.y - con->pending.parent->pending.workspace->y;
-				}
 
 				if (con->current.workspace) {
+					// move / resize animation
 					int lx, ly;
 					wlr_scene_node_coords(&con->scene_tree->node, &lx, &ly);
 					con->animation_state.from_x = con->animation_state.to_x + lx - con->pending.x;
@@ -953,13 +961,13 @@ static void transaction_apply(struct sway_transaction *transaction) {
 					con->animation_state.from_height = con->animation_state.to_height;
 				}
 
-				printf("from: %f, %f aka %d, %d\n", con->current.x, con->current.y, con->animation_state.from_x, con->animation_state.from_y);
-				//printf("from: %f x %f aka %d x %d\n", con->current.width, con->current.height, con->animation_state.from_width, con->animation_state.from_height);
-				printf("to: %f, %f aka %d, %d\n", con->pending.x, con->pending.y, con->animation_state.to_x, con->animation_state.to_y);
-				//printf("to: %f x %f aka %d x %d\n", con->pending.width, con->pending.height, con->animation_state.to_width, con->animation_state.to_height);
+				//printf("from: %f, %f aka %d, %d\n", con->current.x, con->current.y, con->animation_state.from_x, con->animation_state.from_y);
+				printf("from: %f x %f aka %d x %d\n", con->current.width, con->current.height, con->animation_state.from_width, con->animation_state.from_height);
+				//printf("to: %f, %f aka %d, %d\n", con->pending.x, con->pending.y, con->animation_state.to_x, con->animation_state.to_y);
+				printf("to: %f x %f aka %d x %d\n", con->pending.width, con->pending.height, con->animation_state.to_width, con->animation_state.to_height);
 				printf("\n");
 
-				add_animation(&con->animation_state.animation, container_update_callback, NULL);
+				add_animation(&con->animation_state.animation, con_anim_update_callback, NULL);
 			}
 			apply_container_state(con, &instruction->container_state);
 			break;

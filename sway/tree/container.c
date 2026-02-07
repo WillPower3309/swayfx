@@ -582,10 +582,6 @@ void container_destroy(struct sway_container *con) {
 	list_free_items_and_destroy(con->marks);
 
 	if (con->view && con->view->container == con) {
-		if (con->view->saved_surface_tree) {
-			view_remove_saved_buffer(con->view);
-		}
-
 		con->view->container = NULL;
 		wlr_scene_node_destroy(&con->output_handler->node);
 		if (con->view->destroying) {
