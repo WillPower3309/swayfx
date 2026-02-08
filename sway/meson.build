@@ -130,6 +130,7 @@ sway_sources = files(
 	'commands/shortcuts_inhibitor.c',
 	'commands/smart_borders.c',
 	'commands/smart_corner_radius.c',
+	'commands/smart_shadows.c',
 	'commands/smart_gaps.c',
 	'commands/split.c',
 	'commands/sticky.c',

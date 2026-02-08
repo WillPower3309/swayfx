@@ -486,6 +486,7 @@ struct sway_config {
 	float animation_duration_ms;
 	int corner_radius;
 	bool smart_corner_radius;
+	bool smart_shadows;
 
 	float default_dim_inactive;
 	struct {

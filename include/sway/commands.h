@@ -203,6 +203,7 @@ sway_cmd cmd_shortcuts_inhibitor;
 sway_cmd cmd_show_marks;
 sway_cmd cmd_smart_borders;
 sway_cmd cmd_smart_corner_radius;
+sway_cmd cmd_smart_shadows;
 sway_cmd cmd_smart_gaps;
 sway_cmd cmd_split;
 sway_cmd cmd_splith;

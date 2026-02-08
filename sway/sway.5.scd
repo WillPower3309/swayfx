@@ -725,6 +725,10 @@ The default colors are:
 	Adjusts if shadows should be drawn on windows that draw their own
 	decorations. *Note:* The shadow might not fit some windows.
 
+*smart_shadows* enable|disable
+	Draw shadows only if there are gaps around the window. This prevents
+	shadows from appearing over status bars when using *smart_gaps*.
+
 *shadow_blur_radius* <value>
 	Adjusts the shadow blur radius of windows between 0 (disabled) and 100
 	while 20 is the default value.

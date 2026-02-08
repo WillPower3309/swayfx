@@ -2014,8 +2014,19 @@ void container_swap(struct sway_container *con1, struct sway_container *con2) {
 }
 
 bool container_has_shadow(struct sway_container *con) {
-	return con->shadow_enabled
-		&& (con->current.border != B_CSD || config->shadows_on_csd_enabled);
+	if (!con || !con->shadow_enabled) {
+		return false;
+	}
+	if (con->current.border == B_CSD && !config->shadows_on_csd_enabled) {
+		return false;
+	}
+	// smart_shadows: disable shadows when there are no gaps (unless floating)
+	if (config->smart_shadows && con->current.workspace &&
+			!container_is_floating_or_child(con) &&
+			con->current.workspace->current_gaps.top == 0) {
+		return false;
+	}
+	return true;
 }
 
 bool container_has_corner_radius(struct sway_container *con) {
