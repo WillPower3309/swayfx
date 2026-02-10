@@ -9,6 +9,7 @@ struct sway_server;
 
 // TODO: make animation just a pointer to progress
 // keep multiplier and callback private
+// con can be a generic callback argument pointer
 struct animation {
 	struct wl_list link;
 	float progress;
@@ -33,3 +34,4 @@ void start_animations();
 float get_animated_value(float from, float to, struct animation animation);
 
 #endif
+

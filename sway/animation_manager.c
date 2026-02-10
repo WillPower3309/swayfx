@@ -21,16 +21,16 @@ struct animation init_animation(struct sway_container *con) {
 		.progress = 0.0f,
 		.multiplier = 0.0f,
 		.initialized = false,
+		.update = NULL,
 		.complete = NULL,
 	};
 }
 
-float ease_out_cubic(float t) {
-	float p = t - 1;
-	return pow(p, 3) + 1;
+static float ease_out_cubic(float p) {
+	return pow(p - 1, 3) + 1;
 }
 
-int animation_timer() {
+static int animation_timer() {
 	struct animation *animation, *tmp;
 	wl_list_for_each_reverse_safe(animation, tmp, &animation_manager.animations, link) {
 		animation->progress = MIN(animation->progress + animation_manager.progress_delta, 1.0f);
@@ -81,7 +81,7 @@ void start_animations() {
 	wl_event_source_timer_update(animation_manager.tick, 1);
 }
 
-float get_fastest_output_refresh_ms() {
+static float get_fastest_output_refresh_ms() {
 	float fastest_output_refresh_ms = 16.6667; // fallback to 60 Hz
 	for (int i = 0; i < root->outputs->length; ++i) {
 		struct sway_output *output = root->outputs->items[i];
@@ -108,10 +108,9 @@ void animation_manager_init(struct sway_server *server) {
 	refresh_animation_manager_timing();
 }
 
-float lerp(float a, float b, float t) {
+static float lerp(float a, float b, float t) {
 	return a * (1.0 - t) + b * t;
 }
-
 
 float get_animated_value(float from, float to, struct animation animation) {
 	if (!config->animation_duration_ms) {

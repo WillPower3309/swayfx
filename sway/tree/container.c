@@ -291,8 +291,8 @@ void container_update(struct sway_container *con) {
 	struct border_colors *colors = container_get_current_colors(con);
 	list_t *siblings = NULL;
 	enum sway_container_layout layout = L_NONE;
-	float alpha = get_animated_value(con->animation_state.from_alpha,
-		con->animation_state.to_alpha, con->animation_state.animation);
+	float alpha = MIN(1, MAX(0, get_animated_value(con->animation_state.from_alpha,
+		con->animation_state.to_alpha, con->animation_state.animation)));
 
 	if (con->current.parent) {
 		siblings = con->current.parent->current.children;

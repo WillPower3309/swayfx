@@ -56,8 +56,8 @@ static void arrange_container(struct sway_container *con,
 		int width, int height, bool title_bar, int gaps);
 
 static void con_anim_update_callback(struct sway_container *con) {
-	// TODO: titlebar value
-	arrange_container(con, con->animation_state.to_width, con->animation_state.to_height, false, 0);
+	bool has_titlebar = con->current.layout == L_VERT || con->current.layout == L_HORIZ || container_titlebar_height() == 0;
+	arrange_container(con, con->animation_state.to_width, con->animation_state.to_height, has_titlebar, 0);
 }
 
 static void con_anim_complete_callback(struct sway_container *con) {
