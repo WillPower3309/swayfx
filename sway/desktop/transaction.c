@@ -55,12 +55,12 @@ static struct sway_transaction *transaction_create(void) {
 static void arrange_container(struct sway_container *con,
 		int width, int height, bool title_bar, int gaps);
 
-static void con_anim_update_callback(struct sway_container *con) {
-	bool has_titlebar = con->current.layout == L_VERT || con->current.layout == L_HORIZ || container_titlebar_height() == 0;
-	arrange_container(con, con->animation_state.to_width, con->animation_state.to_height, has_titlebar, 0);
+static void close_anim_update_callback(struct sway_container *con) {
+	// needed for closing containers since they aren't part of the root anymore
+	arrange_container(con, con->animation_state.to_width, con->animation_state.to_height, true, 0);
 }
 
-static void con_anim_complete_callback(struct sway_container *con) {
+static void close_anim_complete_callback(struct sway_container *con) {
 	assert(con->view->saved_surface_tree);
 	view_remove_saved_buffer(con->view);
 	container_destroy(con);
@@ -104,7 +104,7 @@ static void transaction_destroy(struct sway_transaction *transaction) {
 						con->animation_state.to_height, con->animation_state.animation);
 					con->animation_state.to_width = con->animation_state.from_width;
 					con->animation_state.to_height = con->animation_state.from_height;
-					add_animation(&con->animation_state.animation, con_anim_update_callback, con_anim_complete_callback);
+					add_animation(&con->animation_state.animation, close_anim_update_callback, close_anim_complete_callback);
 				}
 				else {
 					container_destroy(con);
@@ -446,12 +446,12 @@ static void arrange_container(struct sway_container *con,
 			con->animation_state.to_y, con->animation_state.animation);
 		wlr_scene_node_set_position(&con->scene_tree->node, x, y);
 
-		width = get_animated_value(con->animation_state.from_width, width,
+		width = get_animated_value(con->animation_state.from_width, con->animation_state.to_width,
 			con->animation_state.animation);
 		if (width <= 0) {
 			return;
 		}
-		height = get_animated_value(con->animation_state.from_height, height,
+		height = get_animated_value(con->animation_state.from_height, con->animation_state.to_height,
 			con->animation_state.animation);
 		if (height <= 0) {
 			return;
@@ -600,11 +600,8 @@ static void arrange_container(struct sway_container *con,
 			wlr_scene_subsurface_tree_set_clip(&con->view->content_tree->node, &clip);
 		}
 		con->animation_state.current_content_width = content_width;
-		if (content_width <= 0) {
-			return;
-		}
 		con->animation_state.current_content_height = content_height;
-		if (content_height <= 0) {
+		if (content_width <= 0 || content_height <= 0) {
 			return;
 		}
 
@@ -961,7 +958,7 @@ static void transaction_apply(struct sway_transaction *transaction) {
 					con->animation_state.from_height = con->animation_state.to_height;
 				}
 
-				add_animation(&con->animation_state.animation, con_anim_update_callback, NULL);
+				add_animation(&con->animation_state.animation, NULL, NULL);
 			}
 			apply_container_state(con, &instruction->container_state);
 			break;
@@ -972,6 +969,10 @@ static void transaction_apply(struct sway_transaction *transaction) {
 }
 
 static void transaction_commit_pending(void);
+
+static void animation_update_callback(void) {
+	arrange_root(root);
+}
 
 static void transaction_progress(void) {
 	if (!server.queued_transaction) {
@@ -984,7 +985,7 @@ static void transaction_progress(void) {
 	arrange_root(root);
 	cursor_rebase_all();
 	transaction_destroy(server.queued_transaction);
-	start_animations();
+	start_animations(animation_update_callback);
 	server.queued_transaction = NULL;
 
 	if (!server.pending_transaction) {
