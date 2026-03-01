@@ -476,9 +476,9 @@ static void arrange_container(struct sway_container *con,
 				width + config->shadow_blur_sigma * 2,
 				height + config->shadow_blur_sigma * 2);
 
-		int x = config->shadow_offset_x - config->shadow_blur_sigma;
-		int y = config->shadow_offset_y - config->shadow_blur_sigma;
-		wlr_scene_node_set_position(&con->shadow->node, x, y);
+		int shadow_x = config->shadow_offset_x - config->shadow_blur_sigma;
+		int shadow_y = config->shadow_offset_y - config->shadow_blur_sigma;
+		wlr_scene_node_set_position(&con->shadow->node, shadow_x, shadow_y);
 
 		wlr_scene_shadow_set_clipped_region(con->shadow, (struct clipped_region) {
 			.corners = corner_radii_all(corner_radius),
@@ -927,13 +927,6 @@ static void transaction_apply(struct sway_transaction *transaction) {
 					con->animation_state.to_alpha, con->animation_state.animation);
 				con->animation_state.to_alpha = con->alpha;
 
-				con->animation_state.from_width = get_animated_value(con->animation_state.from_width,
-					con->animation_state.to_width, con->animation_state.animation);
-				con->animation_state.from_height = get_animated_value(con->animation_state.from_height,
-					con->animation_state.to_height, con->animation_state.animation);
-				con->animation_state.to_width = con->pending.width;
-				con->animation_state.to_height = con->pending.height;
-
 				con->animation_state.to_x = con->pending.x;
 				con->animation_state.to_y = con->pending.y;
 				if (con->pending.parent && con->pending.parent->pending.workspace) {
@@ -948,18 +941,30 @@ static void transaction_apply(struct sway_transaction *transaction) {
 					// move / resize animation
 					int lx, ly;
 					wlr_scene_node_coords(&con->scene_tree->node, &lx, &ly);
+					printf("%s current: %d\n", con->title, lx);
 					con->animation_state.from_x = con->animation_state.to_x + lx - con->pending.x;
 					con->animation_state.from_y = con->animation_state.to_y + ly - con->pending.y;
+					con->animation_state.from_width = get_animated_value(con->animation_state.from_width,
+						con->animation_state.to_width, con->animation_state.animation);
+					con->animation_state.from_height = get_animated_value(con->animation_state.from_height,
+						con->animation_state.to_height, con->animation_state.animation);
 				} else {
 					// open animation
 					con->animation_state.from_x = con->animation_state.to_x;
 					con->animation_state.from_y = con->animation_state.to_y;
-					con->animation_state.from_width = con->animation_state.to_width;
-					con->animation_state.from_height = con->animation_state.to_height;
+					con->animation_state.from_width = con->pending.width;
+					con->animation_state.from_height = con->pending.height;
 				}
+
+				con->animation_state.to_width = con->pending.width;
+				con->animation_state.to_height = con->pending.height;
 
 				add_animation(&con->animation_state.animation, NULL, NULL);
 			}
+
+			int lx, ly;
+			wlr_scene_node_coords(&con->scene_tree->node, &lx, &ly);
+			printf("%s current: %d\n", con->title, lx);
 			apply_container_state(con, &instruction->container_state);
 			break;
 		}
@@ -971,7 +976,10 @@ static void transaction_apply(struct sway_transaction *transaction) {
 static void transaction_commit_pending(void);
 
 static void animation_update_callback(void) {
-	arrange_root(root);
+	// if there's a pending transaction there will be a re-arrange anyway
+	if (!server.pending_transaction) {
+		arrange_root(root);
+	}
 }
 
 static void transaction_progress(void) {
