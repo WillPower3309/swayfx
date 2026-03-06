@@ -14,7 +14,8 @@ sudo apt update && sudo apt install -y \
   libdrm-dev libgbm-dev libinput-dev libseat-dev libxkbcommon-dev \
   libxcb-dri3-dev libxcb-present-dev libxcb-res0-dev \
   libxcb-render-util0-dev libxcb-ewmh-dev libxcb-icccm4-dev \
-  libliftoff-dev libdisplay-info-dev liblcms2-dev libpixman-1-dev
+  libliftoff-dev libdisplay-info-dev liblcms2-dev libpixman-1-dev \
+  libgles2-mesa-dev
 ```
 
 ## 2\. Setup Build Environment
