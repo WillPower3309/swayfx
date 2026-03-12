@@ -60,6 +60,7 @@ void layer_apply_criteria(struct sway_layer_surface *surface, struct layer_crite
 		surface->blur_xray = criteria->blur_xray;
 		surface->blur_ignore_transparent = criteria->blur_ignore_transparent;
 		surface->shadow_enabled = criteria->shadow_enabled;
+		surface->use_drop_shadow = criteria->use_drop_shadow;
 	} else {
 		// Reset
 		surface->corner_radius = 0;
@@ -67,6 +68,7 @@ void layer_apply_criteria(struct sway_layer_surface *surface, struct layer_crite
 		surface->blur_xray = false;
 		surface->blur_ignore_transparent = false;
 		surface->shadow_enabled = false;
+		surface->use_drop_shadow = false;
 	}
 }
 
@@ -98,30 +100,46 @@ static void arrange_surface(struct sway_output *output, const struct wlr_box *fu
 			continue;
 		}
 
-		wlr_scene_node_set_enabled(&surface->blur_node->node, surface->blur_enabled);
-		wlr_scene_blur_set_size(surface->blur_node, surface->layer_surface->surface->current.width,
-			surface->layer_surface->surface->current.height);
+		const int surface_width = surface->layer_surface->surface->current.width;
+		const int surface_height = surface->layer_surface->surface->current.height;
 
-		wlr_scene_node_set_enabled(&surface->shadow_node->node, surface->shadow_enabled);
+		wlr_scene_node_set_enabled(&surface->blur_node->node, surface->blur_enabled);
+		wlr_scene_blur_set_size(surface->blur_node, surface_width, surface_height);
+
+		wlr_scene_node_set_enabled(&surface->box_shadow_node->node,
+				surface->shadow_enabled && !surface->use_drop_shadow);
+		wlr_scene_node_set_enabled(&surface->drop_shadow_node->node,
+				surface->shadow_enabled && surface->use_drop_shadow);
 
 		if (surface->shadow_enabled) {
-			// Adjust the size and position of the shadow node
-			wlr_scene_shadow_set_size(surface->shadow_node,
-					surface->layer_surface->surface->current.width + config->shadow_blur_sigma * 2,
-					surface->layer_surface->surface->current.height + config->shadow_blur_sigma * 2);
-			int x = config->shadow_offset_x - config->shadow_blur_sigma;
-			int y = config->shadow_offset_y - config->shadow_blur_sigma;
-			wlr_scene_node_set_position(&surface->shadow_node->node, x, y);
+			if (surface->use_drop_shadow) {
+				// Adjust the size and position of the shadow node
+				const int blur_offset = wlr_scene_drop_shadow_get_offset(surface->drop_shadow_node);
+				wlr_scene_drop_shadow_set_size(surface->drop_shadow_node,
+						surface_width + blur_offset * 2,
+						surface_height + blur_offset * 2);
+				const int x = config->shadow_offset_x - blur_offset;
+				const int y = config->shadow_offset_y - blur_offset;
+				wlr_scene_node_set_position(&surface->drop_shadow_node->node, x, y);
+			} else {
+				// Adjust the size and position of the shadow node
+				wlr_scene_shadow_set_size(surface->box_shadow_node,
+						surface_width + config->shadow_blur_sigma * 2,
+						surface_height + config->shadow_blur_sigma * 2);
+				const int x = config->shadow_offset_x - config->shadow_blur_sigma;
+				const int y = config->shadow_offset_y - config->shadow_blur_sigma;
+				wlr_scene_node_set_position(&surface->box_shadow_node->node, x, y);
 
-			wlr_scene_shadow_set_clipped_region(surface->shadow_node, (struct clipped_region) {
-					.corners = corner_radii_all(surface->corner_radius),
-					.area = {
-						.x = -x,
-						.y = -y,
-						.width = surface->layer_surface->surface->current.width,
-						.height = surface->layer_surface->surface->current.height,
-					},
-			});
+				wlr_scene_shadow_set_clipped_region(surface->box_shadow_node, (struct clipped_region) {
+						.corners = corner_radii_all(surface->corner_radius),
+						.area = {
+							.x = -x,
+							.y = -y,
+							.width = surface_width,
+							.height = surface_height,
+						},
+				});
+			}
 		}
 
 		wlr_scene_layer_surface_v1_configure(surface->scene, full_area, usable_area);
@@ -244,11 +262,14 @@ static struct sway_layer_surface *sway_layer_surface_create(
 	surface->blur_xray = false;
 	surface->blur_ignore_transparent = false;
 	surface->shadow_enabled = false;
+	surface->use_drop_shadow = false;
 
 	bool failed = false;
 	surface->blur_node = alloc_scene_blur(surface->tree, 0, 0, &failed);
-	surface->shadow_node = alloc_scene_shadow(surface->tree, 0, 0,
+	surface->box_shadow_node = alloc_scene_shadow(surface->tree, 0, 0,
 			0, config->shadow_blur_sigma, config->shadow_color, &failed);
+	surface->drop_shadow_node = alloc_scene_drop_shadow(surface->tree, 0, 0,
+			config->shadow_blur_sigma, config->shadow_color, &failed);
 	if (failed) {
 		sway_log(SWAY_ERROR, "Failed to allocate a shadow node");
 		wlr_scene_node_destroy(&popups->node);
@@ -381,7 +402,8 @@ static void handle_map(struct wl_listener *listener, void *data) {
 				surface->scene->layer_surface;
 
 	layer_parse_criteria(surface);
-	wlr_scene_node_lower_to_bottom(&surface->shadow_node->node);
+	wlr_scene_node_lower_to_bottom(&surface->box_shadow_node->node);
+	wlr_scene_node_lower_to_bottom(&surface->drop_shadow_node->node);
 	wlr_scene_node_lower_to_bottom(&surface->blur_node->node);
 
 	// focus on new surface

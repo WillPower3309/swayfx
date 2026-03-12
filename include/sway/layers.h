@@ -23,10 +23,12 @@ struct sway_layer_surface {
 	struct wlr_scene_layer_surface_v1 *scene;
 	struct wlr_scene_tree *tree;
 	struct wlr_scene_blur *blur_node;
-	struct wlr_scene_shadow *shadow_node;
+	struct wlr_scene_shadow *box_shadow_node;
+	struct wlr_scene_drop_shadow *drop_shadow_node;
 	struct wlr_layer_surface_v1 *layer_surface;
 
 	bool shadow_enabled;
+	bool use_drop_shadow;
 	bool blur_enabled;
 	bool blur_xray;
 	bool blur_ignore_transparent;
