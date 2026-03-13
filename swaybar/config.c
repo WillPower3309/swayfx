@@ -42,6 +42,8 @@ struct swaybar_config *init_config(void) {
 
 	/* height */
 	config->height = 0;
+	/* border */
+	config->border_size = 1;
 
 	/* gaps */
 	config->gaps.top = 0;
