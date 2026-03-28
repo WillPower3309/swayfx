@@ -197,6 +197,24 @@ else
 	)
 endif
 
+prefix_lib_rpath = ''
+if get_option('self-contained-libs')
+	bindir = get_option('bindir')
+	libdir = get_option('libdir')
+	if not fs.is_absolute(bindir)
+		bindir = join_paths(prefix, bindir)
+	endif
+	if not fs.is_absolute(libdir)
+		libdir = join_paths(prefix, libdir)
+	endif
+
+	libdir_from_bindir = fs.relative_to(libdir, bindir)
+	if fs.is_absolute(libdir_from_bindir)
+		prefix_lib_rpath = libdir_from_bindir
+	else
+		prefix_lib_rpath = join_paths('$ORIGIN', libdir_from_bindir)
+	endif
+endif
 
 sway_inc = include_directories('include')
 
