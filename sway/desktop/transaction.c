@@ -909,7 +909,7 @@ static void transaction_apply(struct sway_transaction *transaction) {
 			apply_workspace_state(node->sway_workspace,
 					&instruction->workspace_state);
 			break;
-		case N_CONTAINER:
+		case N_CONTAINER: {
 			struct sway_container *con = node->sway_container;
 			if (should_con_new_animation(con, &instruction->container_state)) {
 				should_start_new_animation = true;
@@ -928,6 +928,7 @@ static void transaction_apply(struct sway_transaction *transaction) {
 			}
 			apply_container_state(con, &instruction->container_state);
 			break;
+		}
 		}
 
 		node->instruction = NULL;
