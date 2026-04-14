@@ -208,6 +208,16 @@ static enum wlr_scale_filter_mode get_scale_filter(struct sway_output *output,
 	}
 }
 
+static bool could_container_overlap(struct sway_container *con) {
+	if (container_is_floating_or_child(con)) {
+		return true;
+	}
+
+	// animations can have tiled containers overlap in flight
+	return con->animation_state.animation.progress != 0.0f &&
+		con->animation_state.animation.progress != 1.0f;
+}
+
 void output_configure_scene(struct sway_output *output, struct wlr_scene_node *node, float opacity,
 		int corner_radius, bool blur_enabled, bool has_titlebar, struct sway_container *closest_con) {
 	if (!node->enabled) {
@@ -218,7 +228,8 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 		scene_descriptor_try_get(node, SWAY_SCENE_DESC_CONTAINER);
 	if (con) {
 		closest_con = con;
-		opacity = con->alpha;
+		opacity = MIN(1, MAX(0, get_animated_value(con->animation_state.from_alpha,
+			con->animation_state.to_alpha, con->animation_state.animation)));
 		corner_radius = con->corner_radius;
 		blur_enabled = con->blur_enabled;
 		enum sway_container_layout layout = con->current.layout;
@@ -309,9 +320,9 @@ void output_configure_scene(struct sway_output *output, struct wlr_scene_node *n
 	} else if (node->type == WLR_SCENE_NODE_BLUR && closest_con) {
 		struct wlr_scene_blur *blur = wlr_scene_blur_from_node(node);
 
-		// Only enable xray blur if tiled or when xray is explicitly enabled
-		bool should_optimize_blur = !container_is_floating_or_child(closest_con) || config->blur_xray;
+		bool should_optimize_blur = config->blur_xray || !could_container_overlap(closest_con);
 		wlr_scene_blur_set_should_only_blur_bottom_layer(blur, should_optimize_blur);
+		wlr_scene_blur_set_strength(blur, opacity);
 		wlr_scene_node_set_enabled(node, closest_con->blur_enabled);
 		int blur_corner_radius = container_has_corner_radius(closest_con) ? corner_radius : 0;
 		wlr_scene_blur_set_corner_radii(

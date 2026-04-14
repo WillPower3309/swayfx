@@ -64,6 +64,7 @@ static void apply_horiz_layout(list_t *children, struct wlr_box *parent) {
 		enum sway_container_layout layout = container_parent_layout(temp);
 		if (layout == L_TABBED || layout == L_STACKED) {
 			inner_gap = 0;
+			break;
 		}
 		temp = temp->pending.parent;
 	}
@@ -149,6 +150,7 @@ static void apply_vert_layout(list_t *children, struct wlr_box *parent) {
 		enum sway_container_layout layout = container_parent_layout(temp);
 		if (layout == L_TABBED || layout == L_STACKED) {
 			inner_gap = 0;
+			break;
 		}
 		temp = temp->pending.parent;
 	}
@@ -188,7 +190,8 @@ static void apply_tabbed_layout(list_t *children, struct wlr_box *parent) {
 	}
 	for (int i = 0; i < children->length; ++i) {
 		struct sway_container *child = children->items[i];
-		int parent_offset = child->view ? 0 : container_titlebar_height();
+		bool show_titlebar = child->view && (children->length > 1 || !config->hide_lone_tab);
+		int parent_offset = show_titlebar ? container_titlebar_height() : 0;
 		child->pending.x = parent->x;
 		child->pending.y = parent->y + parent_offset;
 		child->pending.width = parent->width;
@@ -200,10 +203,11 @@ static void apply_stacked_layout(list_t *children, struct wlr_box *parent) {
 	if (!children->length) {
 		return;
 	}
+	
 	for (int i = 0; i < children->length; ++i) {
 		struct sway_container *child = children->items[i];
-		int parent_offset = child->view ?  0 :
-			container_titlebar_height() * children->length;
+		bool show_titlebar = child->view && (children->length > 1 || !config->hide_lone_tab);
+		int parent_offset = show_titlebar ? container_titlebar_height() * children->length : 0;
 		child->pending.x = parent->x;
 		child->pending.y = parent->y + parent_offset;
 		child->pending.width = parent->width;
