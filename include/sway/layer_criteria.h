@@ -5,6 +5,7 @@ struct layer_criteria {
 	char *cmdlist;
 
 	bool shadow_enabled;
+	bool use_drop_shadow;
 	bool blur_enabled;
 	bool blur_xray;
 	bool blur_ignore_transparent;
