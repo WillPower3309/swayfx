@@ -20,6 +20,54 @@
 #include "pool-buffer.h"
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 
+#define MENU_ICON_SIZE 16
+
+struct png_read_closure {
+	const uint8_t *data;
+	size_t len;
+	size_t pos;
+};
+
+static cairo_status_t png_read_func(void *closure, unsigned char *data,
+		unsigned int length) {
+	struct png_read_closure *rc = closure;
+	if (rc->pos + length > rc->len) {
+		return CAIRO_STATUS_READ_ERROR;
+	}
+	memcpy(data, rc->data + rc->pos, length);
+	rc->pos += length;
+	return CAIRO_STATUS_SUCCESS;
+}
+
+static cairo_surface_t *decode_icon_data(const uint8_t *data, size_t len) {
+	// Try loading as PNG directly via cairo
+	struct png_read_closure rc = { .data = data, .len = len, .pos = 0 };
+	cairo_surface_t *surface = cairo_image_surface_create_from_png_stream(
+			png_read_func, &rc);
+	if (!surface || cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS) {
+		if (surface) cairo_surface_destroy(surface);
+		return NULL;
+	}
+
+	int w = cairo_image_surface_get_width(surface);
+	int h = cairo_image_surface_get_height(surface);
+
+	// Scale if needed
+	if (w != MENU_ICON_SIZE || h != MENU_ICON_SIZE) {
+		cairo_surface_t *scaled = cairo_image_surface_create(
+				CAIRO_FORMAT_ARGB32, MENU_ICON_SIZE, MENU_ICON_SIZE);
+		cairo_t *cr = cairo_create(scaled);
+		cairo_scale(cr, (double)MENU_ICON_SIZE / w, (double)MENU_ICON_SIZE / h);
+		cairo_set_source_surface(cr, surface, 0, 0);
+		cairo_paint(cr);
+		cairo_destroy(cr);
+		cairo_surface_destroy(surface);
+		surface = scaled;
+	}
+
+	return surface;
+}
+
 static void menu_layer_surface_configure(void *data,
 		struct zwlr_layer_surface_v1 *surface,
 		uint32_t serial, uint32_t width, uint32_t height) {
@@ -76,6 +124,31 @@ static const struct zwlr_layer_surface_v1_listener scrim_layer_surface_listener 
 	.configure = scrim_layer_surface_configure,
 	.closed = scrim_layer_surface_closed,
 };
+
+static void create_scrim(struct swaybar_menu *menu) {
+	if (menu->scrim_surface) {
+		return;
+	}
+	menu->scrim_surface = wl_compositor_create_surface(menu->bar->compositor);
+	assert(menu->scrim_surface);
+
+	menu->scrim_layer_surface = zwlr_layer_shell_v1_get_layer_surface(
+			menu->bar->layer_shell, menu->scrim_surface, menu->output->output,
+			ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY, "menu-scrim");
+	assert(menu->scrim_layer_surface);
+
+	zwlr_layer_surface_v1_add_listener(menu->scrim_layer_surface,
+			&scrim_layer_surface_listener, menu);
+	zwlr_layer_surface_v1_set_anchor(menu->scrim_layer_surface,
+			ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP |
+			ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM |
+			ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT |
+			ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT);
+	zwlr_layer_surface_v1_set_exclusive_zone(menu->scrim_layer_surface, -1);
+	zwlr_layer_surface_v1_set_keyboard_interactivity(menu->scrim_layer_surface,
+			ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE);
+	wl_surface_commit(menu->scrim_surface);
+}
 
 struct swaybar_menu *tray_menu_create(struct swaybar *bar) {
 	struct swaybar_menu *menu = calloc(1, sizeof(struct swaybar_menu));
@@ -310,9 +383,10 @@ static int handle_menu_layout(sd_bus_message *msg, void *userdata,
 
 	sway_log(SWAY_DEBUG, "dbusmenu: loaded %d menu items", count);
 
-	// Determine if any items have toggles (affects left margin for all items)
+	// Determine if any items have toggles or icons (affects left margin)
 	bool has_any_toggle = false;
 	bool has_any_submenu = false;
+	bool has_any_icon = false;
 	for (int i = 0; i < count; i++) {
 		if (items[i].toggle_type != MENU_TOGGLE_NONE) {
 			has_any_toggle = true;
@@ -320,15 +394,29 @@ static int handle_menu_layout(sd_bus_message *msg, void *userdata,
 		if (items[i].has_submenu) {
 			has_any_submenu = true;
 		}
+		if (items[i].icon_data && items[i].icon_data_len > 0) {
+			has_any_icon = true;
+		}
 	}
 
-	// Compute left text offset: padding + optional toggle column
+	// Decode icon data into cairo surfaces
+	for (int i = 0; i < count; i++) {
+		if (items[i].icon_data && items[i].icon_data_len > 0 && !items[i].icon_surface) {
+			items[i].icon_surface = decode_icon_data(items[i].icon_data,
+					items[i].icon_data_len);
+		}
+	}
+
+	// Compute left text offset: padding + optional toggle column + optional icon column
 	int toggle_column_width = has_any_toggle ?
 			(MENU_TOGGLE_SIZE + MENU_TOGGLE_MARGIN) : 0;
+	int icon_column_width = has_any_icon ?
+			(MENU_ICON_SIZE + MENU_TOGGLE_MARGIN) : 0;
 	int submenu_column_width = has_any_submenu ?
 			(MENU_SUBMENU_ARROW_SIZE + MENU_TOGGLE_MARGIN) : 0;
 
 	menu->toggle_column_width = toggle_column_width;
+	menu->icon_column_width = icon_column_width;
 	menu->submenu_column_width = submenu_column_width;
 
 	// Now compute size and create/show the surface
@@ -366,7 +454,7 @@ static int handle_menu_layout(sd_bus_message *msg, void *userdata,
 		total_height += items[i].is_separator ? MENU_SEPARATOR_HEIGHT : MENU_ITEM_HEIGHT;
 	}
 	int total_width = max_text_width + MENU_PADDING_X * 2
-			+ toggle_column_width + submenu_column_width;
+			+ toggle_column_width + icon_column_width + submenu_column_width;
 
 	// Create the layer surface
 	if (menu->layer_surface) {
@@ -374,26 +462,8 @@ static int handle_menu_layout(sd_bus_message *msg, void *userdata,
 		zwlr_layer_surface_v1_set_size(menu->layer_surface, total_width, total_height);
 		wl_surface_commit(menu->surface);
 	} else {
-		// Create scrim (invisible fullscreen surface) first, so it's below the menu
-		menu->scrim_surface = wl_compositor_create_surface(menu->bar->compositor);
-		assert(menu->scrim_surface);
-
-		menu->scrim_layer_surface = zwlr_layer_shell_v1_get_layer_surface(
-				menu->bar->layer_shell, menu->scrim_surface, menu->output->output,
-				ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY, "menu-scrim");
-		assert(menu->scrim_layer_surface);
-
-		zwlr_layer_surface_v1_add_listener(menu->scrim_layer_surface,
-				&scrim_layer_surface_listener, menu);
-		zwlr_layer_surface_v1_set_anchor(menu->scrim_layer_surface,
-				ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP |
-				ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM |
-				ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT |
-				ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT);
-		zwlr_layer_surface_v1_set_exclusive_zone(menu->scrim_layer_surface, -1);
-		zwlr_layer_surface_v1_set_keyboard_interactivity(menu->scrim_layer_surface,
-				ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE);
-		wl_surface_commit(menu->scrim_surface);
+		// Create scrim first, so it's below the menu
+		create_scrim(menu);
 
 		// Create the actual menu surface
 		menu->surface = wl_compositor_create_surface(menu->bar->compositor);
@@ -646,6 +716,7 @@ void tray_menu_render(struct swaybar_menu *menu) {
 
 	double y = MENU_PADDING_Y;
 	int tcw = menu->toggle_column_width;
+	int icw = menu->icon_column_width;
 
 	for (int i = 0; i < menu->item_count; i++) {
 		struct swaybar_menu_item *item = &menu->items[i];
@@ -668,7 +739,15 @@ void tray_menu_render(struct swaybar_menu *menu) {
 			cairo_fill(cairo);
 		}
 
-		double text_x = MENU_PADDING_X + tcw;
+		double text_x = MENU_PADDING_X + tcw + icw;
+
+		// Draw icon
+		if (item->icon_surface && icw > 0) {
+			double icon_x = MENU_PADDING_X + tcw;
+			double icon_y = y + (MENU_ITEM_HEIGHT - MENU_ICON_SIZE) / 2.0;
+			cairo_set_source_surface(cairo, item->icon_surface, icon_x, icon_y);
+			cairo_paint(cairo);
+		}
 
 		// Draw toggle indicator
 		if (item->toggle_type != MENU_TOGGLE_NONE) {

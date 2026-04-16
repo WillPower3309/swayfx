@@ -499,13 +499,11 @@ static void handle_click(struct swaybar_sni *sni, int x, int y,
 	} else {
 		if (sni_is_ayatana(sni) && strcmp(method, "Activate") == 0) {
 			sni_activate_via_dbusmenu(sni, "Activate");
-		} else if (strcmp(method, "ContextMenu") == 0 && sni_is_ayatana(sni)
+		} else if (strcmp(method, "ContextMenu") == 0
 				&& sni->menu && sni->tray->menu) {
-			// Ayatana items lack native ContextMenu — use dbusmenu popup fallback
+			// Use our dbusmenu popup for any SNI that has a Menu path
 			struct swaybar_output *output;
 			wl_list_for_each(output, &sni->tray->bar->outputs, link) {
-				// Use the first visible output (the one the bar is on)
-				// The caller passes global coords so we use those to guess output
 				if (output->surface) {
 					tray_menu_open(sni->tray->menu, sni, output, x);
 					break;

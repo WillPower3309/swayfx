@@ -76,6 +76,7 @@ struct swaybar_menu {
 	uint32_t width, height;
 	int anchor_x; // x position of the tray icon that spawned this menu
 	int toggle_column_width;  // extra left margin for toggle indicators
+	int icon_column_width;    // extra left margin for icons
 	int submenu_column_width; // extra right margin for submenu arrows
 	bool configured;
 	bool dirty;
@@ -88,6 +89,9 @@ void tray_menu_destroy(struct swaybar_menu *menu);
 // Open the menu for a given SNI at the given position
 void tray_menu_open(struct swaybar_menu *menu, struct swaybar_sni *sni,
 		struct swaybar_output *output, int anchor_x);
+
+// Track that a native ContextMenu was opened (no scrim, just state tracking)
+// -- removed, now using dbusmenu popup for all SNIs with Menu property
 
 // Close the menu if open
 void tray_menu_close(struct swaybar_menu *menu);
