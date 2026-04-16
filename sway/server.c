@@ -1,5 +1,5 @@
 #include <assert.h>
-#include <scenefx/render/fx_renderer/fx_renderer.h>
+#include <scenefx/scenefx.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -187,7 +187,7 @@ static void do_renderer_recreate(void *data) {
 	server->recreating_renderer = NULL;
 
 	sway_log(SWAY_INFO, "Re-creating renderer after GPU reset");
-	struct wlr_renderer *renderer = fx_renderer_create(server->backend);
+	struct wlr_renderer *renderer = scenefx_init(root->root_scene, server->backend);
 	if (renderer == NULL) {
 		sway_log(SWAY_ERROR, "Unable to create renderer");
 		return;
@@ -251,7 +251,7 @@ bool server_init(struct sway_server *server) {
 
 	wlr_multi_for_each_backend(server->backend, detect_proprietary, NULL);
 
-	server->renderer = fx_renderer_create(server->backend);
+	server->renderer = scenefx_init(root->root_scene, server->backend);
 	if (!server->renderer) {
 		sway_log(SWAY_ERROR, "Failed to create renderer");
 		return false;
