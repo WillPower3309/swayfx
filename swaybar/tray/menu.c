@@ -42,6 +42,41 @@ static const struct zwlr_layer_surface_v1_listener menu_layer_surface_listener =
 	.closed = menu_layer_surface_closed,
 };
 
+static void scrim_layer_surface_configure(void *data,
+		struct zwlr_layer_surface_v1 *surface,
+		uint32_t serial, uint32_t width, uint32_t height) {
+	struct swaybar_menu *menu = data;
+	menu->scrim_configured = true;
+	zwlr_layer_surface_v1_ack_configure(surface, serial);
+
+	// Render a fully transparent 1x1 buffer
+	int scale = menu->output ? menu->output->scale : 1;
+	struct pool_buffer *buffer = get_next_buffer(menu->bar->shm,
+			menu->scrim_buffers, width * scale, height * scale);
+	if (buffer) {
+		cairo_t *cr = buffer->cairo;
+		cairo_save(cr);
+		cairo_set_operator(cr, CAIRO_OPERATOR_CLEAR);
+		cairo_paint(cr);
+		cairo_restore(cr);
+		wl_surface_set_buffer_scale(menu->scrim_surface, scale);
+		wl_surface_attach(menu->scrim_surface, buffer->buffer, 0, 0);
+		wl_surface_damage(menu->scrim_surface, 0, 0, width, height);
+		wl_surface_commit(menu->scrim_surface);
+	}
+}
+
+static void scrim_layer_surface_closed(void *data,
+		struct zwlr_layer_surface_v1 *surface) {
+	struct swaybar_menu *menu = data;
+	tray_menu_close(menu);
+}
+
+static const struct zwlr_layer_surface_v1_listener scrim_layer_surface_listener = {
+	.configure = scrim_layer_surface_configure,
+	.closed = scrim_layer_surface_closed,
+};
+
 struct swaybar_menu *tray_menu_create(struct swaybar *bar) {
 	struct swaybar_menu *menu = calloc(1, sizeof(struct swaybar_menu));
 	if (!menu) {
@@ -64,6 +99,11 @@ static void menu_clear_items(struct swaybar_menu *menu) {
 	if (menu->items) {
 		for (int i = 0; i < menu->item_count; i++) {
 			free(menu->items[i].label);
+			free(menu->items[i].icon_name);
+			free(menu->items[i].icon_data);
+			if (menu->items[i].icon_surface) {
+				cairo_surface_destroy(menu->items[i].icon_surface);
+			}
 		}
 		free(menu->items);
 		menu->items = NULL;
@@ -121,9 +161,15 @@ static int handle_menu_layout(sd_bus_message *msg, void *userdata,
 		sd_bus_message_read(msg, "i", &item_id);
 
 		char *label = NULL;
+		char *icon_name = NULL;
+		uint8_t *icon_data = NULL;
+		size_t icon_data_len = 0;
 		bool is_separator = false;
 		bool enabled = true;
 		bool visible = true;
+		bool has_submenu = false;
+		enum menu_toggle_type toggle_type = MENU_TOGGLE_NONE;
+		enum menu_toggle_state toggle_state = MENU_TOGGLE_STATE_OFF;
 
 		sd_bus_message_enter_container(msg, 'a', "{sv}");
 		while (sd_bus_message_enter_container(msg, 'e', "sv") > 0) {
@@ -168,6 +214,65 @@ static int handle_menu_layout(sd_bus_message *msg, void *userdata,
 				} else {
 					sd_bus_message_skip(msg, "v");
 				}
+			} else if (strcmp(prop, "toggle-type") == 0) {
+				if (sd_bus_message_enter_container(msg, 'v', "s") >= 0) {
+					const char *val;
+					sd_bus_message_read(msg, "s", &val);
+					if (strcmp(val, "checkmark") == 0) {
+						toggle_type = MENU_TOGGLE_CHECKMARK;
+					} else if (strcmp(val, "radio") == 0) {
+						toggle_type = MENU_TOGGLE_RADIO;
+					}
+					sd_bus_message_exit_container(msg);
+				} else {
+					sd_bus_message_skip(msg, "v");
+				}
+			} else if (strcmp(prop, "toggle-state") == 0) {
+				if (sd_bus_message_enter_container(msg, 'v', "i") >= 0) {
+					int32_t val;
+					sd_bus_message_read(msg, "i", &val);
+					toggle_state = (enum menu_toggle_state)val;
+					sd_bus_message_exit_container(msg);
+				} else {
+					sd_bus_message_skip(msg, "v");
+				}
+			} else if (strcmp(prop, "icon-name") == 0) {
+				if (sd_bus_message_enter_container(msg, 'v', "s") >= 0) {
+					const char *val;
+					sd_bus_message_read(msg, "s", &val);
+					if (val && val[0]) {
+						icon_name = strdup(val);
+					}
+					sd_bus_message_exit_container(msg);
+				} else {
+					sd_bus_message_skip(msg, "v");
+				}
+			} else if (strcmp(prop, "icon-data") == 0) {
+				if (sd_bus_message_enter_container(msg, 'v', "ay") >= 0) {
+					const void *data;
+					size_t len;
+					if (sd_bus_message_read_array(msg, 'y', &data, &len) >= 0 && len > 0) {
+						icon_data = malloc(len);
+						if (icon_data) {
+							memcpy(icon_data, data, len);
+							icon_data_len = len;
+						}
+					}
+					sd_bus_message_exit_container(msg);
+				} else {
+					sd_bus_message_skip(msg, "v");
+				}
+			} else if (strcmp(prop, "children-display") == 0) {
+				if (sd_bus_message_enter_container(msg, 'v', "s") >= 0) {
+					const char *val;
+					sd_bus_message_read(msg, "s", &val);
+					if (val && strcmp(val, "submenu") == 0) {
+						has_submenu = true;
+					}
+					sd_bus_message_exit_container(msg);
+				} else {
+					sd_bus_message_skip(msg, "v");
+				}
 			} else {
 				sd_bus_message_skip(msg, "v");
 			}
@@ -185,9 +290,18 @@ static int handle_menu_layout(sd_bus_message *msg, void *userdata,
 			items[count].label = label ? label : (is_separator ? NULL : strdup("???"));
 			items[count].is_separator = is_separator;
 			items[count].enabled = enabled && !is_separator;
+			items[count].toggle_type = toggle_type;
+			items[count].toggle_state = toggle_state;
+			items[count].icon_name = icon_name;
+			items[count].icon_data = icon_data;
+			items[count].icon_data_len = icon_data_len;
+			items[count].icon_surface = NULL;
+			items[count].has_submenu = has_submenu;
 			count++;
 		} else {
 			free(label);
+			free(icon_name);
+			free(icon_data);
 		}
 	}
 
@@ -195,6 +309,27 @@ static int handle_menu_layout(sd_bus_message *msg, void *userdata,
 	menu->item_count = count;
 
 	sway_log(SWAY_DEBUG, "dbusmenu: loaded %d menu items", count);
+
+	// Determine if any items have toggles (affects left margin for all items)
+	bool has_any_toggle = false;
+	bool has_any_submenu = false;
+	for (int i = 0; i < count; i++) {
+		if (items[i].toggle_type != MENU_TOGGLE_NONE) {
+			has_any_toggle = true;
+		}
+		if (items[i].has_submenu) {
+			has_any_submenu = true;
+		}
+	}
+
+	// Compute left text offset: padding + optional toggle column
+	int toggle_column_width = has_any_toggle ?
+			(MENU_TOGGLE_SIZE + MENU_TOGGLE_MARGIN) : 0;
+	int submenu_column_width = has_any_submenu ?
+			(MENU_SUBMENU_ARROW_SIZE + MENU_TOGGLE_MARGIN) : 0;
+
+	menu->toggle_column_width = toggle_column_width;
+	menu->submenu_column_width = submenu_column_width;
 
 	// Now compute size and create/show the surface
 	int max_text_width = MENU_MIN_WIDTH;
@@ -230,7 +365,8 @@ static int handle_menu_layout(sd_bus_message *msg, void *userdata,
 	for (int i = 0; i < count; i++) {
 		total_height += items[i].is_separator ? MENU_SEPARATOR_HEIGHT : MENU_ITEM_HEIGHT;
 	}
-	int total_width = max_text_width + MENU_PADDING_X * 2;
+	int total_width = max_text_width + MENU_PADDING_X * 2
+			+ toggle_column_width + submenu_column_width;
 
 	// Create the layer surface
 	if (menu->layer_surface) {
@@ -238,6 +374,28 @@ static int handle_menu_layout(sd_bus_message *msg, void *userdata,
 		zwlr_layer_surface_v1_set_size(menu->layer_surface, total_width, total_height);
 		wl_surface_commit(menu->surface);
 	} else {
+		// Create scrim (invisible fullscreen surface) first, so it's below the menu
+		menu->scrim_surface = wl_compositor_create_surface(menu->bar->compositor);
+		assert(menu->scrim_surface);
+
+		menu->scrim_layer_surface = zwlr_layer_shell_v1_get_layer_surface(
+				menu->bar->layer_shell, menu->scrim_surface, menu->output->output,
+				ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY, "menu-scrim");
+		assert(menu->scrim_layer_surface);
+
+		zwlr_layer_surface_v1_add_listener(menu->scrim_layer_surface,
+				&scrim_layer_surface_listener, menu);
+		zwlr_layer_surface_v1_set_anchor(menu->scrim_layer_surface,
+				ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP |
+				ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM |
+				ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT |
+				ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT);
+		zwlr_layer_surface_v1_set_exclusive_zone(menu->scrim_layer_surface, -1);
+		zwlr_layer_surface_v1_set_keyboard_interactivity(menu->scrim_layer_surface,
+				ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE);
+		wl_surface_commit(menu->scrim_surface);
+
+		// Create the actual menu surface
 		menu->surface = wl_compositor_create_surface(menu->bar->compositor);
 		assert(menu->surface);
 
@@ -334,8 +492,19 @@ void tray_menu_close(struct swaybar_menu *menu) {
 		menu->surface = NULL;
 	}
 
+	if (menu->scrim_layer_surface) {
+		zwlr_layer_surface_v1_destroy(menu->scrim_layer_surface);
+		menu->scrim_layer_surface = NULL;
+	}
+	if (menu->scrim_surface) {
+		wl_surface_destroy(menu->scrim_surface);
+		menu->scrim_surface = NULL;
+	}
+
 	destroy_buffer(&menu->buffers[0]);
 	destroy_buffer(&menu->buffers[1]);
+	destroy_buffer(&menu->scrim_buffers[0]);
+	destroy_buffer(&menu->scrim_buffers[1]);
 
 	menu_clear_items(menu);
 	menu->sni = NULL;
@@ -352,6 +521,11 @@ bool tray_menu_is_open(struct swaybar_menu *menu) {
 bool tray_menu_pointer_enter(struct swaybar_menu *menu,
 		struct wl_surface *surface) {
 	return menu && menu->surface == surface;
+}
+
+bool tray_menu_is_scrim(struct swaybar_menu *menu,
+		struct wl_surface *surface) {
+	return menu && menu->scrim_surface == surface;
 }
 
 void tray_menu_pointer_motion(struct swaybar_menu *menu, double x, double y) {
@@ -471,6 +645,8 @@ void tray_menu_render(struct swaybar_menu *menu) {
 	}
 
 	double y = MENU_PADDING_Y;
+	int tcw = menu->toggle_column_width;
+
 	for (int i = 0; i < menu->item_count; i++) {
 		struct swaybar_menu_item *item = &menu->items[i];
 
@@ -488,9 +664,49 @@ void tray_menu_render(struct swaybar_menu *menu) {
 		// Draw hover highlight
 		if (i == menu->hovered_index) {
 			cairo_set_source_u32(cairo, MENU_BG_HOVER_COLOR);
-			// Clip to rounded rect for items at top/bottom
 			cairo_rectangle(cairo, 2, y, w - 4, MENU_ITEM_HEIGHT);
 			cairo_fill(cairo);
+		}
+
+		double text_x = MENU_PADDING_X + tcw;
+
+		// Draw toggle indicator
+		if (item->toggle_type != MENU_TOGGLE_NONE) {
+			double cx = MENU_PADDING_X + MENU_TOGGLE_SIZE / 2.0;
+			double cy_center = y + MENU_ITEM_HEIGHT / 2.0;
+
+			if (item->toggle_type == MENU_TOGGLE_CHECKMARK) {
+				if (item->toggle_state == MENU_TOGGLE_STATE_ON) {
+					// Draw checkmark
+					cairo_set_source_u32(cairo, MENU_CHECK_COLOR);
+					cairo_set_line_width(cairo, 2.0);
+					cairo_move_to(cairo, cx - 4, cy_center);
+					cairo_line_to(cairo, cx - 1, cy_center + 3);
+					cairo_line_to(cairo, cx + 5, cy_center - 4);
+					cairo_stroke(cairo);
+				} else if (item->toggle_state == MENU_TOGGLE_STATE_INDETERMINATE) {
+					// Draw dash
+					cairo_set_source_u32(cairo, MENU_CHECK_COLOR);
+					cairo_set_line_width(cairo, 2.0);
+					cairo_move_to(cairo, cx - 4, cy_center);
+					cairo_line_to(cairo, cx + 4, cy_center);
+					cairo_stroke(cairo);
+				}
+			} else if (item->toggle_type == MENU_TOGGLE_RADIO) {
+				// Draw radio circle outline
+				cairo_set_source_u32(cairo, MENU_CHECK_COLOR);
+				cairo_set_line_width(cairo, 1.5);
+				cairo_arc(cairo, cx, cy_center, 5, 0, 2 * M_PI);
+				if (item->toggle_state == MENU_TOGGLE_STATE_ON) {
+					cairo_fill(cairo);
+					// Inner dot
+					cairo_set_source_u32(cairo, MENU_BG_COLOR);
+					cairo_arc(cairo, cx, cy_center, 2, 0, 2 * M_PI);
+					cairo_fill(cairo);
+				} else {
+					cairo_stroke(cairo);
+				}
+			}
 		}
 
 		// Draw label
@@ -505,9 +721,22 @@ void tray_menu_render(struct swaybar_menu *menu) {
 
 			int tw, th;
 			pango_layout_get_pixel_size(layout, &tw, &th);
-			cairo_move_to(cairo, MENU_PADDING_X,
+			cairo_move_to(cairo, text_x,
 					y + (MENU_ITEM_HEIGHT - th) / 2.0);
 			pango_cairo_show_layout(cairo, layout);
+		}
+
+		// Draw submenu arrow
+		if (item->has_submenu) {
+			double ax = w - MENU_PADDING_X - MENU_SUBMENU_ARROW_SIZE / 2.0;
+			double ay = y + MENU_ITEM_HEIGHT / 2.0;
+			cairo_set_source_u32(cairo, item->enabled ?
+					MENU_TEXT_COLOR : MENU_TEXT_DISABLED_COLOR);
+			cairo_move_to(cairo, ax - 3, ay - 5);
+			cairo_line_to(cairo, ax + 3, ay);
+			cairo_line_to(cairo, ax - 3, ay + 5);
+			cairo_close_path(cairo);
+			cairo_fill(cairo);
 		}
 
 		y += MENU_ITEM_HEIGHT;

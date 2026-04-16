@@ -136,6 +136,23 @@ static void wl_pointer_enter(void *data, struct wl_pointer *wl_pointer,
 		}
 		return;
 	}
+	// Check if pointer entered the scrim (click-outside dismiss surface)
+	if (seat->bar->tray && seat->bar->tray->menu &&
+			tray_menu_is_scrim(seat->bar->tray->menu, surface)) {
+		pointer->in_menu = true; // reuse flag; scrim clicks dismiss
+		if (seat->bar->cursor_shape_manager) {
+			struct wp_cursor_shape_device_v1 *device =
+				wp_cursor_shape_manager_v1_get_pointer(
+					seat->bar->cursor_shape_manager, wl_pointer);
+			wp_cursor_shape_device_v1_set_shape(device, serial,
+				WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT);
+			wp_cursor_shape_device_v1_destroy(device);
+		} else {
+			pointer->serial = serial;
+			update_cursor(seat);
+		}
+		return;
+	}
 	pointer->in_menu = false;
 #endif
 
