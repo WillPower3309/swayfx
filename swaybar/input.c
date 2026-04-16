@@ -9,6 +9,10 @@
 #include "swaybar/config.h"
 #include "swaybar/input.h"
 #include "swaybar/ipc.h"
+#if HAVE_TRAY
+#include "swaybar/tray/tray.h"
+#include "swaybar/tray/menu.h"
+#endif
 
 void free_hotspots(struct wl_list *list) {
 	struct swaybar_hotspot *hotspot, *tmp;
@@ -112,6 +116,29 @@ static void wl_pointer_enter(void *data, struct wl_pointer *wl_pointer,
 	seat->pointer.x = wl_fixed_to_double(surface_x);
 	seat->pointer.y = wl_fixed_to_double(surface_y);
 
+#if HAVE_TRAY
+	if (seat->bar->tray && seat->bar->tray->menu &&
+			tray_menu_pointer_enter(seat->bar->tray->menu, surface)) {
+		pointer->in_menu = true;
+		tray_menu_pointer_motion(seat->bar->tray->menu,
+				pointer->x, pointer->y);
+		// Still set cursor
+		if (seat->bar->cursor_shape_manager) {
+			struct wp_cursor_shape_device_v1 *device =
+				wp_cursor_shape_manager_v1_get_pointer(
+					seat->bar->cursor_shape_manager, wl_pointer);
+			wp_cursor_shape_device_v1_set_shape(device, serial,
+				WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT);
+			wp_cursor_shape_device_v1_destroy(device);
+		} else {
+			pointer->serial = serial;
+			update_cursor(seat);
+		}
+		return;
+	}
+	pointer->in_menu = false;
+#endif
+
 	struct swaybar_output *output;
 	wl_list_for_each(output, &seat->bar->outputs, link) {
 		if (output->surface == surface) {
@@ -136,6 +163,13 @@ static void wl_pointer_enter(void *data, struct wl_pointer *wl_pointer,
 static void wl_pointer_leave(void *data, struct wl_pointer *wl_pointer,
 		uint32_t serial, struct wl_surface *surface) {
 	struct swaybar_seat *seat = data;
+#if HAVE_TRAY
+	if (seat->pointer.in_menu && seat->bar->tray && seat->bar->tray->menu) {
+		tray_menu_pointer_leave(seat->bar->tray->menu);
+		seat->pointer.in_menu = false;
+		return;
+	}
+#endif
 	seat->pointer.current = NULL;
 }
 
@@ -144,6 +178,12 @@ static void wl_pointer_motion(void *data, struct wl_pointer *wl_pointer,
 	struct swaybar_seat *seat = data;
 	seat->pointer.x = wl_fixed_to_double(surface_x);
 	seat->pointer.y = wl_fixed_to_double(surface_y);
+#if HAVE_TRAY
+	if (seat->pointer.in_menu && seat->bar->tray && seat->bar->tray->menu) {
+		tray_menu_pointer_motion(seat->bar->tray->menu,
+				seat->pointer.x, seat->pointer.y);
+	}
+#endif
 }
 
 static bool check_bindings(struct swaybar *bar, uint32_t button,
@@ -181,6 +221,20 @@ static void wl_pointer_button(void *data, struct wl_pointer *wl_pointer,
 		uint32_t serial, uint32_t time, uint32_t button, uint32_t state) {
 	struct swaybar_seat *seat = data;
 	struct swaybar_pointer *pointer = &seat->pointer;
+
+#if HAVE_TRAY
+	if (pointer->in_menu && seat->bar->tray && seat->bar->tray->menu) {
+		tray_menu_pointer_button(seat->bar->tray->menu, button, state);
+		return;
+	}
+	// If clicking on the bar while a menu is open, close the menu
+	if (seat->bar->tray && seat->bar->tray->menu &&
+			tray_menu_is_open(seat->bar->tray->menu) &&
+			state == WL_POINTER_BUTTON_STATE_PRESSED) {
+		tray_menu_close(seat->bar->tray->menu);
+	}
+#endif
+
 	struct swaybar_output *output = pointer->current;
 	if (!sway_assert(output, "button with no active output")) {
 		return;

@@ -11,6 +11,7 @@
 #include "swaybar/tray/host.h"
 #include "swaybar/tray/icon.h"
 #include "swaybar/tray/item.h"
+#include "swaybar/tray/menu.h"
 #include "swaybar/tray/tray.h"
 #include "cairo_util.h"
 #include "list.h"
@@ -18,7 +19,130 @@
 #include "stringop.h"
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 
-// TODO menu
+// dbusmenu fallback when Activate/ContextMenu methods are missing
+// (e.g. Steam's ayatana/libappindicator interface)
+
+static bool sni_is_ayatana(struct swaybar_sni *sni) {
+	return sni->path && strstr(sni->path, "ayatana") != NULL;
+}
+
+static int handle_get_layout_reply(sd_bus_message *msg, void *userdata,
+		sd_bus_error *error) {
+	struct swaybar_sni *sni = userdata;
+
+	if (sd_bus_message_is_method_error(msg, NULL)) {
+		const sd_bus_error *err = sd_bus_message_get_error(msg);
+		sway_log(SWAY_ERROR, "%s: dbusmenu GetLayout failed: %s",
+				sni->watcher_id, err->message);
+		return -1;
+	}
+
+	uint32_t revision;
+	int ret = sd_bus_message_read(msg, "u", &revision);
+	if (ret < 0) return ret;
+
+	// Enter root struct (ia{sv}av)
+	ret = sd_bus_message_enter_container(msg, 'r', "ia{sv}av");
+	if (ret < 0) return ret;
+
+	int32_t root_id;
+	sd_bus_message_read(msg, "i", &root_id);
+
+	// Skip root properties
+	sd_bus_message_enter_container(msg, 'a', "{sv}");
+	while (sd_bus_message_enter_container(msg, 'e', "sv") > 0) {
+		sd_bus_message_skip(msg, "sv");
+		sd_bus_message_exit_container(msg);
+	}
+	sd_bus_message_exit_container(msg);
+
+	// Enter children array
+	ret = sd_bus_message_enter_container(msg, 'a', "v");
+	if (ret < 0) return ret;
+
+	// Look for first non-separator item after a separator (Store/Library section)
+	bool found_separator = false;
+	int32_t target_id = -1;
+	while (sd_bus_message_enter_container(msg, 'v', "(ia{sv}av)") > 0) {
+		sd_bus_message_enter_container(msg, 'r', "ia{sv}av");
+		int32_t item_id;
+		sd_bus_message_read(msg, "i", &item_id);
+
+		// Read properties
+		sd_bus_message_enter_container(msg, 'a', "{sv}");
+		bool is_separator = false;
+		const char *label = NULL;
+		while (sd_bus_message_enter_container(msg, 'e', "sv") > 0) {
+			const char *prop;
+			sd_bus_message_read(msg, "s", &prop);
+			if (strcmp(prop, "type") == 0) {
+				const char *val;
+				if (sd_bus_message_enter_container(msg, 'v', "s") >= 0) {
+					sd_bus_message_read(msg, "s", &val);
+					if (strcmp(val, "separator") == 0) is_separator = true;
+					sd_bus_message_exit_container(msg);
+				} else {
+					sd_bus_message_skip(msg, "v");
+				}
+			} else if (strcmp(prop, "label") == 0) {
+				if (sd_bus_message_enter_container(msg, 'v', "s") >= 0) {
+					sd_bus_message_read(msg, "s", &label);
+					sd_bus_message_exit_container(msg);
+				} else {
+					sd_bus_message_skip(msg, "v");
+				}
+			} else {
+				sd_bus_message_skip(msg, "v");
+			}
+			sd_bus_message_exit_container(msg);
+		}
+		sd_bus_message_exit_container(msg); // a{sv}
+
+		if (is_separator) {
+			found_separator = true;
+		} else if (found_separator && target_id < 0 && label) {
+			// First non-separator after first separator = Store/Library section
+			target_id = item_id;
+			sway_log(SWAY_INFO, "%s: dbusmenu activate target: id=%d label='%s'",
+					sni->watcher_id, item_id, label);
+		}
+
+		// Skip children
+		sd_bus_message_skip(msg, "av");
+		sd_bus_message_exit_container(msg); // (ia{sv}av)
+		sd_bus_message_exit_container(msg); // v
+	}
+
+	if (target_id >= 0) {
+		sd_bus_call_method_async(sni->tray->bus, NULL, sni->service,
+				sni->menu, "com.canonical.dbusmenu", "Event",
+				NULL, NULL, "isvu", target_id, "clicked", "s", "",
+				(uint32_t)0);
+	} else {
+		sway_log(SWAY_ERROR, "%s: no suitable dbusmenu item found", sni->watcher_id);
+	}
+
+	return 0;
+}
+
+static void sni_activate_via_dbusmenu(struct swaybar_sni *sni, const char *method) {
+	if (!sni->menu) {
+		sway_log(SWAY_ERROR, "%s: no dbusmenu path for fallback", sni->watcher_id);
+		return;
+	}
+
+	sway_log(SWAY_INFO, "%s: ayatana %s via dbusmenu", sni->watcher_id, method);
+
+	// Prime the menu
+	sd_bus_call_method_async(sni->tray->bus, NULL, sni->service,
+			sni->menu, "com.canonical.dbusmenu", "AboutToShow",
+			NULL, NULL, "i", (int32_t)0);
+
+	// Query menu layout and click the first actionable item (Store/Library)
+	sd_bus_call_method_async(sni->tray->bus, NULL, sni->service,
+			sni->menu, "com.canonical.dbusmenu", "GetLayout",
+			handle_get_layout_reply, sni, "iias", (int32_t)0, (int32_t)1, 0);
+}
 
 static bool sni_ready(struct swaybar_sni *sni) {
 	return sni->status && (sni->status[0] == 'N' ? // NeedsAttention
@@ -373,8 +497,24 @@ static void handle_click(struct swaybar_sni *sni, int x, int y,
 		sd_bus_call_method_async(sni->tray->bus, NULL, sni->service, sni->path,
 				sni->interface, "Scroll", NULL, NULL, "is", delta*sign, orientation);
 	} else {
-		sd_bus_call_method_async(sni->tray->bus, NULL, sni->service, sni->path,
-				sni->interface, method, NULL, NULL, "ii", x, y);
+		if (sni_is_ayatana(sni) && strcmp(method, "Activate") == 0) {
+			sni_activate_via_dbusmenu(sni, "Activate");
+		} else if (strcmp(method, "ContextMenu") == 0 && sni->menu &&
+				sni->tray->menu) {
+			// Open popup menu for ContextMenu if dbusmenu is available
+			struct swaybar_output *output;
+			wl_list_for_each(output, &sni->tray->bar->outputs, link) {
+				// Use the first visible output (the one the bar is on)
+				// The caller passes global coords so we use those to guess output
+				if (output->surface) {
+					tray_menu_open(sni->tray->menu, sni, output, x);
+					break;
+				}
+			}
+		} else {
+			sd_bus_call_method_async(sni->tray->bus, NULL, sni->service,
+					sni->path, sni->interface, method, NULL, NULL, "ii", x, y);
+		}
 	}
 }
 
