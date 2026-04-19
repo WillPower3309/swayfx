@@ -911,7 +911,8 @@ static void transaction_apply(struct sway_transaction *transaction) {
 			break;
 		case N_CONTAINER: {
 			struct sway_container *con = node->sway_container;
-			if (should_con_new_animation(con, &instruction->container_state)) {
+			if (!node->destroying &&
+					should_con_new_animation(con, &instruction->container_state)) {
 				should_start_new_animation = true;
 
 				// TODO: reset animation state on going to scratchpad
