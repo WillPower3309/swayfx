@@ -915,6 +915,17 @@ static void arrange_output(struct sway_output *output, int width, int height) {
 			add_animation(&new_active->animation_state.animation,
 				workspace_fade_update_callback, workspace_fade_complete_callback);
 		}
+	} else if (old_active && new_active && old_active != new_active
+			&& output->wlr_output->enabled) {
+		// Non-animated workspace switch: reset stale fade alpha so the new
+		// active workspace isn't left fully transparent.
+		finish_animation(&new_active->animation_state.animation);
+		new_active->animation_state.from_alpha = 1.0f;
+		new_active->animation_state.to_alpha = 1.0f;
+
+		finish_animation(&old_active->animation_state.animation);
+		old_active->animation_state.from_alpha = 1.0f;
+		old_active->animation_state.to_alpha = 0.0f;
 	}
 
 	for (int i = 0; i < output->current.workspaces->length; i++) {
