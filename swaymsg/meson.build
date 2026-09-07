@@ -1,5 +1,5 @@
 executable(
-	'swaymsg',
+	'swayfxmsg',
 	'main.c',
 	include_directories: [sway_inc],
 	dependencies: [jsonc],

@@ -1,12 +1,12 @@
-swaymsg(1)
+swayfxmsg(1)
 
 # NAME
 
-swaymsg - Send messages to a running instance of sway over the IPC socket.
+swayfxmsg - Send messages to a running instance of swayfx over the IPC socket.
 
 # SYNOPSIS
 
-_swaymsg_ [options...] [message]
+_swayfxmsg_ [options...] [message]
 
 # OPTIONS
 
@@ -45,11 +45,11 @@ _swaymsg_ [options...] [message]
 	The message is a sway command (the same commands you can bind to keybindings
 	in your sway config file). It will be executed immediately.
 
-	See *sway*(5) for a list of commands.
+	See *swayfx*(5) for a list of commands.
 
 	_swaymsg_ can return pretty printed (standalone-default) or JSON-formatted
 	(*--raw*) output. For detailed documentation on the returned JSON-data of
-	each message type listed below,	refer to *sway-ipc*(7). The JSON-format can
+	each message type listed below,	refer to *swayfx-ipc*(7). The JSON-format can
 	contain more information than the pretty print.
 
 	Tips:
@@ -108,7 +108,7 @@ _swaymsg_ [options...] [message]
 	provided in the form of a valid JSON array. If any of the types are invalid
 	or if a valid JSON array is not provided, this will result in a failure.
 	For a list of valid event types and the data returned with them refer to
-	*sway-ipc*(7).
+	*swayfx-ipc*(7).
 
 # RETURN CODES
 
@@ -125,4 +125,4 @@ _swaymsg_ [options...] [message]
 
 # SEE ALSO
 
-*sway*(5) *sway-bar*(5) *sway-input*(5) *sway-output*(5) *sway-ipc*(7)
+*swayfx*(5) *swayfx-bar*(5) *swayfx-input*(5) *swayfx-output*(5) *swayfx-ipc*(7)

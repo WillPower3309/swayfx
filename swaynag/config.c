@@ -105,7 +105,7 @@ int swaynag_parse_options(int argc, char **argv, struct swaynag *swaynag,
 	};
 
 	const char *usage =
-		"Usage: swaynag [options...]\n"
+		"Usage: swayfxnag [options...]\n"
 		"\n"
 		"  -b, --button <text> <action>  Create a button with text that "
 			"executes action in a terminal when pressed. Multiple buttons can "
@@ -367,6 +367,8 @@ static bool file_exists(const char *path) {
 
 char *swaynag_get_config_path(void) {
 	static const char *config_paths[] = {
+		"$XDG_CONFIG_HOME/swayfxnag/config",
+		SYSCONFDIR "/swayfxnag/config",
 		"$HOME/.swaynag/config",
 		"$XDG_CONFIG_HOME/swaynag/config",
 		SYSCONFDIR "/swaynag/config",
@@ -374,7 +376,8 @@ char *swaynag_get_config_path(void) {
 
 	char *config_home = getenv("XDG_CONFIG_HOME");
 	if (!config_home || config_home[0] == '\0') {
-		config_paths[1] = "$HOME/.config/swaynag/config";
+		config_paths[0] = "$HOME/.config/swayfxnag/config";
+		config_paths[3] = "$HOME/.config/swaynag/config";
 	}
 
 	wordexp_t p;

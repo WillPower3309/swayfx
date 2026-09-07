@@ -25,8 +25,6 @@ ninja -C "swayfx-${SWAYFXVERSION}/build/"
 ninja -C "swayfx-${SWAYFXVERSION}/build/" install
 echo "swayfx DONE"
 
-mv ${OPT_SWAYFX}/bin/sway ${OPT_SWAYFX}/bin/swayfx
-
 cat >${OPT_SWAYFX}/bin/swayfx.sh <<EOF
 #!/bin/sh
 export PATH=${OPT_SWAYFX}/bin:\${PATH}

@@ -213,7 +213,7 @@ static void destroy_removed_seats(struct sway_config *old_config,
 }
 
 static void config_defaults(struct sway_config *config) {
-	if (!(config->swaynag_command = strdup("swaynag"))) goto cleanup;
+	if (!(config->swaynag_command = strdup("swayfxnag"))) goto cleanup;
 	config->swaynag_config_errors = (struct swaynag_instance){0};
 	config->swaynag_config_errors.args = "--type error "
 			"--message 'There are errors in your config file' "
@@ -423,6 +423,8 @@ static char *get_config_path(void) {
 	};
 
 	struct config_path config_paths[] = {
+		{ .prefix = config_home, .config_folder = "swayfx"},
+		{ .prefix = SYSCONFDIR, .config_folder = "swayfx"},
 		{ .prefix = home, .config_folder = ".sway"},
 		{ .prefix = config_home, .config_folder = "sway"},
 		{ .prefix = home, .config_folder = ".i3"},

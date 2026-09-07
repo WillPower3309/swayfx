@@ -462,7 +462,7 @@ int main(int argc, char **argv) {
 	};
 
 	const char *usage =
-		"Usage: swaymsg [options] [message]\n"
+		"Usage: swayfxmsg [options] [message]\n"
 		"\n"
 		"  -h, --help             Show help message and quit.\n"
 		"  -m, --monitor          Monitor until killed (-t SUBSCRIBE only)\n"

@@ -1,12 +1,12 @@
-sway(1)
+swayfx(1)
 
 # NAME
 
-sway - An i3-compatible Wayland compositor
+swayfx - An i3-compatible Wayland compositor with eye candy
 
 # SYNOPSIS
 
-*sway* [options...] [command]
+*swayfx* [options...] [command]
 
 # OPTIONS
 
@@ -40,14 +40,16 @@ providing such a great piece of software, so good that your users would rather
 write an entirely new window manager from scratch that behaved _exactly_ like i3
 rather than switch to something else.
 
-You can run sway directly from a tty, or via a Wayland-compatible login manager.
+You can run swayfx directly from a tty, or via a Wayland-compatible login manager.
 
 # CONFIGURATION
 
-sway searches for a config file in the following locations, in this order:
+swayfx searches for a config file in the following locations, in this order:
 
+. $XDG_CONFIG_HOME/swayfx/config (suggested location)
+. /etc/swayfx/config
 . ~/.sway/config
-. $XDG_CONFIG_HOME/sway/config (suggested location)
+. $XDG_CONFIG_HOME/sway/config
 . ~/.i3/config
 . $XDG_CONFIG_HOME/i3/config
 . /etc/sway/config
@@ -56,14 +58,16 @@ sway searches for a config file in the following locations, in this order:
 If unset, $XDG_CONFIG_HOME defaults to *~/.config*.
 
 An error is raised when no config file is found. The recommended default
-configuration is usually installed to */etc/sway/config*; you are encouraged to
-copy this to *~/.config/sway/config* and edit it from there.
+configuration is usually installed to */etc/swayfx/config*; you are encouraged to
+copy this to *~/.config/swayfx/config* and edit it from there. If you already
+have a sway config, swayfx will fall back to it automatically when no
+swayfx-specific config is present.
 
-For information on the config file format, see *sway*(5).
+For information on the config file format, see *swayfx*(5).
 
 # IPC COMMANDS
 
-Though *swaymsg*(1) is generally preferred, you may run *sway* _command_ to
+Though *swayfxmsg*(1) is generally preferred, you may run *swayfx* _command_ to
 send _command_ to the running instance of sway. You can also issue commands
 with *i3-msg*(1) or even with *i3*(1).
 
@@ -78,7 +82,7 @@ _XKB\_DEFAULT\_RULES_, _XKB\_DEFAULT\_MODEL_, _XKB\_DEFAULT\_LAYOUT_,
 _XKB\_DEFAULT\_VARIANT_, _XKB\_DEFAULT\_OPTIONS_
 	Configures the xkb keyboard settings. See *xkeyboard-config*(7). The
 	preferred way to configure the keyboard is via the configuration file, see
-	*sway-input*(5).
+	*swayfx-input*(5).
 
 The following environment variables are set by sway:
 
@@ -109,5 +113,5 @@ source contributors. For more information about sway development, see
 
 # SEE ALSO
 
-*sway*(5) *swaymsg*(1) *sway-input*(5) *sway-output*(5) *sway-bar*(5)
-*sway-ipc*(7)
+*swayfx*(5) *swayfxmsg*(1) *swayfx-input*(5) *swayfx-output*(5) *swayfx-bar*(5)
+*swayfx-ipc*(7)

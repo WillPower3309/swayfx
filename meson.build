@@ -128,20 +128,20 @@ if scdoc.found()
 	scdoc_prog = find_program(scdoc.get_variable(pkgconfig: 'scdoc'), native: true)
 	mandir = get_option('mandir')
 	man_files = [
-		'sway/sway.1.scd',
-		'sway/sway.5.scd',
-		'sway/sway-bar.5.scd',
-		'sway/sway-input.5.scd',
-		'sway/sway-ipc.7.scd',
-		'sway/sway-output.5.scd',
-		'swaybar/swaybar-protocol.7.scd',
-		'swaymsg/swaymsg.1.scd',
+		'sway/swayfx.1.scd',
+		'sway/swayfx.5.scd',
+		'sway/swayfx-bar.5.scd',
+		'sway/swayfx-input.5.scd',
+		'sway/swayfx-ipc.7.scd',
+		'sway/swayfx-output.5.scd',
+		'swaybar/swayfxbar-protocol.7.scd',
+		'swaymsg/swayfxmsg.1.scd',
 	]
 
 	if get_option('swaynag')
 		man_files += [
-			'swaynag/swaynag.1.scd',
-			'swaynag/swaynag.5.scd',
+			'swaynag/swayfxnag.1.scd',
+			'swaynag/swayfxnag.5.scd',
 		]
 	endif
 
@@ -226,11 +226,11 @@ configure_file(
 	configuration: config,
 	input: 'config.in',
 	output: '@BASENAME@',
-	install_dir: join_paths(sysconfdir, 'sway')
+	install_dir: join_paths(sysconfdir, 'swayfx')
 )
 
 install_data(
-	'sway.desktop',
+	'swayfx.desktop',
 	install_dir: join_paths(datadir, 'wayland-sessions')
 )
 
@@ -245,7 +245,7 @@ if get_option('default-wallpaper')
 		'assets/Sway_Wallpaper_Blue_2048x1536.png',
 		'assets/Sway_Wallpaper_Blue_2048x1536_Portrait.png',
 	)
-	wallpaper_install_dir = join_paths(datadir, 'backgrounds', 'sway')
+	wallpaper_install_dir = join_paths(datadir, 'backgrounds', 'swayfx')
 
 	install_data(wallpaper_files, install_dir: wallpaper_install_dir)
 endif

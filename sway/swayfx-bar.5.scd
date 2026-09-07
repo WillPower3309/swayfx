@@ -1,8 +1,8 @@
-sway-bar(5)
+swayfx-bar(5)
 
 # NAME
 
-sway-bar - bar configuration file and commands
+swayfx-bar - bar configuration file and commands
 
 # DESCRIPTION
 
@@ -102,7 +102,7 @@ runtime.
 	Executes the bar _status command_ with _sh -c_. Each line of text printed
 	to stdout from this command will be displayed in the status area of the
 	bar. You may also use swaybar's JSON status line protocol. See
-	*swaybar-protocol*(7) for more information on the protocol
+	*swayfxbar-protocol*(7) for more information on the protocol
 
 	If running this command via IPC, you can disable a running status command by
 	setting the command to a single dash: _swaybar bar bar-0 status\_command -_
@@ -234,4 +234,4 @@ must be defined in hex: _#RRGGBB_ or _#RRGGBBAA_.
 
 # SEE ALSO
 
-*sway*(5) *swaybar-protocol*(7)
+*swayfx*(5) *swayfxbar-protocol*(7)

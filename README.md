@@ -81,7 +81,7 @@ If you have Nix installed, you can build and run SwayFX easily:
 
 ```
 nix build
-./result/bin/sway
+./result/bin/swayfx
 ```
 
 You can also bring up a development shell and follow the build instructions below, without installing all of the dependencies manually:
@@ -143,7 +143,7 @@ Run these commands:
 
 On systems without logind nor seatd, you need to suid the sway binary:
 
-    sudo chmod a+s /usr/local/bin/sway
+    sudo chmod a+s /usr/local/bin/swayfx
 
 SwayFX will drop root permissions shortly after startup.
 

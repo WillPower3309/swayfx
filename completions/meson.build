@@ -1,7 +1,7 @@
 if get_option('zsh-completions')
 	zsh_files = files(
-		'zsh/_sway',
-		'zsh/_swaymsg',
+		'zsh/_swayfx',
+		'zsh/_swayfxmsg',
 	)
 	zsh_install_dir = join_paths(datadir, 'zsh', 'site-functions')
 
@@ -12,12 +12,12 @@ if get_option('bash-completions')
 	bash_comp = dependency('bash-completion', required: false)
 
 	bash_files = files(
-		'bash/sway',
-		'bash/swaymsg',
+		'bash/swayfx',
+		'bash/swayfxmsg',
 	)
 
 	if get_option('swaybar')
-		bash_files += files('bash/swaybar')
+		bash_files += files('bash/swayfxbar')
 	endif
 
 	if bash_comp.found()
@@ -36,12 +36,12 @@ if get_option('fish-completions')
 	fish_comp = dependency('fish', required: false)
 
 	fish_files = files(
-		'fish/sway.fish',
-		'fish/swaymsg.fish',
+		'fish/swayfx.fish',
+		'fish/swayfxmsg.fish',
 	)
 
 	if get_option('swaynag')
-		fish_files += files('fish/swaynag.fish')
+		fish_files += files('fish/swayfxnag.fish')
 	endif
 
 	if fish_comp.found()

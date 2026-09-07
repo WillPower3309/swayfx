@@ -1,4 +1,4 @@
-# swaymsg(1) completion
+# swayfxmsg(1) completion
 
 _swaymsg()
 {
@@ -62,4 +62,4 @@ _swaymsg()
   fi
 
 } &&
-complete -F _swaymsg swaymsg
+complete -F _swaymsg swayfxmsg

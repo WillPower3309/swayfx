@@ -1,12 +1,12 @@
-sway-ipc(7)
+swayfx-ipc(7)
 
 # NAME
 
-sway-ipc - IPC protocol for sway
+swayfx-ipc - IPC protocol for swayfx
 
 # DESCRIPTION
 
-This details the interprocess communication (IPC) protocol for *sway*(1). This
+This details the interprocess communication (IPC) protocol for *swayfx*(1). This
 IPC protocol can be used to control or obtain information from a sway process.
 
 The IPC protocol uses a UNIX socket as the method of communication. The path
@@ -870,7 +870,7 @@ also be used for third-party bars
 *REPLY*++
 An object that represents the configuration for the bar with the bar ID sent as
 the payload. The following properties exist, with more information about their
-values in *sway-bar*(5):
+values in *swayfx-bar*(5):
 
 [- *PROPERTY*
 :- *DATA TYPE*
@@ -1204,7 +1204,7 @@ The _libinput_ object describes the device configuration for libinput devices.
 Only properties that are supported for the device will be added to the object.
 In addition to the possible options listed, all string properties may also be
 _unknown_, in the case that a new option is added to libinput. See
-*sway-input*(5) for information on the meaning of the possible values. The
+*swayfx-input*(5) for information on the meaning of the possible values. The
 following properties will be included for devices that support them:
 
 [- *PROPERTY*
@@ -1937,4 +1937,4 @@ The following change types are currently available:
 
 # SEE ALSO
 
-*sway*(1) *sway*(5) *sway-bar*(5) *swaymsg*(1) *sway-input*(5) *sway-output*(5)
+*swayfx*(1) *swayfx*(5) *swayfx-bar*(5) *swayfxmsg*(1) *swayfx-input*(5) *swayfx-output*(5)

@@ -1,8 +1,8 @@
-sway-output(5)
+swayfx-output(5)
 
 # NAME
 
-sway-output - output configuration commands for sway
+swayfx-output - output configuration commands for swayfx
 
 # DESCRIPTION
 
@@ -91,7 +91,7 @@ must be separated by one space. For example:
 	usually auto-detected, but some displays may misreport their subpixel
 	geometry. Using the correct subpixel hinting allows for sharper text.
 	Incorrect values will result in blurrier text. When changing this via
-	*swaymsg*, some applications may need to be restarted to use the new value.
+	*swayfxmsg*, some applications may need to be restarted to use the new value.
 
 *output* <name> background|bg <file> <mode> [<fallback_color>]
 	Sets the wallpaper for the given output to the specified file, using the
@@ -143,7 +143,7 @@ must be separated by one space. For example:
 	maximizing time available for compositing.
 
 	To adjust when applications are instructed to render, see *max_render_time*
-	in *sway*(5).
+	in *swayfx*(5).
 
 	To set this up for optimal latency:
 	. Launch some _full-screen_ application that renders continuously, like
@@ -215,7 +215,7 @@ must be separated by one space. For example:
 	display refresh.
 
 	To adjust whether tearing is allowed for specific applications, see
-	*allow_tearing* in *sway*(5). Note that tearing will only be enabled
+	*allow_tearing* in *swayfx*(5). Note that tearing will only be enabled
 	when it's allowed for both the output and the application.
 
 	This setting only has effect when a window is fullscreen on the output.
@@ -233,4 +233,4 @@ must be separated by one space. For example:
 
 # SEE ALSO
 
-*sway*(5) *sway-input*(5)
+*swayfx*(5) *swayfx-input*(5)

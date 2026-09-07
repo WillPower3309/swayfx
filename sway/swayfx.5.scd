@@ -1,14 +1,14 @@
-sway(5)
+swayfx(5)
 
 # NAME
 
-sway - configuration file and commands
+swayfx - configuration file and commands
 
 # DESCRIPTION
 
 A sway configuration file is a list of sway commands that are executed by sway
 on startup.  These commands usually consist of setting your preferences and
-setting key bindings. An example config is likely present in /etc/sway/config
+setting key bindings. An example config is likely present in /etc/swayfx/config
 for you to check out.
 
 Lines in the configuration file might be extended through multiple lines by
@@ -37,7 +37,7 @@ output eDP-1 background ~/wallpaper.png fill
 output eDP-1 resolution 1920x1080
 ```
 
-These commands can be executed in your config file, via *swaymsg*(1), or via
+These commands can be executed in your config file, via *swayfxmsg*(1), or via
 the bindsym command.
 
 # COMMAND CONVENTIONS
@@ -55,13 +55,13 @@ which you may only select one. *[...]* is used for optional arguments, and
 # COMMANDS
 
 This section only lists general commands. For input and output commands, refer
-to *sway-input*(5) and *sway-output*(5).
+to *swayfx-input*(5) and *swayfx-output*(5).
 
 ## Config only commands
 The following commands may only be used in the configuration file.
 
 *bar* [<bar-id>] <bar-subcommands...>
-	For details on bar subcommands, see *sway-bar*(5).
+	For details on bar subcommands, see *swayfx-bar*(5).
 
 *default_orientation* horizontal|vertical|auto
 	Sets the default container layout for tiled containers.
@@ -78,7 +78,7 @@ The following commands may only be used in the configuration file.
 
 *swaybg_command* <command>
 	Executes custom background _command_. Default is _swaybg_. Refer to
-	*sway-output*(5) for more information.
+	*swayfx-output*(5) for more information.
 
 	It can be disabled by setting the command to a single dash:
 	_swaybg\_command -_
@@ -105,7 +105,7 @@ The following commands may only be used in the configuration file.
 
 ## Runtime only commands
 The following commands cannot be used directly in the configuration file.
-They are expected to be used with *bindsym* or at runtime through *swaymsg*(1).
+They are expected to be used with *bindsym* or at runtime through *swayfxmsg*(1).
 
 *border* none|normal|csd|pixel [<n>]
 	Set border style for focused window. _normal_ includes a border of
@@ -211,14 +211,14 @@ set|plus|minus|toggle <amount>
 	*max_render_time* setting.
 
 	To set this up for optimal latency:
-	. Set up *output max_render_time* (see *sway-output*(5)).
+	. Set up *output max_render_time* (see *swayfx-output*(5)).
 	. Put the target application in _full-screen_ and have it continuously
 	  render something.
 	. Start by setting *max_render_time 1*. If the application drops
 	  frames, increment by *1*.
 
 	This setting only has an effect if a per-output *max_render_time* is in
-	effect on the output the window is currently on. See *sway-output*(5) for
+	effect on the output the window is currently on. See *swayfx-output*(5) for
 	further details.
 
 *allow_tearing* yes|no
@@ -232,7 +232,7 @@ set|plus|minus|toggle <amount>
 	regardless of the tearing hints.
 
 	This setting only has an effect if tearing is allowed on the output through
-	the per-output *allow_tearing* setting. See *sway-output*(5) for further
+	the per-output *allow_tearing* setting. See *swayfx-output*(5) for further
 	details.
 
 *move* left|right|up|down [<px> px]
@@ -301,7 +301,7 @@ set|plus|minus|toggle <amount>
 *reload*
 	Reloads the sway config file and applies any changes. The config file is
 	located at path specified by the command line arguments when started,
-	otherwise according to the priority stated in *sway*(1).
+	otherwise according to the priority stated in *swayfx*(1).
 
 *rename* workspace [<old_name>] to <new_name>
 	Rename either <old_name> or the focused workspace to the <new_name>
@@ -348,7 +348,7 @@ set|plus|minus|toggle <amount>
 	Criteria are particularly useful with the *for_window* command to
 	configure a class of windows differently from the per-seat defaults
 	established by the *seat* subcommand of the same name. See
-	*sway-input*(5) for more ways to affect inhibitors.
+	*swayfx-input*(5) for more ways to affect inhibitors.
 
 *split* vertical|v|horizontal|h|none|n|toggle|t
 	Splits the current container, vertically or horizontally. When _none_ is
@@ -583,7 +583,7 @@ animation_duration_ms <value>
 	directions.
 
 	Gestures executed while the pointer is above a bar are not handled by sway.
-	See the respective documentation, e.g. *bindgesture* in *sway-bar*(5).
+	See the respective documentation, e.g. *bindgesture* in *swayfx-bar*(5).
 
 	Example:
 ```
@@ -866,7 +866,7 @@ The default colors are:
 *layer_effects* <layer-namespace> <effects>
 	Apply effects on specific layer shell surfaces, eg "waybar" or "rofi".
 	At least one effect needs to be provided. The <layer-namespace> can be
-	gotten through *sway-ipc*. Note: Surfaces in the _bottom_ layer cannot
+	gotten through *swayfx-ipc*. Note: Surfaces in the _bottom_ layer cannot
 	use these effects.
 
 	Effects:
@@ -911,14 +911,14 @@ The default colors are:
 	_hide_edge_borders_ none.
 
 *input* <input_device> <input-subcommands...>
-	For details on input subcommands, see *sway-input*(5).
+	For details on input subcommands, see *swayfx-input*(5).
 
 	\* may be used in lieu of a specific device name to configure all input
 	devices. A list of input device names may be obtained via *swaymsg -t
 	get_inputs*.
 
 *seat* <seat> <seat-subcommands...>
-	For details on seat subcommands, see *sway-input*(5).
+	For details on seat subcommands, see *swayfx-input*(5).
 
 *kill*
 	Kills (closes) the currently focused container and all of its children.
@@ -960,7 +960,7 @@ The default colors are:
 	they're created. This has no effect on the first window in a workspace.
 
 *output* <output_name> <output-subcommands...>
-	For details on output subcommands, see *sway-output*(5).
+	For details on output subcommands, see *swayfx-output*(5).
 
 	\* may be used in lieu of a specific output name to configure all outputs.
 	A list of output names may be obtained via *swaymsg -t get_outputs*.
@@ -1227,5 +1227,5 @@ The following attributes may be matched with:
 
 # SEE ALSO
 
-*sway*(1) *sway-input*(5) *sway-output*(5) *sway-bar*(5) *sway-ipc*(7)
+*swayfx*(1) *swayfx-input*(5) *swayfx-output*(5) *swayfx-bar*(5) *swayfx-ipc*(7)
 *pcre2pattern*(3) *pcre2syntax*(3)

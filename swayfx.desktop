@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=SwayFX
+Comment=An i3-compatible Wayland compositor with eye candy
+Exec=swayfx
+Type=Application
+DesktopNames=sway;wlroots;swayfx

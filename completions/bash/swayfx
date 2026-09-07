@@ -1,6 +1,6 @@
-# sway(1) completion
+# swayfx(1) completion
 
-_sway()
+_swayfx()
 {
   local cur prev short long
   _get_comp_words_by_ref cur prev
@@ -43,4 +43,4 @@ _sway()
   fi
 
 } &&
-complete -F _sway sway
+complete -F _swayfx swayfx

@@ -1,12 +1,12 @@
-swaynag(1)
+swayfxnag(1)
 
 # NAME
 
-swaynag - Show a warning or error message with buttons
+swayfxnag - Show a warning or error message with buttons
 
 # SYNOPSIS
 
-_swaynag_ [options...]
+_swayfxnag_ [options...]
 
 # OPTIONS
 

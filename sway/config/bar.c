@@ -224,7 +224,7 @@ static void invoke_swaybar(struct bar_config *bar) {
 
 		// run custom swaybar
 		char *const cmd[] = {
-				bar->swaybar_command ? bar->swaybar_command : "swaybar",
+				bar->swaybar_command ? bar->swaybar_command : "swayfxbar",
 				"-b", bar->id, NULL};
 		execvp(cmd[0], cmd);
 		_exit(EXIT_FAILURE);

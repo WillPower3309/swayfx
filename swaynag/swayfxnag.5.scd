@@ -1,8 +1,8 @@
-swaynag(5)
+swayfxnag(5)
 
 # NAME
 
-swaynag - swaynag configuration file
+swayfxnag - swayfxnag configuration file
 
 # SYNOPSIS
 

@@ -1,8 +1,8 @@
-swaybar-protocol(7)
+swayfxbar-protocol(7)
 
 # NAME
 
-swaybar-protocol - JSON status line protocol for swaybar
+swayfxbar-protocol - JSON status line protocol for swayfxbar
 
 # SUMMARY
 
@@ -117,10 +117,10 @@ properties (only _full_text_ is required):
 :  boolean
 :  Whether the block should be displayed as urgent. Currently swaybar utilizes
    the colors set in the sway config for urgent workspace buttons. See
-   *sway-bar*(5) for more information on bar color configuration.
+   *swayfx-bar*(5) for more information on bar color configuration.
 |- separator
 :  boolean
-:  Whether the bar separator should be drawn after the block. See *sway-bar*(5)
+:  Whether the bar separator should be drawn after the block. See *swayfx-bar*(5)
    for more information on how to set the separator text.
 |- separator_block_width
 :  integer
@@ -260,4 +260,4 @@ the following properties:
 
 # SEE ALSO
 
-*sway-bar*(5)
+*swayfx-bar*(5)

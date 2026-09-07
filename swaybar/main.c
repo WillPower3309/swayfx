@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
 	};
 
 	const char *usage =
-		"Usage: swaybar [options...]\n"
+		"Usage: swayfxbar [options...]\n"
 		"\n"
 		"  -h, --help             Show help message and quit.\n"
 		"  -v, --version          Show the version number and quit.\n"

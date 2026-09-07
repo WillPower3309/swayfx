@@ -1,8 +1,8 @@
-sway-input(5)
+swayfx-input(5)
 
 # NAME
 
-sway-input - input configuration file and commands
+swayfx-input - input configuration file and commands
 
 # DESCRIPTION
 
@@ -322,4 +322,4 @@ correct seat.
 
 # SEE ALSO
 
-*sway*(5) *sway-output*(5) *xkeyboard-config*(7)
+*swayfx*(5) *swayfx-output*(5) *xkeyboard-config*(7)

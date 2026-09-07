@@ -212,7 +212,7 @@ static const struct option long_options[] = {
 };
 
 static const char usage[] =
-	"Usage: sway [options] [command]\n"
+	"Usage: swayfx [options] [command]\n"
 	"\n"
 	"  -h, --help             Show help message and quit.\n"
 	"  -c, --config <config>  Specify a config file.\n"

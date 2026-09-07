@@ -1,5 +1,5 @@
 executable(
-	'swaynag', [
+	'swayfxnag', [
 		'config.c',
 		'main.c',
 		'render.c',
