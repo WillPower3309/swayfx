@@ -22,6 +22,7 @@
 #include <wlr/util/transform.h>
 #include "config.h"
 #include "log.h"
+#include "sway/animation_manager.h"
 #include "sway/config.h"
 #include "sway/desktop/transaction.h"
 #include "sway/input/input-manager.h"
@@ -566,7 +567,19 @@ static void handle_present(struct wl_listener *listener, void *data) {
 	}
 
 	output->last_presentation = output_event->when;
-	output->refresh_nsec = output_event->refresh;
+
+	// refresh_nsec is only known once the output actually presents a frame,
+	// which happens after animation_manager_init() has already run (and
+	// therefore already computed tick_time using the 60Hz fallback, since
+	// no output had a valid refresh_nsec yet). Recompute animation timing
+	// whenever the reported refresh rate changes (first present, or a
+	// runtime refresh rate change e.g. VRR) so it doesn't get stuck on the
+	// fallback until the next config reload.
+	uint32_t refresh_nsec = output_event->refresh;
+	if (output->refresh_nsec != refresh_nsec) {
+		output->refresh_nsec = refresh_nsec;
+		refresh_animation_manager_timing();
+	}
 }
 
 static void handle_request_state(struct wl_listener *listener, void *data) {
