@@ -290,7 +290,7 @@ static void config_defaults(struct sway_config *config) {
 	config->tiling_drag = true;
 	config->tiling_drag_threshold = 9;
 	config->primary_selection = true;
-
+	config->dwindle = false;
 	config->smart_gaps = SMART_GAPS_OFF;
 	config->gaps_inner = 0;
 	config->gaps_outer.top = 0;

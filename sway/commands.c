@@ -71,6 +71,7 @@ static const struct cmd_handler handlers[] = {
 	{ "dim_inactive", cmd_dim_inactive },
 	{ "dim_inactive_colors.unfocused", cmd_dim_inactive_colors_unfocused },
 	{ "dim_inactive_colors.urgent", cmd_dim_inactive_colors_urgent },
+	{ "dwindle", cmd_dwindle },
 	{ "exec", cmd_exec },
 	{ "exec_always", cmd_exec_always },
 	{ "floating_maximum_size", cmd_floating_maximum_size },

@@ -2,6 +2,7 @@
 #include <strings.h>
 #include <wayland-server-core.h>
 #include <wlr/config.h>
+#include <wlr/types/wlr_cursor.h>
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/types/wlr_buffer.h>
 #include <wlr/types/wlr_ext_foreign_toplevel_list_v1.h>
@@ -927,7 +928,25 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 
 	struct sway_container *container = view->container;
 	if (target_sibling) {
-		container_add_sibling(target_sibling, container, 1);
+		bool after = 1;
+		if (config->dwindle && seat && seat->cursor){
+			double cx = seat->cursor->cursor->x;
+			double cy = seat->cursor->cursor->y;
+
+			struct sway_container_state *s = &target_sibling->pending;
+
+			double nx = (cx - (s->x + s->width / 2)) / (s->width / 2);
+			double ny = (cy - (s->y + s->height / 2)) / (s->height / 2);
+
+			if (s->width > s->height) {
+				container_split(target_sibling, L_HORIZ);
+				after = nx >= 0;
+			} else {
+				container_split(target_sibling, L_VERT);
+				after = ny >= 0;
+			}
+		}
+		container_add_sibling(target_sibling, container, after);
 	} else if (ws) {
 		container = workspace_add_tiling(ws, container);
 	}

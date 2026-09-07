@@ -143,6 +143,7 @@ sway_cmd cmd_default_orientation;
 sway_cmd cmd_dim_inactive;
 sway_cmd cmd_dim_inactive_colors_unfocused;
 sway_cmd cmd_dim_inactive_colors_urgent;
+sway_cmd cmd_dwindle;
 sway_cmd cmd_exec;
 sway_cmd cmd_exec_always;
 sway_cmd cmd_exit;

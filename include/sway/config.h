@@ -499,6 +499,7 @@ struct sway_config {
 		float unfocused[4];
 		float urgent[4];
 	} dim_inactive_colors;
+	bool dwindle;
 
 	bool blur_enabled;
 	bool blur_xray;
