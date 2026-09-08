@@ -126,8 +126,12 @@ They are expected to be used with *bindsym* or at runtime through *swaymsg*(1).
 <criteria> *focus*
 	Moves focus to the container that matches the specified criteria.
 
-*focus* up|right|down|left
-	Moves focus to the next container in the specified direction.
+*focus* up|right|down|left [visible_only]
+	Moves focus to the next container in the specified direction. With
+	_visible_only_, hidden windows inside tabbed or stacked containers are
+	skipped instead of being revealed, so focus lands on the nearest surface that
+	is already visible in that direction (a window, or another output's
+	workspace).
 
 *focus* prev|next [sibling]
 	Moves focus to the previous or next container in the current layout. By default,

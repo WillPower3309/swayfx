@@ -137,7 +137,7 @@ static struct sway_node *get_node_in_output_direction(
 
 static struct sway_node *node_get_in_direction_tiling(
 		struct sway_container *container, struct sway_seat *seat,
-		enum wlr_direction dir, bool descend) {
+		enum wlr_direction dir, bool descend, bool visible_only) {
 	struct sway_container *wrap_candidate = NULL;
 	struct sway_container *current = container;
 	while (current) {
@@ -163,12 +163,14 @@ static struct sway_node *node_get_in_direction_tiling(
 		list_t *siblings = container_get_siblings(current);
 
 		if (dir == WLR_DIRECTION_LEFT || dir == WLR_DIRECTION_RIGHT) {
-			if (parent_layout == L_HORIZ || parent_layout == L_TABBED) {
+			if (parent_layout == L_HORIZ ||
+					(parent_layout == L_TABBED && !visible_only)) {
 				can_move = true;
 				desired = idx + (dir == WLR_DIRECTION_LEFT ? -1 : 1);
 			}
 		} else {
-			if (parent_layout == L_VERT || parent_layout == L_STACKED) {
+			if (parent_layout == L_VERT ||
+					(parent_layout == L_STACKED && !visible_only)) {
 				can_move = true;
 				desired = idx + (dir == WLR_DIRECTION_UP ? -1 : 1);
 			}
@@ -422,6 +424,7 @@ struct cmd_results *cmd_focus(int argc, char **argv) {
 
 	enum wlr_direction direction = 0;
 	bool descend = true;
+	bool visible_only = false;
 	if (!parse_direction(argv[0], &direction)) {
 		if (!get_direction_from_next_prev(container, seat, argv[0], &direction)) {
 			return cmd_results_new(CMD_INVALID,
@@ -430,6 +433,9 @@ struct cmd_results *cmd_focus(int argc, char **argv) {
 		} else if (argc == 2 && strcasecmp(argv[1], "sibling") == 0) {
 			descend = false;
 		}
+	}
+	if (argc == 2 && strcasecmp(argv[1], "visible_only") == 0) {
+		visible_only = true;
 	}
 
 	if (!direction) {
@@ -459,7 +465,8 @@ struct cmd_results *cmd_focus(int argc, char **argv) {
 			container->pending.fullscreen_mode == FULLSCREEN_NONE) {
 		next_focus = node_get_in_direction_floating(container, seat, direction);
 	} else {
-		next_focus = node_get_in_direction_tiling(container, seat, direction, descend);
+		next_focus = node_get_in_direction_tiling(container, seat, direction,
+				descend, visible_only);
 	}
 	if (next_focus) {
 		seat_set_focus(seat, next_focus);
