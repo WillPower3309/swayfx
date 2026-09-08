@@ -1,6 +1,7 @@
 # SwayFX settings
 
 animation_duration_ms 250
+animation_workspace_switch disable
 
 blur disable
 # blur_xray enables wallpaper blurring without blurring windows below

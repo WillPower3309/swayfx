@@ -887,7 +887,7 @@ static void arrange_output(struct sway_output *output, int width, int height) {
 	struct sway_workspace *new_active = output->current.active_workspace;
 	struct sway_workspace *old_active = output->prev_active_workspace;
 
-	bool is_ws_switch = old_active && old_active != new_active
+	bool is_ws_switch = config->animation_workspace_switch && old_active && old_active != new_active
 		&& output->wlr_output->enabled && config->animation_duration_ms > 0 &&
 		!(old_active->current.fullscreen || new_active->current.fullscreen);
 

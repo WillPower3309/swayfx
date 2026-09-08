@@ -23,7 +23,9 @@ For Fedora users, SwayFX is also available in [copr](https://copr.fedorainfraclo
 
 ## New Configuration Options
 
-+ Animations: `animation_duration_ms <integer value 0-5000>`
++ Animations:
+    - `animation_duration_ms <integer value 0-5000>`
+    - `animation_workspace_switch enable|disable`
 + Window blur:
     - `blur enable|disable`
     - `blur_xray enable|disable`: this will set floating windows to blur based on the background, not the windows below. You probably want to set this to `disable` :)

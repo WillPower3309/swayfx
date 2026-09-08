@@ -3,6 +3,7 @@
 #include <strings.h>
 #include "sway/animation_manager.h"
 #include "sway/commands.h"
+#include "util.h"
 
 struct cmd_results *cmd_animation_duration_ms(int argc, char **argv) {
 	struct cmd_results *error = NULL;
@@ -22,6 +23,18 @@ struct cmd_results *cmd_animation_duration_ms(int argc, char **argv) {
 
 	config->animation_duration_ms = val;
 	refresh_animation_manager_timing();
+
+	return cmd_results_new(CMD_SUCCESS, NULL);
+}
+
+struct cmd_results *cmd_animation_workspace_switch(int argc, char **argv) {
+	struct cmd_results *error = checkarg(argc, "animation_workspace_switch", EXPECTED_AT_LEAST, 1);
+
+	if (error) {
+		return error;
+	}
+
+	config->animation_workspace_switch = parse_boolean(argv[0], config->animation_workspace_switch);
 
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }

@@ -422,6 +422,9 @@ animation_duration_ms <value>
 	Determines the duration of the animation applied to opening and closing
 	windows, between 0 (no animation) and 5000 (5 seconds).
 
+animation_workspace_switch enable|disable
+	Determines whether to animate switching between workspaces.
+
 *assign* <criteria> [→] [workspace] [number] <workspace>
 	Assigns windows matching _criteria_ (see *CRITERIA* for details) to
 	_workspace_. The → (U+2192) is optional and cosmetic. This command is
