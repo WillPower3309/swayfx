@@ -277,5 +277,6 @@ executable(
 	include_directories: [sway_inc],
 	dependencies: sway_deps,
 	link_with: [lib_sway_common],
-	install: true
+	install: true,
+	install_rpath: prefix_lib_rpath
 )
