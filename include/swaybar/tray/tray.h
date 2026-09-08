@@ -17,6 +17,7 @@
 struct swaybar;
 struct swaybar_output;
 struct swaybar_watcher;
+struct swaybar_menu;
 
 struct swaybar_tray {
 	struct swaybar *bar;
@@ -32,6 +33,8 @@ struct swaybar_tray {
 
 	list_t *basedirs; // char *
 	list_t *themes; // struct swaybar_theme *
+
+	struct swaybar_menu *menu;
 };
 
 struct swaybar_tray *create_tray(struct swaybar *bar);

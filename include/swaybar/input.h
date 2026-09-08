@@ -22,6 +22,7 @@ struct swaybar_pointer {
 	struct wl_cursor_image *cursor_image;
 	struct wl_surface *cursor_surface;
 	struct swaybar_output *current;
+	bool in_menu; // pointer is over the tray popup menu
 	double x, y;
 	uint32_t serial;
 };
