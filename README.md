@@ -23,7 +23,10 @@ For Fedora users, SwayFX is also available in [copr](https://copr.fedorainfraclo
 
 ## New Configuration Options
 
-+ Animations: `animation_duration_ms <integer value 0-5000>`
++ Animations: `animation_duration_ms <integer value 0-5000>` sets the default
+    duration for all animation types; `animation_duration_ms.open`,
+    `animation_duration_ms.close`, `animation_duration_ms.move`, and
+    `animation_duration_ms.workspace` override it per type.
 + Window blur:
     - `blur enable|disable`
     - `blur_xray enable|disable`: this will set floating windows to blur based on the background, not the windows below. You probably want to set this to `disable` :)

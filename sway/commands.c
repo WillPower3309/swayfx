@@ -43,6 +43,10 @@ struct cmd_results *checkarg(int argc, const char *name, enum expected_args type
 /* Keep alphabetized */
 static const struct cmd_handler handlers[] = {
 	{ "animation_duration_ms", cmd_animation_duration_ms },
+	{ "animation_duration_ms.close", cmd_animation_duration_ms_close },
+	{ "animation_duration_ms.move", cmd_animation_duration_ms_move },
+	{ "animation_duration_ms.open", cmd_animation_duration_ms_open },
+	{ "animation_duration_ms.workspace", cmd_animation_duration_ms_workspace },
 	{ "assign", cmd_assign },
 	{ "bar", cmd_bar },
 	{ "bindcode", cmd_bindcode },

@@ -11,6 +11,7 @@
 #include <xkbcommon/xkbcommon.h>
 #include <xf86drmMode.h>
 #include "../include/config.h"
+#include "animation_manager.h"
 #include "gesture.h"
 #include "list.h"
 #include "stringop.h"
@@ -491,6 +492,8 @@ enum xwayland_mode {
  */
 struct sway_config {
 	float animation_duration_ms;
+	float animation_duration_ms_by_type[ANIM_TYPE_LAST];
+	bool animation_duration_ms_set[ANIM_TYPE_LAST];
 	int corner_radius;
 	bool smart_corner_radius;
 
