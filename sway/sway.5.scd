@@ -418,10 +418,6 @@ set|plus|minus|toggle <amount>
 The following commands may be used either in the configuration file or at
 runtime.
 
-animation_duration_ms <value>
-	Determines the duration of the animation applied to opening and closing
-	windows, between 0 (no animation) and 5000 (5 seconds).
-
 *assign* <criteria> [→] [workspace] [number] <workspace>
 	Assigns windows matching _criteria_ (see *CRITERIA* for details) to
 	_workspace_. The → (U+2192) is optional and cosmetic. This command is
@@ -701,6 +697,25 @@ The default colors are:
 :  #ffffff
 :  #000000
 :  #0c0c0c
+
+*animation_duration_ms* <value>
+	Sets the default animation duration in milliseconds, used by any
+	animation type below that has no override of its own, between 0 (no
+	animation) and 5000 (5 seconds). Default: 0
+
+*animation_duration_ms.open* <value>
+	Overrides *animation_duration_ms* for the window-open animation.
+
+*animation_duration_ms.close* <value>
+	Overrides *animation_duration_ms* for the window-close animation.
+
+*animation_duration_ms.move* <value>
+	Overrides *animation_duration_ms* for tiling/floating move and resize
+	animations.
+
+*animation_duration_ms.workspace* <value>
+	Overrides *animation_duration_ms* for the workspace-switch fade
+	animation.
 
 *corner_radius* <radius>
 	Set corner radius in pixels for new windows.

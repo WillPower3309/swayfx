@@ -184,7 +184,8 @@ static void transaction_destroy(struct sway_transaction *transaction) {
 						(con->animation_state.from_height * (1.0f - POPIN_FACTOR)) / 2.0f;
 					con->animation_state.to_width = con->animation_state.from_width * POPIN_FACTOR;
 					con->animation_state.to_height = con->animation_state.from_height * POPIN_FACTOR;
-					add_animation(&con->animation_state.animation, anim_update_callback, close_anim_complete_callback);
+					add_animation(&con->animation_state.animation, ANIM_WINDOW_CLOSE,
+						anim_update_callback, close_anim_complete_callback);
 				} else {
 					container_destroy(node->sway_container);
 				}
@@ -729,9 +730,12 @@ static void _arrange_container(struct sway_container *con,
 
 static void arrange_container(struct sway_container *con,
 		int width, int height, int x, int y, bool title_bar, int gaps) {
-	if (!config->animation_duration_ms || !con->view
-			|| con->animation_state.seat_is_resizing
-			|| con->animation_state.seat_is_moving_float) {
+	bool is_open = con->animation_state.from_x == -1;
+	enum sway_animation_type anim_type = is_open ? ANIM_WINDOW_OPEN : ANIM_WINDOW_MOVE;
+
+	if (!con->view || con->animation_state.seat_is_resizing
+			|| con->animation_state.seat_is_moving_float
+			|| animation_manager_duration_ms(anim_type) <= 0) {
 		finish_animation(&con->animation_state.animation);
 
 		_arrange_container(con, width, height, x, y, title_bar, gaps);
@@ -762,7 +766,7 @@ static void arrange_container(struct sway_container *con,
 		con->animation_state.from_width = width * POPIN_FACTOR;
 		con->animation_state.from_height = height * POPIN_FACTOR;
 		con->animation_state.from_alpha = 0.0f;
-		add_animation(&con->animation_state.animation, anim_update_callback, NULL);
+		add_animation(&con->animation_state.animation, ANIM_WINDOW_OPEN, anim_update_callback, NULL);
 	} else {
 		// move animation
 		snap_animation_position(con);
@@ -770,7 +774,7 @@ static void arrange_container(struct sway_container *con,
 		con->animation_state.from_height = con->animation_state.current_height;
 		con->animation_state.from_alpha = get_animated_value(con->animation_state.from_alpha,
 			con->animation_state.to_alpha, &con->animation_state.animation);
-		add_animation(&con->animation_state.animation, anim_update_callback, NULL);
+		add_animation(&con->animation_state.animation, ANIM_WINDOW_MOVE, anim_update_callback, NULL);
 	}
 
 	// arrange at starting state to "win" position race between animation start and the reparent
@@ -888,7 +892,7 @@ static void arrange_output(struct sway_output *output, int width, int height) {
 	struct sway_workspace *old_active = output->prev_active_workspace;
 
 	bool is_ws_switch = old_active && old_active != new_active
-		&& output->wlr_output->enabled && config->animation_duration_ms > 0 &&
+		&& output->wlr_output->enabled && animation_manager_duration_ms(ANIM_WORKSPACE_SWITCH) > 0 &&
 		!(old_active->current.fullscreen || new_active->current.fullscreen);
 
 	if (is_ws_switch) {
@@ -897,7 +901,7 @@ static void arrange_output(struct sway_output *output, int width, int height) {
 		if (old_active->current.tiling->length == 0
 				&& old_active->current.floating->length == 0) {
 			new_active->animation_state.to_alpha = 1.0f;
-			add_animation(&new_active->animation_state.animation,
+			add_animation(&new_active->animation_state.animation, ANIM_WORKSPACE_SWITCH,
 				workspace_fade_update_callback, NULL);
 		} else {
 			new_active->animation_state.to_alpha = 0.0f;
@@ -910,9 +914,9 @@ static void arrange_output(struct sway_output *output, int width, int height) {
 			new_active->animation_state.from_alpha = 0.0f;
 			new_active->animation_state.to_alpha = 1.0f;
 
-			add_animation(&old_active->animation_state.animation,
+			add_animation(&old_active->animation_state.animation, ANIM_WORKSPACE_SWITCH,
 				workspace_fade_update_callback, workspace_fade_complete_callback);
-			add_animation(&new_active->animation_state.animation,
+			add_animation(&new_active->animation_state.animation, ANIM_WORKSPACE_SWITCH,
 				workspace_fade_update_callback, workspace_fade_complete_callback);
 		}
 	} else if (old_active && new_active && old_active != new_active

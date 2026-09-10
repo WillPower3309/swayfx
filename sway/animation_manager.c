@@ -10,7 +10,6 @@
 
 struct animation_manager {
 	float tick_time;
-	float progress_delta;
 	struct wl_event_source *tick;
 	struct wl_list animations;
 } animation_manager;
@@ -19,8 +18,10 @@ struct animation init_animation(void *data) {
 	return (struct animation){
 		.data = data,
 		.progress = 0.0f,
+		.progress_delta = 0.0f,
 		.multiplier = 0.0f,
 		.initialized = false,
+		.type = ANIM_WINDOW_OPEN,
 		.update = NULL,
 		.complete = NULL,
 	};
@@ -33,7 +34,7 @@ static float ease_out_cubic(float p) {
 static int animation_timer() {
 	struct animation *animation, *tmp;
 	wl_list_for_each_reverse_safe(animation, tmp, &animation_manager.animations, link) {
-		animation->progress = MIN(animation->progress + animation_manager.progress_delta, 1.0f);
+		animation->progress = MIN(animation->progress + animation->progress_delta, 1.0f);
 		animation->multiplier = ease_out_cubic(animation->progress);
 
 		if (animation->update) {
@@ -55,9 +56,10 @@ static int animation_timer() {
 	return 0;
 }
 
-void add_animation(struct animation *animation, void (*update_callback)(void *),
-		void (*complete_callback)(void *)) {
-	if (!config->animation_duration_ms) {
+void add_animation(struct animation *animation, enum sway_animation_type type,
+		void (*update_callback)(void *), void (*complete_callback)(void *)) {
+	float duration_ms = animation_manager_duration_ms(type);
+	if (duration_ms <= 0) {
 		if (complete_callback) {
 			complete_callback(animation->data);
 		}
@@ -69,8 +71,10 @@ void add_animation(struct animation *animation, void (*update_callback)(void *),
 	}
 
 	animation->progress = 0.0f;
+	animation->progress_delta = animation_manager.tick_time / duration_ms;
 	animation->multiplier = 0.0f;
 	animation->initialized = true;
+	animation->type = type;
 	animation->update = update_callback;
 	animation->complete = complete_callback;
 	wl_list_insert(&animation_manager.animations, &animation->link);
@@ -86,7 +90,7 @@ void finish_animation(struct animation *animation) {
 }
 
 void start_animations() {
-	if (!config->animation_duration_ms) {
+	if (wl_list_empty(&animation_manager.animations)) {
 		return;
 	}
 	assert(animation_manager.tick);
@@ -111,7 +115,20 @@ void refresh_animation_manager_timing() {
 		return;
 	}
 	animation_manager.tick_time = get_fastest_output_refresh_ms();
-	animation_manager.progress_delta = animation_manager.tick_time / config->animation_duration_ms;
+
+	// rescale in-flight animations to their type's current duration
+	struct animation *animation, *tmp;
+	wl_list_for_each_safe(animation, tmp, &animation_manager.animations, link) {
+		float duration_ms = animation_manager_duration_ms(animation->type);
+		if (duration_ms <= 0) {
+			finish_animation(animation);
+			if (animation->complete) {
+				animation->complete(animation->data);
+			}
+			continue;
+		}
+		animation->progress_delta = animation_manager.tick_time / duration_ms;
+	}
 }
 
 void animation_manager_init(struct sway_server *server) {
@@ -126,9 +143,17 @@ static float lerp(float a, float b, float t) {
 }
 
 float get_animated_value(float from, float to, const struct animation *animation) {
-	if (!config->animation_duration_ms || !animation->initialized) {
+	if (!animation->initialized) {
 		return to;
 	}
 	return lerp(from, to, animation->multiplier);
+}
+
+// falls back to the shared default when this type has no override
+float animation_manager_duration_ms(enum sway_animation_type type) {
+	if (config->animation_duration_ms_set[type]) {
+		return config->animation_duration_ms_by_type[type];
+	}
+	return config->animation_duration_ms;
 }
 

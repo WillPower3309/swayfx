@@ -110,6 +110,10 @@ sway_cmd cmd_exec_process;
 
 sway_cmd cmd_allow_tearing;
 sway_cmd cmd_animation_duration_ms;
+sway_cmd cmd_animation_duration_ms_close;
+sway_cmd cmd_animation_duration_ms_move;
+sway_cmd cmd_animation_duration_ms_open;
+sway_cmd cmd_animation_duration_ms_workspace;
 sway_cmd cmd_assign;
 sway_cmd cmd_bar;
 sway_cmd cmd_bindcode;
